@@ -1,0 +1,55 @@
+version: "3.9"
+
+services:
+
+  db:
+    image: postgres:16
+    container_name: observatorio_db
+    restart: always
+    env_file:
+      - .env
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    networks:
+      - observatorio_net
+
+  api:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: observatorio_api
+    restart: always
+    env_file:
+      - .env
+    depends_on:
+      - db
+    ports:
+      - "8000:8000"
+    networks:
+      - observatorio_net
+
+  frontend:
+    build:
+      context: ./frontend-observatorio
+      dockerfile: Dockerfile
+    container_name: observatorio_front
+    restart: always
+    depends_on:
+      - api
+    ports:
+      - "80:80"
+    networks:
+      - observatorio_net
+
+volumes:
+  postgres_data:
+
+networks:
+  observatorio_net:
+    driver: bridge

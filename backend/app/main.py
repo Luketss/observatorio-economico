@@ -1,0 +1,55 @@
+import app.api.v1.routers.arrecadacao as arrecadacao
+import app.api.v1.routers.auth as auth
+import app.api.v1.routers.caged as caged
+import app.api.v1.routers.comparativo as comparativo
+import app.api.v1.routers.municipios as municipios
+import app.api.v1.routers.pib as pib
+import app.api.v1.routers.rais as rais
+import app.api.v1.routers.usuarios as usuarios
+from app.api.error_handlers import register_exception_handlers
+from app.api.middleware import AuditMiddleware
+from app.core.config import settings
+from app.core.logging import setup_logging
+from app.db.base import Base
+from app.db.session import engine
+from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
+
+# Setup logging
+setup_logging()
+
+app = FastAPI(title="Observatório Econômico API", version="1.0.0")
+
+# Register global exception handlers
+register_exception_handlers(app)
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],  # trocar por domínio específico depois
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+# Audit middleware (request logging + correlation ID)
+app.add_middleware(AuditMiddleware)
+
+# ⚠️ Banco agora é controlado via Alembic
+# Não utilizamos mais create_all nem seed automático aqui.
+
+
+API_PREFIX = "/api/v1"
+
+app.include_router(auth.router, prefix=API_PREFIX)
+app.include_router(usuarios.router, prefix=API_PREFIX)
+app.include_router(municipios.router, prefix=API_PREFIX)
+app.include_router(arrecadacao.router, prefix=API_PREFIX)
+app.include_router(pib.router, prefix=API_PREFIX)
+app.include_router(caged.router, prefix=API_PREFIX)
+app.include_router(rais.router, prefix=API_PREFIX)
+app.include_router(comparativo.router, prefix=API_PREFIX)
+
+
+@app.get("/health")
+def health_check():
+    return {"status": "ok"}

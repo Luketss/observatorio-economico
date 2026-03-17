@@ -1,0 +1,830 @@
+{
+  "mensal": [
+    {
+      "ano": 2021,
+      "mes": 1,
+      "sexo": "Feminino",
+      "total_vinculos": 100,
+      "massa_salarial": 162344.23000000004,
+      "media_salarial": 1623.4423000000004
+    },
+    {
+      "ano": 2021,
+      "mes": 1,
+      "sexo": "Masculino",
+      "total_vinculos": 136,
+      "massa_salarial": 267967.30000000005,
+      "media_salarial": 1970.3477941176475
+    },
+    {
+      "ano": 2021,
+      "mes": 2,
+      "sexo": "Feminino",
+      "total_vinculos": 92,
+      "massa_salarial": 130284.21999999999,
+      "media_salarial": 1416.1328260869564
+    },
+    {
+      "ano": 2021,
+      "mes": 2,
+      "sexo": "Masculino",
+      "total_vinculos": 102,
+      "massa_salarial": 168413.75,
+      "media_salarial": 1651.1151960784314
+    },
+    {
+      "ano": 2021,
+      "mes": 3,
+      "sexo": "Feminino",
+      "total_vinculos": 110,
+      "massa_salarial": 177632.12000000002,
+      "media_salarial": 1614.8374545454549
+    },
+    {
+      "ano": 2021,
+      "mes": 3,
+      "sexo": "Masculino",
+      "total_vinculos": 112,
+      "massa_salarial": 179869.03999999995,
+      "media_salarial": 1605.973571428571
+    },
+    {
+      "ano": 2021,
+      "mes": 4,
+      "sexo": "Feminino",
+      "total_vinculos": 75,
+      "massa_salarial": 113275.27000000002,
+      "media_salarial": 1510.3369333333335
+    },
+    {
+      "ano": 2021,
+      "mes": 4,
+      "sexo": "Masculino",
+      "total_vinculos": 92,
+      "massa_salarial": 144274.23,
+      "media_salarial": 1568.198152173913
+    },
+    {
+      "ano": 2021,
+      "mes": 5,
+      "sexo": "Feminino",
+      "total_vinculos": 122,
+      "massa_salarial": 156779.15,
+      "media_salarial": 1285.075
+    },
+    {
+      "ano": 2021,
+      "mes": 5,
+      "sexo": "Masculino",
+      "total_vinculos": 108,
+      "massa_salarial": 158933.75,
+      "media_salarial": 1471.6087962962963
+    },
+    {
+      "ano": 2021,
+      "mes": 6,
+      "sexo": "Feminino",
+      "total_vinculos": 73,
+      "massa_salarial": 99501.77000000002,
+      "media_salarial": 1363.0379452054797
+    },
+    {
+      "ano": 2021,
+      "mes": 6,
+      "sexo": "Masculino",
+      "total_vinculos": 111,
+      "massa_salarial": 159142.85,
+      "media_salarial": 1433.7193693693694
+    },
+    {
+      "ano": 2021,
+      "mes": 7,
+      "sexo": "Feminino",
+      "total_vinculos": 73,
+      "massa_salarial": 97171.28000000003,
+      "media_salarial": 1331.1134246575346
+    },
+    {
+      "ano": 2021,
+      "mes": 7,
+      "sexo": "Masculino",
+      "total_vinculos": 116,
+      "massa_salarial": 171153.5,
+      "media_salarial": 1475.4612068965516
+    },
+    {
+      "ano": 2021,
+      "mes": 8,
+      "sexo": "Feminino",
+      "total_vinculos": 137,
+      "massa_salarial": 175281.43999999997,
+      "media_salarial": 1279.4265693430655
+    },
+    {
+      "ano": 2021,
+      "mes": 8,
+      "sexo": "Masculino",
+      "total_vinculos": 146,
+      "massa_salarial": 205342.34,
+      "media_salarial": 1406.454383561644
+    },
+    {
+      "ano": 2021,
+      "mes": 9,
+      "sexo": "Feminino",
+      "total_vinculos": 85,
+      "massa_salarial": 118521.05,
+      "media_salarial": 1394.3652941176472
+    },
+    {
+      "ano": 2021,
+      "mes": 9,
+      "sexo": "Masculino",
+      "total_vinculos": 125,
+      "massa_salarial": 217744.88,
+      "media_salarial": 1741.95904
+    },
+    {
+      "ano": 2021,
+      "mes": 10,
+      "sexo": "Feminino",
+      "total_vinculos": 101,
+      "massa_salarial": 140823.24,
+      "media_salarial": 1394.289504950495
+    },
+    {
+      "ano": 2021,
+      "mes": 10,
+      "sexo": "Masculino",
+      "total_vinculos": 132,
+      "massa_salarial": 200374.1199999999,
+      "media_salarial": 1517.985757575757
+    },
+    {
+      "ano": 2021,
+      "mes": 11,
+      "sexo": "Feminino",
+      "total_vinculos": 89,
+      "massa_salarial": 115690.09000000001,
+      "media_salarial": 1299.8886516853934
+    },
+    {
+      "ano": 2021,
+      "mes": 11,
+      "sexo": "Masculino",
+      "total_vinculos": 158,
+      "massa_salarial": 228955.63999999993,
+      "media_salarial": 1449.0863291139235
+    },
+    {
+      "ano": 2021,
+      "mes": 12,
+      "sexo": "Feminino",
+      "total_vinculos": 3328,
+      "massa_salarial": 6454783.600000005,
+      "media_salarial": 1939.5383413461554
+    },
+    {
+      "ano": 2021,
+      "mes": 12,
+      "sexo": "Masculino",
+      "total_vinculos": 4045,
+      "massa_salarial": 8241077.2699999865,
+      "media_salarial": 2037.3491396786123
+    },
+    {
+      "ano": 2022,
+      "mes": 1,
+      "sexo": "Feminino",
+      "total_vinculos": 83,
+      "massa_salarial": 126084.10999999999,
+      "media_salarial": 1519.0856626506022
+    },
+    {
+      "ano": 2022,
+      "mes": 1,
+      "sexo": "Masculino",
+      "total_vinculos": 88,
+      "massa_salarial": 156697.87000000002,
+      "media_salarial": 1780.657613636364
+    },
+    {
+      "ano": 2022,
+      "mes": 2,
+      "sexo": "Feminino",
+      "total_vinculos": 201,
+      "massa_salarial": 381724.6000000005,
+      "media_salarial": 1899.127363184082
+    },
+    {
+      "ano": 2022,
+      "mes": 2,
+      "sexo": "Masculino",
+      "total_vinculos": 118,
+      "massa_salarial": 206335.44000000003,
+      "media_salarial": 1748.6054237288138
+    },
+    {
+      "ano": 2022,
+      "mes": 3,
+      "sexo": "Feminino",
+      "total_vinculos": 102,
+      "massa_salarial": 175146.25000000012,
+      "media_salarial": 1717.1200980392168
+    },
+    {
+      "ano": 2022,
+      "mes": 3,
+      "sexo": "Masculino",
+      "total_vinculos": 123,
+      "massa_salarial": 206942.56999999995,
+      "media_salarial": 1682.4599186991866
+    },
+    {
+      "ano": 2022,
+      "mes": 4,
+      "sexo": "Feminino",
+      "total_vinculos": 89,
+      "massa_salarial": 159250.38999999993,
+      "media_salarial": 1789.3302247191002
+    },
+    {
+      "ano": 2022,
+      "mes": 4,
+      "sexo": "Masculino",
+      "total_vinculos": 98,
+      "massa_salarial": 208526.31000000008,
+      "media_salarial": 2127.8194897959193
+    },
+    {
+      "ano": 2022,
+      "mes": 5,
+      "sexo": "Feminino",
+      "total_vinculos": 117,
+      "massa_salarial": 195008.16999999998,
+      "media_salarial": 1666.7364957264956
+    },
+    {
+      "ano": 2022,
+      "mes": 5,
+      "sexo": "Masculino",
+      "total_vinculos": 137,
+      "massa_salarial": 245785.61999999994,
+      "media_salarial": 1794.0556204379557
+    },
+    {
+      "ano": 2022,
+      "mes": 6,
+      "sexo": "Feminino",
+      "total_vinculos": 86,
+      "massa_salarial": 131137.25,
+      "media_salarial": 1524.8517441860465
+    },
+    {
+      "ano": 2022,
+      "mes": 6,
+      "sexo": "Masculino",
+      "total_vinculos": 116,
+      "massa_salarial": 197931.27999999997,
+      "media_salarial": 1706.3041379310341
+    },
+    {
+      "ano": 2022,
+      "mes": 7,
+      "sexo": "Feminino",
+      "total_vinculos": 98,
+      "massa_salarial": 157713.93999999992,
+      "media_salarial": 1609.325918367346
+    },
+    {
+      "ano": 2022,
+      "mes": 7,
+      "sexo": "Masculino",
+      "total_vinculos": 158,
+      "massa_salarial": 322546.39999999985,
+      "media_salarial": 2041.432911392404
+    },
+    {
+      "ano": 2022,
+      "mes": 8,
+      "sexo": "Feminino",
+      "total_vinculos": 137,
+      "massa_salarial": 209264.70000000004,
+      "media_salarial": 1527.479562043796
+    },
+    {
+      "ano": 2022,
+      "mes": 8,
+      "sexo": "Masculino",
+      "total_vinculos": 166,
+      "massa_salarial": 269329.99999999994,
+      "media_salarial": 1622.469879518072
+    },
+    {
+      "ano": 2022,
+      "mes": 9,
+      "sexo": "Feminino",
+      "total_vinculos": 177,
+      "massa_salarial": 245002.14000000016,
+      "media_salarial": 1384.1928813559332
+    },
+    {
+      "ano": 2022,
+      "mes": 9,
+      "sexo": "Masculino",
+      "total_vinculos": 189,
+      "massa_salarial": 311667.5200000001,
+      "media_salarial": 1649.0344973544977
+    },
+    {
+      "ano": 2022,
+      "mes": 10,
+      "sexo": "Feminino",
+      "total_vinculos": 120,
+      "massa_salarial": 177695.9099999999,
+      "media_salarial": 1480.7992499999991
+    },
+    {
+      "ano": 2022,
+      "mes": 10,
+      "sexo": "Masculino",
+      "total_vinculos": 132,
+      "massa_salarial": 221807.79999999996,
+      "media_salarial": 1680.3621212121209
+    },
+    {
+      "ano": 2022,
+      "mes": 11,
+      "sexo": "Feminino",
+      "total_vinculos": 151,
+      "massa_salarial": 223302.10000000012,
+      "media_salarial": 1478.8218543046366
+    },
+    {
+      "ano": 2022,
+      "mes": 11,
+      "sexo": "Masculino",
+      "total_vinculos": 175,
+      "massa_salarial": 288941.27999999997,
+      "media_salarial": 1651.0930285714285
+    },
+    {
+      "ano": 2022,
+      "mes": 12,
+      "sexo": "Feminino",
+      "total_vinculos": 3479,
+      "massa_salarial": 7223393.100000008,
+      "media_salarial": 2076.284305835012
+    },
+    {
+      "ano": 2022,
+      "mes": 12,
+      "sexo": "Masculino",
+      "total_vinculos": 4123,
+      "massa_salarial": 9155686.570000013,
+      "media_salarial": 2220.637053116666
+    },
+    {
+      "ano": 2023,
+      "mes": 1,
+      "sexo": "Feminino",
+      "total_vinculos": 80,
+      "massa_salarial": 144961.30999999994,
+      "media_salarial": 1812.0163749999992
+    },
+    {
+      "ano": 2023,
+      "mes": 1,
+      "sexo": "Masculino",
+      "total_vinculos": 75,
+      "massa_salarial": 158304.66999999998,
+      "media_salarial": 2110.7289333333333
+    },
+    {
+      "ano": 2023,
+      "mes": 2,
+      "sexo": "Feminino",
+      "total_vinculos": 133,
+      "massa_salarial": 234068.45999999993,
+      "media_salarial": 1759.9132330827063
+    },
+    {
+      "ano": 2023,
+      "mes": 2,
+      "sexo": "Masculino",
+      "total_vinculos": 106,
+      "massa_salarial": 195807.03000000003,
+      "media_salarial": 1847.236132075472
+    },
+    {
+      "ano": 2023,
+      "mes": 3,
+      "sexo": "Feminino",
+      "total_vinculos": 134,
+      "massa_salarial": 265974.93999999994,
+      "media_salarial": 1984.887611940298
+    },
+    {
+      "ano": 2023,
+      "mes": 3,
+      "sexo": "Masculino",
+      "total_vinculos": 111,
+      "massa_salarial": 227468.5,
+      "media_salarial": 2049.265765765766
+    },
+    {
+      "ano": 2023,
+      "mes": 4,
+      "sexo": "Feminino",
+      "total_vinculos": 119,
+      "massa_salarial": 259970.81000000003,
+      "media_salarial": 2184.628655462185
+    },
+    {
+      "ano": 2023,
+      "mes": 4,
+      "sexo": "Masculino",
+      "total_vinculos": 114,
+      "massa_salarial": 232216.47999999998,
+      "media_salarial": 2036.9866666666665
+    },
+    {
+      "ano": 2023,
+      "mes": 5,
+      "sexo": "Feminino",
+      "total_vinculos": 162,
+      "massa_salarial": 361657.5299999999,
+      "media_salarial": 2232.4538888888883
+    },
+    {
+      "ano": 2023,
+      "mes": 5,
+      "sexo": "Masculino",
+      "total_vinculos": 154,
+      "massa_salarial": 365568.3500000001,
+      "media_salarial": 2373.820454545455
+    },
+    {
+      "ano": 2023,
+      "mes": 6,
+      "sexo": "Feminino",
+      "total_vinculos": 135,
+      "massa_salarial": 264014.25,
+      "media_salarial": 1955.661111111111
+    },
+    {
+      "ano": 2023,
+      "mes": 6,
+      "sexo": "Masculino",
+      "total_vinculos": 152,
+      "massa_salarial": 303789.22000000015,
+      "media_salarial": 1998.6132894736852
+    },
+    {
+      "ano": 2023,
+      "mes": 7,
+      "sexo": "Feminino",
+      "total_vinculos": 166,
+      "massa_salarial": 305356.15000000014,
+      "media_salarial": 1839.494879518073
+    },
+    {
+      "ano": 2023,
+      "mes": 7,
+      "sexo": "Masculino",
+      "total_vinculos": 201,
+      "massa_salarial": 393748.8700000001,
+      "media_salarial": 1958.9496019900503
+    },
+    {
+      "ano": 2023,
+      "mes": 8,
+      "sexo": "Feminino",
+      "total_vinculos": 135,
+      "massa_salarial": 270746.37,
+      "media_salarial": 2005.5286666666666
+    },
+    {
+      "ano": 2023,
+      "mes": 8,
+      "sexo": "Masculino",
+      "total_vinculos": 219,
+      "massa_salarial": 402765.3800000001,
+      "media_salarial": 1839.1113242009137
+    },
+    {
+      "ano": 2023,
+      "mes": 9,
+      "sexo": "Feminino",
+      "total_vinculos": 145,
+      "massa_salarial": 270104.02999999997,
+      "media_salarial": 1862.7864137931033
+    },
+    {
+      "ano": 2023,
+      "mes": 9,
+      "sexo": "Masculino",
+      "total_vinculos": 180,
+      "massa_salarial": 382981.98,
+      "media_salarial": 2127.6776666666665
+    },
+    {
+      "ano": 2023,
+      "mes": 10,
+      "sexo": "Feminino",
+      "total_vinculos": 186,
+      "massa_salarial": 319607.80000000016,
+      "media_salarial": 1718.321505376345
+    },
+    {
+      "ano": 2023,
+      "mes": 10,
+      "sexo": "Masculino",
+      "total_vinculos": 185,
+      "massa_salarial": 313285.88000000006,
+      "media_salarial": 1693.4371891891894
+    },
+    {
+      "ano": 2023,
+      "mes": 11,
+      "sexo": "Feminino",
+      "total_vinculos": 149,
+      "massa_salarial": 249980.46999999997,
+      "media_salarial": 1677.721275167785
+    },
+    {
+      "ano": 2023,
+      "mes": 11,
+      "sexo": "Masculino",
+      "total_vinculos": 208,
+      "massa_salarial": 391162.16000000015,
+      "media_salarial": 1880.5873076923085
+    },
+    {
+      "ano": 2023,
+      "mes": 12,
+      "sexo": "Feminino",
+      "total_vinculos": 3494,
+      "massa_salarial": 8605972.11999999,
+      "media_salarial": 2463.071585575269
+    },
+    {
+      "ano": 2023,
+      "mes": 12,
+      "sexo": "Masculino",
+      "total_vinculos": 4058,
+      "massa_salarial": 9915983.95999998,
+      "media_salarial": 2443.5643075406556
+    },
+    {
+      "ano": 2024,
+      "mes": 1,
+      "sexo": "Feminino",
+      "total_vinculos": 96,
+      "massa_salarial": 192593.54000000004,
+      "media_salarial": 2006.1827083333337
+    },
+    {
+      "ano": 2024,
+      "mes": 1,
+      "sexo": "Masculino",
+      "total_vinculos": 114,
+      "massa_salarial": 241070.79000000004,
+      "media_salarial": 2114.6560526315793
+    },
+    {
+      "ano": 2024,
+      "mes": 2,
+      "sexo": "Feminino",
+      "total_vinculos": 111,
+      "massa_salarial": 202316.74000000002,
+      "media_salarial": 1822.6733333333334
+    },
+    {
+      "ano": 2024,
+      "mes": 2,
+      "sexo": "Masculino",
+      "total_vinculos": 110,
+      "massa_salarial": 200266.43000000005,
+      "media_salarial": 1820.6039090909096
+    },
+    {
+      "ano": 2024,
+      "mes": 3,
+      "sexo": "Feminino",
+      "total_vinculos": 124,
+      "massa_salarial": 232861.50999999992,
+      "media_salarial": 1877.915403225806
+    },
+    {
+      "ano": 2024,
+      "mes": 3,
+      "sexo": "Masculino",
+      "total_vinculos": 117,
+      "massa_salarial": 270720.99999999994,
+      "media_salarial": 2313.8547008547002
+    },
+    {
+      "ano": 2024,
+      "mes": 4,
+      "sexo": "Feminino",
+      "total_vinculos": 127,
+      "massa_salarial": 266311.1799999999,
+      "media_salarial": 2096.9384251968495
+    },
+    {
+      "ano": 2024,
+      "mes": 4,
+      "sexo": "Masculino",
+      "total_vinculos": 108,
+      "massa_salarial": 238122.59999999998,
+      "media_salarial": 2204.8388888888885
+    },
+    {
+      "ano": 2024,
+      "mes": 5,
+      "sexo": "Feminino",
+      "total_vinculos": 104,
+      "massa_salarial": 196078.38999999998,
+      "media_salarial": 1885.3691346153844
+    },
+    {
+      "ano": 2024,
+      "mes": 5,
+      "sexo": "Masculino",
+      "total_vinculos": 107,
+      "massa_salarial": 227524.16,
+      "media_salarial": 2126.394018691589
+    },
+    {
+      "ano": 2024,
+      "mes": 6,
+      "sexo": "Feminino",
+      "total_vinculos": 150,
+      "massa_salarial": 314412.1299999999,
+      "media_salarial": 2096.0808666666658
+    },
+    {
+      "ano": 2024,
+      "mes": 6,
+      "sexo": "Masculino",
+      "total_vinculos": 151,
+      "massa_salarial": 327793.9300000001,
+      "media_salarial": 2170.820728476822
+    },
+    {
+      "ano": 2024,
+      "mes": 7,
+      "sexo": "Feminino",
+      "total_vinculos": 173,
+      "massa_salarial": 329170.54,
+      "media_salarial": 1902.7198843930635
+    },
+    {
+      "ano": 2024,
+      "mes": 7,
+      "sexo": "Masculino",
+      "total_vinculos": 158,
+      "massa_salarial": 352199.38999999996,
+      "media_salarial": 2229.110063291139
+    },
+    {
+      "ano": 2024,
+      "mes": 8,
+      "sexo": "Feminino",
+      "total_vinculos": 131,
+      "massa_salarial": 285552.49999999994,
+      "media_salarial": 2179.7900763358775
+    },
+    {
+      "ano": 2024,
+      "mes": 8,
+      "sexo": "Masculino",
+      "total_vinculos": 160,
+      "massa_salarial": 341188.07999999996,
+      "media_salarial": 2132.4255
+    },
+    {
+      "ano": 2024,
+      "mes": 9,
+      "sexo": "Feminino",
+      "total_vinculos": 138,
+      "massa_salarial": 280348.49999999994,
+      "media_salarial": 2031.510869565217
+    },
+    {
+      "ano": 2024,
+      "mes": 9,
+      "sexo": "Masculino",
+      "total_vinculos": 176,
+      "massa_salarial": 385257.16999999987,
+      "media_salarial": 2188.9611931818176
+    },
+    {
+      "ano": 2024,
+      "mes": 10,
+      "sexo": "Feminino",
+      "total_vinculos": 183,
+      "massa_salarial": 325195.74,
+      "media_salarial": 1777.0259016393443
+    },
+    {
+      "ano": 2024,
+      "mes": 10,
+      "sexo": "Masculino",
+      "total_vinculos": 200,
+      "massa_salarial": 405420.86,
+      "media_salarial": 2027.1043
+    },
+    {
+      "ano": 2024,
+      "mes": 11,
+      "sexo": "Feminino",
+      "total_vinculos": 209,
+      "massa_salarial": 376061.63999999984,
+      "media_salarial": 1799.3379904306212
+    },
+    {
+      "ano": 2024,
+      "mes": 11,
+      "sexo": "Masculino",
+      "total_vinculos": 199,
+      "massa_salarial": 451989.3800000001,
+      "media_salarial": 2271.3034170854276
+    },
+    {
+      "ano": 2024,
+      "mes": 12,
+      "sexo": "Feminino",
+      "total_vinculos": 3899,
+      "massa_salarial": 10326008.96000006,
+      "media_salarial": 2648.373675301375
+    },
+    {
+      "ano": 2024,
+      "mes": 12,
+      "sexo": "Masculino",
+      "total_vinculos": 4193,
+      "massa_salarial": 11062391.13000005,
+      "media_salarial": 2638.2998163606126
+    }
+  ],
+  "anual": [
+    {
+      "ano": 2021,
+      "sexo": "Feminino",
+      "total_vinculos": 4385,
+      "massa_salarial": 7942087.459999965,
+      "media_salarial": 1811.1944036487946
+    },
+    {
+      "ano": 2021,
+      "sexo": "Masculino",
+      "total_vinculos": 5383,
+      "massa_salarial": 10343248.669999981,
+      "media_salarial": 1921.4654783577896
+    },
+    {
+      "ano": 2022,
+      "sexo": "Feminino",
+      "total_vinculos": 4840,
+      "massa_salarial": 9404722.660000004,
+      "media_salarial": 1943.1245165289265
+    },
+    {
+      "ano": 2022,
+      "sexo": "Masculino",
+      "total_vinculos": 5623,
+      "massa_salarial": 11792198.659999998,
+      "media_salarial": 2097.136521429841
+    },
+    {
+      "ano": 2023,
+      "sexo": "Feminino",
+      "total_vinculos": 5038,
+      "massa_salarial": 11552414.23999998,
+      "media_salarial": 2293.05562524811
+    },
+    {
+      "ano": 2023,
+      "sexo": "Masculino",
+      "total_vinculos": 5763,
+      "massa_salarial": 13283082.47999999,
+      "media_salarial": 2304.8902446642355
+    },
+    {
+      "ano": 2024,
+      "sexo": "Feminino",
+      "total_vinculos": 5445,
+      "massa_salarial": 13326911.370000087,
+      "media_salarial": 2447.5502975206773
+    },
+    {
+      "ano": 2024,
+      "sexo": "Masculino",
+      "total_vinculos": 5793,
+      "massa_salarial": 14503944.92000006,
+      "media_salarial": 2503.7018677714586
+    }
+  ]
+}

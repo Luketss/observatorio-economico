@@ -1,0 +1,8 @@
+[
+  { "mes": "Jan", "aberturas": 120, "fechamentos": 80 },
+  { "mes": "Fev", "aberturas": 150, "fechamentos": 90 },
+  { "mes": "Mar", "aberturas": 170, "fechamentos": 100 },
+  { "mes": "Abr", "aberturas": 140, "fechamentos": 95 },
+  { "mes": "Mai", "aberturas": 200, "fechamentos": 110 },
+  { "mes": "Jun", "aberturas": 220, "fechamentos": 130 }
+]

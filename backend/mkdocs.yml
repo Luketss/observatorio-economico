@@ -1,0 +1,31 @@
+site_name: Observatório Econômico - Backend
+site_description: Documentação técnica oficial do backend
+site_author: Equipe Backend
+
+theme:
+  name: material
+  language: pt
+  palette:
+    - scheme: default
+      primary: blue
+      accent: indigo
+
+nav:
+  - Home: index.md
+  - Arquitetura:
+      - Visão Geral: architecture.md
+      - Manutenção: maintenance.md
+  - API:
+      - Autenticação: authentication.md
+      - Padrões de Resposta: responses.md
+      - Paginação: pagination.md
+  - Contribuição: contributing.md
+  - Deploy: deploy.md
+  - Roadmap: roadmap.md
+
+markdown_extensions:
+  - admonition
+  - toc:
+      permalink: true
+  - tables
+  - fenced_code
