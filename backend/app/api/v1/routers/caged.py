@@ -45,7 +45,14 @@ def resumo_caged(
             CagedMovimentacao.municipio_id == current_user.municipio_id
         )
 
-    resultado = query.one()
+    resultado = query.one_or_none()
+
+    if not resultado:
+        return CagedResumo(
+            total_admissoes=0,
+            total_desligamentos=0,
+            saldo_total=0,
+        )
 
     return CagedResumo(
         total_admissoes=resultado.total_admissoes or 0,

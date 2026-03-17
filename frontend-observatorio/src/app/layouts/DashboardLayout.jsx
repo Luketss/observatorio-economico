@@ -1,192 +1,101 @@
-import { Outlet, useNavigate, useLocation } from "react-router-dom";
-import { useState, useEffect } from "react";
+import { NavLink, Outlet } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext";
-import "../../styles/global.css";
 
 export default function DashboardLayout() {
   const { logout, user } = useAuth();
-  const navigate = useNavigate();
-  const location = useLocation();
-  const [openMenu, setOpenMenu] = useState(null);
-  const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
-  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
-
-  const menuConfig = [
-    {
-      key: "dashboard",
-      label: "Dashboard",
-      path: "/",
-      roles: ["ADMIN_GLOBAL", "MUNICIPIO"],
-    },
-    {
-      key: "emprego",
-      label: "Emprego",
-      roles: ["ADMIN_GLOBAL", "MUNICIPIO"],
-      children: [
-        { label: "CAGED", path: "/" },
-        { label: "RAIS", path: "/rais" },
-      ],
-    },
-    {
-      key: "economia",
-      label: "Economia",
-      roles: ["ADMIN_GLOBAL"],
-      children: [
-        { label: "PIB", path: "/pib" },
-        { label: "Arrecadação", path: "/arrecadacao" },
-      ],
-    },
-  ];
-
-  const toggleMenu = (menu) => {
-    setOpenMenu(openMenu === menu ? null : menu);
-  };
-
-  useEffect(() => {
-    // Mantém submenu aberto se rota filha estiver ativa
-    menuConfig.forEach((item) => {
-      if (item.children) {
-        const isActiveChild = item.children.some(
-          (child) => child.path === location.pathname
-        );
-        if (isActiveChild) {
-          setOpenMenu(item.key);
-        }
-      }
-    });
-  }, [location.pathname]);
 
   return (
-    <div className="layout-container">
-      <aside className={isSidebarCollapsed ? "sidebar collapsed" : "sidebar"}>
-        <div className="sidebar-header">
-          {!isSidebarCollapsed && <h2>Observatório</h2>}
+    <div className="flex h-screen bg-background">
+      {/* Sidebar */}
+      <aside className="w-72 bg-gradient-to-b from-primary to-secondary text-white flex flex-col justify-between shadow-xl">
+        <div>
+          <div className="p-8 border-b border-slate-700">
+            <h1 className="text-2xl font-extrabold tracking-tight">
+              Observatório
+            </h1>
+            <p className="text-xs text-slate-400 mt-2 uppercase tracking-wider">
+              Painel Econômico
+            </p>
+          </div>
+
+          <nav className="p-6 space-y-2 text-sm">
+            <NavLink
+              to="/"
+              className={({ isActive }) =>
+                `block px-4 py-2 rounded-xl transition-all duration-200 hover:translate-x-1 ${
+                  isActive
+                    ? "bg-white/20 shadow-md"
+                    : "hover:bg-white/10"
+                }`
+              }
+            >
+              Dashboard
+            </NavLink>
+            {[
+              { to: "/pib", label: "PIB" },
+              { to: "/arrecadacao", label: "Arrecadação" },
+              { to: "/caged", label: "CAGED" },
+              { to: "/rais", label: "RAIS" },
+              { to: "/comparativo", label: "Comparativo" },
+            ].map((item) => (
+              <NavLink
+                key={item.to}
+                to={item.to}
+                className={({ isActive }) =>
+                  `block px-4 py-2 rounded-xl transition-all duration-200 hover:translate-x-1 ${
+                    isActive
+                      ? "bg-white/20 shadow-md"
+                      : "hover:bg-white/10"
+                  }`
+                }
+              >
+                {item.label}
+              </NavLink>
+            ))}
+
+            {user?.is_admin && (
+              <NavLink
+                to="/admin/usuarios"
+                className={({ isActive }) =>
+                  `block px-4 py-2 rounded-xl transition-all duration-200 hover:translate-x-1 ${
+                    isActive
+                      ? "bg-white/20 shadow-md"
+                      : "hover:bg-white/10"
+                  }`
+                }
+              >
+                Usuários
+              </NavLink>
+            )}
+          </nav>
+        </div>
+
+        <div className="p-4 border-t border-slate-700">
           <button
-            className="collapse-btn"
-            onClick={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
+            onClick={logout}
+            className="w-full bg-red-600 hover:bg-red-700 transition px-4 py-2 rounded-lg text-sm"
           >
-            {isSidebarCollapsed ? "➤" : "◀"}
+            Sair
           </button>
         </div>
-
-        <nav>
-          {menuConfig
-            .filter((item) =>
-              !item.roles || item.roles.includes(user?.role)
-            )
-            .map((item) => {
-              if (!item.children) {
-                const isActive = location.pathname === item.path;
-                return (
-                  <span
-                    key={item.key}
-                    onClick={() => navigate(item.path)}
-                    style={{
-                      fontWeight: isActive ? "600" : "400",
-                      opacity: isActive ? 1 : 0.8,
-                      textAlign: isSidebarCollapsed ? "center" : "left"
-                    }}
-                  >
-                    {isSidebarCollapsed ? item.label[0] : item.label}
-                  </span>
-                );
-              }
-
-              return (
-                <div key={item.key} style={{ marginTop: 16 }}>
-                  <span
-                    onClick={() => toggleMenu(item.key)}
-                    style={{ display: "block" }}
-                  >
-                    {item.label}{" "}
-                    {openMenu === item.key ? "▾" : "▸"}
-                  </span>
-
-                  {openMenu === item.key && (
-                    <div style={{ marginLeft: 16, marginTop: 8 }}>
-                      {item.children.map((child) => {
-                        const isActive =
-                          location.pathname === child.path;
-
-                        return (
-                          <div
-                            key={child.path}
-                            style={{
-                              marginBottom: 8,
-                              cursor: "pointer",
-                              fontWeight: isActive ? "600" : "400",
-                              opacity: isActive ? 1 : 0.8,
-                            }}
-                            onClick={() => navigate(child.path)}
-                          >
-                            {child.label}
-                          </div>
-                        );
-                      })}
-                    </div>
-                  )}
-                </div>
-              );
-            })}
-        </nav>
-
-        <div style={{ marginTop: 40, fontSize: 13, opacity: 0.7 }}>
-          <p>{user?.email}</p>
-          <p>{user?.role}</p>
-        </div>
-
-        <button
-          onClick={() => {
-            logout();
-            navigate("/login");
-          }}
-          style={{
-            marginTop: 20,
-            padding: "10px 12px",
-            borderRadius: 6,
-            border: "none",
-            background: "#ef4444",
-            color: "#fff",
-            cursor: "pointer",
-          }}
-        >
-          Sair
-        </button>
       </aside>
 
-      <main className="main-content">
-        <div className="top-header">
-          <div className="breadcrumb">
-            {location.pathname === "/" && "Dashboard"}
-            {location.pathname === "/rais" && "Emprego / RAIS"}
+      {/* Main content */}
+      <main className="flex-1 overflow-y-auto bg-background">
+        <header className="bg-white/80 backdrop-blur-md px-10 py-6 border-b border-slate-200 flex justify-between items-center">
+          <div>
+            <h2 className="text-xl font-bold text-slate-800">
+              Bem-vindo, {user?.nome || "Usuário"}
+            </h2>
+            <p className="text-sm text-muted mt-1">
+              Acompanhe os indicadores do município
+            </p>
           </div>
+        </header>
 
-          <div className="user-dropdown">
-            <div
-              className="user-info"
-              onClick={() => setIsUserMenuOpen(!isUserMenuOpen)}
-            >
-              <span className="user-name">{user?.email}</span>
-              <span className="user-role">{user?.role}</span>
-            </div>
-
-            {isUserMenuOpen && (
-              <div className="user-menu">
-                <div
-                  className="user-menu-item"
-                  onClick={() => {
-                    logout();
-                    navigate("/login");
-                  }}
-                >
-                  Sair
-                </div>
-              </div>
-            )}
-          </div>
+        <div className="p-8">
+          <Outlet />
         </div>
-
-        <Outlet />
       </main>
     </div>
   );

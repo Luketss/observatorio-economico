@@ -14,7 +14,7 @@ export default function CagedPage() {
   const [data, setData] = useState([]);
 
   useEffect(() => {
-    api.get("/caged").then((res) => {
+    api.get("/caged/resumo").then((res) => {
       setData(res.data.items || []);
     });
   }, []);
