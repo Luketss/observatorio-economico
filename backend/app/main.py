@@ -1,8 +1,14 @@
 import app.api.v1.routers.arrecadacao as arrecadacao
 import app.api.v1.routers.auth as auth
+import app.api.v1.routers.bolsa_familia as bolsa_familia
 import app.api.v1.routers.caged as caged
+import app.api.v1.routers.comex as comex
 import app.api.v1.routers.comparativo as comparativo
+import app.api.v1.routers.empresas as empresas
+import app.api.v1.routers.estban as estban
+import app.api.v1.routers.inss as inss
 import app.api.v1.routers.municipios as municipios
+import app.api.v1.routers.pe_de_meia as pe_de_meia
 import app.api.v1.routers.pib as pib
 import app.api.v1.routers.rais as rais
 import app.api.v1.routers.usuarios as usuarios
@@ -48,6 +54,12 @@ app.include_router(pib.router, prefix=API_PREFIX)
 app.include_router(caged.router, prefix=API_PREFIX)
 app.include_router(rais.router, prefix=API_PREFIX)
 app.include_router(comparativo.router, prefix=API_PREFIX)
+app.include_router(bolsa_familia.router, prefix=API_PREFIX)
+app.include_router(pe_de_meia.router, prefix=API_PREFIX)
+app.include_router(inss.router, prefix=API_PREFIX)
+app.include_router(estban.router, prefix=API_PREFIX)
+app.include_router(comex.router, prefix=API_PREFIX)
+app.include_router(empresas.router, prefix=API_PREFIX)
 
 
 @app.get("/health")

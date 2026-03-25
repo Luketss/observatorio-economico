@@ -2,7 +2,7 @@ from app.api.deps import get_current_user, get_db
 from app.api.response import SuccessResponse
 from app.schemas.auth import AuthenticatedUser
 from app.services.auth_service import AuthService
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Body, Depends
 from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy.orm import Session
 
@@ -24,7 +24,7 @@ def login(
 
 @router.post("/refresh")
 def refresh_token(
-    refresh_token: str,
+    refresh_token: str = Body(..., embed=True),
     db: Session = Depends(get_db),
 ):
     service = AuthService(db)

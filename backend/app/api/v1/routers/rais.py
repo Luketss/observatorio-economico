@@ -1,12 +1,18 @@
 from typing import List
 
 from app.api.deps import get_current_user, get_db
-from app.models.rais import RaisVinculo
-from app.schemas.rais import RaisItem, RaisResumo
-from fastapi import APIRouter, Depends
+from app.models.rais import RaisVinculo, RaisPorCnae, RaisPorRaca, RaisPorSexo
+from app.schemas.rais import RaisCnaeItem, RaisItem, RaisRacaItem, RaisResumo, RaisSexoItem
+from fastapi import APIRouter, Depends, Query
 from sqlalchemy.orm import Session
 
 router = APIRouter(prefix="/rais", tags=["RAIS"])
+
+
+def _municipio_filter(query, model, current_user):
+    if current_user.role.nome != "ADMIN_GLOBAL":
+        query = query.filter(model.municipio_id == current_user.municipio_id)
+    return query
 
 
 @router.get("/serie", response_model=List[RaisItem])
@@ -14,18 +20,14 @@ def serie_rais(
     db: Session = Depends(get_db),
     current_user=Depends(get_current_user),
 ):
-    query = db.query(RaisVinculo)
-
-    if current_user.role.nome != "ADMIN_GLOBAL":
-        query = query.filter(RaisVinculo.municipio_id == current_user.municipio_id)
-
+    query = _municipio_filter(db.query(RaisVinculo), RaisVinculo, current_user)
     registros = query.order_by(RaisVinculo.ano).all()
-
     return [
         RaisItem(
             ano=r.ano,
             total_vinculos=r.total_vinculos,
             setor=r.setor,
+            remuneracao_media=r.remuneracao_media,
         )
         for r in registros
     ]
@@ -36,13 +38,73 @@ def resumo_rais(
     db: Session = Depends(get_db),
     current_user=Depends(get_current_user),
 ):
-    query = db.query(RaisVinculo)
-
-    if current_user.role.nome != "ADMIN_GLOBAL":
-        query = query.filter(RaisVinculo.municipio_id == current_user.municipio_id)
-
+    query = _municipio_filter(db.query(RaisVinculo), RaisVinculo, current_user)
     registros = query.all()
-
     total = sum(r.total_vinculos for r in registros)
+    rem_lista = [r.remuneracao_media for r in registros if r.remuneracao_media]
+    rem_media = sum(rem_lista) / len(rem_lista) if rem_lista else None
+    return RaisResumo(total_vinculos=total, remuneracao_media=rem_media)
 
-    return RaisResumo(total_vinculos=total)
+
+@router.get("/por_sexo", response_model=List[RaisSexoItem])
+def por_sexo(
+    ano: int = Query(None),
+    db: Session = Depends(get_db),
+    current_user=Depends(get_current_user),
+):
+    query = _municipio_filter(db.query(RaisPorSexo), RaisPorSexo, current_user)
+    if ano:
+        query = query.filter(RaisPorSexo.ano == ano)
+    registros = query.order_by(RaisPorSexo.ano, RaisPorSexo.sexo).all()
+    return [
+        RaisSexoItem(
+            ano=r.ano,
+            sexo=r.sexo,
+            total_vinculos=r.total_vinculos,
+            remuneracao_media=r.remuneracao_media,
+        )
+        for r in registros
+    ]
+
+
+@router.get("/por_raca", response_model=List[RaisRacaItem])
+def por_raca(
+    ano: int = Query(None),
+    db: Session = Depends(get_db),
+    current_user=Depends(get_current_user),
+):
+    query = _municipio_filter(db.query(RaisPorRaca), RaisPorRaca, current_user)
+    if ano:
+        query = query.filter(RaisPorRaca.ano == ano)
+    registros = query.order_by(RaisPorRaca.ano, RaisPorRaca.raca_cor).all()
+    return [
+        RaisRacaItem(
+            ano=r.ano,
+            raca_cor=r.raca_cor,
+            total_vinculos=r.total_vinculos,
+            remuneracao_media=r.remuneracao_media,
+        )
+        for r in registros
+    ]
+
+
+@router.get("/por_cnae", response_model=List[RaisCnaeItem])
+def por_cnae(
+    ano: int = Query(None),
+    db: Session = Depends(get_db),
+    current_user=Depends(get_current_user),
+):
+    query = _municipio_filter(db.query(RaisPorCnae), RaisPorCnae, current_user)
+    if ano:
+        query = query.filter(RaisPorCnae.ano == ano)
+    registros = query.order_by(RaisPorCnae.ano, RaisPorCnae.secao).all()
+    return [
+        RaisCnaeItem(
+            ano=r.ano,
+            secao=r.secao,
+            descricao_secao=r.descricao_secao,
+            total_vinculos=r.total_vinculos,
+            remuneracao_media=r.remuneracao_media,
+        )
+        for r in registros
+    ]

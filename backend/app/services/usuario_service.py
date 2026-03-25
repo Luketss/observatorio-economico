@@ -35,8 +35,15 @@ class UsuarioService:
 
         return self.repository.create(obj_data)
 
-    def list(self, skip: int = 0, limit: int = 100) -> tuple[Sequence[Usuario], int]:
-        items, total = self.repository.list(skip=skip, limit=limit)
+    def list(
+        self,
+        skip: int = 0,
+        limit: int = 100,
+        municipio_id: int | None = None,
+    ) -> tuple[Sequence[Usuario], int]:
+        items, total = self.repository.list_filtered(
+            skip=skip, limit=limit, municipio_id=municipio_id
+        )
         return items, total
 
     def get_by_id(self, usuario_id: int) -> Usuario:

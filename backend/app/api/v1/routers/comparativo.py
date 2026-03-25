@@ -1,29 +1,23 @@
 from typing import List
 
-from app.api.deps import get_current_user, get_db
+from app.api.deps import get_db, require_role
 from app.models.arrecadacao import ArrecadacaoMensal
 from app.models.caged import CagedMovimentacao
 from app.models.municipio import Municipio
 from app.models.rais import RaisVinculo
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends
 from sqlalchemy import func
 from sqlalchemy.orm import Session
 
 router = APIRouter(prefix="/comparativo", tags=["Comparativo"])
 
 
-def validar_admin_global(current_user):
-    if current_user.role.nome != "ADMIN_GLOBAL":
-        raise HTTPException(status_code=403, detail="Acesso restrito a ADMIN_GLOBAL")
-
-
 @router.get("/arrecadacao")
 def comparativo_arrecadacao(
     ano: int,
     db: Session = Depends(get_db),
-    current_user=Depends(get_current_user),
+    current_user=Depends(require_role("ADMIN_GLOBAL")),
 ):
-    validar_admin_global(current_user)
 
     resultados = (
         db.query(
@@ -44,9 +38,8 @@ def comparativo_arrecadacao(
 def comparativo_caged(
     ano: int,
     db: Session = Depends(get_db),
-    current_user=Depends(get_current_user),
+    current_user=Depends(require_role("ADMIN_GLOBAL")),
 ):
-    validar_admin_global(current_user)
 
     resultados = (
         db.query(
@@ -70,9 +63,8 @@ def comparativo_caged(
 def comparativo_rais(
     ano: int,
     db: Session = Depends(get_db),
-    current_user=Depends(get_current_user),
+    current_user=Depends(require_role("ADMIN_GLOBAL")),
 ):
-    validar_admin_global(current_user)
 
     resultados = (
         db.query(

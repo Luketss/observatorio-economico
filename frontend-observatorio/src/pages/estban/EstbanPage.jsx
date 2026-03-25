@@ -1,0 +1,319 @@
+import { useEffect, useState } from "react";
+import api from "../../services/api";
+import { motion } from "framer-motion";
+import {
+  ResponsiveContainer,
+  LineChart,
+  Line,
+  BarChart,
+  Bar,
+  CartesianGrid,
+  XAxis,
+  YAxis,
+  Tooltip,
+  Legend,
+  Cell,
+} from "recharts";
+
+const COLORS = [
+  "#3b82f6",
+  "#10b981",
+  "#f59e0b",
+  "#8b5cf6",
+  "#ef4444",
+  "#06b6d4",
+];
+
+function KpiCard({ label, value, sub, accent }) {
+  return (
+    <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100">
+      <p className="text-xs uppercase tracking-wider text-slate-400 font-medium">
+        {label}
+      </p>
+      <p className={`text-2xl font-bold mt-2 ${accent || "text-slate-800"}`}>
+        {value}
+      </p>
+      {sub && <p className="text-xs text-slate-400 mt-1">{sub}</p>}
+    </div>
+  );
+}
+
+const fmtBRL = (v) =>
+  v != null
+    ? `R$ ${Number(v).toLocaleString("pt-BR", { maximumFractionDigits: 0 })}`
+    : "—";
+
+const fmtNum = (v) => (v != null ? Number(v).toLocaleString("pt-BR") : "—");
+
+export default function EstbanPage() {
+  const [serie, setSerie] = useState([]);
+  const [resumo, setResumo] = useState(null);
+  const [porInstituicao, setPorInstituicao] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    Promise.all([
+      api.get("/estban/serie"),
+      api.get("/estban/resumo"),
+      api.get("/estban/por_instituicao"),
+    ])
+      .then(([serieRes, resumoRes, instRes]) => {
+        const raw = (serieRes.data || []).sort((a, b) =>
+          String(a.data_referencia).localeCompare(String(b.data_referencia))
+        );
+        setSerie(raw);
+        setResumo(resumoRes.data);
+        const sorted = (instRes.data || []).sort(
+          (a, b) =>
+            (b.valor_operacoes_credito ?? 0) - (a.valor_operacoes_credito ?? 0)
+        );
+        setPorInstituicao(sorted);
+      })
+      .catch((err) => console.error("Erro ao carregar ESTBAN:", err))
+      .finally(() => setLoading(false));
+  }, []);
+
+  const cards = [
+    {
+      label: "Agências",
+      value: fmtNum(resumo?.qtd_agencias),
+      sub: "Unidades ativas",
+      accent: "text-blue-600",
+    },
+    {
+      label: "Operações de Crédito",
+      value: fmtBRL(resumo?.total_operacoes_credito),
+      sub: "Saldo total",
+      accent: "text-green-600",
+    },
+    {
+      label: "Total Depósitos",
+      value: fmtBRL(resumo?.total_depositos),
+      sub: "Vista + Poupança + Prazo",
+      accent: "text-purple-600",
+    },
+  ];
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 15 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.3 }}
+      className="space-y-8"
+    >
+      <div>
+        <h1 className="text-2xl font-extrabold tracking-tight text-slate-800">
+          ESTBAN — Estatísticas Bancárias
+        </h1>
+        <p className="text-sm text-slate-400 mt-1">
+          Operações de crédito, depósitos e agências bancárias.
+        </p>
+      </div>
+
+      {loading ? (
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          {[...Array(3)].map((_, i) => (
+            <div
+              key={i}
+              className="bg-white p-6 rounded-2xl border border-slate-100 animate-pulse h-28"
+            />
+          ))}
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          {cards.map((c) => (
+            <KpiCard key={c.label} {...c} />
+          ))}
+        </div>
+      )}
+
+      {/* Evolução das Operações de Crédito */}
+      <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100">
+        <h3 className="text-base font-bold mb-5 text-slate-800">
+          Evolução das Operações de Crédito
+        </h3>
+        {loading ? (
+          <div className="animate-pulse h-64 bg-slate-50 rounded-xl" />
+        ) : serie.length === 0 ? (
+          <div className="h-64 flex items-center justify-center text-slate-400 text-sm">
+            Sem dados disponíveis
+          </div>
+        ) : (
+          <div className="h-72">
+            <ResponsiveContainer width="100%" height="100%">
+              <LineChart data={serie}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
+                <XAxis
+                  dataKey="data_referencia"
+                  tick={{ fontSize: 10 }}
+                  stroke="#94a3b8"
+                  interval="preserveStartEnd"
+                />
+                <YAxis
+                  tick={{ fontSize: 11 }}
+                  stroke="#94a3b8"
+                  tickFormatter={(v) =>
+                    `R$ ${(v / 1_000_000).toLocaleString("pt-BR", {
+                      maximumFractionDigits: 0,
+                    })}M`
+                  }
+                />
+                <Tooltip formatter={(v) => [fmtBRL(v), "Operações de Crédito"]} />
+                <Legend />
+                <Line
+                  type="monotone"
+                  dataKey="valor_operacoes_credito"
+                  name="Operações de Crédito"
+                  stroke="#3b82f6"
+                  strokeWidth={2.5}
+                  dot={false}
+                />
+                <Line
+                  type="monotone"
+                  dataKey="valor_poupanca"
+                  name="Poupança"
+                  stroke="#10b981"
+                  strokeWidth={2}
+                  dot={false}
+                />
+                <Line
+                  type="monotone"
+                  dataKey="valor_depositos_prazo"
+                  name="Depósitos a Prazo"
+                  stroke="#f59e0b"
+                  strokeWidth={2}
+                  dot={false}
+                />
+              </LineChart>
+            </ResponsiveContainer>
+          </div>
+        )}
+      </div>
+
+      {/* Crédito por Instituição */}
+      <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100">
+        <h3 className="text-base font-bold mb-5 text-slate-800">
+          Operações de Crédito por Instituição
+        </h3>
+        {loading ? (
+          <div className="animate-pulse h-64 bg-slate-50 rounded-xl" />
+        ) : porInstituicao.length === 0 ? (
+          <div className="h-64 flex items-center justify-center text-slate-400 text-sm">
+            Sem dados disponíveis
+          </div>
+        ) : (
+          <div className="h-80">
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart
+                data={porInstituicao.slice(0, 10)}
+                layout="vertical"
+                margin={{ left: 20, right: 20 }}
+              >
+                <CartesianGrid
+                  strokeDasharray="3 3"
+                  stroke="#f1f5f9"
+                  horizontal={false}
+                />
+                <XAxis
+                  type="number"
+                  tick={{ fontSize: 11 }}
+                  stroke="#94a3b8"
+                  tickFormatter={(v) =>
+                    `R$ ${(v / 1_000_000).toLocaleString("pt-BR", {
+                      maximumFractionDigits: 0,
+                    })}M`
+                  }
+                />
+                <YAxis
+                  type="category"
+                  dataKey="nome_instituicao"
+                  tick={{ fontSize: 9 }}
+                  stroke="#94a3b8"
+                  width={140}
+                />
+                <Tooltip formatter={(v) => [fmtBRL(v), "Operações de Crédito"]} />
+                <Bar
+                  dataKey="valor_operacoes_credito"
+                  name="Operações de Crédito"
+                  radius={[0, 4, 4, 0]}
+                >
+                  {porInstituicao.slice(0, 10).map((_, i) => (
+                    <Cell key={i} fill={COLORS[i % COLORS.length]} />
+                  ))}
+                </Bar>
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+        )}
+      </div>
+
+      {/* Tabela de Instituições */}
+      <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100">
+        <h3 className="text-base font-bold mb-5 text-slate-800">
+          Detalhamento por Instituição
+        </h3>
+        {loading ? (
+          <div className="animate-pulse h-40 bg-slate-50 rounded-xl" />
+        ) : porInstituicao.length === 0 ? (
+          <div className="h-32 flex items-center justify-center text-slate-400 text-sm">
+            Sem dados disponíveis
+          </div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-slate-100">
+                  <th className="text-left py-3 px-4 text-xs uppercase tracking-wider text-slate-400 font-medium">
+                    Instituição
+                  </th>
+                  <th className="text-right py-3 px-4 text-xs uppercase tracking-wider text-slate-400 font-medium">
+                    Agências
+                  </th>
+                  <th className="text-right py-3 px-4 text-xs uppercase tracking-wider text-slate-400 font-medium">
+                    Operações Crédito
+                  </th>
+                  <th className="text-right py-3 px-4 text-xs uppercase tracking-wider text-slate-400 font-medium">
+                    Depósitos Vista
+                  </th>
+                  <th className="text-right py-3 px-4 text-xs uppercase tracking-wider text-slate-400 font-medium">
+                    Poupança
+                  </th>
+                  <th className="text-right py-3 px-4 text-xs uppercase tracking-wider text-slate-400 font-medium">
+                    Dep. Prazo
+                  </th>
+                </tr>
+              </thead>
+              <tbody>
+                {porInstituicao.map((row, i) => (
+                  <tr
+                    key={i}
+                    className="border-b border-slate-50 hover:bg-slate-50 transition-colors"
+                  >
+                    <td className="py-3 px-4 text-slate-800 font-medium">
+                      {row.nome_instituicao}
+                    </td>
+                    <td className="py-3 px-4 text-right text-slate-600">
+                      {fmtNum(row.qtd_agencias)}
+                    </td>
+                    <td className="py-3 px-4 text-right text-slate-800 font-medium">
+                      {fmtBRL(row.valor_operacoes_credito)}
+                    </td>
+                    <td className="py-3 px-4 text-right text-slate-600">
+                      {fmtBRL(row.valor_depositos_vista)}
+                    </td>
+                    <td className="py-3 px-4 text-right text-slate-600">
+                      {fmtBRL(row.valor_poupanca)}
+                    </td>
+                    <td className="py-3 px-4 text-right text-slate-600">
+                      {fmtBRL(row.valor_depositos_prazo)}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+    </motion.div>
+  );
+}

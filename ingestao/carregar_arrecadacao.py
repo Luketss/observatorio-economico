@@ -4,11 +4,11 @@ from datetime import datetime
 
 from sqlalchemy.orm import Session
 
-from backend.app.db.session import SessionLocal
-from backend.app.models.arrecadacao import ArrecadacaoMensal
-from backend.app.models.municipio import Municipio
+from app.db.session import SessionLocal
+from app.models.arrecadacao import ArrecadacaoMensal
+from app.models.municipio import Municipio
 
-BASE_PATH = "Arrecadacao_Cidades_MG"
+BASE_PATH = "dados/Arrecadacao_Cidades_MG"
 
 
 def normalizar_nome_municipio(nome_arquivo: str) -> str:
@@ -40,7 +40,7 @@ def carregar_csv(db: Session, caminho: str):
 
     municipio = obter_ou_criar_municipio(db, nome_municipio)
 
-    with open(caminho, newline="", encoding="utf-8") as csvfile:
+    with open(caminho, newline="", encoding="utf-8-sig") as csvfile:
         reader = csv.DictReader(csvfile, delimiter=";")
 
         for row in reader:

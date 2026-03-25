@@ -2,11 +2,33 @@ from logging.config import fileConfig
 
 import app.models  # Ensure all models are registered before migrations
 from alembic import context
+from app.core.config import settings
 from app.db.base import Base
-from app.models import arrecadacao, caged, municipio, pib, rais, role, usuario  # noqa
+from app.models import (  # noqa
+    arrecadacao,
+    bolsa_familia,
+    caged,
+    comex,
+    empresa,
+    estban,
+    inss,
+    municipio,
+    pe_de_meia,
+    pib,
+    rais,
+    role,
+    usuario,
+)
 from sqlalchemy import engine_from_config, pool
 
 config = context.config
+
+# Override sqlalchemy.url from app settings so .env.local is respected
+config.set_main_option(
+    "sqlalchemy.url",
+    f"postgresql+psycopg2://{settings.POSTGRES_USER}:{settings.POSTGRES_PASSWORD}"
+    f"@{settings.POSTGRES_HOST}:{settings.POSTGRES_PORT}/{settings.POSTGRES_DB}",
+)
 
 if config.config_file_name is not None:
     fileConfig(config.config_file_name)

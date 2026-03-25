@@ -5,7 +5,7 @@ from fastapi import Depends
 from fastapi.security import OAuth2PasswordBearer
 from sqlalchemy.orm import Session
 
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/auth/login")
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/v1/auth/login")
 
 
 def get_db():
@@ -47,9 +47,9 @@ def get_current_user(
 def require_role(required_role: str):
     def role_checker(current_user: Usuario = Depends(get_current_user)):
         if current_user.role.nome != required_role:
-            from app.core.exceptions import UnauthorizedException
+            from app.core.exceptions import ForbiddenException
 
-            raise UnauthorizedException("Insufficient permissions")
+            raise ForbiddenException("Insufficient permissions")
         return current_user
 
     return role_checker

@@ -3,11 +3,11 @@ import os
 
 from sqlalchemy.orm import Session
 
-from backend.app.db.session import SessionLocal
-from backend.app.models.municipio import Municipio
-from backend.app.models.pib import PibAnual
+from app.db.session import SessionLocal
+from app.models.municipio import Municipio
+from app.models.pib import PibAnual
 
-BASE_PATH = "PIB_Cidades_Completo"
+BASE_PATH = "dados/PIB_Cidades_Completo"
 
 
 def normalizar_nome(nome: str) -> str:
@@ -32,7 +32,7 @@ def obter_ou_criar_municipio(db: Session, nome: str) -> Municipio:
 
 
 def carregar_csv(db: Session, caminho: str):
-    with open(caminho, newline="", encoding="utf-8") as csvfile:
+    with open(caminho, newline="", encoding="utf-8-sig") as csvfile:
         reader = csv.DictReader(csvfile, delimiter=";")
 
         for row in reader:

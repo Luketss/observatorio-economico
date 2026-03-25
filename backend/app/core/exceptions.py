@@ -35,3 +35,12 @@ class UnauthorizedException(AppException):
             message=message,
             status_code=401,
         )
+
+
+class ForbiddenException(AppException):
+    def __init__(self, message: str = "Forbidden"):
+        super().__init__(
+            code="FORBIDDEN",
+            message=message,
+            status_code=403,
+        )

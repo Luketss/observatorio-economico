@@ -106,18 +106,18 @@ def comparativo_pib(
         ]
 
     # ADMIN_GLOBAL vê todos
-    registros = db.query(PibAnual).all()
+    registros = (
+        db.query(PibAnual, Municipio.nome)
+        .join(Municipio, PibAnual.municipio_id == Municipio.id)
+        .order_by(PibAnual.ano)
+        .all()
+    )
 
-    resultado = []
-
-    for r in registros:
-        municipio = db.get(Municipio, r.municipio_id)
-        resultado.append(
-            PibComparativoItem(
-                ano=r.ano,
-                cidade=municipio.nome if municipio else "",
-                pib_total=r.pib_total,
-            )
+    return [
+        PibComparativoItem(
+            ano=r.ano,
+            cidade=nome,
+            pib_total=r.pib_total,
         )
-
-    return resultado
+        for r, nome in registros
+    ]

@@ -5,7 +5,7 @@ import {
   CurrencyDollarIcon,
   BanknotesIcon,
   BriefcaseIcon,
-  BuildingOffice2Icon,
+  ArrowTrendingUpIcon,
 } from "@heroicons/react/24/outline";
 import {
   ResponsiveContainer,
@@ -15,72 +15,106 @@ import {
   YAxis,
   Tooltip,
   CartesianGrid,
+  Legend,
 } from "recharts";
 
-export default function DashboardGeralPage() {
-  const [stats, setStats] = useState({
-    pib: 0,
-    arrecadacao: 0,
-    empregos: 1245,
-    empresas: 342,
-  });
+function KpiCard({ label, value, sub, icon: Icon, color, delay }) {
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ delay }}
+      className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 hover:shadow-md transition-shadow duration-200"
+    >
+      <div className="flex items-start justify-between">
+        <div>
+          <p className="text-xs uppercase tracking-wider text-slate-400 font-medium">
+            {label}
+          </p>
+          <p className="text-2xl font-bold mt-2 text-slate-800">{value}</p>
+          {sub && <p className="text-xs text-slate-400 mt-1">{sub}</p>}
+        </div>
+        <div className={`p-2 rounded-xl ${color.bg}`}>
+          <Icon className={`w-5 h-5 ${color.text}`} />
+        </div>
+      </div>
+    </motion.div>
+  );
+}
 
-  const [chartData, setChartData] = useState([]);
+export default function DashboardGeralPage() {
+  const [pibResumo, setPibResumo] = useState(null);
+  const [arrecResumo, setArrecResumo] = useState(null);
+  const [cagedResumo, setCagedResumo] = useState(null);
+  const [pibSerie, setPibSerie] = useState([]);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     async function fetchData() {
       try {
-        const [pibRes, arrecRes] = await Promise.all([
-          api.get("/pib"),
-          api.get("/arrecadacao"),
+        const [pibRes, arrecRes, cagedRes, pibSerieRes] = await Promise.all([
+          api.get("/pib/resumo"),
+          api.get("/arrecadacao/resumo"),
+          api.get("/caged/resumo"),
+          api.get("/pib/serie"),
         ]);
-
-        setStats((prev) => ({
-          ...prev,
-          pib: pibRes.data?.total || 0,
-          arrecadacao: arrecRes.data?.total || 0,
-        }));
-
-        // mock gráfico enquanto backend não fornece série histórica
-        setChartData([
-          { ano: "2019", valor: 400 },
-          { ano: "2020", valor: 380 },
-          { ano: "2021", valor: 450 },
-          { ano: "2022", valor: 520 },
-          { ano: "2023", valor: 610 },
-        ]);
+        setPibResumo(pibRes.data);
+        setArrecResumo(arrecRes.data);
+        setCagedResumo(cagedRes.data);
+        setPibSerie(pibSerieRes.data || []);
       } catch (error) {
         console.error("Erro ao carregar dashboard:", error);
+      } finally {
+        setLoading(false);
       }
     }
-
     fetchData();
   }, []);
 
+  const fmt = (v) =>
+    v != null
+      ? `R$ ${Number(v).toLocaleString("pt-BR", { maximumFractionDigits: 0 })}`
+      : "—";
+
   const cards = [
     {
-      label: "PIB Total",
-      value: `R$ ${Number(stats.pib).toLocaleString("pt-BR")}`,
+      label: "PIB Último Ano",
+      value: fmt(pibResumo?.pib_ultimo_ano),
+      sub: pibResumo?.ultimo_ano ? `Ano ${pibResumo.ultimo_ano}` : null,
       icon: CurrencyDollarIcon,
-      color: "text-green-600",
+      color: { bg: "bg-green-50", text: "text-green-600" },
     },
     {
-      label: "Arrecadação",
-      value: `R$ ${Number(stats.arrecadacao).toLocaleString("pt-BR")}`,
+      label: "Arrecadação Total",
+      value: fmt(arrecResumo?.total_geral),
+      sub: arrecResumo?.crescimento_percentual != null
+        ? `${arrecResumo.crescimento_percentual > 0 ? "+" : ""}${arrecResumo.crescimento_percentual.toFixed(1)}% vs ano anterior`
+        : null,
       icon: BanknotesIcon,
-      color: "text-blue-600",
+      color: { bg: "bg-blue-50", text: "text-blue-600" },
     },
     {
-      label: "Empregos",
-      value: Number(stats.empregos).toLocaleString("pt-BR"),
+      label: "Saldo CAGED",
+      value:
+        cagedResumo?.saldo_total != null
+          ? Number(cagedResumo.saldo_total).toLocaleString("pt-BR")
+          : "—",
+      sub:
+        cagedResumo
+          ? `${Number(cagedResumo.total_admissoes).toLocaleString("pt-BR")} admissões`
+          : null,
       icon: BriefcaseIcon,
-      color: "text-purple-600",
+      color: { bg: "bg-purple-50", text: "text-purple-600" },
     },
     {
-      label: "Empresas",
-      value: Number(stats.empresas).toLocaleString("pt-BR"),
-      icon: BuildingOffice2Icon,
-      color: "text-orange-600",
+      label: "Crescimento PIB",
+      value:
+        pibResumo?.crescimento_percentual != null
+          ? `${pibResumo.crescimento_percentual > 0 ? "+" : ""}${pibResumo.crescimento_percentual.toFixed(1)}%`
+          : "—",
+      sub: "Variação último ano",
+      icon: ArrowTrendingUpIcon,
+      color: { bg: "bg-orange-50", text: "text-orange-600" },
     },
   ];
 
@@ -88,73 +122,71 @@ export default function DashboardGeralPage() {
     <motion.div
       initial={{ opacity: 0, y: 15 }}
       animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.4 }}
-      className="space-y-10"
+      transition={{ duration: 0.3 }}
+      className="space-y-8"
     >
       <div>
-        <h1 className="text-3xl font-extrabold tracking-tight">
+        <h1 className="text-2xl font-extrabold tracking-tight text-slate-800">
           Dashboard Geral
         </h1>
-        <p className="text-muted mt-2">
+        <p className="text-sm text-slate-400 mt-1">
           Indicadores econômicos consolidados do município.
         </p>
       </div>
 
-      {/* Cards com ícones */}
-      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-8">
-        {cards.map((card, index) => {
-          const Icon = card.icon;
-          return (
-            <motion.div
-              key={card.label}
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: index * 0.1 }}
-              className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 hover:shadow-xl transition-all duration-300"
-            >
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-xs uppercase tracking-wider text-muted">
-                    {card.label}
-                  </p>
-                  <h2 className="text-2xl font-bold mt-3 text-slate-800">
-                    {card.value}
-                  </h2>
-                </div>
-                <Icon className={`w-8 h-8 ${card.color}`} />
-              </div>
-            </motion.div>
-          );
-        })}
-      </div>
+      {loading ? (
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6">
+          {[...Array(4)].map((_, i) => (
+            <div key={i} className="bg-white p-6 rounded-2xl border border-slate-100 animate-pulse h-28" />
+          ))}
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6">
+          {cards.map((card, i) => (
+            <KpiCard key={card.label} {...card} delay={i * 0.08} />
+          ))}
+        </div>
+      )}
 
-      {/* Gráfico real com Recharts */}
       <motion.div
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
-        transition={{ delay: 0.4 }}
-        className="bg-white p-8 rounded-2xl shadow-sm border border-slate-100"
+        transition={{ delay: 0.35 }}
+        className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100"
       >
-        <h3 className="text-lg font-bold mb-6 text-slate-800">
-          Evolução do Indicador
+        <h3 className="text-base font-bold mb-5 text-slate-800">
+          Evolução do PIB
         </h3>
-
-        <div className="h-72">
-          <ResponsiveContainer width="100%" height="100%">
-            <LineChart data={chartData}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
-              <XAxis dataKey="ano" />
-              <YAxis />
-              <Tooltip />
-              <Line
-                type="monotone"
-                dataKey="valor"
-                stroke="#2563eb"
-                strokeWidth={3}
-              />
-            </LineChart>
-          </ResponsiveContainer>
-        </div>
+        {pibSerie.length === 0 ? (
+          <div className="h-64 flex items-center justify-center text-slate-400 text-sm">
+            Sem dados disponíveis
+          </div>
+        ) : (
+          <div className="h-64">
+            <ResponsiveContainer width="100%" height="100%">
+              <LineChart data={pibSerie}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
+                <XAxis dataKey="ano" tick={{ fontSize: 12 }} stroke="#94a3b8" />
+                <YAxis tick={{ fontSize: 12 }} stroke="#94a3b8" width={60} />
+                <Tooltip
+                  formatter={(v) =>
+                    `R$ ${Number(v).toLocaleString("pt-BR", { maximumFractionDigits: 0 })}`
+                  }
+                />
+                <Legend />
+                <Line
+                  type="monotone"
+                  dataKey="pib_total"
+                  name="PIB Total"
+                  stroke="#2563eb"
+                  strokeWidth={2.5}
+                  dot={{ r: 3 }}
+                  activeDot={{ r: 5 }}
+                />
+              </LineChart>
+            </ResponsiveContainer>
+          </div>
+        )}
       </motion.div>
     </motion.div>
   );

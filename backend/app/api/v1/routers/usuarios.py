@@ -24,11 +24,12 @@ def listar_usuarios(
 ):
     service = UsuarioService(db)
 
-    usuarios, total = service.list(skip=skip, limit=limit)
+    # ADMIN_GLOBAL sees all; others are scoped to their municipality
+    municipio_filter = (
+        None if current_user.role.nome == "ADMIN_GLOBAL" else current_user.municipio_id
+    )
 
-    # Regra de visibilidade por role
-    if current_user.role.nome != "ADMIN_GLOBAL":
-        usuarios = [u for u in usuarios if u.municipio_id == current_user.municipio_id]
+    usuarios, total = service.list(skip=skip, limit=limit, municipio_id=municipio_filter)
 
     items = [
         UsuarioOut(
@@ -63,7 +64,7 @@ def criar_usuario(
 
     usuario = service.create(data)
 
-    data = UsuarioOut(
+    out = UsuarioOut(
         id=usuario.id,
         nome=usuario.nome,
         email=usuario.email,
@@ -72,4 +73,4 @@ def criar_usuario(
         ativo=usuario.ativo,
     )
 
-    return SuccessResponse(data=data)
+    return SuccessResponse(data=out)

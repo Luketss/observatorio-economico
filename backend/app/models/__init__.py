@@ -9,10 +9,16 @@ Do NOT import models inside db/base.py to avoid circular imports.
 """
 
 from app.models.arrecadacao import ArrecadacaoMensal
-from app.models.caged import CagedMovimentacao
+from app.models.bolsa_familia import BolsaFamiliaResumo
+from app.models.caged import CagedMovimentacao, CagedPorSexo, CagedPorRaca, CagedSalario, CagedPorCnae
+from app.models.comex import ComexMensal
+from app.models.empresa import Empresa
+from app.models.estban import EstbanMensal
+from app.models.inss import InssAnual
 from app.models.municipio import Municipio
+from app.models.pe_de_meia import PeDeMeiaResumo
 from app.models.pib import PibAnual
-from app.models.rais import RaisVinculo
+from app.models.rais import RaisVinculo, RaisPorSexo, RaisPorRaca, RaisPorCnae
 from app.models.role import Role
 from app.models.usuario import Usuario
 
@@ -22,6 +28,19 @@ __all__ = [
     "Municipio",
     "ArrecadacaoMensal",
     "CagedMovimentacao",
+    "CagedPorSexo",
+    "CagedPorRaca",
+    "CagedSalario",
+    "CagedPorCnae",
     "PibAnual",
     "RaisVinculo",
+    "RaisPorSexo",
+    "RaisPorRaca",
+    "RaisPorCnae",
+    "BolsaFamiliaResumo",
+    "PeDeMeiaResumo",
+    "InssAnual",
+    "EstbanMensal",
+    "ComexMensal",
+    "Empresa",
 ]
