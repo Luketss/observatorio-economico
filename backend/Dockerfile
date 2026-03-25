@@ -21,4 +21,4 @@ EXPOSE 8000
 # ✅ Ensure Python can find the app module and run migrations before API
 ENV PYTHONPATH=/app
 
-CMD ["sh", "-c", "alembic upgrade head && gunicorn -k uvicorn.workers.UvicornWorker app.main:app --bind 0.0.0.0:8000 --workers 4"]
+CMD ["sh", "-c", "alembic upgrade head && gunicorn -k uvicorn.workers.UvicornWorker app.main:app --bind 0.0.0.0:${PORT:-8000} --workers 4"]
