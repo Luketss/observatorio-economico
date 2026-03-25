@@ -12,6 +12,10 @@ RUN npm install
 # Copia o restante do projeto
 COPY . .
 
+# Vite bakes env vars at build time — declare as ARG so Railway passes them through
+ARG VITE_API_BASE_URL
+ENV VITE_API_BASE_URL=$VITE_API_BASE_URL
+
 # Build do Vite
 RUN npm run build
 
