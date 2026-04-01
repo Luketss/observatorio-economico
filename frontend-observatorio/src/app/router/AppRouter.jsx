@@ -1,6 +1,7 @@
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext";
 import DashboardLayout from "../layouts/DashboardLayout";
+import AdminLayout from "../layouts/AdminLayout";
 import LoginPage from "../../pages/login/LoginPage";
 import DashboardGeralPage from "../../pages/DashboardGeralPage";
 import ArrecadacaoPage from "../../pages/arrecadacao/ArrecadacaoPage";
@@ -20,37 +21,24 @@ import EmpresasPage from "../../pages/empresas/EmpresasPage";
 
 function ProtectedRoute({ children }) {
   const { user, loading } = useAuth();
-
   if (loading) return null;
-
-  if (!user) {
-    return <Navigate to="/login" />;
-  }
-
+  if (!user) return <Navigate to="/login" />;
   return children;
 }
 
 function AdminRoute({ children }) {
   const { user, loading } = useAuth();
-
   if (loading) return null;
-
   if (!user) return <Navigate to="/login" />;
-
   if (user.role !== "ADMIN_GLOBAL") return <Navigate to="/" />;
-
   return children;
 }
 
 function AdminMunicipioRoute({ children }) {
   const { user, loading } = useAuth();
-
   if (loading) return null;
-
   if (!user) return <Navigate to="/login" />;
-
   if (user.role === "VISUALIZADOR") return <Navigate to="/" />;
-
   return children;
 }
 
@@ -60,6 +48,7 @@ export default function AppRouter() {
       <Routes>
         <Route path="/login" element={<LoginPage />} />
 
+        {/* ── Main dashboard ─────────────────────────────── */}
         <Route
           path="/"
           element={
@@ -80,28 +69,33 @@ export default function AppRouter() {
           <Route path="estban" element={<EstbanPage />} />
           <Route path="comex" element={<ComexPage />} />
           <Route path="empresas" element={<EmpresasPage />} />
+        </Route>
+
+        {/* ── Admin area ─────────────────────────────────── */}
+        <Route
+          path="/admin"
+          element={
+            <AdminMunicipioRoute>
+              <AdminLayout />
+            </AdminMunicipioRoute>
+          }
+        >
+          <Route index element={<Navigate to="/admin/insights" replace />} />
           <Route
-            path="admin/usuarios"
-            element={
-              <AdminRoute>
-                <UsuariosAdminPage />
-              </AdminRoute>
-            }
-          />
-          <Route
-            path="admin/insights"
+            path="insights"
             element={
               <AdminRoute>
                 <InsightsAdminPage />
               </AdminRoute>
             }
           />
+          <Route path="mandato" element={<MandatoAdminPage />} />
           <Route
-            path="admin/mandato"
+            path="usuarios"
             element={
-              <AdminMunicipioRoute>
-                <MandatoAdminPage />
-              </AdminMunicipioRoute>
+              <AdminRoute>
+                <UsuariosAdminPage />
+              </AdminRoute>
             }
           />
         </Route>
