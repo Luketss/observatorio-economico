@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import api from "../../services/api";
 import { motion } from "framer-motion";
+import InsightsPanel from "../../components/InsightsPanel";
 import {
   ResponsiveContainer,
   LineChart,
@@ -314,6 +315,7 @@ export default function EstbanPage() {
           </div>
         )}
       </div>
+      <InsightsPanel dataset="estban" />
     </motion.div>
   );
 }

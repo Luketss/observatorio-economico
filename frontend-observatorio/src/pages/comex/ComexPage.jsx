@@ -1,6 +1,7 @@
 import { useEffect, useState, useMemo } from "react";
 import api from "../../services/api";
 import { motion } from "framer-motion";
+import InsightsPanel from "../../components/InsightsPanel";
 import {
   ResponsiveContainer,
   LineChart,
@@ -350,6 +351,7 @@ export default function ComexPage() {
           )}
         </div>
       </div>
+      <InsightsPanel dataset="comex" />
     </motion.div>
   );
 }

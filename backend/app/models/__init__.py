@@ -14,6 +14,8 @@ from app.models.caged import CagedMovimentacao, CagedPorSexo, CagedPorRaca, Cage
 from app.models.comex import ComexMensal
 from app.models.empresa import Empresa
 from app.models.estban import EstbanMensal
+from app.models.insight_ia import InsightIA
+from app.models.marco import Marco
 from app.models.inss import InssAnual
 from app.models.municipio import Municipio
 from app.models.pe_de_meia import PeDeMeiaResumo
@@ -43,4 +45,6 @@ __all__ = [
     "EstbanMensal",
     "ComexMensal",
     "Empresa",
+    "InsightIA",
+    "Marco",
 ]

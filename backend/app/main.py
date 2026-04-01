@@ -1,4 +1,6 @@
 import app.api.v1.routers.arrecadacao as arrecadacao
+import app.api.v1.routers.insights as insights
+import app.api.v1.routers.marcos as marcos
 import app.api.v1.routers.auth as auth
 import app.api.v1.routers.bolsa_familia as bolsa_familia
 import app.api.v1.routers.caged as caged
@@ -60,6 +62,8 @@ app.include_router(inss.router, prefix=API_PREFIX)
 app.include_router(estban.router, prefix=API_PREFIX)
 app.include_router(comex.router, prefix=API_PREFIX)
 app.include_router(empresas.router, prefix=API_PREFIX)
+app.include_router(insights.router, prefix=API_PREFIX)
+app.include_router(marcos.router, prefix=API_PREFIX)
 
 
 @app.get("/health")

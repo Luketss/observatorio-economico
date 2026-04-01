@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import api from "../../services/api";
 import { motion } from "framer-motion";
+import InsightsPanel from "../../components/InsightsPanel";
 import {
   ResponsiveContainer,
   ComposedChart,
@@ -283,6 +284,7 @@ export default function CagedPage() {
           </ResponsiveContainer>
         </div>
       </ChartCard>
+      <InsightsPanel dataset="caged" />
     </motion.div>
   );
 }

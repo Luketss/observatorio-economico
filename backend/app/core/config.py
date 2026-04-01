@@ -19,6 +19,9 @@ class Settings(BaseSettings):
     # App
     ENVIRONMENT: str = "development"
 
+    # AI
+    ANTHROPIC_API_KEY: str = ""
+
     class Config:
         env_file = (".env", ".env.local")  # .env.local overrides .env for local dev
 

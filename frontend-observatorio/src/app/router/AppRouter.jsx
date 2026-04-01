@@ -9,6 +9,7 @@ import CagedPage from "../../pages/caged/CagedPage";
 import RaisPage from "../../pages/rais/RaisPage";
 import ComparativoPage from "../../pages/comparativo/ComparativoPage";
 import UsuariosAdminPage from "../../pages/admin/UsuariosAdminPage";
+import MandatoAdminPage from "../../pages/admin/MandatoAdminPage";
 import BolsaFamiliaPage from "../../pages/beneficios/BolsaFamiliaPage";
 import PeDeMeiaPage from "../../pages/beneficios/PeDeMeiaPage";
 import InssPage from "../../pages/inss/InssPage";
@@ -36,6 +37,18 @@ function AdminRoute({ children }) {
   if (!user) return <Navigate to="/login" />;
 
   if (user.role !== "ADMIN_GLOBAL") return <Navigate to="/" />;
+
+  return children;
+}
+
+function AdminMunicipioRoute({ children }) {
+  const { user, loading } = useAuth();
+
+  if (loading) return null;
+
+  if (!user) return <Navigate to="/login" />;
+
+  if (user.role === "VISUALIZADOR") return <Navigate to="/" />;
 
   return children;
 }
@@ -72,6 +85,14 @@ export default function AppRouter() {
               <AdminRoute>
                 <UsuariosAdminPage />
               </AdminRoute>
+            }
+          />
+          <Route
+            path="admin/mandato"
+            element={
+              <AdminMunicipioRoute>
+                <MandatoAdminPage />
+              </AdminMunicipioRoute>
             }
           />
         </Route>

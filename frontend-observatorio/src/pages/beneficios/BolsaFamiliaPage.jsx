@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import api from "../../services/api";
 import { motion } from "framer-motion";
+import InsightsPanel from "../../components/InsightsPanel";
 import {
   ResponsiveContainer,
   AreaChart,
@@ -216,6 +217,7 @@ export default function BolsaFamiliaPage() {
           </div>
         )}
       </div>
+      <InsightsPanel dataset="bolsa_familia" />
     </motion.div>
   );
 }

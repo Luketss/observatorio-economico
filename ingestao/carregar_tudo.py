@@ -3,7 +3,12 @@ Master ingestion script — runs all dataset loaders in order.
 
 Usage (from project root):
     python -m ingestao.carregar_tudo
+
+To load only specific cities, edit the CIDADES list below.
+Leave it empty to load all available cities.
 """
+
+import os
 
 import ingestao.carregar_arrecadacao as arrecadacao
 import ingestao.carregar_bolsa_familia as bolsa_familia
@@ -16,43 +21,93 @@ import ingestao.carregar_pe_de_meia as pe_de_meia
 import ingestao.carregar_pib as pib
 import ingestao.carregar_rais as rais
 
-SCRIPTS = [
-    ("Arrecadação", arrecadacao.main),
-    ("PIB", pib.main),
-    ("CAGED", caged.main),
-    ("RAIS", rais.main),
-    ("Bolsa Família", bolsa_familia.main),
-    ("Pé-de-Meia", pe_de_meia.main),
-    ("INSS", inss.main),
-    ("Estban", estban.main),
-    ("Comex", comex.main),
-    ("CNPJ", cnpj.main),
+# ─────────────────────────────────────────────────────────────────────────────
+# FILTER: list the cities you want to load.
+# Names are matched case-insensitively against the CSV filenames.
+# Leave empty to load ALL available cities.
+#
+# Examples:
+#   CIDADES = ["Oliveira", "Divinopolis"]
+#   CIDADES = ["Nova Serrana", "Claudio", "Para de Minas"]
+#   CIDADES = []   # loads everything
+# ─────────────────────────────────────────────────────────────────────────────
+CIDADES = ["Nova Serrana", "Claudio", "Para de Minas"]
+
+
+LOADERS = [
+    ("Arrecadação", arrecadacao),
+    ("PIB", pib),
+    ("CAGED", caged),
+    ("RAIS", rais),
+    ("Bolsa Família", bolsa_familia),
+    ("Pé-de-Meia", pe_de_meia),
+    ("INSS", inss),
+    ("Estban", estban),
+    ("Comex", comex),
+    ("CNPJ", cnpj),
 ]
 
 
-def main():
-    print("=" * 50)
-    print("Iniciando carga completa de dados")
-    print("=" * 50)
+def _matches_city(filename: str, cidades: list[str]) -> bool:
+    """Return True if the filename contains any of the requested city names."""
+    if not cidades:
+        return True
+    normalized = filename.upper().replace("_", " ").replace("-", " ")
+    return any(c.upper().replace("_", " ") in normalized for c in cidades)
 
+
+def run_loader(nome: str, module, db, cidades: list[str]):
+    base_path = module.BASE_PATH
+    if not os.path.isdir(base_path):
+        print(f"  ⚠️  Pasta não encontrada: {base_path} — pulando.")
+        return
+
+    arquivos = sorted(f for f in os.listdir(base_path) if f.endswith(".csv"))
+    selecionados = [f for f in arquivos if _matches_city(f, cidades)]
+
+    if not selecionados:
+        print(f"  ⚠️  Nenhum arquivo corresponde ao filtro de cidades.")
+        return
+
+    for arquivo in selecionados:
+        caminho = os.path.join(base_path, arquivo)
+        print(f"  → {arquivo}")
+        module.carregar_csv(db, caminho)
+
+
+def main():
+    print("=" * 60)
+    print("Iniciando carga de dados")
+    if CIDADES:
+        print(f"Cidades selecionadas: {', '.join(CIDADES)}")
+    else:
+        print("Cidades: todas")
+    print("=" * 60)
+
+    from app.db.session import SessionLocal  # noqa: PLC0415
+
+    db = SessionLocal()
     erros = []
 
-    for nome, fn in SCRIPTS:
-        print(f"\n--- {nome} ---")
-        try:
-            fn()
-        except Exception as e:
-            print(f"❌ Erro ao carregar {nome}: {e}")
-            erros.append((nome, e))
+    try:
+        for nome, module in LOADERS:
+            print(f"\n--- {nome} ---")
+            try:
+                run_loader(nome, module, db, CIDADES)
+            except Exception as e:
+                print(f"  ❌ Erro: {e}")
+                erros.append((nome, e))
+    finally:
+        db.close()
 
-    print("\n" + "=" * 50)
+    print("\n" + "=" * 60)
     if erros:
         print(f"⚠️  Carga finalizada com {len(erros)} erro(s):")
         for nome, e in erros:
             print(f"   - {nome}: {e}")
     else:
-        print("✅ Carga completa finalizada com sucesso.")
-    print("=" * 50)
+        print("✅ Carga finalizada com sucesso.")
+    print("=" * 60)
 
 
 if __name__ == "__main__":

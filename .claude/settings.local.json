@@ -1,0 +1,16 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(find /c/Users/lucas/Documents/projetos/dashboard_prefeituras/frontend-observatorio/src/components -type f -name *.jsx)",
+      "Bash(grep -r \"TODO\\\\|FIXME\\\\|XXX\\\\|HACK\" /c/Users/lucas/Documents/projetos/dashboard_prefeituras/frontend-observatorio/src --include=*.jsx --include=*.js)",
+      "Bash(find /c/Users/lucas/Documents/projetos/dashboard_prefeituras/backend/app/models -name \"*.py\" -type f -exec basename {} .py)",
+      "Bash(for f:*)",
+      "Bash(do)",
+      "Bash(echo \"=== $f ===\")",
+      "Read(//c/Users/lucas/Documents/projetos/dashboard_prefeituras/frontend-observatorio/src/pages/**)",
+      "Bash(done)",
+      "Bash(BASE=\"c:/Users/lucas/Documents/projetos/dashboard_prefeituras/frontend-observatorio/src/pages\")",
+      "Read(//c/Users/lucas/Documents/projetos/dashboard_prefeituras/$BASE/**)"
+    ]
+  }
+}

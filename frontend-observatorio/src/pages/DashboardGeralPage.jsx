@@ -1,6 +1,8 @@
 import { useEffect, useState } from "react";
 import api from "../services/api";
 import { motion } from "framer-motion";
+import InsightsPanel from "../components/InsightsPanel";
+import MandatoTimeline from "../components/MandatoTimeline";
 import {
   CurrencyDollarIcon,
   BanknotesIcon,
@@ -188,6 +190,8 @@ export default function DashboardGeralPage() {
           </div>
         )}
       </motion.div>
+      <MandatoTimeline />
+      <InsightsPanel dataset="geral" />
     </motion.div>
   );
 }

@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import api from "../../services/api";
 import { motion } from "framer-motion";
+import InsightsPanel from "../../components/InsightsPanel";
 import {
   ResponsiveContainer,
   BarChart,
@@ -285,6 +286,7 @@ export default function EmpresasPage() {
           </div>
         )}
       </div>
+      <InsightsPanel dataset="empresas" />
     </motion.div>
   );
 }

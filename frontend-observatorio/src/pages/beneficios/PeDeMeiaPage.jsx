@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import api from "../../services/api";
 import { motion } from "framer-motion";
+import InsightsPanel from "../../components/InsightsPanel";
 import {
   ResponsiveContainer,
   AreaChart,
@@ -294,6 +295,7 @@ export default function PeDeMeiaPage() {
           )}
         </div>
       </div>
+      <InsightsPanel dataset="pe_de_meia" />
     </motion.div>
   );
 }

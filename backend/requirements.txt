@@ -10,3 +10,4 @@ pydantic-settings==2.3.4
 alembic==1.13.1
 gunicorn==22.0.0
 python-multipart==0.0.9
+anthropic>=0.40.0

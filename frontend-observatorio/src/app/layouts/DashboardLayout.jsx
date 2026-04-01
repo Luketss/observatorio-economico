@@ -15,6 +15,7 @@ import {
   BuildingOfficeIcon,
   GlobeAltIcon,
   BuildingStorefrontIcon,
+  FlagIcon,
 } from "@heroicons/react/24/outline";
 
 const navItems = [
@@ -70,13 +71,13 @@ export default function DashboardLayout() {
               </NavLink>
             ))}
 
-            {user?.role === "ADMIN_GLOBAL" && (
+            {(user?.role === "ADMIN_GLOBAL" || user?.role === "ADMIN_MUNICIPIO") && (
               <div className="pt-3 mt-3 border-t border-slate-700">
                 <p className="text-xs uppercase text-slate-500 px-3 mb-2 tracking-widest">
                   Admin
                 </p>
                 <NavLink
-                  to="/admin/usuarios"
+                  to="/admin/mandato"
                   className={({ isActive }) =>
                     `flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-150 ${
                       isActive
@@ -85,9 +86,24 @@ export default function DashboardLayout() {
                     }`
                   }
                 >
-                  <UsersIcon className="w-4 h-4 flex-shrink-0" />
-                  Usuários
+                  <FlagIcon className="w-4 h-4 flex-shrink-0" />
+                  Timeline
                 </NavLink>
+                {user?.role === "ADMIN_GLOBAL" && (
+                  <NavLink
+                    to="/admin/usuarios"
+                    className={({ isActive }) =>
+                      `flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-150 ${
+                        isActive
+                          ? "bg-blue-600 text-white shadow"
+                          : "text-slate-300 hover:bg-slate-700 hover:text-white"
+                      }`
+                    }
+                  >
+                    <UsersIcon className="w-4 h-4 flex-shrink-0" />
+                    Usuários
+                  </NavLink>
+                )}
               </div>
             )}
           </nav>
