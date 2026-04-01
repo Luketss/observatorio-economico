@@ -10,6 +10,7 @@ import RaisPage from "../../pages/rais/RaisPage";
 import ComparativoPage from "../../pages/comparativo/ComparativoPage";
 import UsuariosAdminPage from "../../pages/admin/UsuariosAdminPage";
 import MandatoAdminPage from "../../pages/admin/MandatoAdminPage";
+import InsightsAdminPage from "../../pages/admin/InsightsAdminPage";
 import BolsaFamiliaPage from "../../pages/beneficios/BolsaFamiliaPage";
 import PeDeMeiaPage from "../../pages/beneficios/PeDeMeiaPage";
 import InssPage from "../../pages/inss/InssPage";
@@ -84,6 +85,14 @@ export default function AppRouter() {
             element={
               <AdminRoute>
                 <UsuariosAdminPage />
+              </AdminRoute>
+            }
+          />
+          <Route
+            path="admin/insights"
+            element={
+              <AdminRoute>
+                <InsightsAdminPage />
               </AdminRoute>
             }
           />

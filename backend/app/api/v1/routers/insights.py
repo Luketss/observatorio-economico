@@ -80,13 +80,11 @@ def post_gerar_insight(
     db: Session = Depends(get_db),
     current_user=Depends(get_current_user),
 ):
-    if current_user.role.nome == "ADMIN_GLOBAL":
-        mid = body.municipio_id or current_user.municipio_id
-    else:
-        mid = current_user.municipio_id
+    if current_user.role.nome != "ADMIN_GLOBAL":
+        raise HTTPException(status_code=403, detail="Apenas ADMIN_GLOBAL pode gerar insights.")
 
-    if not mid:
+    if not body.municipio_id:
         raise HTTPException(status_code=400, detail="municipio_id é obrigatório.")
 
-    insight = gerar_insight(db, mid, body.dataset)
+    insight = gerar_insight(db, body.municipio_id, body.dataset)
     return _to_response(insight)

@@ -1,54 +1,29 @@
 import { useEffect, useState } from "react";
 import api from "../services/api";
 import { motion, AnimatePresence } from "framer-motion";
-import { SparklesIcon, ArrowPathIcon } from "@heroicons/react/24/outline";
+import { SparklesIcon } from "@heroicons/react/24/outline";
 
 export default function InsightsPanel({ dataset, municipioId }) {
   const [insight, setInsight] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [generating, setGenerating] = useState(false);
   const [error, setError] = useState(null);
 
-  const fetchInsight = async () => {
+  useEffect(() => {
     setLoading(true);
     setError(null);
-    try {
-      const params = { dataset, periodo: "latest" };
-      if (municipioId) params.municipio_id = municipioId;
-
-      // Try to get the most recent insight for this dataset
-      // by fetching without periodo first — fallback to empty
-      const res = await api.get("/insights", { params });
-      setInsight(res.data);
-    } catch (err) {
-      if (err.response?.status === 404) {
-        setInsight(null);
-      } else {
-        setError("Erro ao carregar insights.");
-      }
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleGerar = async () => {
-    setGenerating(true);
-    setError(null);
-    try {
-      const body = { dataset };
-      if (municipioId) body.municipio_id = municipioId;
-      const res = await api.post("/insights/gerar", body);
-      setInsight(res.data);
-    } catch (err) {
-      const detail = err.response?.data?.detail;
-      setError(detail || "Erro ao gerar insights.");
-    } finally {
-      setGenerating(false);
-    }
-  };
-
-  useEffect(() => {
-    fetchInsight();
+    const params = { dataset, periodo: "latest" };
+    if (municipioId) params.municipio_id = municipioId;
+    api
+      .get("/insights", { params })
+      .then((res) => setInsight(res.data))
+      .catch((err) => {
+        if (err.response?.status === 404) {
+          setInsight(null);
+        } else {
+          setError("Erro ao carregar insights.");
+        }
+      })
+      .finally(() => setLoading(false));
   }, [dataset, municipioId]);
 
   const formatDate = (dt) => {
@@ -69,27 +44,13 @@ export default function InsightsPanel({ dataset, municipioId }) {
       transition={{ duration: 0.4 }}
       className="bg-gradient-to-br from-violet-50 to-indigo-50 border border-violet-200 rounded-2xl p-6"
     >
-      {/* Header */}
-      <div className="flex items-center justify-between mb-4">
-        <div className="flex items-center gap-2">
-          <div className="w-8 h-8 rounded-lg bg-violet-600 flex items-center justify-center">
-            <SparklesIcon className="w-4 h-4 text-white" />
-          </div>
-          <h3 className="font-semibold text-gray-800">Insights IA</h3>
+      <div className="flex items-center gap-2 mb-4">
+        <div className="w-8 h-8 rounded-lg bg-violet-600 flex items-center justify-center">
+          <SparklesIcon className="w-4 h-4 text-white" />
         </div>
-
-        <button
-          onClick={handleGerar}
-          disabled={generating}
-          title="Gerar / Atualizar Insights"
-          className="flex items-center gap-1.5 text-sm font-medium text-violet-700 hover:text-violet-900 disabled:opacity-50 transition-colors px-3 py-1.5 rounded-lg hover:bg-violet-100"
-        >
-          <ArrowPathIcon className={`w-4 h-4 ${generating ? "animate-spin" : ""}`} />
-          {generating ? "Gerando..." : insight ? "Atualizar" : "Gerar"}
-        </button>
+        <h3 className="font-semibold text-gray-800">Insights IA</h3>
       </div>
 
-      {/* Content */}
       <AnimatePresence mode="wait">
         {loading ? (
           <motion.div key="loading" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
@@ -101,7 +62,7 @@ export default function InsightsPanel({ dataset, municipioId }) {
           </motion.div>
         ) : error ? (
           <motion.p key="error" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-            className="text-sm text-red-600">
+            className="text-sm text-red-500">
             {error}
           </motion.p>
         ) : insight ? (
@@ -127,20 +88,10 @@ export default function InsightsPanel({ dataset, municipioId }) {
             </p>
           </motion.div>
         ) : (
-          <motion.div key="empty" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-            className="text-center py-4">
-            <p className="text-sm text-gray-500 mb-3">
-              Nenhum insight gerado ainda para este dataset.
-            </p>
-            <button
-              onClick={handleGerar}
-              disabled={generating}
-              className="inline-flex items-center gap-2 bg-violet-600 text-white text-sm font-medium px-4 py-2 rounded-lg hover:bg-violet-700 disabled:opacity-50 transition-colors"
-            >
-              <SparklesIcon className="w-4 h-4" />
-              {generating ? "Gerando..." : "Gerar Insights com IA"}
-            </button>
-          </motion.div>
+          <motion.p key="empty" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+            className="text-sm text-gray-400 py-2">
+            Nenhum insight disponível para este período.
+          </motion.p>
         )}
       </AnimatePresence>
     </motion.div>

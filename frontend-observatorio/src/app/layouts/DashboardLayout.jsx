@@ -16,6 +16,7 @@ import {
   GlobeAltIcon,
   BuildingStorefrontIcon,
   FlagIcon,
+  SparklesIcon,
 } from "@heroicons/react/24/outline";
 
 const navItems = [
@@ -89,6 +90,21 @@ export default function DashboardLayout() {
                   <FlagIcon className="w-4 h-4 flex-shrink-0" />
                   Timeline
                 </NavLink>
+                {user?.role === "ADMIN_GLOBAL" && (
+                  <NavLink
+                    to="/admin/insights"
+                    className={({ isActive }) =>
+                      `flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-150 ${
+                        isActive
+                          ? "bg-blue-600 text-white shadow"
+                          : "text-slate-300 hover:bg-slate-700 hover:text-white"
+                      }`
+                    }
+                  >
+                    <SparklesIcon className="w-4 h-4 flex-shrink-0" />
+                    Insights IA
+                  </NavLink>
+                )}
                 {user?.role === "ADMIN_GLOBAL" && (
                   <NavLink
                     to="/admin/usuarios"
