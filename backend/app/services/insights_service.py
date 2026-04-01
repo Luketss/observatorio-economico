@@ -263,6 +263,12 @@ Responda APENAS com o JSON array, sem texto adicional. Exemplo de formato:
 
     raw = message.content[0].text.strip()
 
+    # Strip markdown code fences if Claude wrapped the response
+    if raw.startswith("```"):
+        lines = raw.splitlines()
+        lines = [l for l in lines if not l.strip().startswith("```")]
+        raw = "\n".join(lines).strip()
+
     try:
         bullets = json.loads(raw)
         if not isinstance(bullets, list):

@@ -111,6 +111,8 @@ export default function EstbanPage() {
         </p>
       </div>
 
+      <InsightsPanel dataset="estban" />
+
       {loading ? (
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           {[...Array(3)].map((_, i) => (
@@ -315,7 +317,6 @@ export default function EstbanPage() {
           </div>
         )}
       </div>
-      <InsightsPanel dataset="estban" />
     </motion.div>
   );
 }

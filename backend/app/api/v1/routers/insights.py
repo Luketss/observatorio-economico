@@ -32,6 +32,18 @@ def _to_response(insight) -> InsightResponse:
         bullets = json.loads(insight.conteudo)
     except (json.JSONDecodeError, TypeError):
         bullets = [insight.conteudo]
+
+    # Handle case where Claude returned a code-fenced JSON that was stored as a single string
+    if isinstance(bullets, list) and len(bullets) == 1 and isinstance(bullets[0], str):
+        candidate = bullets[0].strip()
+        if candidate.startswith("["):
+            try:
+                parsed = json.loads(candidate)
+                if isinstance(parsed, list):
+                    bullets = parsed
+            except json.JSONDecodeError:
+                pass
+
     return InsightResponse(
         id=insight.id,
         municipio_id=insight.municipio_id,

@@ -170,6 +170,8 @@ export default function ComexPage() {
         )}
       </div>
 
+      <InsightsPanel dataset="comex" />
+
       {loading ? (
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           {[...Array(3)].map((_, i) => (
@@ -351,7 +353,6 @@ export default function ComexPage() {
           )}
         </div>
       </div>
-      <InsightsPanel dataset="comex" />
     </motion.div>
   );
 }

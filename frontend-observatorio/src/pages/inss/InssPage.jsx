@@ -125,6 +125,8 @@ export default function InssPage() {
         </p>
       </div>
 
+      <InsightsPanel dataset="inss" />
+
       {loading ? (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           {[...Array(2)].map((_, i) => (
@@ -293,7 +295,6 @@ export default function InssPage() {
           </div>
         )}
       </div>
-      <InsightsPanel dataset="inss" />
     </motion.div>
   );
 }

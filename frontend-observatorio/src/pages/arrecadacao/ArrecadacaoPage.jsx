@@ -84,6 +84,8 @@ export default function ArrecadacaoPage() {
         </p>
       </div>
 
+      <InsightsPanel dataset="arrecadacao" />
+
       {loading ? (
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6">
           {[...Array(4)].map((_, i) => (
@@ -172,7 +174,6 @@ export default function ArrecadacaoPage() {
           </div>
         </div>
       )}
-      <InsightsPanel dataset="arrecadacao" />
     </motion.div>
   );
 }

@@ -118,6 +118,8 @@ export default function PeDeMeiaPage() {
         </p>
       </div>
 
+      <InsightsPanel dataset="pe_de_meia" />
+
       {loading ? (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           {[...Array(2)].map((_, i) => (
@@ -295,7 +297,6 @@ export default function PeDeMeiaPage() {
           )}
         </div>
       </div>
-      <InsightsPanel dataset="pe_de_meia" />
     </motion.div>
   );
 }
