@@ -82,7 +82,7 @@ def _fetch_dados(db: Session, municipio_id: int, dataset: str) -> tuple[list[dic
             .limit(5)
             .all()
         )
-        dados = [{"ano": r.ano, "valor": r.valor} for r in rows]
+        dados = [{"ano": r.ano, "valor": r.pib_total} for r in rows]
         periodo = str(rows[0].ano) if rows else "geral"
 
     elif dataset == "caged":
@@ -94,7 +94,7 @@ def _fetch_dados(db: Session, municipio_id: int, dataset: str) -> tuple[list[dic
             .all()
         )
         dados = [
-            {"ano": r.ano, "mes": r.mes, "admissoes": getattr(r, "admissões", 0),
+            {"ano": r.ano, "mes": r.mes, "admissoes": r.admissões,
              "desligamentos": r.desligamentos, "saldo": r.saldo}
             for r in rows
         ]
@@ -215,7 +215,7 @@ def _fetch_dados(db: Session, municipio_id: int, dataset: str) -> tuple[list[dic
             .scalar()
         )
         dados = [{
-            "pib_ultimo_ano": {"ano": pib.ano, "valor": pib.valor} if pib else None,
+            "pib_ultimo_ano": {"ano": pib.ano, "valor": pib.pib_total} if pib else None,
             "arrecadacao_total": arr,
             "saldo_caged_total": caged,
             "beneficiarios_bolsa_familia": bf,
