@@ -27,14 +27,14 @@ const COLORS = [
 
 function KpiCard({ label, value, sub, accent }) {
   return (
-    <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100">
-      <p className="text-xs uppercase tracking-wider text-slate-400 font-medium">
+    <div className="bg-white dark:bg-slate-900 p-6 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-800">
+      <p className="text-xs uppercase tracking-wider text-slate-400 dark:text-slate-500 font-medium">
         {label}
       </p>
-      <p className={`text-2xl font-bold mt-2 ${accent || "text-slate-800"}`}>
+      <p className={`text-2xl font-bold mt-2 ${accent || "text-slate-800 dark:text-white"}`}>
         {value}
       </p>
-      {sub && <p className="text-xs text-slate-400 mt-1">{sub}</p>}
+      {sub && <p className="text-xs text-slate-400 dark:text-slate-500 mt-1">{sub}</p>}
     </div>
   );
 }
@@ -117,10 +117,10 @@ export default function InssPage() {
       className="space-y-8"
     >
       <div>
-        <h1 className="text-2xl font-extrabold tracking-tight text-slate-800">
+        <h1 className="text-2xl font-extrabold tracking-tight text-slate-800 dark:text-white">
           INSS — Benefícios Previdenciários
         </h1>
-        <p className="text-sm text-slate-400 mt-1">
+        <p className="text-sm text-slate-400 dark:text-slate-500 mt-1">
           Quantidade e valor dos benefícios pagos pelo INSS.
         </p>
       </div>
@@ -132,7 +132,7 @@ export default function InssPage() {
           {[...Array(2)].map((_, i) => (
             <div
               key={i}
-              className="bg-white p-6 rounded-2xl border border-slate-100 animate-pulse h-28"
+              className="bg-white dark:bg-slate-900 p-6 rounded-2xl border border-slate-100 dark:border-slate-800 animate-pulse h-28"
             />
           ))}
         </div>
@@ -146,14 +146,14 @@ export default function InssPage() {
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Top Categorias */}
-        <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100">
-          <h3 className="text-base font-bold mb-5 text-slate-800">
+        <div className="bg-white dark:bg-slate-900 p-6 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-800">
+          <h3 className="text-base font-bold mb-5 text-slate-800 dark:text-white">
             Top Categorias de Benefícios
           </h3>
           {loading ? (
-            <div className="animate-pulse h-64 bg-slate-50 rounded-xl" />
+            <div className="animate-pulse h-64 bg-slate-50 dark:bg-slate-800 rounded-xl" />
           ) : topCategorias.length === 0 ? (
-            <div className="h-64 flex items-center justify-center text-slate-400 text-sm">
+            <div className="h-64 flex items-center justify-center text-slate-400 dark:text-slate-500 text-sm">
               Sem dados disponíveis
             </div>
           ) : (
@@ -199,14 +199,14 @@ export default function InssPage() {
         </div>
 
         {/* Evolução Anual */}
-        <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100">
-          <h3 className="text-base font-bold mb-5 text-slate-800">
+        <div className="bg-white dark:bg-slate-900 p-6 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-800">
+          <h3 className="text-base font-bold mb-5 text-slate-800 dark:text-white">
             Evolução Anual de Benefícios
           </h3>
           {loading ? (
-            <div className="animate-pulse h-64 bg-slate-50 rounded-xl" />
+            <div className="animate-pulse h-64 bg-slate-50 dark:bg-slate-800 rounded-xl" />
           ) : evolucaoAnual.length === 0 ? (
-            <div className="h-64 flex items-center justify-center text-slate-400 text-sm">
+            <div className="h-64 flex items-center justify-center text-slate-400 dark:text-slate-500 text-sm">
               Sem dados disponíveis
             </div>
           ) : (
@@ -243,31 +243,31 @@ export default function InssPage() {
       </div>
 
       {/* Tabela detalhada */}
-      <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100">
-        <h3 className="text-base font-bold mb-5 text-slate-800">
+      <div className="bg-white dark:bg-slate-900 p-6 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-800">
+        <h3 className="text-base font-bold mb-5 text-slate-800 dark:text-white">
           Detalhamento por Ano e Categoria
         </h3>
         {loading ? (
-          <div className="animate-pulse h-40 bg-slate-50 rounded-xl" />
+          <div className="animate-pulse h-40 bg-slate-50 dark:bg-slate-800 rounded-xl" />
         ) : tableData.length === 0 ? (
-          <div className="h-32 flex items-center justify-center text-slate-400 text-sm">
+          <div className="h-32 flex items-center justify-center text-slate-400 dark:text-slate-500 text-sm">
             Sem dados disponíveis
           </div>
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
-                <tr className="border-b border-slate-100">
-                  <th className="text-left py-3 px-4 text-xs uppercase tracking-wider text-slate-400 font-medium">
+                <tr className="border-b border-slate-100 dark:border-slate-800">
+                  <th className="text-left py-3 px-4 text-xs uppercase tracking-wider text-slate-400 dark:text-slate-500 font-medium">
                     Ano
                   </th>
-                  <th className="text-left py-3 px-4 text-xs uppercase tracking-wider text-slate-400 font-medium">
+                  <th className="text-left py-3 px-4 text-xs uppercase tracking-wider text-slate-400 dark:text-slate-500 font-medium">
                     Categoria
                   </th>
-                  <th className="text-right py-3 px-4 text-xs uppercase tracking-wider text-slate-400 font-medium">
+                  <th className="text-right py-3 px-4 text-xs uppercase tracking-wider text-slate-400 dark:text-slate-500 font-medium">
                     Qtd. Benefícios
                   </th>
-                  <th className="text-right py-3 px-4 text-xs uppercase tracking-wider text-slate-400 font-medium">
+                  <th className="text-right py-3 px-4 text-xs uppercase tracking-wider text-slate-400 dark:text-slate-500 font-medium">
                     Valor Anual
                   </th>
                 </tr>
@@ -276,16 +276,16 @@ export default function InssPage() {
                 {tableData.map((row, i) => (
                   <tr
                     key={i}
-                    className="border-b border-slate-50 hover:bg-slate-50 transition-colors"
+                    className="border-b border-slate-50 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors"
                   >
-                    <td className="py-3 px-4 text-slate-600">{row.ano}</td>
-                    <td className="py-3 px-4 text-slate-800 font-medium">
+                    <td className="py-3 px-4 text-slate-600 dark:text-slate-300">{row.ano}</td>
+                    <td className="py-3 px-4 text-slate-800 dark:text-white font-medium">
                       {row.categoria}
                     </td>
-                    <td className="py-3 px-4 text-right text-slate-600">
+                    <td className="py-3 px-4 text-right text-slate-600 dark:text-slate-300">
                       {fmtNum(row.quantidade_beneficios)}
                     </td>
-                    <td className="py-3 px-4 text-right text-slate-800 font-medium">
+                    <td className="py-3 px-4 text-right text-slate-800 dark:text-white font-medium">
                       {fmtBRL(row.valor_anual)}
                     </td>
                   </tr>

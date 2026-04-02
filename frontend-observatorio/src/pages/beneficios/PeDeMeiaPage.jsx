@@ -29,14 +29,14 @@ const COLORS = [
 
 function KpiCard({ label, value, sub, accent }) {
   return (
-    <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100">
-      <p className="text-xs uppercase tracking-wider text-slate-400 font-medium">
+    <div className="bg-white dark:bg-slate-900 p-6 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-800">
+      <p className="text-xs uppercase tracking-wider text-slate-400 dark:text-slate-500 font-medium">
         {label}
       </p>
-      <p className={`text-2xl font-bold mt-2 ${accent || "text-slate-800"}`}>
+      <p className={`text-2xl font-bold mt-2 ${accent || "text-slate-800 dark:text-white"}`}>
         {value}
       </p>
-      {sub && <p className="text-xs text-slate-400 mt-1">{sub}</p>}
+      {sub && <p className="text-xs text-slate-400 dark:text-slate-500 mt-1">{sub}</p>}
     </div>
   );
 }
@@ -110,10 +110,10 @@ export default function PeDeMeiaPage() {
       className="space-y-8"
     >
       <div>
-        <h1 className="text-2xl font-extrabold tracking-tight text-slate-800">
+        <h1 className="text-2xl font-extrabold tracking-tight text-slate-800 dark:text-white">
           Pé-de-Meia
         </h1>
-        <p className="text-sm text-slate-400 mt-1">
+        <p className="text-sm text-slate-400 dark:text-slate-500 mt-1">
           Incentivos financeiros a estudantes do ensino médio público.
         </p>
       </div>
@@ -125,7 +125,7 @@ export default function PeDeMeiaPage() {
           {[...Array(2)].map((_, i) => (
             <div
               key={i}
-              className="bg-white p-6 rounded-2xl border border-slate-100 animate-pulse h-28"
+              className="bg-white dark:bg-slate-900 p-6 rounded-2xl border border-slate-100 dark:border-slate-800 animate-pulse h-28"
             />
           ))}
         </div>
@@ -138,14 +138,14 @@ export default function PeDeMeiaPage() {
       )}
 
       {/* Evolução de Estudantes */}
-      <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100">
-        <h3 className="text-base font-bold mb-5 text-slate-800">
+      <div className="bg-white dark:bg-slate-900 p-6 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-800">
+        <h3 className="text-base font-bold mb-5 text-slate-800 dark:text-white">
           Evolução de Estudantes Beneficiados
         </h3>
         {loading ? (
-          <div className="animate-pulse h-64 bg-slate-50 rounded-xl" />
+          <div className="animate-pulse h-64 bg-slate-50 dark:bg-slate-800 rounded-xl" />
         ) : serie.length === 0 ? (
-          <div className="h-64 flex items-center justify-center text-slate-400 text-sm">
+          <div className="h-64 flex items-center justify-center text-slate-400 dark:text-slate-500 text-sm">
             Sem dados disponíveis
           </div>
         ) : (
@@ -195,14 +195,14 @@ export default function PeDeMeiaPage() {
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Estudantes por Etapa de Ensino */}
-        <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100">
-          <h3 className="text-base font-bold mb-5 text-slate-800">
+        <div className="bg-white dark:bg-slate-900 p-6 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-800">
+          <h3 className="text-base font-bold mb-5 text-slate-800 dark:text-white">
             Estudantes por Etapa de Ensino
           </h3>
           {loading ? (
-            <div className="animate-pulse h-64 bg-slate-50 rounded-xl" />
+            <div className="animate-pulse h-64 bg-slate-50 dark:bg-slate-800 rounded-xl" />
           ) : porEtapa.length === 0 ? (
-            <div className="h-64 flex items-center justify-center text-slate-400 text-sm">
+            <div className="h-64 flex items-center justify-center text-slate-400 dark:text-slate-500 text-sm">
               Sem dados disponíveis
             </div>
           ) : (
@@ -251,14 +251,14 @@ export default function PeDeMeiaPage() {
         </div>
 
         {/* Breakdown por Tipo de Incentivo */}
-        <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100">
-          <h3 className="text-base font-bold mb-5 text-slate-800">
+        <div className="bg-white dark:bg-slate-900 p-6 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-800">
+          <h3 className="text-base font-bold mb-5 text-slate-800 dark:text-white">
             Estudantes por Tipo de Incentivo
           </h3>
           {loading ? (
-            <div className="animate-pulse h-64 bg-slate-50 rounded-xl" />
+            <div className="animate-pulse h-64 bg-slate-50 dark:bg-slate-800 rounded-xl" />
           ) : porIncentivo.length === 0 ? (
-            <div className="h-64 flex items-center justify-center text-slate-400 text-sm">
+            <div className="h-64 flex items-center justify-center text-slate-400 dark:text-slate-500 text-sm">
               Sem dados disponíveis
             </div>
           ) : (

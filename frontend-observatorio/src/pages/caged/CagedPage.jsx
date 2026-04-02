@@ -24,20 +24,20 @@ const COLORS = [
 
 function KpiCard({ label, value, sub, accent }) {
   return (
-    <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100">
-      <p className="text-xs uppercase tracking-wider text-slate-400 font-medium">{label}</p>
-      <p className={`text-2xl font-bold mt-2 ${accent || "text-slate-800"}`}>{value}</p>
-      {sub && <p className="text-xs text-slate-400 mt-1">{sub}</p>}
+    <div className="bg-white dark:bg-slate-900 p-6 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-800">
+      <p className="text-xs uppercase tracking-wider text-slate-400 dark:text-slate-500 font-medium">{label}</p>
+      <p className={`text-2xl font-bold mt-2 ${accent || "text-slate-800 dark:text-white"}`}>{value}</p>
+      {sub && <p className="text-xs text-slate-400 dark:text-slate-500 mt-1">{sub}</p>}
     </div>
   );
 }
 
 function ChartCard({ title, children, empty }) {
   return (
-    <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100">
-      <h3 className="text-base font-bold mb-5 text-slate-800">{title}</h3>
+    <div className="bg-white dark:bg-slate-900 p-6 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-800">
+      <h3 className="text-base font-bold mb-5 text-slate-800 dark:text-white">{title}</h3>
       {empty ? (
-        <div className="h-60 flex items-center justify-center text-slate-400 text-sm">
+        <div className="h-60 flex items-center justify-center text-slate-400 dark:text-slate-500 text-sm">
           Sem dados disponíveis
         </div>
       ) : (
@@ -172,10 +172,10 @@ export default function CagedPage() {
       className="space-y-8"
     >
       <div>
-        <h1 className="text-2xl font-extrabold tracking-tight text-slate-800">
+        <h1 className="text-2xl font-extrabold tracking-tight text-slate-800 dark:text-white">
           CAGED — Movimentação de Empregos
         </h1>
-        <p className="text-sm text-slate-400 mt-1">
+        <p className="text-sm text-slate-400 dark:text-slate-500 mt-1">
           Admissões, desligamentos e saldo líquido de empregos formais.
         </p>
       </div>
@@ -185,7 +185,7 @@ export default function CagedPage() {
       {loading ? (
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           {[...Array(3)].map((_, i) => (
-            <div key={i} className="bg-white p-6 rounded-2xl border border-slate-100 animate-pulse h-28" />
+            <div key={i} className="bg-white dark:bg-slate-900 p-6 rounded-2xl border border-slate-100 dark:border-slate-800 animate-pulse h-28" />
           ))}
         </div>
       ) : (

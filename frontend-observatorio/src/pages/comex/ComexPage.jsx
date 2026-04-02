@@ -27,14 +27,14 @@ const COLORS = [
 
 function KpiCard({ label, value, sub, accent }) {
   return (
-    <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100">
-      <p className="text-xs uppercase tracking-wider text-slate-400 font-medium">
+    <div className="bg-white dark:bg-slate-900 p-6 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-800">
+      <p className="text-xs uppercase tracking-wider text-slate-400 dark:text-slate-500 font-medium">
         {label}
       </p>
-      <p className={`text-2xl font-bold mt-2 ${accent || "text-slate-800"}`}>
+      <p className={`text-2xl font-bold mt-2 ${accent || "text-slate-800 dark:text-white"}`}>
         {value}
       </p>
-      {sub && <p className="text-xs text-slate-400 mt-1">{sub}</p>}
+      {sub && <p className="text-xs text-slate-400 dark:text-slate-500 mt-1">{sub}</p>}
     </div>
   );
 }
@@ -145,20 +145,20 @@ export default function ComexPage() {
     >
       <div className="flex items-start justify-between gap-4 flex-wrap">
         <div>
-          <h1 className="text-2xl font-extrabold tracking-tight text-slate-800">
+          <h1 className="text-2xl font-extrabold tracking-tight text-slate-800 dark:text-white">
             Comércio Exterior
           </h1>
-          <p className="text-sm text-slate-400 mt-1">
+          <p className="text-sm text-slate-400 dark:text-slate-500 mt-1">
             Exportações, importações e balança comercial.
           </p>
         </div>
         {anos.length > 0 && (
           <div className="flex items-center gap-2">
-            <label className="text-sm text-slate-500 font-medium">Ano:</label>
+            <label className="text-sm text-slate-500 dark:text-slate-400 font-medium">Ano:</label>
             <select
               value={anoSelecionado}
               onChange={(e) => setAnoSelecionado(e.target.value)}
-              className="border border-slate-200 rounded-lg px-3 py-1.5 text-sm text-slate-700 bg-white shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="border border-slate-200 dark:border-slate-700 rounded-lg px-3 py-1.5 text-sm text-slate-700 dark:text-slate-100 bg-white dark:bg-slate-800 shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
             >
               {anos.map((ano) => (
                 <option key={ano} value={String(ano)}>
@@ -177,7 +177,7 @@ export default function ComexPage() {
           {[...Array(3)].map((_, i) => (
             <div
               key={i}
-              className="bg-white p-6 rounded-2xl border border-slate-100 animate-pulse h-28"
+              className="bg-white dark:bg-slate-900 p-6 rounded-2xl border border-slate-100 dark:border-slate-800 animate-pulse h-28"
             />
           ))}
         </div>
@@ -190,14 +190,14 @@ export default function ComexPage() {
       )}
 
       {/* Exportações vs Importações ao longo do tempo */}
-      <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100">
-        <h3 className="text-base font-bold mb-5 text-slate-800">
+      <div className="bg-white dark:bg-slate-900 p-6 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-800">
+        <h3 className="text-base font-bold mb-5 text-slate-800 dark:text-white">
           Exportações vs Importações
         </h3>
         {loading ? (
-          <div className="animate-pulse h-64 bg-slate-50 rounded-xl" />
+          <div className="animate-pulse h-64 bg-slate-50 dark:bg-slate-800 rounded-xl" />
         ) : chartSerie.length === 0 ? (
-          <div className="h-64 flex items-center justify-center text-slate-400 text-sm">
+          <div className="h-64 flex items-center justify-center text-slate-400 dark:text-slate-500 text-sm">
             Sem dados disponíveis
           </div>
         ) : (
@@ -246,15 +246,15 @@ export default function ComexPage() {
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Top Produtos */}
-        <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100">
-          <h3 className="text-base font-bold mb-1 text-slate-800">
+        <div className="bg-white dark:bg-slate-900 p-6 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-800">
+          <h3 className="text-base font-bold mb-1 text-slate-800 dark:text-white">
             Top 10 Produtos
           </h3>
-          <p className="text-xs text-slate-400 mb-5">Ano: {anoSelecionado}</p>
+          <p className="text-xs text-slate-400 dark:text-slate-500 mb-5">Ano: {anoSelecionado}</p>
           {loading || loadingFilters ? (
-            <div className="animate-pulse h-64 bg-slate-50 rounded-xl" />
+            <div className="animate-pulse h-64 bg-slate-50 dark:bg-slate-800 rounded-xl" />
           ) : porProduto.length === 0 ? (
-            <div className="h-64 flex items-center justify-center text-slate-400 text-sm">
+            <div className="h-64 flex items-center justify-center text-slate-400 dark:text-slate-500 text-sm">
               Sem dados disponíveis
             </div>
           ) : (
@@ -300,15 +300,15 @@ export default function ComexPage() {
         </div>
 
         {/* Top Países */}
-        <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100">
-          <h3 className="text-base font-bold mb-1 text-slate-800">
+        <div className="bg-white dark:bg-slate-900 p-6 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-800">
+          <h3 className="text-base font-bold mb-1 text-slate-800 dark:text-white">
             Top 10 Países
           </h3>
-          <p className="text-xs text-slate-400 mb-5">Ano: {anoSelecionado}</p>
+          <p className="text-xs text-slate-400 dark:text-slate-500 mb-5">Ano: {anoSelecionado}</p>
           {loading || loadingFilters ? (
-            <div className="animate-pulse h-64 bg-slate-50 rounded-xl" />
+            <div className="animate-pulse h-64 bg-slate-50 dark:bg-slate-800 rounded-xl" />
           ) : porPais.length === 0 ? (
-            <div className="h-64 flex items-center justify-center text-slate-400 text-sm">
+            <div className="h-64 flex items-center justify-center text-slate-400 dark:text-slate-500 text-sm">
               Sem dados disponíveis
             </div>
           ) : (

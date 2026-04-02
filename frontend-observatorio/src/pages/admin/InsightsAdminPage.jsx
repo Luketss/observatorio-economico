@@ -105,23 +105,23 @@ export default function InsightsAdminPage() {
     >
       {/* Header */}
       <div>
-        <h1 className="text-2xl font-extrabold tracking-tight text-slate-800">
+        <h1 className="text-2xl font-extrabold tracking-tight text-slate-800 dark:text-white">
           Insights IA
         </h1>
-        <p className="text-sm text-slate-400 mt-1">
+        <p className="text-sm text-slate-400 dark:text-slate-500 mt-1">
           Selecione um município e gere análises com inteligência artificial para cada dataset.
         </p>
       </div>
 
       {/* Municipality selector */}
-      <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-6">
-        <label className="block text-xs font-semibold text-slate-600 uppercase tracking-wider mb-2">
+      <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-100 dark:border-slate-800 shadow-sm p-6">
+        <label className="block text-xs font-semibold text-slate-600 dark:text-slate-300 uppercase tracking-wider mb-2">
           Município
         </label>
         <select
           value={selectedId}
           onChange={(e) => setSelectedId(e.target.value)}
-          className="w-full max-w-sm border border-slate-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-violet-500"
+          className="w-full max-w-sm border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-2.5 text-sm dark:bg-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-violet-500"
         >
           <option value="">Selecione um município...</option>
           {municipios.map((m) => (
@@ -134,9 +134,9 @@ export default function InsightsAdminPage() {
 
       {/* Dataset grid */}
       {selectedId && (
-        <div className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
-          <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between">
-            <h3 className="text-base font-bold text-slate-800">Datasets</h3>
+        <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-100 dark:border-slate-800 shadow-sm overflow-hidden">
+          <div className="px-6 py-4 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
+            <h3 className="text-base font-bold text-slate-800 dark:text-white">Datasets</h3>
             <button
               onClick={handleGerarTodos}
               disabled={generatingAll || loadingInsights}
@@ -150,26 +150,26 @@ export default function InsightsAdminPage() {
           {loadingInsights ? (
             <div className="p-6 space-y-3">
               {DATASETS.map((d) => (
-                <div key={d.key} className="h-14 bg-slate-100 rounded-xl animate-pulse" />
+                <div key={d.key} className="h-14 bg-slate-100 dark:bg-slate-800 rounded-xl animate-pulse" />
               ))}
             </div>
           ) : (
             <table className="w-full text-sm">
               <thead>
-                <tr className="bg-slate-50 text-left text-xs uppercase text-slate-400 tracking-wider">
+                <tr className="bg-slate-50 dark:bg-slate-800 text-left text-xs uppercase text-slate-400 dark:text-slate-500 tracking-wider">
                   <th className="px-6 py-3">Dataset</th>
                   <th className="px-6 py-3">Status</th>
                   <th className="px-6 py-3">Última geração</th>
                   <th className="px-6 py-3 text-right">Ação</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-50">
+              <tbody className="divide-y divide-slate-50 dark:divide-slate-800">
                 {DATASETS.map((d) => {
                   const existing = insights[d.key];
                   const isGenerating = generating[d.key];
                   return (
-                    <tr key={d.key} className="hover:bg-slate-50 transition-colors">
-                      <td className="px-6 py-4 font-medium text-slate-800">{d.label}</td>
+                    <tr key={d.key} className="hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors">
+                      <td className="px-6 py-4 font-medium text-slate-800 dark:text-white">{d.label}</td>
                       <td className="px-6 py-4">
                         {existing ? (
                           <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-emerald-700 bg-emerald-50 px-2 py-1 rounded-lg">

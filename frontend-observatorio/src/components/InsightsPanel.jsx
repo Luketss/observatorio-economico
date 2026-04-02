@@ -42,13 +42,13 @@ export default function InsightsPanel({ dataset, municipioId }) {
       initial={{ opacity: 0, y: 16 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.4 }}
-      className="bg-gradient-to-br from-violet-50 to-indigo-50 border border-violet-200 rounded-2xl p-6"
+      className="bg-gradient-to-br from-violet-50 to-indigo-50 dark:from-violet-950/30 dark:to-indigo-950/30 border border-violet-200 dark:border-violet-800 rounded-2xl p-6"
     >
       <div className="flex items-center gap-2 mb-4">
         <div className="w-8 h-8 rounded-lg bg-violet-600 flex items-center justify-center">
           <SparklesIcon className="w-4 h-4 text-white" />
         </div>
-        <h3 className="font-semibold text-gray-800">Insights IA</h3>
+        <h3 className="font-semibold text-gray-800 dark:text-slate-200">Insights IA</h3>
       </div>
 
       <AnimatePresence mode="wait">
@@ -56,7 +56,7 @@ export default function InsightsPanel({ dataset, municipioId }) {
           <motion.div key="loading" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
             <div className="space-y-2">
               {[1, 2, 3, 4].map((i) => (
-                <div key={i} className="h-4 bg-violet-200 rounded animate-pulse" style={{ width: `${85 - i * 8}%` }} />
+                <div key={i} className="h-4 bg-violet-200 dark:bg-violet-800 rounded animate-pulse" style={{ width: `${85 - i * 8}%` }} />
               ))}
             </div>
           </motion.div>
@@ -74,22 +74,22 @@ export default function InsightsPanel({ dataset, municipioId }) {
                   initial={{ opacity: 0, x: -8 }}
                   animate={{ opacity: 1, x: 0 }}
                   transition={{ delay: i * 0.07 }}
-                  className="flex gap-2.5 text-sm text-gray-700"
+                  className="flex gap-2.5 text-sm text-gray-700 dark:text-slate-300"
                 >
-                  <span className="mt-0.5 w-5 h-5 rounded-full bg-violet-100 text-violet-700 flex items-center justify-center flex-shrink-0 text-xs font-bold">
+                  <span className="mt-0.5 w-5 h-5 rounded-full bg-violet-100 dark:bg-violet-900 text-violet-700 dark:text-violet-300 flex items-center justify-center flex-shrink-0 text-xs font-bold">
                     {i + 1}
                   </span>
                   <span>{bullet}</span>
                 </motion.li>
               ))}
             </ul>
-            <p className="text-xs text-gray-400 mt-4">
+            <p className="text-xs text-gray-400 dark:text-slate-500 mt-4">
               Gerado em {formatDate(insight.gerado_em)} · {insight.modelo}
             </p>
           </motion.div>
         ) : (
           <motion.p key="empty" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-            className="text-sm text-gray-400 py-2">
+            className="text-sm text-gray-400 dark:text-slate-500 py-2">
             Nenhum insight disponível para este período.
           </motion.p>
         )}

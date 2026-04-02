@@ -1,5 +1,6 @@
 import { NavLink, Outlet, useNavigate } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext";
+import { useTheme } from "../../context/ThemeContext";
 import {
   SparklesIcon,
   FlagIcon,
@@ -7,10 +8,13 @@ import {
   PowerIcon,
   ArrowLeftIcon,
   Cog6ToothIcon,
+  SunIcon,
+  MoonIcon,
 } from "@heroicons/react/24/outline";
 
 export default function AdminLayout() {
   const { logout, user } = useAuth();
+  const { theme, toggleTheme } = useTheme();
   const navigate = useNavigate();
 
   const isGlobal = user?.role === "ADMIN_GLOBAL";
@@ -26,7 +30,7 @@ export default function AdminLayout() {
   ];
 
   return (
-    <div className="flex h-screen bg-slate-50">
+    <div className="flex h-screen bg-slate-50 dark:bg-slate-950">
       {/* Admin Sidebar */}
       <aside className="w-64 bg-gradient-to-b from-slate-900 to-slate-800 text-white flex flex-col justify-between shadow-xl flex-shrink-0">
         <div>
@@ -92,6 +96,17 @@ export default function AdminLayout() {
             <p className="text-xs text-violet-400">{user?.role}</p>
           </div>
           <button
+            onClick={toggleTheme}
+            className="w-full flex items-center justify-center gap-2 bg-slate-700 hover:bg-slate-600 transition-colors px-4 py-2 rounded-lg text-sm text-slate-300 hover:text-white"
+          >
+            {theme === "dark" ? (
+              <SunIcon className="w-4 h-4" />
+            ) : (
+              <MoonIcon className="w-4 h-4" />
+            )}
+            {theme === "dark" ? "Modo Claro" : "Modo Escuro"}
+          </button>
+          <button
             onClick={logout}
             className="w-full flex items-center justify-center gap-2 bg-slate-700 hover:bg-red-600 transition-colors duration-150 px-4 py-2 rounded-lg text-sm text-slate-300 hover:text-white"
           >
@@ -103,11 +118,11 @@ export default function AdminLayout() {
 
       {/* Main content */}
       <main className="flex-1 overflow-y-auto flex flex-col min-w-0">
-        <header className="bg-white border-b border-slate-200 px-8 py-4 flex-shrink-0">
-          <h2 className="text-base font-semibold text-slate-800">
+        <header className="bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-700 px-8 py-4 flex-shrink-0">
+          <h2 className="text-base font-semibold text-slate-800 dark:text-white">
             Painel de Administração
           </h2>
-          <p className="text-xs text-slate-400 mt-0.5">
+          <p className="text-xs text-slate-400 dark:text-slate-500 mt-0.5">
             Gerencie configurações e dados do sistema
           </p>
         </header>

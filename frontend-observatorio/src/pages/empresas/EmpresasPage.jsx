@@ -27,23 +27,23 @@ const COLORS = [
 
 function KpiCard({ label, value, sub, accent }) {
   return (
-    <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100">
-      <p className="text-xs uppercase tracking-wider text-slate-400 font-medium">
+    <div className="bg-white dark:bg-slate-900 p-6 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-800">
+      <p className="text-xs uppercase tracking-wider text-slate-400 dark:text-slate-500 font-medium">
         {label}
       </p>
-      <p className={`text-2xl font-bold mt-2 ${accent || "text-slate-800"}`}>
+      <p className={`text-2xl font-bold mt-2 ${accent || "text-slate-800 dark:text-white"}`}>
         {value}
       </p>
-      {sub && <p className="text-xs text-slate-400 mt-1">{sub}</p>}
+      {sub && <p className="text-xs text-slate-400 dark:text-slate-500 mt-1">{sub}</p>}
     </div>
   );
 }
 
 function MiniStat({ label, value, color }) {
   return (
-    <div className="flex items-center justify-between py-2 border-b border-slate-50 last:border-0">
-      <span className="text-sm text-slate-500">{label}</span>
-      <span className={`text-sm font-bold ${color || "text-slate-800"}`}>
+    <div className="flex items-center justify-between py-2 border-b border-slate-50 dark:border-slate-800 last:border-0">
+      <span className="text-sm text-slate-500 dark:text-slate-400">{label}</span>
+      <span className={`text-sm font-bold ${color || "text-slate-800 dark:text-white"}`}>
         {value}
       </span>
     </div>
@@ -118,10 +118,10 @@ export default function EmpresasPage() {
       className="space-y-8"
     >
       <div>
-        <h1 className="text-2xl font-extrabold tracking-tight text-slate-800">
+        <h1 className="text-2xl font-extrabold tracking-tight text-slate-800 dark:text-white">
           Empresas — CNPJ
         </h1>
-        <p className="text-sm text-slate-400 mt-1">
+        <p className="text-sm text-slate-400 dark:text-slate-500 mt-1">
           Perfil e composição do tecido empresarial local.
         </p>
       </div>
@@ -133,7 +133,7 @@ export default function EmpresasPage() {
           {[...Array(4)].map((_, i) => (
             <div
               key={i}
-              className="bg-white p-6 rounded-2xl border border-slate-100 animate-pulse h-28"
+              className="bg-white dark:bg-slate-900 p-6 rounded-2xl border border-slate-100 dark:border-slate-800 animate-pulse h-28"
             />
           ))}
         </div>
@@ -147,14 +147,14 @@ export default function EmpresasPage() {
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Pie chart por porte */}
-        <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100">
-          <h3 className="text-base font-bold mb-5 text-slate-800">
+        <div className="bg-white dark:bg-slate-900 p-6 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-800">
+          <h3 className="text-base font-bold mb-5 text-slate-800 dark:text-white">
             Distribuição por Porte
           </h3>
           {loading ? (
-            <div className="animate-pulse h-64 bg-slate-50 rounded-xl" />
+            <div className="animate-pulse h-64 bg-slate-50 dark:bg-slate-800 rounded-xl" />
           ) : porPorte.length === 0 ? (
-            <div className="h-64 flex items-center justify-center text-slate-400 text-sm">
+            <div className="h-64 flex items-center justify-center text-slate-400 dark:text-slate-500 text-sm">
               Sem dados disponíveis
             </div>
           ) : (
@@ -184,12 +184,12 @@ export default function EmpresasPage() {
         </div>
 
         {/* Mini stats */}
-        <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100">
-          <h3 className="text-base font-bold mb-5 text-slate-800">
+        <div className="bg-white dark:bg-slate-900 p-6 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-800">
+          <h3 className="text-base font-bold mb-5 text-slate-800 dark:text-white">
             Indicadores de Composição
           </h3>
           {loading ? (
-            <div className="animate-pulse h-48 bg-slate-50 rounded-xl" />
+            <div className="animate-pulse h-48 bg-slate-50 dark:bg-slate-800 rounded-xl" />
           ) : (
             <div className="space-y-1">
               <MiniStat
@@ -232,11 +232,11 @@ export default function EmpresasPage() {
         </div>
 
         {/* Top CNAEs placeholder for larger screen */}
-        <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 lg:col-span-1 hidden lg:block">
-          <h3 className="text-base font-bold mb-3 text-slate-800">
+        <div className="bg-white dark:bg-slate-900 p-6 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-800 lg:col-span-1 hidden lg:block">
+          <h3 className="text-base font-bold mb-3 text-slate-800 dark:text-white">
             Nota
           </h3>
-          <p className="text-sm text-slate-400">
+          <p className="text-sm text-slate-400 dark:text-slate-500">
             O gráfico completo de CNAEs está disponível abaixo, com os 15
             principais setores de atividade econômica.
           </p>
@@ -244,14 +244,14 @@ export default function EmpresasPage() {
       </div>
 
       {/* Top CNAEs */}
-      <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100">
-        <h3 className="text-base font-bold mb-5 text-slate-800">
+      <div className="bg-white dark:bg-slate-900 p-6 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-800">
+        <h3 className="text-base font-bold mb-5 text-slate-800 dark:text-white">
           Top 15 Atividades Econômicas (CNAE)
         </h3>
         {loading ? (
-          <div className="animate-pulse h-96 bg-slate-50 rounded-xl" />
+          <div className="animate-pulse h-96 bg-slate-50 dark:bg-slate-800 rounded-xl" />
         ) : porCnae.length === 0 ? (
-          <div className="h-64 flex items-center justify-center text-slate-400 text-sm">
+          <div className="h-64 flex items-center justify-center text-slate-400 dark:text-slate-500 text-sm">
             Sem dados disponíveis
           </div>
         ) : (

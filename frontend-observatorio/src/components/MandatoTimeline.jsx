@@ -65,11 +65,11 @@ export default function MandatoTimeline({ municipioId }) {
 
   if (loading) {
     return (
-      <div className="bg-white rounded-2xl border border-slate-100 p-6">
-        <div className="h-4 w-48 bg-slate-100 rounded animate-pulse mb-4" />
+      <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-100 dark:border-slate-800 p-6">
+        <div className="h-4 w-48 bg-slate-100 dark:bg-slate-800 rounded animate-pulse mb-4" />
         <div className="flex gap-4 overflow-hidden">
           {[1, 2, 3].map((i) => (
-            <div key={i} className="h-20 w-48 bg-slate-100 rounded-xl animate-pulse flex-shrink-0" />
+            <div key={i} className="h-20 w-48 bg-slate-100 dark:bg-slate-800 rounded-xl animate-pulse flex-shrink-0" />
           ))}
         </div>
       </div>
@@ -81,17 +81,17 @@ export default function MandatoTimeline({ municipioId }) {
       initial={{ opacity: 0, y: 16 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.4 }}
-      className="bg-white rounded-2xl border border-slate-100 shadow-sm p-6"
+      className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-100 dark:border-slate-800 shadow-sm p-6"
     >
       <div className="flex items-center justify-between mb-5">
         <div>
-          <h3 className="text-base font-bold text-slate-800">Timeline do Mandato</h3>
-          <p className="text-xs text-slate-400 mt-0.5">Marcos e eventos do município</p>
+          <h3 className="text-base font-bold text-slate-800 dark:text-white">Timeline do Mandato</h3>
+          <p className="text-xs text-slate-400 dark:text-slate-500 mt-0.5">Marcos e eventos do município</p>
         </div>
         {canManage && (
           <Link
             to="/admin/mandato"
-            className="flex items-center gap-1.5 text-sm font-medium text-blue-600 hover:text-blue-800 transition-colors px-3 py-1.5 rounded-lg hover:bg-blue-50"
+            className="flex items-center gap-1.5 text-sm font-medium text-blue-600 hover:text-blue-800 transition-colors px-3 py-1.5 rounded-lg hover:bg-blue-50 dark:hover:bg-slate-800"
           >
             <PlusIcon className="w-4 h-4" />
             Gerenciar
@@ -101,8 +101,8 @@ export default function MandatoTimeline({ municipioId }) {
 
       {marcos.length === 0 ? (
         <div className="flex flex-col items-center justify-center py-8 text-center">
-          <FlagIcon className="w-10 h-10 text-slate-200 mb-3" />
-          <p className="text-sm text-slate-400">Nenhum marco registrado ainda.</p>
+          <FlagIcon className="w-10 h-10 text-slate-200 dark:text-slate-700 mb-3" />
+          <p className="text-sm text-slate-400 dark:text-slate-500">Nenhum marco registrado ainda.</p>
           {canManage && (
             <Link
               to="/admin/mandato"
@@ -116,7 +116,7 @@ export default function MandatoTimeline({ municipioId }) {
       ) : (
         <div className="relative">
           {/* Horizontal line */}
-          <div className="absolute top-5 left-0 right-0 h-0.5 bg-slate-100" />
+          <div className="absolute top-5 left-0 right-0 h-0.5 bg-slate-100 dark:bg-slate-800" />
 
           {/* Scrollable marco cards */}
           <div className="flex gap-4 overflow-x-auto pb-2 relative">
@@ -132,7 +132,7 @@ export default function MandatoTimeline({ municipioId }) {
                   className="flex-shrink-0 w-48 pt-9 relative"
                 >
                   {/* Dot on timeline */}
-                  <div className={`absolute top-3.5 left-6 w-3 h-3 rounded-full border-2 border-white ${cfg.dot} shadow`} />
+                  <div className={`absolute top-3.5 left-6 w-3 h-3 rounded-full border-2 border-white dark:border-slate-900 ${cfg.dot} shadow`} />
 
                   <div className={`border rounded-xl p-3 ${cfg.color}`}>
                     <div className="flex items-center gap-1.5 mb-1">
