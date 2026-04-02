@@ -1,6 +1,8 @@
+import { useEffect, useState } from "react";
 import { NavLink, Outlet } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext";
 import { useTheme } from "../../context/ThemeContext";
+import api from "../../services/api";
 import {
   HomeIcon,
   ChartBarIcon,
@@ -18,26 +20,51 @@ import {
   FlagIcon,
   SunIcon,
   MoonIcon,
+  Cog6ToothIcon,
 } from "@heroicons/react/24/outline";
 
-const navItems = [
-  { to: "/", label: "Dashboard", icon: HomeIcon, end: true },
-  { to: "/pib", label: "PIB", icon: ChartBarIcon },
-  { to: "/arrecadacao", label: "Arrecadação", icon: BanknotesIcon },
-  { to: "/caged", label: "CAGED", icon: BriefcaseIcon },
-  { to: "/rais", label: "RAIS", icon: BuildingLibraryIcon },
-  { to: "/comparativo", label: "Comparativo", icon: ArrowsRightLeftIcon },
-  { to: "/bolsa-familia", label: "Bolsa Família", icon: HeartIcon },
-  { to: "/pe-de-meia", label: "Pé-de-Meia", icon: AcademicCapIcon },
-  { to: "/inss", label: "INSS", icon: ShieldCheckIcon },
-  { to: "/estban", label: "Bancos", icon: BuildingOfficeIcon },
-  { to: "/comex", label: "Comércio Ext.", icon: GlobeAltIcon },
-  { to: "/empresas", label: "Empresas", icon: BuildingStorefrontIcon },
+// Module key maps to which plan feature enables it (null = always visible)
+const NAV_ITEMS = [
+  { to: "/", label: "Dashboard", icon: HomeIcon, end: true, modulo: "geral" },
+  { to: "/pib", label: "PIB", icon: ChartBarIcon, modulo: "pib" },
+  { to: "/arrecadacao", label: "Arrecadação", icon: BanknotesIcon, modulo: "arrecadacao" },
+  { to: "/caged", label: "CAGED", icon: BriefcaseIcon, modulo: "caged" },
+  { to: "/rais", label: "RAIS", icon: BuildingLibraryIcon, modulo: "rais" },
+  { to: "/comparativo", label: "Comparativo", icon: ArrowsRightLeftIcon, modulo: null },
+  { to: "/bolsa-familia", label: "Bolsa Família", icon: HeartIcon, modulo: "bolsa_familia" },
+  { to: "/pe-de-meia", label: "Pé-de-Meia", icon: AcademicCapIcon, modulo: "pe_de_meia" },
+  { to: "/inss", label: "INSS", icon: ShieldCheckIcon, modulo: "inss" },
+  { to: "/estban", label: "Bancos", icon: BuildingOfficeIcon, modulo: "estban" },
+  { to: "/comex", label: "Comércio Ext.", icon: GlobeAltIcon, modulo: "comex" },
+  { to: "/empresas", label: "Empresas", icon: BuildingStorefrontIcon, modulo: "empresas" },
 ];
 
 export default function DashboardLayout() {
   const { logout, user } = useAuth();
   const { theme, toggleTheme } = useTheme();
+  const [brasao, setBrasao] = useState(null);
+  const [modulos, setModulos] = useState(null); // null = no restrictions (ADMIN_GLOBAL or loading)
+
+  const isGlobal = user?.role === "ADMIN_GLOBAL";
+
+  useEffect(() => {
+    if (isGlobal || !user) return;
+    api.get("/municipios/").then((res) => {
+      const municipio = res.data?.[0];
+      if (!municipio) return;
+      if (municipio.brasao) setBrasao(municipio.brasao);
+      api
+        .get("/plano-config", { params: { plano: municipio.plano } })
+        .then((r) => setModulos(r.data.modulos))
+        .catch(() => setModulos(null));
+    });
+  }, [user, isGlobal]);
+
+  const visibleNav = NAV_ITEMS.filter((item) => {
+    if (isGlobal || modulos === null) return true;
+    if (item.modulo === null) return true; // always visible
+    return modulos.includes(item.modulo);
+  });
 
   return (
     <div className="flex h-screen bg-slate-50 dark:bg-slate-950">
@@ -46,17 +73,17 @@ export default function DashboardLayout() {
         <div>
           {/* Logo */}
           <div className="px-6 py-7 border-b border-slate-700">
-            <h1 className="text-lg font-extrabold tracking-tight leading-tight">
-              Observatório
+            <h1 className="text-xl font-extrabold tracking-tight leading-tight">
+              UAIZI
             </h1>
             <p className="text-xs text-slate-400 mt-1 uppercase tracking-widest">
-              Econômico
+              Observatório Econômico
             </p>
           </div>
 
           {/* Nav */}
           <nav className="p-4 space-y-1">
-            {navItems.map(({ to, label, icon: Icon, end }) => (
+            {visibleNav.map(({ to, label, icon: Icon, end }) => (
               <NavLink
                 key={to}
                 to={to}
@@ -89,7 +116,7 @@ export default function DashboardLayout() {
                     }`
                   }
                 >
-                  <FlagIcon className="w-4 h-4 flex-shrink-0" />
+                  <Cog6ToothIcon className="w-4 h-4 flex-shrink-0" />
                   Painel Admin
                 </NavLink>
               </div>
@@ -130,13 +157,22 @@ export default function DashboardLayout() {
       {/* Main */}
       <main className="flex-1 overflow-y-auto flex flex-col min-w-0">
         <header className="bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-700 px-8 py-4 flex items-center justify-between flex-shrink-0">
-          <div>
-            <h2 className="text-base font-semibold text-slate-800 dark:text-white">
-              Bem-vindo, {user?.nome || "Usuário"}
-            </h2>
-            <p className="text-xs text-slate-400 dark:text-slate-500 mt-0.5">
-              Painel de Indicadores Econômicos
-            </p>
+          <div className="flex items-center gap-3">
+            {brasao && (
+              <img
+                src={brasao}
+                alt="Brasão"
+                className="w-10 h-10 object-contain rounded"
+              />
+            )}
+            <div>
+              <h2 className="text-base font-semibold text-slate-800 dark:text-white">
+                Bem-vindo, {user?.nome || "Usuário"}
+              </h2>
+              <p className="text-xs text-slate-400 dark:text-slate-500 mt-0.5">
+                Painel de Indicadores Econômicos
+              </p>
+            </div>
           </div>
         </header>
 

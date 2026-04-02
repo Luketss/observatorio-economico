@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import api from "../services/api";
+import { useAuth } from "../context/AuthContext";
 import { motion } from "framer-motion";
 import InsightsPanel from "../components/InsightsPanel";
 import MandatoTimeline from "../components/MandatoTimeline";
@@ -8,6 +9,16 @@ import {
   BanknotesIcon,
   BriefcaseIcon,
   ArrowTrendingUpIcon,
+  StarIcon,
+  UserGroupIcon,
+  HomeIcon,
+  HeartIcon,
+  AcademicCapIcon,
+  TruckIcon,
+  ChartBarIcon,
+  BuildingOfficeIcon,
+  BoltIcon,
+  GlobeAltIcon,
 } from "@heroicons/react/24/outline";
 import {
   ResponsiveContainer,
@@ -19,6 +30,28 @@ import {
   CartesianGrid,
   Legend,
 } from "recharts";
+
+const CUSTOM_ICON_MAP = {
+  StarIcon,
+  UserGroupIcon,
+  HomeIcon,
+  HeartIcon,
+  AcademicCapIcon,
+  TruckIcon,
+  ChartBarIcon,
+  BuildingOfficeIcon,
+  BoltIcon,
+  GlobeAltIcon,
+};
+
+const CUSTOM_COLOR_MAP = {
+  blue: { bg: "bg-blue-50 dark:bg-blue-950/30", text: "text-blue-600" },
+  green: { bg: "bg-green-50 dark:bg-green-950/30", text: "text-green-600" },
+  purple: { bg: "bg-purple-50 dark:bg-purple-950/30", text: "text-purple-600" },
+  orange: { bg: "bg-orange-50 dark:bg-orange-950/30", text: "text-orange-600" },
+  red: { bg: "bg-red-50 dark:bg-red-950/30", text: "text-red-600" },
+  slate: { bg: "bg-slate-100 dark:bg-slate-800", text: "text-slate-600 dark:text-slate-300" },
+};
 
 function KpiCard({ label, value, sub, icon: Icon, color, delay }) {
   return (
@@ -45,25 +78,37 @@ function KpiCard({ label, value, sub, icon: Icon, color, delay }) {
 }
 
 export default function DashboardGeralPage() {
+  const { user } = useAuth();
   const [pibResumo, setPibResumo] = useState(null);
   const [arrecResumo, setArrecResumo] = useState(null);
   const [cagedResumo, setCagedResumo] = useState(null);
   const [pibSerie, setPibSerie] = useState([]);
+  const [customCards, setCustomCards] = useState([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     async function fetchData() {
       try {
-        const [pibRes, arrecRes, cagedRes, pibSerieRes] = await Promise.all([
+        const isGlobal = user?.role === "ADMIN_GLOBAL";
+        const promises = [
           api.get("/pib/resumo"),
           api.get("/arrecadacao/resumo"),
           api.get("/caged/resumo"),
           api.get("/pib/serie"),
-        ]);
+        ];
+        // Custom cards: ADMIN_GLOBAL has no municipio, skip
+        const cardsPromise = isGlobal
+          ? Promise.resolve({ data: [] })
+          : api.get("/dashboard-cards");
+
+        const [pibRes, arrecRes, cagedRes, pibSerieRes] = await Promise.all(promises);
+        const cardsRes = await cardsPromise;
+
         setPibResumo(pibRes.data);
         setArrecResumo(arrecRes.data);
         setCagedResumo(cagedRes.data);
         setPibSerie(pibSerieRes.data || []);
+        setCustomCards(cardsRes.data || []);
       } catch (error) {
         console.error("Erro ao carregar dashboard:", error);
       } finally {
@@ -71,7 +116,7 @@ export default function DashboardGeralPage() {
       }
     }
     fetchData();
-  }, []);
+  }, [user]);
 
   const fmt = (v) =>
     v != null
@@ -148,6 +193,17 @@ export default function DashboardGeralPage() {
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6">
           {cards.map((card, i) => (
             <KpiCard key={card.label} {...card} delay={i * 0.08} />
+          ))}
+          {customCards.map((card, i) => (
+            <KpiCard
+              key={card.id}
+              label={card.titulo}
+              value={card.valor}
+              sub={card.subtitulo}
+              icon={CUSTOM_ICON_MAP[card.icone] || StarIcon}
+              color={CUSTOM_COLOR_MAP[card.cor] || CUSTOM_COLOR_MAP.blue}
+              delay={(cards.length + i) * 0.08}
+            />
           ))}
         </div>
       )}

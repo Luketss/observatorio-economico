@@ -16,6 +16,8 @@ from app.models.empresa import Empresa
 from app.models.estban import EstbanMensal
 from app.models.insight_ia import InsightIA
 from app.models.marco import Marco
+from app.models.dashboard_card_custom import DashboardCardCustom
+from app.models.plano_config import PlanoConfig
 from app.models.inss import InssAnual
 from app.models.municipio import Municipio
 from app.models.pe_de_meia import PeDeMeiaResumo
@@ -47,4 +49,6 @@ __all__ = [
     "Empresa",
     "InsightIA",
     "Marco",
+    "DashboardCardCustom",
+    "PlanoConfig",
 ]

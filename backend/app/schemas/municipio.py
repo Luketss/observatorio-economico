@@ -19,6 +19,8 @@ class MunicipioUpdate(BaseModel):
     estado: Optional[str] = None
     codigo_ibge: Optional[str] = None
     ativo: Optional[bool] = None
+    plano: Optional[str] = None
+    brasao: Optional[str] = None
 
 
 class MunicipioOut(BaseModel):
@@ -27,6 +29,8 @@ class MunicipioOut(BaseModel):
     estado: str
     codigo_ibge: Optional[str]
     ativo: bool
+    plano: str = "paid"
+    brasao: Optional[str] = None
 
     class Config:
         from_attributes = True

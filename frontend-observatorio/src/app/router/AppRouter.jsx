@@ -12,6 +12,9 @@ import ComparativoPage from "../../pages/comparativo/ComparativoPage";
 import UsuariosAdminPage from "../../pages/admin/UsuariosAdminPage";
 import MandatoAdminPage from "../../pages/admin/MandatoAdminPage";
 import InsightsAdminPage from "../../pages/admin/InsightsAdminPage";
+import MunicipiosAdminPage from "../../pages/admin/MunicipiosAdminPage";
+import CustomCardsAdminPage from "../../pages/admin/CustomCardsAdminPage";
+import PlanoConfigAdminPage from "../../pages/admin/PlanoConfigAdminPage";
 import BolsaFamiliaPage from "../../pages/beneficios/BolsaFamiliaPage";
 import PeDeMeiaPage from "../../pages/beneficios/PeDeMeiaPage";
 import InssPage from "../../pages/inss/InssPage";
@@ -80,23 +83,27 @@ export default function AppRouter() {
             </AdminMunicipioRoute>
           }
         >
-          <Route index element={<Navigate to="/admin/insights" replace />} />
+          <Route index element={<Navigate to="/admin/municipios" replace />} />
+          <Route
+            path="municipios"
+            element={<AdminRoute><MunicipiosAdminPage /></AdminRoute>}
+          />
           <Route
             path="insights"
-            element={
-              <AdminRoute>
-                <InsightsAdminPage />
-              </AdminRoute>
-            }
+            element={<AdminRoute><InsightsAdminPage /></AdminRoute>}
+          />
+          <Route
+            path="cards"
+            element={<AdminRoute><CustomCardsAdminPage /></AdminRoute>}
+          />
+          <Route
+            path="planos"
+            element={<AdminRoute><PlanoConfigAdminPage /></AdminRoute>}
           />
           <Route path="mandato" element={<MandatoAdminPage />} />
           <Route
             path="usuarios"
-            element={
-              <AdminRoute>
-                <UsuariosAdminPage />
-              </AdminRoute>
-            }
+            element={<AdminRoute><UsuariosAdminPage /></AdminRoute>}
           />
         </Route>
       </Routes>

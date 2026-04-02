@@ -38,7 +38,7 @@ export default function LoginPage() {
             </svg>
           </div>
           <h1 className="text-2xl font-extrabold text-slate-800 dark:text-white tracking-tight">
-            Observatório Econômico
+            UAIZI
           </h1>
           <p className="text-sm text-slate-400 dark:text-slate-500 mt-1">
             Acesse com suas credenciais

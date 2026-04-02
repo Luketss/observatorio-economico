@@ -66,17 +66,8 @@ def atualizar_municipio(
     if not municipio:
         raise HTTPException(status_code=404, detail="Município não encontrado")
 
-    if data.nome is not None:
-        municipio.nome = data.nome
-
-    if data.estado is not None:
-        municipio.estado = data.estado
-
-    if data.codigo_ibge is not None:
-        municipio.codigo_ibge = data.codigo_ibge
-
-    if data.ativo is not None:
-        municipio.ativo = data.ativo
+    for field, value in data.model_dump(exclude_unset=True).items():
+        setattr(municipio, field, value)
 
     db.commit()
     db.refresh(municipio)
