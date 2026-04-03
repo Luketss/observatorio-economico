@@ -2,6 +2,8 @@ import { useEffect, useState, useMemo } from "react";
 import api from "../../services/api";
 import { motion } from "framer-motion";
 import InsightsPanel from "../../components/InsightsPanel";
+import InfoTooltip from "../../components/InfoTooltip";
+import FilterBar from "../../components/FilterBar";
 import {
   ResponsiveContainer,
   LineChart,

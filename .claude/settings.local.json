@@ -10,7 +10,8 @@
       "Read(//c/Users/lucas/Documents/projetos/dashboard_prefeituras/frontend-observatorio/src/pages/**)",
       "Bash(done)",
       "Bash(BASE=\"c:/Users/lucas/Documents/projetos/dashboard_prefeituras/frontend-observatorio/src/pages\")",
-      "Read(//c/Users/lucas/Documents/projetos/dashboard_prefeituras/$BASE/**)"
+      "Read(//c/Users/lucas/Documents/projetos/dashboard_prefeituras/$BASE/**)",
+      "Bash(xargs grep:*)"
     ]
   }
 }

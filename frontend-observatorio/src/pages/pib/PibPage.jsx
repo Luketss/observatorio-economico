@@ -1,6 +1,9 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import api from "../../services/api";
 import { motion } from "framer-motion";
+import InsightsPanel from "../../components/InsightsPanel";
+import InfoTooltip from "../../components/InfoTooltip";
+import FilterBar from "../../components/FilterBar";
 import {
   ResponsiveContainer,
   BarChart,
@@ -28,19 +31,31 @@ const fmtBRL = (v) =>
   `R$ ${Number(v).toLocaleString("pt-BR", { maximumFractionDigits: 0 })}`;
 
 export default function PibPage() {
-  const [serie, setSerie] = useState([]);
+  const [rawSerie, setRawSerie] = useState([]);
   const [resumo, setResumo] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [filters, setFilters] = useState({ yearFrom: "", yearTo: "" });
 
   useEffect(() => {
     Promise.all([api.get("/pib/serie"), api.get("/pib/resumo")])
       .then(([serieRes, resumoRes]) => {
-        setSerie(serieRes.data || []);
+        setRawSerie(serieRes.data || []);
         setResumo(resumoRes.data);
       })
       .catch((err) => console.error("Erro ao carregar PIB:", err))
       .finally(() => setLoading(false));
   }, []);
+
+  const years = useMemo(() => rawSerie.map((d) => d.ano).sort(), [rawSerie]);
+
+  const serie = useMemo(() => {
+    const { yearFrom, yearTo } = filters;
+    return rawSerie.filter((d) => {
+      if (yearFrom && d.ano < +yearFrom) return false;
+      if (yearTo && d.ano > +yearTo) return false;
+      return true;
+    });
+  }, [rawSerie, filters]);
 
   const cards = [
     {
@@ -74,13 +89,20 @@ export default function PibPage() {
       className="space-y-8"
     >
       <div>
-        <h1 className="text-2xl font-extrabold tracking-tight text-slate-800">
-          PIB — Produto Interno Bruto
-        </h1>
-        <p className="text-sm text-slate-400 mt-1">
+        <div className="flex items-center gap-2">
+          <h1 className="text-2xl font-extrabold tracking-tight text-slate-800 dark:text-white">
+            PIB — Produto Interno Bruto
+          </h1>
+          <InfoTooltip dataset="pib" />
+        </div>
+        <p className="text-sm text-slate-400 dark:text-slate-500 mt-1">
           Série histórica do PIB municipal.
         </p>
       </div>
+
+      <InsightsPanel dataset="pib" />
+
+      <FilterBar years={years} value={filters} onChange={setFilters} />
 
       {loading ? (
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">

@@ -1,5 +1,5 @@
 from app.db.base import Base
-from sqlalchemy import DateTime, ForeignKey, Integer, String, Text, UniqueConstraint, func
+from sqlalchemy import Boolean, DateTime, ForeignKey, Integer, String, Text, UniqueConstraint, func
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 
@@ -22,6 +22,8 @@ class InsightIA(Base):
     gerado_em: Mapped[DateTime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
     )
+    ativo: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
+    oculto_planos: Mapped[str | None] = mapped_column(Text, nullable=True)  # JSON array e.g. '["free"]'
 
     municipio = relationship("Municipio")
 

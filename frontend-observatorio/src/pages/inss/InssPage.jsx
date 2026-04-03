@@ -1,7 +1,9 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import api from "../../services/api";
 import { motion } from "framer-motion";
 import InsightsPanel from "../../components/InsightsPanel";
+import InfoTooltip from "../../components/InfoTooltip";
+import FilterBar from "../../components/FilterBar";
 import {
   ResponsiveContainer,
   BarChart,
@@ -47,47 +49,54 @@ const fmtBRL = (v) =>
 const fmtNum = (v) => (v != null ? Number(v).toLocaleString("pt-BR") : "—");
 
 export default function InssPage() {
-  const [serie, setSerie] = useState([]);
+  const [rawSerie, setRawSerie] = useState([]);
   const [resumo, setResumo] = useState(null);
-  const [topCategorias, setTopCategorias] = useState([]);
-  const [evolucaoAnual, setEvolucaoAnual] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [filters, setFilters] = useState({ yearFrom: "", yearTo: "" });
 
   useEffect(() => {
     Promise.all([api.get("/inss/serie"), api.get("/inss/resumo")])
       .then(([serieRes, resumoRes]) => {
-        const raw = serieRes.data || [];
-        setSerie(raw);
+        setRawSerie(serieRes.data || []);
         setResumo(resumoRes.data);
-
-        // Aggregate by category for top categories bar chart
-        const catMap = {};
-        raw.forEach((item) => {
-          if (!catMap[item.categoria]) {
-            catMap[item.categoria] = { categoria: item.categoria, quantidade_beneficios: 0, valor_anual: 0 };
-          }
-          catMap[item.categoria].quantidade_beneficios += item.quantidade_beneficios ?? 0;
-          catMap[item.categoria].valor_anual += item.valor_anual ?? 0;
-        });
-        const sorted = Object.values(catMap).sort(
-          (a, b) => b.quantidade_beneficios - a.quantidade_beneficios
-        );
-        setTopCategorias(sorted.slice(0, 10));
-
-        // Aggregate by year for annual evolution line chart
-        const anoMap = {};
-        raw.forEach((item) => {
-          if (!anoMap[item.ano]) {
-            anoMap[item.ano] = { ano: item.ano, quantidade_beneficios: 0 };
-          }
-          anoMap[item.ano].quantidade_beneficios += item.quantidade_beneficios ?? 0;
-        });
-        const evolucao = Object.values(anoMap).sort((a, b) => a.ano - b.ano);
-        setEvolucaoAnual(evolucao);
       })
       .catch((err) => console.error("Erro ao carregar INSS:", err))
       .finally(() => setLoading(false));
   }, []);
+
+  const years = useMemo(() => [...new Set(rawSerie.map((d) => d.ano))].sort(), [rawSerie]);
+
+  const serie = useMemo(() => {
+    const { yearFrom, yearTo } = filters;
+    return rawSerie.filter((d) => {
+      if (yearFrom && d.ano < +yearFrom) return false;
+      if (yearTo && d.ano > +yearTo) return false;
+      return true;
+    });
+  }, [rawSerie, filters]);
+
+  const topCategorias = useMemo(() => {
+    const catMap = {};
+    serie.forEach((item) => {
+      if (!catMap[item.categoria]) {
+        catMap[item.categoria] = { categoria: item.categoria, quantidade_beneficios: 0, valor_anual: 0 };
+      }
+      catMap[item.categoria].quantidade_beneficios += item.quantidade_beneficios ?? 0;
+      catMap[item.categoria].valor_anual += item.valor_anual ?? 0;
+    });
+    return Object.values(catMap)
+      .sort((a, b) => b.quantidade_beneficios - a.quantidade_beneficios)
+      .slice(0, 10);
+  }, [serie]);
+
+  const evolucaoAnual = useMemo(() => {
+    const anoMap = {};
+    serie.forEach((item) => {
+      if (!anoMap[item.ano]) anoMap[item.ano] = { ano: item.ano, quantidade_beneficios: 0 };
+      anoMap[item.ano].quantidade_beneficios += item.quantidade_beneficios ?? 0;
+    });
+    return Object.values(anoMap).sort((a, b) => a.ano - b.ano);
+  }, [serie]);
 
   // Table data: sorted by valor_anual desc
   const tableData = [...serie]
@@ -117,15 +126,20 @@ export default function InssPage() {
       className="space-y-8"
     >
       <div>
-        <h1 className="text-2xl font-extrabold tracking-tight text-slate-800 dark:text-white">
-          INSS — Benefícios Previdenciários
-        </h1>
+        <div className="flex items-center gap-2">
+          <h1 className="text-2xl font-extrabold tracking-tight text-slate-800 dark:text-white">
+            INSS — Benefícios Previdenciários
+          </h1>
+          <InfoTooltip dataset="inss" />
+        </div>
         <p className="text-sm text-slate-400 dark:text-slate-500 mt-1">
           Quantidade e valor dos benefícios pagos pelo INSS.
         </p>
       </div>
 
       <InsightsPanel dataset="inss" />
+
+      <FilterBar years={years} value={filters} onChange={setFilters} />
 
       {loading ? (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">

@@ -1,7 +1,9 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import api from "../../services/api";
 import { motion } from "framer-motion";
 import InsightsPanel from "../../components/InsightsPanel";
+import InfoTooltip from "../../components/InfoTooltip";
+import FilterBar from "../../components/FilterBar";
 import {
   ResponsiveContainer,
   AreaChart,
@@ -95,12 +97,13 @@ function remByYearBySexo(data) {
 }
 
 export default function RaisPage() {
-  const [serie, setSerie] = useState([]);
+  const [rawSerie, setRawSerie] = useState([]);
   const [resumo, setResumo] = useState(null);
-  const [porSexo, setPorSexo] = useState([]);
-  const [porRaca, setPorRaca] = useState([]);
-  const [porCnae, setPorCnae] = useState([]);
+  const [rawSexo, setRawSexo] = useState([]);
+  const [rawRaca, setRawRaca] = useState([]);
+  const [rawCnae, setRawCnae] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [filters, setFilters] = useState({ yearFrom: "", yearTo: "" });
 
   useEffect(() => {
     Promise.all([
@@ -111,15 +114,29 @@ export default function RaisPage() {
       api.get("/rais/por_cnae"),
     ])
       .then(([serieRes, resumoRes, sexoRes, racaRes, cnaeRes]) => {
-        setSerie(serieRes.data || []);
+        setRawSerie(serieRes.data || []);
         setResumo(resumoRes.data);
-        setPorSexo(sexoRes.data || []);
-        setPorRaca(racaRes.data || []);
-        setPorCnae(cnaeRes.data || []);
+        setRawSexo(sexoRes.data || []);
+        setRawRaca(racaRes.data || []);
+        setRawCnae(cnaeRes.data || []);
       })
       .catch((err) => console.error("Erro ao carregar RAIS:", err))
       .finally(() => setLoading(false));
   }, []);
+
+  const years = useMemo(() => [...new Set(rawSerie.map((d) => d.ano))].sort(), [rawSerie]);
+
+  const applyYearFilter = (d) => {
+    const { yearFrom, yearTo } = filters;
+    if (yearFrom && d.ano < +yearFrom) return false;
+    if (yearTo && d.ano > +yearTo) return false;
+    return true;
+  };
+
+  const serie = useMemo(() => rawSerie.filter(applyYearFilter), [rawSerie, filters]);
+  const porSexo = useMemo(() => rawSexo.filter(applyYearFilter), [rawSexo, filters]);
+  const porRaca = useMemo(() => rawRaca.filter(applyYearFilter), [rawRaca, filters]);
+  const porCnae = useMemo(() => rawCnae.filter(applyYearFilter), [rawCnae, filters]);
 
   const fmt = (v) => (v != null ? Number(v).toLocaleString("pt-BR") : "—");
   const fmtCurrency = (v) =>
@@ -163,15 +180,20 @@ export default function RaisPage() {
       className="space-y-8"
     >
       <div>
-        <h1 className="text-2xl font-extrabold tracking-tight text-slate-800 dark:text-white">
-          RAIS — Vínculos Empregatícios
-        </h1>
+        <div className="flex items-center gap-2">
+          <h1 className="text-2xl font-extrabold tracking-tight text-slate-800 dark:text-white">
+            RAIS — Vínculos Empregatícios
+          </h1>
+          <InfoTooltip dataset="rais" />
+        </div>
         <p className="text-sm text-slate-400 dark:text-slate-500 mt-1">
           Evolução dos vínculos formais de trabalho por ano.
         </p>
       </div>
 
       <InsightsPanel dataset="rais" />
+
+      <FilterBar years={years} value={filters} onChange={setFilters} />
 
       {loading ? (
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">

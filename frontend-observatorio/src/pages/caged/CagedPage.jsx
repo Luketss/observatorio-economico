@@ -1,7 +1,9 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import api from "../../services/api";
 import { motion } from "framer-motion";
 import InsightsPanel from "../../components/InsightsPanel";
+import InfoTooltip from "../../components/InfoTooltip";
+import FilterBar from "../../components/FilterBar";
 import {
   ResponsiveContainer,
   ComposedChart,
@@ -82,13 +84,14 @@ function aggregateByCnaeTotal(data) {
 }
 
 export default function CagedPage() {
-  const [serie, setSerie] = useState([]);
+  const [rawSerie, setRawSerie] = useState([]);
+  const [rawSexo, setRawSexo] = useState([]);
+  const [rawRaca, setRawRaca] = useState([]);
+  const [rawSalario, setRawSalario] = useState([]);
+  const [rawCnae, setRawCnae] = useState([]);
   const [resumo, setResumo] = useState(null);
-  const [porSexo, setPorSexo] = useState([]);
-  const [porRaca, setPorRaca] = useState([]);
-  const [salario, setSalario] = useState([]);
-  const [porCnae, setPorCnae] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [filters, setFilters] = useState({ yearFrom: "", yearTo: "", monthFrom: "", monthTo: "" });
 
   useEffect(() => {
     Promise.all([
@@ -100,27 +103,45 @@ export default function CagedPage() {
       api.get("/caged/por_cnae"),
     ])
       .then(([serieRes, resumoRes, sexoRes, racaRes, salRes, cnaeRes]) => {
-        const raw = serieRes.data || [];
-        const grouped = {};
-        raw.forEach((item) => {
-          const key = `${item.ano}-${String(item.mes).padStart(2, "0")}`;
-          if (!grouped[key]) {
-            grouped[key] = { periodo: key, admissoes: 0, desligamentos: 0, saldo: 0 };
-          }
-          grouped[key].admissoes += item["admissões"] ?? 0;
-          grouped[key].desligamentos += item.desligamentos ?? 0;
-          grouped[key].saldo += item.saldo ?? 0;
-        });
-        setSerie(Object.values(grouped).sort((a, b) => a.periodo.localeCompare(b.periodo)));
+        setRawSerie(serieRes.data || []);
         setResumo(resumoRes.data);
-        setPorSexo(sexoRes.data || []);
-        setPorRaca(racaRes.data || []);
-        setSalario(salRes.data || []);
-        setPorCnae(cnaeRes.data || []);
+        setRawSexo(sexoRes.data || []);
+        setRawRaca(racaRes.data || []);
+        setRawSalario(salRes.data || []);
+        setRawCnae(cnaeRes.data || []);
       })
       .catch((err) => console.error("Erro ao carregar CAGED:", err))
       .finally(() => setLoading(false));
   }, []);
+
+  const years = useMemo(() => [...new Set(rawSerie.map((d) => d.ano))].sort(), [rawSerie]);
+
+  const applyFilter = (d) => {
+    const { yearFrom, yearTo, monthFrom, monthTo } = filters;
+    if (yearFrom && d.ano < +yearFrom) return false;
+    if (yearTo && d.ano > +yearTo) return false;
+    if (monthFrom && d.mes < +monthFrom) return false;
+    if (monthTo && d.mes > +monthTo) return false;
+    return true;
+  };
+
+  const serie = useMemo(() => {
+    const filtered = rawSerie.filter(applyFilter);
+    const grouped = {};
+    filtered.forEach((item) => {
+      const key = `${item.ano}-${String(item.mes).padStart(2, "0")}`;
+      if (!grouped[key]) grouped[key] = { periodo: key, admissoes: 0, desligamentos: 0, saldo: 0 };
+      grouped[key].admissoes += item["admissões"] ?? 0;
+      grouped[key].desligamentos += item.desligamentos ?? 0;
+      grouped[key].saldo += item.saldo ?? 0;
+    });
+    return Object.values(grouped).sort((a, b) => a.periodo.localeCompare(b.periodo));
+  }, [rawSerie, filters]);
+
+  const porSexo = useMemo(() => rawSexo.filter(applyFilter), [rawSexo, filters]);
+  const porRaca = useMemo(() => rawRaca.filter(applyFilter), [rawRaca, filters]);
+  const porCnae = useMemo(() => rawCnae.filter(applyFilter), [rawCnae, filters]);
+  const salario = useMemo(() => rawSalario.filter(applyFilter), [rawSalario, filters]);
 
   const fmt = (v) => (v != null ? Number(v).toLocaleString("pt-BR") : "—");
   const fmtCurrency = (v) =>
@@ -172,15 +193,20 @@ export default function CagedPage() {
       className="space-y-8"
     >
       <div>
-        <h1 className="text-2xl font-extrabold tracking-tight text-slate-800 dark:text-white">
-          CAGED — Movimentação de Empregos
-        </h1>
+        <div className="flex items-center gap-2">
+          <h1 className="text-2xl font-extrabold tracking-tight text-slate-800 dark:text-white">
+            CAGED — Movimentação de Empregos
+          </h1>
+          <InfoTooltip dataset="caged" />
+        </div>
         <p className="text-sm text-slate-400 dark:text-slate-500 mt-1">
           Admissões, desligamentos e saldo líquido de empregos formais.
         </p>
       </div>
 
       <InsightsPanel dataset="caged" />
+
+      <FilterBar years={years} showMonths value={filters} onChange={setFilters} />
 
       {loading ? (
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">

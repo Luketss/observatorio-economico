@@ -1,7 +1,9 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import api from "../../services/api";
 import { motion } from "framer-motion";
 import InsightsPanel from "../../components/InsightsPanel";
+import InfoTooltip from "../../components/InfoTooltip";
+import FilterBar from "../../components/FilterBar";
 import {
   ResponsiveContainer,
   AreaChart,
@@ -49,11 +51,12 @@ const fmtBRL = (v) =>
 const fmtNum = (v) => (v != null ? Number(v).toLocaleString("pt-BR") : "—");
 
 export default function PeDeMeiaPage() {
-  const [serie, setSerie] = useState([]);
+  const [rawSerie, setRawSerie] = useState([]);
   const [resumo, setResumo] = useState(null);
   const [porEtapa, setPorEtapa] = useState([]);
   const [porIncentivo, setPorIncentivo] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [filters, setFilters] = useState({ yearFrom: "", yearTo: "", monthFrom: "", monthTo: "" });
 
   useEffect(() => {
     Promise.all([
@@ -68,7 +71,7 @@ export default function PeDeMeiaPage() {
           periodo: `${item.ano}-${String(item.mes).padStart(2, "0")}`,
         }));
         raw.sort((a, b) => a.periodo.localeCompare(b.periodo));
-        setSerie(raw);
+        setRawSerie(raw);
         setResumo(resumoRes.data);
         setPorEtapa(
           (etapaRes.data || []).sort(
@@ -86,6 +89,19 @@ export default function PeDeMeiaPage() {
       .catch((err) => console.error("Erro ao carregar Pé-de-Meia:", err))
       .finally(() => setLoading(false));
   }, []);
+
+  const years = useMemo(() => [...new Set(rawSerie.map((d) => d.ano))].sort(), [rawSerie]);
+
+  const serie = useMemo(() => {
+    const { yearFrom, yearTo, monthFrom, monthTo } = filters;
+    return rawSerie.filter((d) => {
+      if (yearFrom && d.ano < +yearFrom) return false;
+      if (yearTo && d.ano > +yearTo) return false;
+      if (monthFrom && d.mes < +monthFrom) return false;
+      if (monthTo && d.mes > +monthTo) return false;
+      return true;
+    });
+  }, [rawSerie, filters]);
 
   const cards = [
     {
@@ -110,15 +126,20 @@ export default function PeDeMeiaPage() {
       className="space-y-8"
     >
       <div>
-        <h1 className="text-2xl font-extrabold tracking-tight text-slate-800 dark:text-white">
-          Pé-de-Meia
-        </h1>
+        <div className="flex items-center gap-2">
+          <h1 className="text-2xl font-extrabold tracking-tight text-slate-800 dark:text-white">
+            Pé-de-Meia
+          </h1>
+          <InfoTooltip dataset="pe_de_meia" />
+        </div>
         <p className="text-sm text-slate-400 dark:text-slate-500 mt-1">
           Incentivos financeiros a estudantes do ensino médio público.
         </p>
       </div>
 
       <InsightsPanel dataset="pe_de_meia" />
+
+      <FilterBar years={years} showMonths value={filters} onChange={setFilters} />
 
       {loading ? (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">

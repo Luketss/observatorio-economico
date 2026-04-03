@@ -1,7 +1,9 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import api from "../../services/api";
 import { motion } from "framer-motion";
 import InsightsPanel from "../../components/InsightsPanel";
+import InfoTooltip from "../../components/InfoTooltip";
+import FilterBar from "../../components/FilterBar";
 import {
   ResponsiveContainer,
   LineChart,
@@ -47,10 +49,11 @@ const fmtBRL = (v) =>
 const fmtNum = (v) => (v != null ? Number(v).toLocaleString("pt-BR") : "—");
 
 export default function EstbanPage() {
-  const [serie, setSerie] = useState([]);
+  const [rawSerie, setRawSerie] = useState([]);
   const [resumo, setResumo] = useState(null);
   const [porInstituicao, setPorInstituicao] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [filters, setFilters] = useState({ yearFrom: "", yearTo: "" });
 
   useEffect(() => {
     Promise.all([
@@ -62,7 +65,7 @@ export default function EstbanPage() {
         const raw = (serieRes.data || []).sort((a, b) =>
           String(a.data_referencia).localeCompare(String(b.data_referencia))
         );
-        setSerie(raw);
+        setRawSerie(raw);
         setResumo(resumoRes.data);
         const sorted = (instRes.data || []).sort(
           (a, b) =>
@@ -73,6 +76,21 @@ export default function EstbanPage() {
       .catch((err) => console.error("Erro ao carregar ESTBAN:", err))
       .finally(() => setLoading(false));
   }, []);
+
+  const years = useMemo(() => {
+    const set = new Set(rawSerie.map((d) => parseInt(String(d.data_referencia).substring(0, 4))));
+    return [...set].sort();
+  }, [rawSerie]);
+
+  const serie = useMemo(() => {
+    const { yearFrom, yearTo } = filters;
+    return rawSerie.filter((d) => {
+      const y = parseInt(String(d.data_referencia).substring(0, 4));
+      if (yearFrom && y < +yearFrom) return false;
+      if (yearTo && y > +yearTo) return false;
+      return true;
+    });
+  }, [rawSerie, filters]);
 
   const cards = [
     {
@@ -103,15 +121,20 @@ export default function EstbanPage() {
       className="space-y-8"
     >
       <div>
-        <h1 className="text-2xl font-extrabold tracking-tight text-slate-800 dark:text-white">
-          ESTBAN — Estatísticas Bancárias
-        </h1>
+        <div className="flex items-center gap-2">
+          <h1 className="text-2xl font-extrabold tracking-tight text-slate-800 dark:text-white">
+            ESTBAN — Estatísticas Bancárias
+          </h1>
+          <InfoTooltip dataset="estban" />
+        </div>
         <p className="text-sm text-slate-400 dark:text-slate-500 mt-1">
           Operações de crédito, depósitos e agências bancárias.
         </p>
       </div>
 
       <InsightsPanel dataset="estban" />
+
+      <FilterBar years={years} value={filters} onChange={setFilters} />
 
       {loading ? (
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">

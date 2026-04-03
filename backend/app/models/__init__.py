@@ -18,6 +18,7 @@ from app.models.insight_ia import InsightIA
 from app.models.marco import Marco
 from app.models.dashboard_card_custom import DashboardCardCustom
 from app.models.plano_config import PlanoConfig
+from app.models.dataset_info import DatasetInfo
 from app.models.inss import InssAnual
 from app.models.municipio import Municipio
 from app.models.pe_de_meia import PeDeMeiaResumo
@@ -51,4 +52,5 @@ __all__ = [
     "Marco",
     "DashboardCardCustom",
     "PlanoConfig",
+    "DatasetInfo",
 ]
