@@ -16,7 +16,7 @@ BASE_PATH = "dados/Comex_Cidades_Completo"
 def normalizar_nome(nome: str) -> str:
     # Strip state suffix e.g. "Carmo do Rio Claro - MG" → "CARMO DO RIO CLARO"
     nome = re.sub(r"\s*-\s*[A-Z]{2}\s*$", "", nome.strip())
-    return nome.strip().upper()
+    return nome.strip().replace("_", " ").upper()
 
 
 def obter_ou_criar_municipio(db: Session, nome: str) -> Municipio:

@@ -13,7 +13,7 @@ BASE_PATH = "dados/Estban_Cidades_Completo"
 
 
 def normalizar_nome(nome: str) -> str:
-    return nome.strip().upper()
+    return nome.strip().replace("_", " ").upper()
 
 
 def obter_ou_criar_municipio(db: Session, nome: str) -> Municipio:

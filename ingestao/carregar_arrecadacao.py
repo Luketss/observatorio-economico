@@ -14,7 +14,7 @@ BASE_PATH = "dados/Arrecadacao_Cidades_MG"
 def normalizar_nome_municipio(nome_arquivo: str) -> str:
     # Exemplo: arrecadacao_OLIVEIRA.csv
     nome = nome_arquivo.replace("arrecadacao_", "").replace(".csv", "")
-    return nome.strip().upper()
+    return nome.strip().replace("_", " ").upper()
 
 
 def obter_ou_criar_municipio(db: Session, nome: str) -> Municipio:

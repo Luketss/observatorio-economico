@@ -14,7 +14,7 @@ from sqlalchemy.orm import Session
 router = APIRouter(prefix="/dashboard-cards", tags=["Dashboard Cards"])
 
 
-@router.get("/", response_model=List[DashboardCardCustomOut])
+@router.get("", response_model=List[DashboardCardCustomOut])
 def listar_cards(
     municipio_id: int | None = None,
     db: Session = Depends(get_db),
@@ -41,7 +41,7 @@ def listar_cards(
     )
 
 
-@router.post("/", response_model=DashboardCardCustomOut)
+@router.post("", response_model=DashboardCardCustomOut)
 def criar_card(
     data: DashboardCardCustomCreate,
     db: Session = Depends(get_db),

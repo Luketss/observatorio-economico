@@ -10,6 +10,8 @@ Leave it empty to load all available cities.
 
 import os
 
+from tqdm import tqdm
+
 import ingestao.carregar_arrecadacao as arrecadacao
 import ingestao.carregar_bolsa_familia as bolsa_familia
 import ingestao.carregar_caged as caged
@@ -31,19 +33,20 @@ import ingestao.carregar_rais as rais
 #   CIDADES = ["Nova Serrana", "Claudio", "Para de Minas"]
 #   CIDADES = []   # loads everything
 # ─────────────────────────────────────────────────────────────────────────────
-CIDADES = ["Oliveira"]
+# CIDADES = ["Nova Lima", "Oliveira", "Claudio", "Nova Serrana"]
+CIDADES = ["Nova Serrana"]
 
 
 LOADERS = [
-    ("Arrecadação", arrecadacao),
-    ("PIB", pib),
-    ("CAGED", caged),
-    ("RAIS", rais),
-    ("Bolsa Família", bolsa_familia),
-    ("Pé-de-Meia", pe_de_meia),
-    ("INSS", inss),
-    ("Estban", estban),
-    ("Comex", comex),
+    # ("Arrecadação", arrecadacao),
+    # ("PIB", pib),
+    # ("CAGED", caged),
+    # ("RAIS", rais),
+    # ("Bolsa Família", bolsa_familia),
+    # ("Pé-de-Meia", pe_de_meia),
+    # ("INSS", inss),
+    # ("Estban", estban),
+    # ("Comex", comex),
     ("CNPJ", cnpj),
 ]
 
@@ -59,19 +62,18 @@ def _matches_city(filename: str, cidades: list[str]) -> bool:
 def run_loader(nome: str, module, db, cidades: list[str]):
     base_path = module.BASE_PATH
     if not os.path.isdir(base_path):
-        print(f"  ⚠️  Pasta não encontrada: {base_path} — pulando.")
+        tqdm.write(f"  ⚠️  Pasta não encontrada: {base_path} — pulando.")
         return
 
     arquivos = sorted(f for f in os.listdir(base_path) if f.endswith(".csv"))
     selecionados = [f for f in arquivos if _matches_city(f, cidades)]
 
     if not selecionados:
-        print(f"  ⚠️  Nenhum arquivo corresponde ao filtro de cidades.")
+        tqdm.write(f"  ⚠️  Nenhum arquivo corresponde ao filtro de cidades.")
         return
 
-    for arquivo in selecionados:
+    for arquivo in tqdm(selecionados, desc=f"  {nome}", unit="arquivo", leave=False):
         caminho = os.path.join(base_path, arquivo)
-        print(f"  → {arquivo}")
         module.carregar_csv(db, caminho)
 
 
@@ -86,19 +88,21 @@ def main():
 
     from app.db.session import SessionLocal  # noqa: PLC0415
 
-    db = SessionLocal()
     erros = []
+    ativos = [entry for entry in LOADERS]
 
-    try:
-        for nome, module in LOADERS:
-            print(f"\n--- {nome} ---")
+    with tqdm(ativos, desc="Datasets", unit="dataset") as pbar:
+        for nome, module in pbar:
+            pbar.set_postfix_str(nome)
+            db = SessionLocal()
             try:
                 run_loader(nome, module, db, CIDADES)
             except Exception as e:
-                print(f"  ❌ Erro: {e}")
+                db.rollback()
+                tqdm.write(f"  ❌ {nome}: {e}")
                 erros.append((nome, e))
-    finally:
-        db.close()
+            finally:
+                db.close()
 
     print("\n" + "=" * 60)
     if erros:
@@ -111,4 +115,5 @@ def main():
 
 
 if __name__ == "__main__":
+    main()
     main()
