@@ -13,6 +13,10 @@ class PibComparativoItem(BaseModel):
     ano: int
     cidade: str
     pib_total: float
+    va_agropecuaria: float | None = None
+    va_governo: float | None = None
+    va_industria: float | None = None
+    va_servicos: float | None = None
 
 
 class PibResumo(BaseModel):

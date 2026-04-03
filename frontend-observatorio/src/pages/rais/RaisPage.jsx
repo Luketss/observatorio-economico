@@ -102,6 +102,11 @@ export default function RaisPage() {
   const [rawSexo, setRawSexo] = useState([]);
   const [rawRaca, setRawRaca] = useState([]);
   const [rawCnae, setRawCnae] = useState([]);
+  const [rawFaixaEtaria, setRawFaixaEtaria] = useState([]);
+  const [rawEscolaridade, setRawEscolaridade] = useState([]);
+  const [rawFaixaRem, setRawFaixaRem] = useState([]);
+  const [rawTempoEmprego, setRawTempoEmprego] = useState([]);
+  const [metricas, setMetricas] = useState([]);
   const [loading, setLoading] = useState(true);
   const [filters, setFilters] = useState({ yearFrom: "", yearTo: "" });
 
@@ -112,13 +117,24 @@ export default function RaisPage() {
       api.get("/rais/por_sexo"),
       api.get("/rais/por_raca"),
       api.get("/rais/por_cnae"),
+      api.get("/rais/por_faixa_etaria"),
+      api.get("/rais/por_escolaridade"),
+      api.get("/rais/por_faixa_remuneracao"),
+      api.get("/rais/por_faixa_tempo_emprego"),
+      api.get("/rais/metricas_anuais"),
     ])
-      .then(([serieRes, resumoRes, sexoRes, racaRes, cnaeRes]) => {
+      .then(([serieRes, resumoRes, sexoRes, racaRes, cnaeRes,
+              faixaEtRes, escolRes, faixaRemRes, tempoRes, metricasRes]) => {
         setRawSerie(serieRes.data || []);
         setResumo(resumoRes.data);
         setRawSexo(sexoRes.data || []);
         setRawRaca(racaRes.data || []);
         setRawCnae(cnaeRes.data || []);
+        setRawFaixaEtaria(faixaEtRes.data || []);
+        setRawEscolaridade(escolRes.data || []);
+        setRawFaixaRem(faixaRemRes.data || []);
+        setRawTempoEmprego(tempoRes.data || []);
+        setMetricas(metricasRes.data || []);
       })
       .catch((err) => console.error("Erro ao carregar RAIS:", err))
       .finally(() => setLoading(false));
@@ -137,6 +153,11 @@ export default function RaisPage() {
   const porSexo = useMemo(() => rawSexo.filter(applyYearFilter), [rawSexo, filters]);
   const porRaca = useMemo(() => rawRaca.filter(applyYearFilter), [rawRaca, filters]);
   const porCnae = useMemo(() => rawCnae.filter(applyYearFilter), [rawCnae, filters]);
+  const porFaixaEtaria = useMemo(() => rawFaixaEtaria.filter(applyYearFilter), [rawFaixaEtaria, filters]);
+  const porEscolaridade = useMemo(() => rawEscolaridade.filter(applyYearFilter), [rawEscolaridade, filters]);
+  const porFaixaRem = useMemo(() => rawFaixaRem.filter(applyYearFilter), [rawFaixaRem, filters]);
+  const porTempoEmprego = useMemo(() => rawTempoEmprego.filter(applyYearFilter), [rawTempoEmprego, filters]);
+  const metricasFiltradas = useMemo(() => metricas.filter(applyYearFilter), [metricas, filters]);
 
   const fmt = (v) => (v != null ? Number(v).toLocaleString("pt-BR") : "—");
   const fmtCurrency = (v) =>
@@ -160,6 +181,41 @@ export default function RaisPage() {
   const cnaeTotais = aggregateCnaeByYear(porCnae);
   const remSexoAnual = remByYearBySexo(porSexo);
   const sexoLabels = [...new Set(porSexo.map((d) => d.sexo))];
+
+  // Aggregate helpers for new datasets
+  const faixaEtariaTotais = Object.values(
+    porFaixaEtaria.reduce((acc, d) => {
+      if (!acc[d.faixa_etaria]) acc[d.faixa_etaria] = { faixa: d.faixa_etaria, total: 0 };
+      acc[d.faixa_etaria].total += d.total_vinculos;
+      return acc;
+    }, {})
+  ).sort((a, b) => b.total - a.total);
+
+  const escolaridadeTotais = Object.values(
+    porEscolaridade.reduce((acc, d) => {
+      if (!acc[d.grau_instrucao]) acc[d.grau_instrucao] = { grau: d.grau_instrucao, total: 0 };
+      acc[d.grau_instrucao].total += d.total_vinculos;
+      return acc;
+    }, {})
+  ).sort((a, b) => b.total - a.total);
+
+  const faixaRemTotais = Object.values(
+    porFaixaRem.reduce((acc, d) => {
+      if (!acc[d.faixa_remuneracao_sm]) acc[d.faixa_remuneracao_sm] = { faixa: d.faixa_remuneracao_sm, total: 0 };
+      acc[d.faixa_remuneracao_sm].total += d.total_vinculos;
+      return acc;
+    }, {})
+  ).sort((a, b) => b.total - a.total);
+
+  const tempoEmpregoTotais = Object.values(
+    porTempoEmprego.reduce((acc, d) => {
+      if (!acc[d.faixa_tempo_emprego]) acc[d.faixa_tempo_emprego] = { faixa: d.faixa_tempo_emprego, total: 0 };
+      acc[d.faixa_tempo_emprego].total += d.total_vinculos;
+      return acc;
+    }, {})
+  ).sort((a, b) => b.total - a.total);
+
+  const metricasAnuais = metricasFiltradas.sort((a, b) => a.ano - b.ano);
 
   const cards = [
     { label: "Total de Vínculos", value: fmt(resumo?.total_vinculos), sub: "Acumulado no período" },
@@ -307,6 +363,119 @@ export default function RaisPage() {
           </ResponsiveContainer>
         </div>
       </ChartCard>
+
+      {/* Faixa Etária + Escolaridade */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <ChartCard title="Vínculos por Faixa Etária" empty={faixaEtariaTotais.length === 0}>
+          <div className="h-64">
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart data={faixaEtariaTotais} layout="vertical">
+                <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" horizontal={false} />
+                <XAxis type="number" tick={{ fontSize: 10 }} stroke="#94a3b8" tickFormatter={(v) => v.toLocaleString("pt-BR")} />
+                <YAxis type="category" dataKey="faixa" tick={{ fontSize: 10 }} stroke="#94a3b8" width={100} />
+                <Tooltip formatter={(v) => [Number(v).toLocaleString("pt-BR"), "Vínculos"]} />
+                <Bar dataKey="total" name="Vínculos" radius={[0, 4, 4, 0]}>
+                  {faixaEtariaTotais.map((_, i) => (
+                    <Cell key={i} fill={COLORS[i % COLORS.length]} />
+                  ))}
+                </Bar>
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+        </ChartCard>
+
+        <ChartCard title="Vínculos por Grau de Instrução" empty={escolaridadeTotais.length === 0}>
+          <div className="h-64">
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart data={escolaridadeTotais} layout="vertical">
+                <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" horizontal={false} />
+                <XAxis type="number" tick={{ fontSize: 10 }} stroke="#94a3b8" tickFormatter={(v) => v.toLocaleString("pt-BR")} />
+                <YAxis type="category" dataKey="grau" tick={{ fontSize: 9 }} stroke="#94a3b8" width={140} />
+                <Tooltip formatter={(v) => [Number(v).toLocaleString("pt-BR"), "Vínculos"]} />
+                <Bar dataKey="total" name="Vínculos" radius={[0, 4, 4, 0]}>
+                  {escolaridadeTotais.map((_, i) => (
+                    <Cell key={i} fill={COLORS[(i + 2) % COLORS.length]} />
+                  ))}
+                </Bar>
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+        </ChartCard>
+      </div>
+
+      {/* Faixa de Remuneração + Tempo de Emprego */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <ChartCard title="Vínculos por Faixa Salarial (em SM)" empty={faixaRemTotais.length === 0}>
+          <div className="h-64">
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart data={faixaRemTotais} layout="vertical">
+                <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" horizontal={false} />
+                <XAxis type="number" tick={{ fontSize: 10 }} stroke="#94a3b8" tickFormatter={(v) => v.toLocaleString("pt-BR")} />
+                <YAxis type="category" dataKey="faixa" tick={{ fontSize: 10 }} stroke="#94a3b8" width={110} />
+                <Tooltip formatter={(v) => [Number(v).toLocaleString("pt-BR"), "Vínculos"]} />
+                <Bar dataKey="total" name="Vínculos" radius={[0, 4, 4, 0]}>
+                  {faixaRemTotais.map((_, i) => (
+                    <Cell key={i} fill={COLORS[(i + 1) % COLORS.length]} />
+                  ))}
+                </Bar>
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+        </ChartCard>
+
+        <ChartCard title="Vínculos por Tempo de Emprego" empty={tempoEmpregoTotais.length === 0}>
+          <div className="h-64">
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart data={tempoEmpregoTotais} layout="vertical">
+                <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" horizontal={false} />
+                <XAxis type="number" tick={{ fontSize: 10 }} stroke="#94a3b8" tickFormatter={(v) => v.toLocaleString("pt-BR")} />
+                <YAxis type="category" dataKey="faixa" tick={{ fontSize: 10 }} stroke="#94a3b8" width={110} />
+                <Tooltip formatter={(v) => [Number(v).toLocaleString("pt-BR"), "Vínculos"]} />
+                <Bar dataKey="total" name="Vínculos" radius={[0, 4, 4, 0]}>
+                  {tempoEmpregoTotais.map((_, i) => (
+                    <Cell key={i} fill={COLORS[(i + 4) % COLORS.length]} />
+                  ))}
+                </Bar>
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+        </ChartCard>
+      </div>
+
+      {/* Métricas Anuais — PCD, Outro Município, Afastamento */}
+      {metricasAnuais.length > 0 && (
+        <>
+          <ChartCard title="PCD e Trabalhadores de Outro Município (Evolução Anual)" empty={false}>
+            <div className="h-60">
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={metricasAnuais} barCategoryGap="35%">
+                  <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
+                  <XAxis dataKey="ano" tick={{ fontSize: 12 }} stroke="#94a3b8" />
+                  <YAxis tick={{ fontSize: 11 }} stroke="#94a3b8" tickFormatter={(v) => v.toLocaleString("pt-BR")} />
+                  <Tooltip formatter={(v) => [Number(v).toLocaleString("pt-BR")]} />
+                  <Legend />
+                  <Bar dataKey="total_pcd" name="PCD" fill="#8b5cf6" radius={[4, 4, 0, 0]} />
+                  <Bar dataKey="total_outro_municipio" name="Outro Município" fill="#06b6d4" radius={[4, 4, 0, 0]} />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+          </ChartCard>
+
+          <ChartCard title="Média de Dias de Afastamento Anual" empty={metricasAnuais.every((d) => !d.media_dias_afastamento)}>
+            <div className="h-52">
+              <ResponsiveContainer width="100%" height="100%">
+                <LineChart data={metricasAnuais}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
+                  <XAxis dataKey="ano" tick={{ fontSize: 12 }} stroke="#94a3b8" />
+                  <YAxis tick={{ fontSize: 11 }} stroke="#94a3b8" tickFormatter={(v) => `${v.toFixed(1)} dias`} />
+                  <Tooltip formatter={(v) => [`${Number(v).toFixed(1)} dias`, "Média de Afastamento"]} />
+                  <Line type="monotone" dataKey="media_dias_afastamento" name="Média Afastamento" stroke="#f97316" strokeWidth={2.5} dot />
+                </LineChart>
+              </ResponsiveContainer>
+            </div>
+          </ChartCard>
+        </>
+      )}
     </motion.div>
   );
 }

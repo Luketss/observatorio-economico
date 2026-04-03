@@ -67,6 +67,29 @@ def por_produto(
     ]
 
 
+@router.get("/saldo_mensal")
+def saldo_mensal(db: Session = Depends(get_db), current_user=Depends(get_current_user)):
+    """Monthly export, import and trade balance (exports − imports)."""
+    query = db.query(ComexMensal)
+    if current_user.role.nome != "ADMIN_GLOBAL":
+        query = query.filter(ComexMensal.municipio_id == current_user.municipio_id)
+    registros = query.order_by(ComexMensal.ano, ComexMensal.mes).all()
+    periodos: dict = {}
+    for r in registros:
+        key = f"{r.ano}-{str(r.mes).zfill(2)}"
+        if key not in periodos:
+            periodos[key] = {"periodo": key, "ano": r.ano, "mes": r.mes, "exportacoes": 0, "importacoes": 0}
+        if r.tipo_operacao == "EXP":
+            periodos[key]["exportacoes"] += r.valor_usd or 0
+        elif r.tipo_operacao == "IMP":
+            periodos[key]["importacoes"] += r.valor_usd or 0
+    result = []
+    for p in sorted(periodos.values(), key=lambda x: x["periodo"]):
+        p["saldo"] = p["exportacoes"] - p["importacoes"]
+        result.append(p)
+    return result
+
+
 @router.get("/por_pais", response_model=List[ComexPorPaisItem])
 def por_pais(
     ano: Optional[int] = Query(None),

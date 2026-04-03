@@ -116,9 +116,9 @@ export default function ComexPage() {
         map[key].importacoes += item.valor_usd ?? 0;
       }
     });
-    return Object.values(map).sort((a, b) =>
-      a.periodo.localeCompare(b.periodo)
-    );
+    return Object.values(map)
+      .sort((a, b) => a.periodo.localeCompare(b.periodo))
+      .map((d) => ({ ...d, saldo: d.exportacoes - d.importacoes }));
   }, [serie, filters]);
 
   const balancaPositiva = (resumo?.balanca_comercial ?? 0) >= 0;
@@ -256,6 +256,39 @@ export default function ComexPage() {
           </div>
         )}
       </div>
+
+      {/* Saldo — Balança Comercial Mensal */}
+      {chartSerie.length > 0 && (
+        <div className="bg-white dark:bg-slate-900 p-6 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-800">
+          <h3 className="text-base font-bold mb-5 text-slate-800 dark:text-white">
+            Saldo da Balança Comercial (Mensal)
+          </h3>
+          <div className="h-60">
+            <ResponsiveContainer width="100%" height="100%">
+              <LineChart data={chartSerie}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
+                <XAxis dataKey="periodo" tick={{ fontSize: 10 }} stroke="#94a3b8" interval="preserveStartEnd" />
+                <YAxis
+                  tick={{ fontSize: 11 }}
+                  stroke="#94a3b8"
+                  tickFormatter={(v) =>
+                    `US$ ${(v / 1_000_000).toLocaleString("pt-BR", { maximumFractionDigits: 1 })}M`
+                  }
+                />
+                <Tooltip formatter={(v) => [fmtUSD(v), "Saldo"]} />
+                <Line
+                  type="monotone"
+                  dataKey="saldo"
+                  name="Saldo"
+                  stroke="#8b5cf6"
+                  strokeWidth={2.5}
+                  dot={false}
+                />
+              </LineChart>
+            </ResponsiveContainer>
+          </div>
+        </div>
+      )}
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Top Produtos */}

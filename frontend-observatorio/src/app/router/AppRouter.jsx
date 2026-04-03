@@ -21,6 +21,7 @@ import InssPage from "../../pages/inss/InssPage";
 import EstbanPage from "../../pages/estban/EstbanPage";
 import ComexPage from "../../pages/comex/ComexPage";
 import EmpresasPage from "../../pages/empresas/EmpresasPage";
+import PixPage from "../../pages/pix/PixPage";
 
 function ProtectedRoute({ children }) {
   const { user, loading } = useAuth();
@@ -72,6 +73,7 @@ export default function AppRouter() {
           <Route path="estban" element={<EstbanPage />} />
           <Route path="comex" element={<ComexPage />} />
           <Route path="empresas" element={<EmpresasPage />} />
+          <Route path="pix" element={<PixPage />} />
         </Route>
 
         {/* ── Admin area ─────────────────────────────────── */}

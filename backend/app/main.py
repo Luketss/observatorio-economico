@@ -15,6 +15,7 @@ import app.api.v1.routers.inss as inss
 import app.api.v1.routers.municipios as municipios
 import app.api.v1.routers.pe_de_meia as pe_de_meia
 import app.api.v1.routers.pib as pib
+import app.api.v1.routers.pix as pix
 import app.api.v1.routers.rais as rais
 import app.api.v1.routers.usuarios as usuarios
 from app.api.error_handlers import register_exception_handlers
@@ -58,6 +59,7 @@ app.include_router(arrecadacao.router, prefix=API_PREFIX)
 app.include_router(pib.router, prefix=API_PREFIX)
 app.include_router(caged.router, prefix=API_PREFIX)
 app.include_router(rais.router, prefix=API_PREFIX)
+app.include_router(pix.router, prefix=API_PREFIX)
 app.include_router(comparativo.router, prefix=API_PREFIX)
 app.include_router(bolsa_familia.router, prefix=API_PREFIX)
 app.include_router(pe_de_meia.router, prefix=API_PREFIX)

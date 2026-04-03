@@ -45,6 +45,28 @@ def serie_mensal(
 
 
 # ==============================
+# Por Tipo de Imposto
+# ==============================
+@router.get("/por_tipo")
+def por_tipo(
+    db: Session = Depends(get_db),
+    current_user=Depends(get_current_user),
+):
+    """Returns each period's ICMS, IPVA and IPI as separate labeled rows for stacked charts."""
+    query = db.query(ArrecadacaoMensal)
+    if current_user.role.nome != "ADMIN_GLOBAL":
+        query = query.filter(ArrecadacaoMensal.municipio_id == current_user.municipio_id)
+    registros = query.order_by(ArrecadacaoMensal.ano, ArrecadacaoMensal.mes).all()
+    result = []
+    for r in registros:
+        periodo = f"{r.ano}-{str(r.mes).zfill(2)}"
+        result.append({"periodo": periodo, "ano": r.ano, "mes": r.mes, "tipo": "ICMS", "valor": r.valor_icms or 0})
+        result.append({"periodo": periodo, "ano": r.ano, "mes": r.mes, "tipo": "IPVA", "valor": r.valor_ipva or 0})
+        result.append({"periodo": periodo, "ano": r.ano, "mes": r.mes, "tipo": "IPI", "valor": r.valor_ipi or 0})
+    return result
+
+
+# ==============================
 # Resumo
 # ==============================
 @router.get("/resumo", response_model=ArrecadacaoResumo)

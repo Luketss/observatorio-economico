@@ -8,6 +8,8 @@ import {
   ResponsiveContainer,
   LineChart,
   Line,
+  AreaChart,
+  Area,
   BarChart,
   Bar,
   CartesianGrid,
@@ -50,6 +52,7 @@ const fmtNum = (v) => (v != null ? Number(v).toLocaleString("pt-BR") : "—");
 
 export default function EstbanPage() {
   const [rawSerie, setRawSerie] = useState([]);
+  const [rawCaptacao, setRawCaptacao] = useState([]);
   const [resumo, setResumo] = useState(null);
   const [porInstituicao, setPorInstituicao] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -60,12 +63,16 @@ export default function EstbanPage() {
       api.get("/estban/serie"),
       api.get("/estban/resumo"),
       api.get("/estban/por_instituicao"),
+      api.get("/estban/captacao_serie"),
     ])
-      .then(([serieRes, resumoRes, instRes]) => {
+      .then(([serieRes, resumoRes, instRes, captRes]) => {
         const raw = (serieRes.data || []).sort((a, b) =>
           String(a.data_referencia).localeCompare(String(b.data_referencia))
         );
         setRawSerie(raw);
+        setRawCaptacao((captRes.data || []).sort((a, b) =>
+          String(a.data_referencia).localeCompare(String(b.data_referencia))
+        ));
         setResumo(resumoRes.data);
         const sorted = (instRes.data || []).sort(
           (a, b) =>
@@ -82,15 +89,16 @@ export default function EstbanPage() {
     return [...set].sort();
   }, [rawSerie]);
 
-  const serie = useMemo(() => {
+  const applyYearFilter = (d) => {
     const { yearFrom, yearTo } = filters;
-    return rawSerie.filter((d) => {
-      const y = parseInt(String(d.data_referencia).substring(0, 4));
-      if (yearFrom && y < +yearFrom) return false;
-      if (yearTo && y > +yearTo) return false;
-      return true;
-    });
-  }, [rawSerie, filters]);
+    const y = parseInt(String(d.data_referencia).substring(0, 4));
+    if (yearFrom && y < +yearFrom) return false;
+    if (yearTo && y > +yearTo) return false;
+    return true;
+  };
+
+  const serie = useMemo(() => rawSerie.filter(applyYearFilter), [rawSerie, filters]);
+  const captacao = useMemo(() => rawCaptacao.filter(applyYearFilter), [rawCaptacao, filters]);
 
   const cards = [
     {
@@ -210,6 +218,94 @@ export default function EstbanPage() {
                   strokeWidth={2}
                   dot={false}
                 />
+              </LineChart>
+            </ResponsiveContainer>
+          </div>
+        )}
+      </div>
+
+      {/* Captação — Depósitos por Tipo */}
+      <div className="bg-white dark:bg-slate-900 p-6 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-800">
+        <h3 className="text-base font-bold mb-5 text-slate-800 dark:text-white">
+          Evolução da Captação — Depósitos por Tipo
+        </h3>
+        {loading ? (
+          <div className="animate-pulse h-72 bg-slate-50 dark:bg-slate-800 rounded-xl" />
+        ) : captacao.length === 0 ? (
+          <div className="h-64 flex items-center justify-center text-slate-400 dark:text-slate-500 text-sm">
+            Sem dados disponíveis
+          </div>
+        ) : (
+          <div className="h-72">
+            <ResponsiveContainer width="100%" height="100%">
+              <AreaChart data={captacao}>
+                <defs>
+                  <linearGradient id="gradVista" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.3} />
+                    <stop offset="95%" stopColor="#3b82f6" stopOpacity={0.05} />
+                  </linearGradient>
+                  <linearGradient id="gradPoupanca" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor="#10b981" stopOpacity={0.3} />
+                    <stop offset="95%" stopColor="#10b981" stopOpacity={0.05} />
+                  </linearGradient>
+                  <linearGradient id="gradPrazo" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor="#f59e0b" stopOpacity={0.3} />
+                    <stop offset="95%" stopColor="#f59e0b" stopOpacity={0.05} />
+                  </linearGradient>
+                </defs>
+                <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
+                <XAxis
+                  dataKey="data_referencia"
+                  tick={{ fontSize: 10 }}
+                  stroke="#94a3b8"
+                  interval="preserveStartEnd"
+                />
+                <YAxis
+                  tick={{ fontSize: 11 }}
+                  stroke="#94a3b8"
+                  tickFormatter={(v) =>
+                    `R$ ${(v / 1_000_000).toLocaleString("pt-BR", { maximumFractionDigits: 0 })}M`
+                  }
+                />
+                <Tooltip formatter={(v) => [fmtBRL(v)]} />
+                <Legend />
+                <Area type="monotone" dataKey="depositos_vista" name="Depósitos à Vista" stroke="#3b82f6" fill="url(#gradVista)" strokeWidth={2} dot={false} />
+                <Area type="monotone" dataKey="poupanca" name="Poupança" stroke="#10b981" fill="url(#gradPoupanca)" strokeWidth={2} dot={false} />
+                <Area type="monotone" dataKey="depositos_prazo" name="Depósitos a Prazo" stroke="#f59e0b" fill="url(#gradPrazo)" strokeWidth={2} dot={false} />
+              </AreaChart>
+            </ResponsiveContainer>
+          </div>
+        )}
+      </div>
+
+      {/* Crédito vs. Captação Total */}
+      <div className="bg-white dark:bg-slate-900 p-6 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-800">
+        <h3 className="text-base font-bold mb-5 text-slate-800 dark:text-white">
+          Crédito vs. Captação Total
+        </h3>
+        {loading ? (
+          <div className="animate-pulse h-64 bg-slate-50 dark:bg-slate-800 rounded-xl" />
+        ) : captacao.length === 0 ? (
+          <div className="h-64 flex items-center justify-center text-slate-400 dark:text-slate-500 text-sm">
+            Sem dados disponíveis
+          </div>
+        ) : (
+          <div className="h-64">
+            <ResponsiveContainer width="100%" height="100%">
+              <LineChart data={captacao}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
+                <XAxis dataKey="data_referencia" tick={{ fontSize: 10 }} stroke="#94a3b8" interval="preserveStartEnd" />
+                <YAxis
+                  tick={{ fontSize: 11 }}
+                  stroke="#94a3b8"
+                  tickFormatter={(v) =>
+                    `R$ ${(v / 1_000_000).toLocaleString("pt-BR", { maximumFractionDigits: 0 })}M`
+                  }
+                />
+                <Tooltip formatter={(v) => [fmtBRL(v)]} />
+                <Legend />
+                <Line type="monotone" dataKey="operacoes_credito" name="Operações de Crédito" stroke="#3b82f6" strokeWidth={2.5} dot={false} />
+                <Line type="monotone" dataKey="total_captacao" name="Total Captação" stroke="#10b981" strokeWidth={2} dot={false} strokeDasharray="4 2" />
               </LineChart>
             </ResponsiveContainer>
           </div>

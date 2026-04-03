@@ -46,6 +46,26 @@ def resumo_estban(db: Session = Depends(get_db), current_user=Depends(get_curren
     )
 
 
+@router.get("/captacao_serie")
+def captacao_serie(db: Session = Depends(get_db), current_user=Depends(get_current_user)):
+    """Total deposits (vista + poupança + prazo) and credit by date."""
+    query = db.query(EstbanMensal)
+    if current_user.role.nome != "ADMIN_GLOBAL":
+        query = query.filter(EstbanMensal.municipio_id == current_user.municipio_id)
+    registros = query.order_by(EstbanMensal.data_referencia).all()
+    return [
+        {
+            "data_referencia": r.data_referencia,
+            "depositos_vista": r.valor_depositos_vista or 0,
+            "poupanca": r.valor_poupanca or 0,
+            "depositos_prazo": r.valor_depositos_prazo or 0,
+            "total_captacao": (r.valor_depositos_vista or 0) + (r.valor_poupanca or 0) + (r.valor_depositos_prazo or 0),
+            "operacoes_credito": r.valor_operacoes_credito or 0,
+        }
+        for r in registros
+    ]
+
+
 @router.get("/por_instituicao", response_model=List[EstbanPorInstituicaoItem])
 def por_instituicao(db: Session = Depends(get_db), current_user=Depends(get_current_user)):
     query = db.query(

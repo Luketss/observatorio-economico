@@ -83,24 +83,25 @@ def comparativo_pib(
     current_user=Depends(get_current_user),
 ):
     if current_user.role.nome != "ADMIN_GLOBAL":
-        # Usuários comuns só veem seu município
         municipio = (
             db.query(Municipio)
             .filter(Municipio.id == current_user.municipio_id)
             .first()
         )
-
         registros = (
             db.query(PibAnual)
             .filter(PibAnual.municipio_id == current_user.municipio_id)
             .all()
         )
-
         return [
             PibComparativoItem(
                 ano=r.ano,
                 cidade=municipio.nome if municipio else "",
                 pib_total=r.pib_total,
+                va_agropecuaria=r.va_agropecuaria,
+                va_governo=r.va_governo,
+                va_industria=r.va_industria,
+                va_servicos=r.va_servicos,
             )
             for r in registros
         ]
@@ -112,12 +113,15 @@ def comparativo_pib(
         .order_by(PibAnual.ano)
         .all()
     )
-
     return [
         PibComparativoItem(
             ano=r.ano,
             cidade=nome,
             pib_total=r.pib_total,
+            va_agropecuaria=r.va_agropecuaria,
+            va_governo=r.va_governo,
+            va_industria=r.va_industria,
+            va_servicos=r.va_servicos,
         )
         for r, nome in registros
     ]

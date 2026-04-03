@@ -319,6 +319,73 @@ For the full developer guide including troubleshooting, Alembic commands referen
 
 ---
 
+## Requested Views — Data Availability
+
+The table below maps each requested chart/view to its implementation status.
+
+| View | Page | Status | Notes |
+|------|------|--------|-------|
+| Empresas Fechadas | Empresas | ✅ Implemented | `situacao != "02"` from `empresas` table |
+| Saldo de Empresas | Empresas | ✅ Implemented | Ativas − Fechadas count |
+| Empresas Fechadas por Porte | Empresas | ✅ Implemented | GROUP BY porte WHERE fechada |
+| Saldo de Empresas por Porte | Empresas | ✅ Implemented | (ativas − fechadas) by porte |
+| Empresas por Setor CNAE | Empresas | ✅ Implemented | CNAE division description mapping |
+| Total Crédito e Captação por Instituição | Bancos (Estban) | ✅ Implemented | `estban_por_instituicao` table |
+| Total Captação por Data e Tipo | Bancos (Estban) | ✅ Implemented | Deposits breakdown in `estban_mensal` |
+| Total de Captação | Bancos (Estban) | ✅ Implemented | Sum vista+poupança+prazo over time |
+| Soma de Empréstimos por Ano e Mês | Bancos (Estban) | ✅ Implemented | `valor_operacoes_credito` in `estban_mensal` |
+| Total Operações de Crédito Por Banco | Bancos (Estban) | ✅ Implemented | `estban_por_instituicao` |
+| Crédito Estratégico | Bancos (Estban) | ✅ Implemented | Credit KPIs + ratios from ESTBAN |
+| Soma Arrecadado por Ano/Mês/Tipo Imposto | Arrecadação | ✅ Implemented | ICMS / IPVA / IPI breakdown in `arrecadacao_mensal` |
+| Soma Arrecadado por Mês/Tipo Imposto | Arrecadação | ✅ Implemented | Same data, stacked by tax type |
+| PIB Comparativo por Cidade | PIB | ✅ Implemented | `/pib/comparativo` endpoint (ADMIN_GLOBAL) |
+| Total Agro/GOV/Indu/Serviços por Cidade | PIB | ✅ Implemented | VA components in `pib_anual` |
+| Média Salarial por Gênero | RAIS | ✅ Implemented | `rais_por_sexo` table |
+| Vínculos por Atividade e Descrição | RAIS | ✅ Implemented | `rais_por_cnae` table |
+| Média Salarial / Vínculos por Atividade | RAIS | ✅ Implemented | `rais_por_cnae` table |
+| Faixa Etária | RAIS | ✅ Implemented | `rais_por_faixa_etaria` (requires reingest) |
+| Grau Escolaridade | RAIS | ✅ Implemented | `rais_por_escolaridade` (requires reingest) |
+| Vínculos por Remuneração | RAIS | ✅ Implemented | `rais_por_faixa_remuneracao` (requires reingest) |
+| Vínculos por Faixa Tempo Casa | RAIS | ✅ Implemented | `rais_por_faixa_tempo_emprego` (requires reingest) |
+| Média Dias Afastamento por Atividade | RAIS | ✅ Implemented | `rais_metricas_anuais` (requires reingest) |
+| PCD's | RAIS | ✅ Implemented | `rais_metricas_anuais.total_pcd` (requires reingest) |
+| Trabalham em outro Município | RAIS | ✅ Implemented | `rais_metricas_anuais.total_outro_municipio` (requires reingest) |
+| Valor/Qtd Pagador PF e PJ por ano | PIX | ✅ Implemented | `pix_mensal` table — **requer `carregar_pix.py`** |
+| Valor Recebido por PJ por Ano e Mês | PIX | ✅ Implemented | `pix_mensal` table |
+| Dinâmica do Comércio (PIX) | PIX | ✅ Implemented | Nova página com dados PIX |
+| Total Exportados/Importados por Produto | Comex | ✅ Implemented | `comex_por_produto` table |
+| Valor e Saldo Comercial por Mês/Tipo | Comex | ✅ Implemented | `comex_mensal` + computed saldo |
+| Ticket Médio por Família | Bolsa Família | ✅ Implemented | `valor_total / total_beneficiarios` |
+| Famílias com Pé-de-Meia | Bolsa Família | ✅ Implemented | Cross-reference com `pe_de_meia_resumo` |
+| Total Pé-de-Meia por Ano e Mês | Pé-de-Meia | ✅ Implemented | Já existia na página |
+| Calendário de Ações da Prefeitura | Dashboard | ✅ Implementado | `marcos_mandato` table (Timeline do Mandato) |
+| ADM Pública e Saúde | RAIS | ✅ Implemented | CNAE sections O (Public Admin) + Q (Health) |
+| Comércio Local | RAIS | ✅ Implemented | CNAE section G (Commerce) |
+| **Café e Agricultura** | Comex | ⚠️ Parcial | Filtrar por produto no COMEX — requer limpeza dos códigos NCM |
+| **Vínculos Ativos por Ocupação (CBO)** | RAIS | ⚠️ Reingest | Raw CSV has `cbo_2002` — run `carregar_rais.py` after migration 0010 |
+| **Painel IPS** | — | ❌ Sem dados | Índice de Progresso Social não disponível nas fontes atuais |
+| **Índice de Progresso Social** | — | ❌ Sem dados | Requer dados do IPS Brasil (não disponível localmente) |
+| **Acesso à Cultura, Lazer e Esporte** | — | ❌ Sem dados | Componente do IPS — sem fonte disponível |
+| **Acesso a Direitos Humanos** | — | ❌ Sem dados | Componente do IPS — sem fonte disponível |
+| **Acesso ao Conhecimento Básico** | — | ❌ Sem dados | Componente do IPS — sem fonte disponível |
+| **Acesso à Informação e Comunicação** | — | ❌ Sem dados | Componente do IPS — sem fonte disponível |
+| **Acesso à Educação Superior** | — | ❌ Sem dados | Componente do IPS — sem fonte disponível |
+| **Faixa Permanência Bolsa Família** | — | ❌ Sem dados | Campo não presente no CSV do MDS usado na ingestão |
+| **Localização / Conexões Logísticas** | — | ❌ Sem dados | Requer dados geoespaciais (shapefiles, OpenStreetMap) não disponíveis |
+
+### Notes on "requires reingest"
+
+After running `alembic upgrade head` (migration `0010_rais_extra_pix`), re-run:
+
+```bash
+python -m ingestao.carregar_rais   # populates new RAIS breakdown tables
+python -m ingestao.carregar_pix    # loads dados/pix_*.csv files (one per city)
+```
+
+PIX data is currently available only for Nova Lima (`dados/pix_nova_lima.csv`). For other cities, obtain the file from BCB and name it `dados/pix_{cidade_normalizada}.csv`.
+
+---
+
 ## API Reference
 
 Interactive docs at `/docs` (Swagger UI) when the API is running.

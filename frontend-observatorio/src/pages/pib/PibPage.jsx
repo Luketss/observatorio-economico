@@ -8,10 +8,13 @@ import {
   ResponsiveContainer,
   BarChart,
   Bar,
+  LineChart,
+  Line,
   CartesianGrid,
   XAxis,
   YAxis,
   Tooltip,
+  Legend,
   Cell,
 } from "recharts";
 
@@ -33,20 +36,56 @@ const fmtBRL = (v) =>
 export default function PibPage() {
   const [rawSerie, setRawSerie] = useState([]);
   const [resumo, setResumo] = useState(null);
+  const [comparativo, setComparativo] = useState([]);
   const [loading, setLoading] = useState(true);
   const [filters, setFilters] = useState({ yearFrom: "", yearTo: "" });
 
   useEffect(() => {
-    Promise.all([api.get("/pib/serie"), api.get("/pib/resumo")])
-      .then(([serieRes, resumoRes]) => {
+    Promise.all([
+      api.get("/pib/serie"),
+      api.get("/pib/resumo"),
+      api.get("/pib/comparativo"),
+    ])
+      .then(([serieRes, resumoRes, compRes]) => {
         setRawSerie(serieRes.data || []);
         setResumo(resumoRes.data);
+        setComparativo(compRes.data || []);
       })
       .catch((err) => console.error("Erro ao carregar PIB:", err))
       .finally(() => setLoading(false));
   }, []);
 
   const years = useMemo(() => rawSerie.map((d) => d.ano).sort(), [rawSerie]);
+
+  // VA breakdown per year (own city only — first unique city in comparativo)
+  const vaData = useMemo(() => {
+    if (!comparativo.length) return [];
+    const cidades = [...new Set(comparativo.map((d) => d.cidade))];
+    const propia = comparativo.filter((d) => d.cidade === cidades[0]);
+    return propia
+      .filter((d) => {
+        const { yearFrom, yearTo } = filters;
+        if (yearFrom && d.ano < +yearFrom) return false;
+        if (yearTo && d.ano > +yearTo) return false;
+        return true;
+      })
+      .sort((a, b) => a.ano - b.ano);
+  }, [comparativo, filters]);
+
+  // Comparativo by city — pivot to {ano, cityA, cityB, ...}
+  const comparativoChart = useMemo(() => {
+    const anos = [...new Set(comparativo.map((d) => d.ano))].sort();
+    return anos.map((ano) => {
+      const obj = { ano };
+      comparativo.filter((d) => d.ano === ano).forEach((d) => {
+        obj[d.cidade] = d.pib_total;
+      });
+      return obj;
+    });
+  }, [comparativo]);
+
+  const cidades = useMemo(() => [...new Set(comparativo.map((d) => d.cidade))], [comparativo]);
+  const COMP_COLORS = ["#10b981", "#3b82f6", "#f59e0b", "#8b5cf6", "#ef4444", "#06b6d4"];
 
   const serie = useMemo(() => {
     const { yearFrom, yearTo } = filters;
@@ -157,6 +196,71 @@ export default function PibPage() {
           </div>
         )}
       </div>
+
+      {/* VA Breakdown */}
+      {vaData.length > 0 && (
+        <div className="bg-white dark:bg-slate-900 p-6 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-800">
+          <h3 className="text-base font-bold mb-5 text-slate-800 dark:text-white">
+            Valor Adicionado por Setor
+          </h3>
+          <div className="h-72">
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart data={vaData} margin={{ left: 10, right: 10 }}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
+                <XAxis dataKey="ano" tick={{ fontSize: 12 }} stroke="#94a3b8" />
+                <YAxis
+                  tick={{ fontSize: 11 }}
+                  stroke="#94a3b8"
+                  width={75}
+                  tickFormatter={(v) => `${(v / 1_000_000).toFixed(0)}M`}
+                />
+                <Tooltip formatter={(v) => [fmtBRL(v)]} />
+                <Legend />
+                <Bar dataKey="va_agropecuaria" name="Agropecuária" stackId="va" fill="#10b981" />
+                <Bar dataKey="va_industria" name="Indústria" stackId="va" fill="#3b82f6" />
+                <Bar dataKey="va_servicos" name="Serviços" stackId="va" fill="#f59e0b" />
+                <Bar dataKey="va_governo" name="Governo" stackId="va" fill="#8b5cf6" radius={[4, 4, 0, 0]} />
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+        </div>
+      )}
+
+      {/* Comparativo entre cidades */}
+      {comparativoChart.length > 0 && cidades.length > 1 && (
+        <div className="bg-white dark:bg-slate-900 p-6 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-800">
+          <h3 className="text-base font-bold mb-5 text-slate-800 dark:text-white">
+            PIB Comparativo — Municípios
+          </h3>
+          <div className="h-72">
+            <ResponsiveContainer width="100%" height="100%">
+              <LineChart data={comparativoChart}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
+                <XAxis dataKey="ano" tick={{ fontSize: 12 }} stroke="#94a3b8" />
+                <YAxis
+                  tick={{ fontSize: 11 }}
+                  stroke="#94a3b8"
+                  width={75}
+                  tickFormatter={(v) => `${(v / 1_000_000).toFixed(0)}M`}
+                />
+                <Tooltip formatter={(v) => [fmtBRL(v)]} />
+                <Legend />
+                {cidades.map((cidade, i) => (
+                  <Line
+                    key={cidade}
+                    type="monotone"
+                    dataKey={cidade}
+                    name={cidade}
+                    stroke={COMP_COLORS[i % COMP_COLORS.length]}
+                    strokeWidth={2}
+                    dot={false}
+                  />
+                ))}
+              </LineChart>
+            </ResponsiveContainer>
+          </div>
+        </div>
+      )}
 
       {serie.length > 0 && (
         <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-800 overflow-hidden">

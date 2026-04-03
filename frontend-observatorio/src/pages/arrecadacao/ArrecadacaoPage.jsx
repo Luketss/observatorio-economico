@@ -8,10 +8,13 @@ import {
   ResponsiveContainer,
   AreaChart,
   Area,
+  BarChart,
+  Bar,
   CartesianGrid,
   XAxis,
   YAxis,
   Tooltip,
+  Legend,
 } from "recharts";
 
 function KpiCard({ label, value, sub }) {
@@ -164,6 +167,34 @@ export default function ArrecadacaoPage() {
           </div>
         )}
       </div>
+
+      {/* ICMS / IPVA / IPI Breakdown */}
+      {serie.length > 0 && (
+        <div className="bg-white dark:bg-slate-900 p-6 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-800">
+          <h3 className="text-base font-bold mb-5 text-slate-800 dark:text-white">
+            Composição por Tipo de Imposto (ICMS / IPVA / IPI)
+          </h3>
+          <div className="h-72">
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart data={serie.slice(-24)} margin={{ left: 10, right: 10 }}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
+                <XAxis dataKey="periodo" tick={{ fontSize: 10 }} stroke="#94a3b8" />
+                <YAxis
+                  tick={{ fontSize: 11 }}
+                  stroke="#94a3b8"
+                  width={70}
+                  tickFormatter={(v) => `${(v / 1_000_000).toFixed(0)}M`}
+                />
+                <Tooltip formatter={(v) => [fmtBRL(v)]} />
+                <Legend />
+                <Bar dataKey="icms" name="ICMS" stackId="a" fill="#6366f1" />
+                <Bar dataKey="ipva" name="IPVA" stackId="a" fill="#10b981" />
+                <Bar dataKey="ipi" name="IPI" stackId="a" fill="#f59e0b" radius={[4, 4, 0, 0]} />
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+        </div>
+      )}
 
       {/* Breakdown table */}
       {serie.length > 0 && (

@@ -14,6 +14,7 @@ const MODULOS = [
   { key: "estban", label: "ESTBAN — Estatísticas Bancárias" },
   { key: "comex", label: "Comércio Exterior" },
   { key: "empresas", label: "Empresas — CNPJ" },
+  { key: "pix", label: "PIX — Transações Instantâneas" },
   { key: "insights_ia", label: "Insights IA" },
   { key: "timeline_mandato", label: "Timeline do Mandato" },
 ];

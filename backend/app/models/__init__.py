@@ -23,7 +23,12 @@ from app.models.inss import InssAnual
 from app.models.municipio import Municipio
 from app.models.pe_de_meia import PeDeMeiaResumo
 from app.models.pib import PibAnual
-from app.models.rais import RaisVinculo, RaisPorSexo, RaisPorRaca, RaisPorCnae
+from app.models.pix import PixMensal
+from app.models.rais import (
+    RaisVinculo, RaisPorSexo, RaisPorRaca, RaisPorCnae,
+    RaisPorFaixaEtaria, RaisPorEscolaridade, RaisPorFaixaRemuneracao,
+    RaisPorFaixaTempoEmprego, RaisMetricasAnuais,
+)
 from app.models.role import Role
 from app.models.usuario import Usuario
 
@@ -42,6 +47,12 @@ __all__ = [
     "RaisPorSexo",
     "RaisPorRaca",
     "RaisPorCnae",
+    "RaisPorFaixaEtaria",
+    "RaisPorEscolaridade",
+    "RaisPorFaixaRemuneracao",
+    "RaisPorFaixaTempoEmprego",
+    "RaisMetricasAnuais",
+    "PixMensal",
     "BolsaFamiliaResumo",
     "PeDeMeiaResumo",
     "InssAnual",

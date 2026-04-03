@@ -37,6 +37,7 @@ const NAV_ITEMS = [
   { to: "/estban", label: "Bancos", icon: BuildingOfficeIcon, modulo: "estban" },
   { to: "/comex", label: "Comércio Ext.", icon: GlobeAltIcon, modulo: "comex" },
   { to: "/empresas", label: "Empresas", icon: BuildingStorefrontIcon, modulo: "empresas" },
+  { to: "/pix", label: "PIX", icon: BanknotesIcon, modulo: "pix" },
 ];
 
 export default function DashboardLayout() {
