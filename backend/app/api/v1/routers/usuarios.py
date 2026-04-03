@@ -15,7 +15,7 @@ router = APIRouter(prefix="/usuarios", tags=["Usuários"])
 # ==============================
 # Listar usuários (Thin Controller)
 # ==============================
-@router.get("/", response_model=PaginatedResponse[UsuarioOut])
+@router.get("", response_model=PaginatedResponse[UsuarioOut])
 def listar_usuarios(
     skip: int = 0,
     limit: int = 20,

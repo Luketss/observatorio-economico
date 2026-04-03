@@ -12,7 +12,7 @@ router = APIRouter(prefix="/plano-config", tags=["Plano Config"])
 PLANOS_VALIDOS = {"free", "paid"}
 
 
-@router.get("/", response_model=PlanoConfigOut)
+@router.get("", response_model=PlanoConfigOut)
 def get_plano_config(
     plano: str,
     db: Session = Depends(get_db),

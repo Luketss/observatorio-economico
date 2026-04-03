@@ -12,7 +12,7 @@ router = APIRouter(prefix="/municipios", tags=["Municípios"])
 # ==============================
 # Listar municípios
 # ==============================
-@router.get("/", response_model=List[MunicipioOut])
+@router.get("", response_model=List[MunicipioOut])
 def listar_municipios(
     db: Session = Depends(get_db),
     current_user=Depends(get_current_user),
