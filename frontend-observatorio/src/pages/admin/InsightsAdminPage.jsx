@@ -43,7 +43,7 @@ export default function InsightsAdminPage() {
   const [acting, setActing] = useState({}); // { id: bool }
 
   useEffect(() => {
-    api.get("/municipios/").then((r) => setMunicipios(r.data || []));
+    api.get("/municipios").then((r) => setMunicipios(r.data || []));
   }, []);
 
   const loadInsights = (id) => {

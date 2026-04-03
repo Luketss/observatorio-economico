@@ -50,7 +50,7 @@ export default function DashboardLayout() {
 
   useEffect(() => {
     if (isGlobal || !user) return;
-    api.get("/municipios/").then((res) => {
+    api.get("/municipios").then((res) => {
       const municipio = res.data?.[0];
       if (!municipio) return;
       if (municipio.brasao) setBrasao(municipio.brasao);

@@ -12,7 +12,7 @@ export default function MunicipiosAdminPage() {
   const load = () => {
     setLoading(true);
     api
-      .get("/municipios/")
+      .get("/municipios")
       .then((r) => setMunicipios(r.data || []))
       .catch(() => setMunicipios([]))
       .finally(() => setLoading(false));

@@ -55,7 +55,7 @@ export default function CustomCardsAdminPage() {
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
-    api.get("/municipios/").then((r) => setMunicipios(r.data || []));
+    api.get("/municipios").then((r) => setMunicipios(r.data || []));
   }, []);
 
   useEffect(() => {

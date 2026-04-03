@@ -21,13 +21,13 @@ export default function UsuariosAdminPage() {
   const [formError, setFormError] = useState(null);
 
   function loadUsuarios() {
-    return api.get("/usuarios/").then((res) => {
+    return api.get("/usuarios").then((res) => {
       setUsuarios(res.data.items || []);
     });
   }
 
   useEffect(() => {
-    Promise.all([loadUsuarios(), api.get("/municipios/")])
+    Promise.all([loadUsuarios(), api.get("/municipios")])
       .then(([, munRes]) => {
         setMunicipios(munRes.data || []);
       })
@@ -45,7 +45,7 @@ export default function UsuariosAdminPage() {
     setSaving(true);
     setFormError(null);
     try {
-      await api.post("/usuarios/", {
+      await api.post("/usuarios", {
         ...form,
         municipio_id: form.municipio_id ? Number(form.municipio_id) : null,
         role_id: Number(form.role_id),
