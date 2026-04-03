@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import api from "../../services/api";
 import { motion } from "framer-motion";
+import InfoTooltip from "../../components/InfoTooltip";
 import {
   ResponsiveContainer,
   BarChart,
@@ -68,10 +69,13 @@ export default function ComparativoPage() {
       className="space-y-8"
     >
       <div>
-        <h1 className="text-2xl font-extrabold tracking-tight text-slate-800">
-          Comparativo entre Municípios
-        </h1>
-        <p className="text-sm text-slate-400 mt-1">
+        <div className="flex items-center gap-2">
+          <h1 className="text-2xl font-extrabold tracking-tight text-slate-800 dark:text-white">
+            Comparativo entre Municípios
+          </h1>
+          <InfoTooltip dataset="comparativo" />
+        </div>
+        <p className="text-sm text-slate-400 dark:text-slate-500 mt-1">
           Ranking dos municípios por indicador e ano. Disponível apenas para administradores.
         </p>
       </div>

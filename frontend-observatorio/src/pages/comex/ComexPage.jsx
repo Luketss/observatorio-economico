@@ -54,6 +54,7 @@ export default function ComexPage() {
   const [anoSelecionado, setAnoSelecionado] = useState("");
   const [loading, setLoading] = useState(true);
   const [loadingFilters, setLoadingFilters] = useState(false);
+  const [filters, setFilters] = useState({ yearFrom: "", yearTo: "", monthFrom: "", monthTo: "" });
 
   // Derive available years from serie data
   const anos = useMemo(() => {
@@ -100,8 +101,13 @@ export default function ComexPage() {
 
   // Build time series: group by period, separate exports and imports
   const chartSerie = useMemo(() => {
+    const { yearFrom, yearTo, monthFrom, monthTo } = filters;
     const map = {};
     serie.forEach((item) => {
+      if (yearFrom && item.ano < +yearFrom) return;
+      if (yearTo && item.ano > +yearTo) return;
+      if (monthFrom && item.mes < +monthFrom) return;
+      if (monthTo && item.mes > +monthTo) return;
       const key = `${item.ano}-${String(item.mes).padStart(2, "0")}`;
       if (!map[key]) map[key] = { periodo: key, exportacoes: 0, importacoes: 0 };
       if (item.tipo_operacao === "EXP") {
@@ -113,7 +119,7 @@ export default function ComexPage() {
     return Object.values(map).sort((a, b) =>
       a.periodo.localeCompare(b.periodo)
     );
-  }, [serie]);
+  }, [serie, filters]);
 
   const balancaPositiva = (resumo?.balanca_comercial ?? 0) >= 0;
 
@@ -147,9 +153,12 @@ export default function ComexPage() {
     >
       <div className="flex items-start justify-between gap-4 flex-wrap">
         <div>
-          <h1 className="text-2xl font-extrabold tracking-tight text-slate-800 dark:text-white">
-            Comércio Exterior
-          </h1>
+          <div className="flex items-center gap-2">
+            <h1 className="text-2xl font-extrabold tracking-tight text-slate-800 dark:text-white">
+              Comércio Exterior
+            </h1>
+            <InfoTooltip dataset="comex" />
+          </div>
           <p className="text-sm text-slate-400 dark:text-slate-500 mt-1">
             Exportações, importações e balança comercial.
           </p>
@@ -173,6 +182,8 @@ export default function ComexPage() {
       </div>
 
       <InsightsPanel dataset="comex" />
+
+      <FilterBar years={anos.slice().sort()} showMonths value={filters} onChange={setFilters} />
 
       {loading ? (
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">

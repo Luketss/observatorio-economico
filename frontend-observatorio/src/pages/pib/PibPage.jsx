@@ -17,12 +17,12 @@ import {
 
 function KpiCard({ label, value, sub }) {
   return (
-    <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100">
-      <p className="text-xs uppercase tracking-wider text-slate-400 font-medium">
+    <div className="bg-white dark:bg-slate-900 p-6 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-800">
+      <p className="text-xs uppercase tracking-wider text-slate-400 dark:text-slate-500 font-medium">
         {label}
       </p>
-      <p className="text-2xl font-bold mt-2 text-slate-800">{value}</p>
-      {sub && <p className="text-xs text-slate-400 mt-1">{sub}</p>}
+      <p className="text-2xl font-bold mt-2 text-slate-800 dark:text-white">{value}</p>
+      {sub && <p className="text-xs text-slate-400 dark:text-slate-500 mt-1">{sub}</p>}
     </div>
   );
 }
@@ -107,7 +107,7 @@ export default function PibPage() {
       {loading ? (
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           {[...Array(3)].map((_, i) => (
-            <div key={i} className="bg-white p-6 rounded-2xl border border-slate-100 animate-pulse h-28" />
+            <div key={i} className="bg-white dark:bg-slate-900 p-6 rounded-2xl border border-slate-100 dark:border-slate-800 animate-pulse h-28" />
           ))}
         </div>
       ) : (
@@ -118,12 +118,12 @@ export default function PibPage() {
         </div>
       )}
 
-      <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100">
-        <h3 className="text-base font-bold mb-5 text-slate-800">
+      <div className="bg-white dark:bg-slate-900 p-6 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-800">
+        <h3 className="text-base font-bold mb-5 text-slate-800 dark:text-white">
           Evolução Anual do PIB
         </h3>
         {serie.length === 0 ? (
-          <div className="h-64 flex items-center justify-center text-slate-400 text-sm">
+          <div className="h-64 flex items-center justify-center text-slate-400 dark:text-slate-500 text-sm">
             Sem dados disponíveis
           </div>
         ) : (
@@ -159,27 +159,27 @@ export default function PibPage() {
       </div>
 
       {serie.length > 0 && (
-        <div className="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
-          <div className="px-6 py-4 border-b border-slate-100">
-            <h3 className="text-base font-bold text-slate-800">Série Anual</h3>
+        <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-800 overflow-hidden">
+          <div className="px-6 py-4 border-b border-slate-100 dark:border-slate-800">
+            <h3 className="text-base font-bold text-slate-800 dark:text-white">Série Anual</h3>
           </div>
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
-                <tr className="bg-slate-50 text-left text-xs uppercase text-slate-400 tracking-wider">
+                <tr className="bg-slate-50 dark:bg-slate-800 text-left text-xs uppercase text-slate-400 dark:text-slate-500 tracking-wider">
                   <th className="px-6 py-3">Ano</th>
                   <th className="px-6 py-3 text-right">PIB Total</th>
                   <th className="px-6 py-3">Tipo</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-50">
+              <tbody className="divide-y divide-slate-50 dark:divide-slate-800">
                 {serie.slice().reverse().map((item, i) => (
-                  <tr key={i} className="hover:bg-slate-50 transition-colors">
-                    <td className="px-6 py-3 font-medium text-slate-700">{item.ano}</td>
-                    <td className="px-6 py-3 text-right font-semibold text-slate-800">
+                  <tr key={i} className="hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors">
+                    <td className="px-6 py-3 font-medium text-slate-700 dark:text-slate-200">{item.ano}</td>
+                    <td className="px-6 py-3 text-right font-semibold text-slate-800 dark:text-white">
                       {fmtBRL(item.pib_total)}
                     </td>
-                    <td className="px-6 py-3 text-slate-500">{item.tipo_dado || "—"}</td>
+                    <td className="px-6 py-3 text-slate-500 dark:text-slate-400">{item.tipo_dado || "—"}</td>
                   </tr>
                 ))}
               </tbody>

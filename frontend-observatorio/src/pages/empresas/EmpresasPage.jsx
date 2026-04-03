@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import api from "../../services/api";
 import { motion } from "framer-motion";
 import InsightsPanel from "../../components/InsightsPanel";
+import InfoTooltip from "../../components/InfoTooltip";
 import {
   ResponsiveContainer,
   BarChart,
@@ -118,9 +119,12 @@ export default function EmpresasPage() {
       className="space-y-8"
     >
       <div>
-        <h1 className="text-2xl font-extrabold tracking-tight text-slate-800 dark:text-white">
-          Empresas — CNPJ
-        </h1>
+        <div className="flex items-center gap-2">
+          <h1 className="text-2xl font-extrabold tracking-tight text-slate-800 dark:text-white">
+            Empresas — CNPJ
+          </h1>
+          <InfoTooltip dataset="empresas" />
+        </div>
         <p className="text-sm text-slate-400 dark:text-slate-500 mt-1">
           Perfil e composição do tecido empresarial local.
         </p>
