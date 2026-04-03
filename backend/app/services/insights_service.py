@@ -20,6 +20,7 @@ from app.models.inss import InssAnual
 from app.models.municipio import Municipio
 from app.models.pe_de_meia import PeDeMeiaResumo
 from app.models.pib import PibAnual
+from app.models.pix import PixMensal
 from app.models.rais import RaisVinculo
 from fastapi import HTTPException
 from sqlalchemy import func
@@ -40,6 +41,7 @@ DATASET_LABELS = {
     "estban": "Estban — Estatísticas Bancárias",
     "comex": "Comércio Exterior (Exportações e Importações)",
     "empresas": "Empresas Ativas no Município",
+    "pix": "PIX — Transações Instantâneas (Banco Central)",
     "geral": "Visão Geral da Economia Municipal",
 }
 
@@ -196,6 +198,29 @@ def _fetch_dados(db: Session, municipio_id: int, dataset: str) -> tuple[list[dic
         )
         dados = [{"total_empresas": total, "ativas": ativas, "mei": mei}]
         periodo = "geral"
+
+    elif dataset == "pix":
+        rows = (
+            db.query(PixMensal)
+            .filter(PixMensal.municipio_id == municipio_id)
+            .order_by(PixMensal.ano.desc(), PixMensal.mes.desc())
+            .limit(12)
+            .all()
+        )
+        dados = [
+            {
+                "ano": r.ano,
+                "mes": r.mes,
+                "vl_pagador_pf": r.vl_pagador_pf,
+                "qt_pagador_pf": r.qt_pagador_pf,
+                "vl_pagador_pj": r.vl_pagador_pj,
+                "qt_pagador_pj": r.qt_pagador_pj,
+                "vl_recebedor_pf": r.vl_recebedor_pf,
+                "vl_recebedor_pj": r.vl_recebedor_pj,
+            }
+            for r in rows
+        ]
+        periodo = f"{rows[0].ano}-{rows[0].mes:02d}" if rows else "geral"
 
     elif dataset == "geral":
         pib = db.query(PibAnual).filter(PibAnual.municipio_id == municipio_id).order_by(PibAnual.ano.desc()).first()

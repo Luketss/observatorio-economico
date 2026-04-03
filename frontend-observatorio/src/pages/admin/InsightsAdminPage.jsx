@@ -23,6 +23,7 @@ const DATASETS = [
   { key: "estban", label: "Bancos (Estban)" },
   { key: "comex", label: "Comércio Exterior" },
   { key: "empresas", label: "Empresas" },
+  { key: "pix", label: "PIX" },
 ];
 
 function fmtDate(dt) {
