@@ -253,6 +253,89 @@ def _fetch_dados(db: Session, municipio_id: int, dataset: str) -> tuple[list[dic
     return dados, periodo
 
 
+def gerar_release(db: Session, municipio_id: int, dataset: str) -> InsightIA:
+    """Generate a 5-paragraph institutional press release for a dataset."""
+    if not settings.ANTHROPIC_API_KEY:
+        raise HTTPException(status_code=503, detail="ANTHROPIC_API_KEY não configurada no servidor.")
+
+    municipio = db.get(Municipio, municipio_id)
+    if not municipio:
+        raise HTTPException(status_code=404, detail="Município não encontrado.")
+
+    dados, periodo = _fetch_dados(db, municipio_id, dataset)
+
+    if not dados:
+        raise HTTPException(status_code=404, detail="Sem dados suficientes para gerar o release.")
+
+    release_dataset = f"release_{dataset}"
+    dataset_label = DATASET_LABELS.get(dataset, dataset)
+    dados_json = json.dumps(dados, ensure_ascii=False, default=str)
+
+    prompt = f"""Atue como um assessor de imprensa especializado em comunicação institucional pública no Brasil.
+
+Sua tarefa é redigir um release de mídia institucional para a Prefeitura de {municipio.nome}, com foco em divulgação para jornais locais, portais de notícia e redes sociais (Instagram e Facebook).
+
+ESTRUTURA (5 parágrafos curtos e objetivos):
+1. Introdução: Apresente a temática principal, cite "Prefeitura de {municipio.nome}", explique o dado em uma frase objetiva e deixe explícito o objetivo da divulgação.
+2. Desenvolvimento 1: dados numéricos e informações concretas.
+3. Desenvolvimento 2: mais dados, contexto e indicadores relevantes.
+4. Desenvolvimento 3: resultados, ações das secretarias, iniciativas da administração pública.
+5. Conclusão: se dados positivos → reforce que os resultados são fruto de gestão eficiente e planejamento; se negativos/mistos → enfatize que as secretarias já atuam ativamente para solucionar os desafios e indique perspectiva de melhoria.
+
+TOM E ESTILO: linguagem formal mas acessível, ativa, clara e objetiva. Sem jargões excessivos. Adequado para imprensa e redes sociais. Destaque resultados e números de forma positiva.
+
+Dataset: {dataset_label}
+Cidade: {municipio.nome} ({municipio.estado})
+Dados: {dados_json}
+
+Responda APENAS com um JSON array de 5 strings, cada string sendo um parágrafo completo e independente. Sem texto adicional fora do array.
+["Parágrafo 1...", "Parágrafo 2...", "Parágrafo 3...", "Parágrafo 4...", "Parágrafo 5..."]"""
+
+    client = anthropic.Anthropic(api_key=settings.ANTHROPIC_API_KEY)
+    message = client.messages.create(
+        model=MODEL,
+        max_tokens=1024,
+        messages=[{"role": "user", "content": prompt}],
+    )
+
+    raw = message.content[0].text.strip()
+
+    if raw.startswith("```"):
+        lines = raw.splitlines()
+        lines = [l for l in lines if not l.strip().startswith("```")]
+        raw = "\n".join(lines).strip()
+
+    try:
+        paragraphs = json.loads(raw)
+        if not isinstance(paragraphs, list):
+            paragraphs = [raw]
+    except json.JSONDecodeError:
+        paragraphs = [raw]
+
+    conteudo = json.dumps(paragraphs, ensure_ascii=False)
+
+    existing = buscar_insight(db, municipio_id, release_dataset, periodo)
+    if existing:
+        existing.conteudo = conteudo
+        existing.modelo = MODEL
+        existing.gerado_em = datetime.now(timezone.utc)
+        db.commit()
+        db.refresh(existing)
+        return existing
+
+    release = InsightIA(
+        municipio_id=municipio_id,
+        dataset=release_dataset,
+        periodo=periodo,
+        conteudo=conteudo,
+        modelo=MODEL,
+    )
+    db.add(release)
+    db.commit()
+    db.refresh(release)
+    return release
+
+
 def gerar_insight(db: Session, municipio_id: int, dataset: str) -> InsightIA:
     if not settings.ANTHROPIC_API_KEY:
         raise HTTPException(status_code=503, detail="ANTHROPIC_API_KEY não configurada no servidor.")

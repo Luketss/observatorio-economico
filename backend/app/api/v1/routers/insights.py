@@ -4,7 +4,7 @@ from typing import List
 
 from app.api.deps import get_current_user, get_db
 from app.models.insight_ia import InsightIA as InsightModel
-from app.services.insights_service import buscar_insight, gerar_insight
+from app.services.insights_service import buscar_insight, gerar_insight, gerar_release
 from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
@@ -134,12 +134,45 @@ def listar_insights_admin(
 
     rows = (
         db.query(InsightModel)
-        .filter(InsightModel.municipio_id == municipio_id)
+        .filter(
+            InsightModel.municipio_id == municipio_id,
+            ~InsightModel.dataset.like("release_%"),
+        )
         .order_by(InsightModel.dataset, InsightModel.gerado_em.desc())
         .all()
     )
 
     # Return only the latest per dataset
+    seen = set()
+    result = []
+    for row in rows:
+        if row.dataset not in seen:
+            seen.add(row.dataset)
+            result.append(_to_response(row))
+
+    return result
+
+
+@router.get("/admin_releases", response_model=List[InsightResponse])
+def listar_releases_admin(
+    municipio_id: int = Query(...),
+    db: Session = Depends(get_db),
+    current_user=Depends(get_current_user),
+):
+    """Returns all releases (release_* datasets) for a municipality. ADMIN_GLOBAL only."""
+    if current_user.role.nome != "ADMIN_GLOBAL":
+        raise HTTPException(status_code=403, detail="Acesso negado.")
+
+    rows = (
+        db.query(InsightModel)
+        .filter(
+            InsightModel.municipio_id == municipio_id,
+            InsightModel.dataset.like("release_%"),
+        )
+        .order_by(InsightModel.dataset, InsightModel.gerado_em.desc())
+        .all()
+    )
+
     seen = set()
     result = []
     for row in rows:
@@ -164,6 +197,22 @@ def post_gerar_insight(
 
     insight = gerar_insight(db, body.municipio_id, body.dataset)
     return _to_response(insight)
+
+
+@router.post("/gerar_release", response_model=InsightResponse)
+def post_gerar_release(
+    body: GerarInsightRequest,
+    db: Session = Depends(get_db),
+    current_user=Depends(get_current_user),
+):
+    if current_user.role.nome != "ADMIN_GLOBAL":
+        raise HTTPException(status_code=403, detail="Apenas ADMIN_GLOBAL pode gerar releases.")
+
+    if not body.municipio_id:
+        raise HTTPException(status_code=400, detail="municipio_id é obrigatório.")
+
+    release = gerar_release(db, body.municipio_id, body.dataset)
+    return _to_response(release)
 
 
 @router.patch("/{insight_id}", response_model=InsightResponse)

@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import api from "../../services/api";
 import {
   SparklesIcon,
@@ -9,6 +9,8 @@ import {
   EyeIcon,
   EyeSlashIcon,
   TrashIcon,
+  NewspaperIcon,
+  XMarkIcon,
 } from "@heroicons/react/24/outline";
 
 const DATASETS = [
@@ -37,11 +39,14 @@ function fmtDate(dt) {
 export default function InsightsAdminPage() {
   const [municipios, setMunicipios] = useState([]);
   const [selectedId, setSelectedId] = useState("");
-  const [insights, setInsights] = useState({}); // { dataset: InsightResponse | null }
+  const [insights, setInsights] = useState({});
+  const [releases, setReleases] = useState({});
   const [loadingInsights, setLoadingInsights] = useState(false);
   const [generating, setGenerating] = useState({});
+  const [generatingRelease, setGeneratingRelease] = useState({});
   const [generatingAll, setGeneratingAll] = useState(false);
-  const [acting, setActing] = useState({}); // { id: bool }
+  const [acting, setActing] = useState({});
+  const [releaseModal, setReleaseModal] = useState(null);
 
   useEffect(() => {
     api.get("/municipios").then((r) => setMunicipios(r.data || []));
@@ -50,14 +55,24 @@ export default function InsightsAdminPage() {
   const loadInsights = (id) => {
     setLoadingInsights(true);
     setInsights({});
-    api
-      .get("/insights/admin", { params: { municipio_id: id } })
-      .then((r) => {
+    setReleases({});
+    Promise.all([
+      api.get("/insights/admin", { params: { municipio_id: id } }),
+      api.get("/insights/admin_releases", { params: { municipio_id: id } }),
+    ])
+      .then(([insRes, relRes]) => {
         const map = {};
-        (r.data || []).forEach((ins) => { map[ins.dataset] = ins; });
+        (insRes.data || []).forEach((ins) => { map[ins.dataset] = ins; });
         setInsights(map);
+
+        const relMap = {};
+        (relRes.data || []).forEach((ins) => {
+          const baseKey = ins.dataset.replace(/^release_/, "");
+          relMap[baseKey] = ins;
+        });
+        setReleases(relMap);
       })
-      .catch(() => setInsights({}))
+      .catch(() => { setInsights({}); setReleases({}); })
       .finally(() => setLoadingInsights(false));
   };
 
@@ -78,6 +93,22 @@ export default function InsightsAdminPage() {
       console.error("Erro ao gerar insight:", err.response?.data?.detail || err.message);
     } finally {
       setGenerating((prev) => ({ ...prev, [dataset]: false }));
+    }
+  };
+
+  const handleGerarRelease = async (dataset) => {
+    setGeneratingRelease((prev) => ({ ...prev, [dataset]: true }));
+    try {
+      const res = await api.post("/insights/gerar_release", {
+        dataset,
+        municipio_id: parseInt(selectedId),
+      });
+      const baseKey = res.data.dataset.replace(/^release_/, "");
+      setReleases((prev) => ({ ...prev, [baseKey]: res.data }));
+    } catch (err) {
+      console.error("Erro ao gerar release:", err.response?.data?.detail || err.message);
+    } finally {
+      setGeneratingRelease((prev) => ({ ...prev, [dataset]: false }));
     }
   };
 
@@ -124,6 +155,93 @@ export default function InsightsAdminPage() {
     }
   };
 
+  const handlePrintRelease = (release, label, municipioNome) => {
+    const dataGerado = new Date(release.gerado_em).toLocaleDateString("pt-BR", {
+      day: "2-digit", month: "long", year: "numeric",
+    });
+    const html = `<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8"/>
+  <title>Release — ${label} — ${municipioNome}</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: Georgia, 'Times New Roman', serif;
+      font-size: 12pt;
+      line-height: 1.8;
+      color: #1a1a1a;
+      background: white;
+      max-width: 720px;
+      margin: 0 auto;
+      padding: 48px 40px;
+    }
+    header {
+      border-bottom: 3px solid #1a1a1a;
+      padding-bottom: 16px;
+      margin-bottom: 28px;
+    }
+    .tag {
+      font-size: 8.5pt;
+      font-weight: bold;
+      letter-spacing: .12em;
+      text-transform: uppercase;
+      color: #666;
+      margin-bottom: 8px;
+    }
+    h1 {
+      font-size: 22pt;
+      font-weight: bold;
+      line-height: 1.2;
+      margin-bottom: 8px;
+    }
+    .meta {
+      font-size: 9pt;
+      color: #555;
+      font-style: italic;
+    }
+    .body p {
+      margin-bottom: 1.4em;
+      text-align: justify;
+      hyphens: auto;
+    }
+    footer {
+      border-top: 1px solid #ccc;
+      margin-top: 36px;
+      padding-top: 12px;
+      font-size: 8pt;
+      color: #888;
+      font-style: italic;
+    }
+    @media print {
+      body { padding: 0; max-width: 100%; }
+      @page { margin: 2cm; }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="tag">Release de Imprensa</div>
+    <h1>Prefeitura de ${municipioNome}</h1>
+    <div class="meta">${label} &mdash; ${dataGerado} &mdash; Gerado por UAIZI / Inteligência Artificial</div>
+  </header>
+  <div class="body">
+    ${release.bullets.map((p) => `<p>${p}</p>`).join("\n    ")}
+  </div>
+  <footer>
+    Este release foi gerado com apoio de inteligência artificial e deve ser revisado pela equipe de comunicação antes da publicação oficial. &mdash; Prefeitura de ${municipioNome}
+  </footer>
+  <script>window.onload = function() { window.print(); }</script>
+</body>
+</html>`;
+
+    const win = window.open("", "_blank");
+    win.document.write(html);
+    win.document.close();
+  };
+
+  const municipioNome = municipios.find((m) => m.id === parseInt(selectedId))?.nome || "Município";
+
   return (
     <motion.div
       initial={{ opacity: 0, y: 15 }}
@@ -137,7 +255,7 @@ export default function InsightsAdminPage() {
           Insights IA
         </h1>
         <p className="text-sm text-slate-400 dark:text-slate-500 mt-1">
-          Gere, gerencie visibilidade e exclua insights por município.
+          Gere insights, releases de imprensa e gerencie visibilidade por município.
         </p>
       </div>
 
@@ -195,7 +313,9 @@ export default function InsightsAdminPage() {
               <tbody className="divide-y divide-slate-50 dark:divide-slate-800">
                 {DATASETS.map((d) => {
                   const existing = insights[d.key];
+                  const existingRelease = releases[d.key];
                   const isGenerating = generating[d.key];
+                  const isGeneratingRelease = generatingRelease[d.key];
                   const isActing = existing && acting[existing.id];
                   const hiddenFromFree = existing?.oculto_planos?.includes("free");
 
@@ -234,41 +354,38 @@ export default function InsightsAdminPage() {
                       {/* Visibility controls */}
                       <td className="px-6 py-4">
                         {existing && (
-                          <div className="flex items-center gap-2">
-                            <button
-                              onClick={() => handleTogglePlanoFree(existing)}
-                              disabled={isActing}
-                              title={hiddenFromFree ? "Mostrar para plano gratuito" : "Ocultar para plano gratuito"}
-                              className={`inline-flex items-center gap-1 text-xs font-medium px-2.5 py-1 rounded-lg border transition-colors disabled:opacity-40 ${
-                                hiddenFromFree
-                                  ? "border-slate-300 dark:border-slate-600 text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800"
-                                  : "border-blue-200 dark:border-blue-800 text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-950/40 hover:bg-blue-100"
-                              }`}
-                            >
-                              {hiddenFromFree ? <EyeSlashIcon className="w-3.5 h-3.5" /> : <EyeIcon className="w-3.5 h-3.5" />}
-                              {hiddenFromFree ? "Oculto (free)" : "Visível (free)"}
-                            </button>
-                          </div>
+                          <button
+                            onClick={() => handleTogglePlanoFree(existing)}
+                            disabled={isActing}
+                            title={hiddenFromFree ? "Mostrar para plano gratuito" : "Ocultar para plano gratuito"}
+                            className={`inline-flex items-center gap-1 text-xs font-medium px-2.5 py-1 rounded-lg border transition-colors disabled:opacity-40 ${
+                              hiddenFromFree
+                                ? "border-slate-300 dark:border-slate-600 text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800"
+                                : "border-blue-200 dark:border-blue-800 text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-950/40 hover:bg-blue-100"
+                            }`}
+                          >
+                            {hiddenFromFree ? <EyeSlashIcon className="w-3.5 h-3.5" /> : <EyeIcon className="w-3.5 h-3.5" />}
+                            {hiddenFromFree ? "Oculto (free)" : "Visível (free)"}
+                          </button>
                         )}
                       </td>
 
                       {/* Actions */}
-                      <td className="px-6 py-4 text-right">
-                        <div className="flex items-center justify-end gap-1">
-                          {/* Generate / Regenerate */}
+                      <td className="px-6 py-4">
+                        <div className="flex items-center justify-end gap-1 flex-wrap">
+                          {/* Insight actions */}
                           <button
                             onClick={() => handleGerar(d.key)}
                             disabled={isGenerating || generatingAll}
-                            title={existing ? "Regenerar" : "Gerar"}
-                            className="inline-flex items-center gap-1.5 text-sm font-medium text-violet-600 hover:text-violet-800 dark:hover:text-violet-400 disabled:opacity-40 transition-colors px-3 py-1.5 rounded-lg hover:bg-violet-50 dark:hover:bg-violet-950/40"
+                            title={existing ? "Regenerar insight" : "Gerar insight"}
+                            className="inline-flex items-center gap-1.5 text-xs font-medium text-violet-600 hover:text-violet-800 dark:hover:text-violet-400 disabled:opacity-40 transition-colors px-2.5 py-1.5 rounded-lg hover:bg-violet-50 dark:hover:bg-violet-950/40"
                           >
-                            <ArrowPathIcon className={`w-4 h-4 ${isGenerating ? "animate-spin" : ""}`} />
+                            <ArrowPathIcon className={`w-3.5 h-3.5 ${isGenerating ? "animate-spin" : ""}`} />
                             {isGenerating ? "Gerando..." : existing ? "Regenerar" : "Gerar"}
                           </button>
 
                           {existing && (
                             <>
-                              {/* Toggle ativo (hide from everyone) */}
                               <button
                                 onClick={() => handleToggleAtivo(existing)}
                                 disabled={isActing}
@@ -276,21 +393,42 @@ export default function InsightsAdminPage() {
                                 className="p-1.5 rounded-lg text-slate-400 hover:text-orange-600 hover:bg-orange-50 dark:hover:bg-orange-950/40 transition-colors disabled:opacity-40"
                               >
                                 {existing.ativo
-                                  ? <EyeSlashIcon className="w-4 h-4" />
-                                  : <EyeIcon className="w-4 h-4 text-orange-500" />
-                                }
+                                  ? <EyeSlashIcon className="w-3.5 h-3.5" />
+                                  : <EyeIcon className="w-3.5 h-3.5 text-orange-500" />}
                               </button>
-
-                              {/* Delete */}
                               <button
                                 onClick={() => handleDelete(existing)}
                                 disabled={isActing}
                                 title="Excluir insight"
                                 className="p-1.5 rounded-lg text-slate-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-950/40 transition-colors disabled:opacity-40"
                               >
-                                <TrashIcon className="w-4 h-4" />
+                                <TrashIcon className="w-3.5 h-3.5" />
                               </button>
                             </>
+                          )}
+
+                          {/* Separator */}
+                          <span className="mx-1 text-slate-200 dark:text-slate-700 select-none">|</span>
+
+                          {/* Release actions */}
+                          <button
+                            onClick={() => handleGerarRelease(d.key)}
+                            disabled={isGeneratingRelease}
+                            title={existingRelease ? "Regenerar release de imprensa" : "Gerar release de imprensa"}
+                            className="inline-flex items-center gap-1.5 text-xs font-medium text-amber-700 dark:text-amber-400 disabled:opacity-40 transition-colors px-2.5 py-1.5 rounded-lg hover:bg-amber-50 dark:hover:bg-amber-950/40"
+                          >
+                            <NewspaperIcon className={`w-3.5 h-3.5 ${isGeneratingRelease ? "animate-pulse" : ""}`} />
+                            {isGeneratingRelease ? "Gerando..." : existingRelease ? "Regen. Release" : "Gerar Release"}
+                          </button>
+
+                          {existingRelease && (
+                            <button
+                              onClick={() => setReleaseModal({ dataset: d.key, label: d.label, release: existingRelease })}
+                              title="Ver e baixar release"
+                              className="inline-flex items-center gap-1 text-xs font-medium text-violet-700 dark:text-violet-400 px-2.5 py-1.5 rounded-lg hover:bg-violet-50 dark:hover:bg-violet-950/40 transition-colors"
+                            >
+                              Ver Release
+                            </button>
                           )}
                         </div>
                       </td>
@@ -305,12 +443,85 @@ export default function InsightsAdminPage() {
 
       {/* Legend */}
       {selectedId && !loadingInsights && (
-        <div className="flex items-center gap-6 text-xs text-slate-400 dark:text-slate-500 px-1">
-          <span className="flex items-center gap-1.5"><EyeSlashIcon className="w-3.5 h-3.5" /> Ocultar para todos os usuários do município</span>
-          <span className="flex items-center gap-1.5"><EyeIcon className="w-3.5 h-3.5" /> Controla visibilidade no plano gratuito</span>
+        <div className="flex items-center gap-6 text-xs text-slate-400 dark:text-slate-500 px-1 flex-wrap">
+          <span className="flex items-center gap-1.5"><EyeSlashIcon className="w-3.5 h-3.5" /> Ocultar para todos os usuários</span>
+          <span className="flex items-center gap-1.5"><EyeIcon className="w-3.5 h-3.5" /> Visibilidade no plano gratuito</span>
           <span className="flex items-center gap-1.5"><TrashIcon className="w-3.5 h-3.5" /> Remove permanentemente</span>
+          <span className="flex items-center gap-1.5"><NewspaperIcon className="w-3.5 h-3.5" /> Release de imprensa (PDF)</span>
         </div>
       )}
+
+      {/* Release preview modal */}
+      <AnimatePresence>
+        {releaseModal && (
+          <motion.div
+            className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            onClick={() => setReleaseModal(null)}
+          >
+            <motion.div
+              className="bg-white dark:bg-slate-900 rounded-2xl shadow-xl w-full max-w-2xl max-h-[80vh] overflow-y-auto"
+              initial={{ scale: 0.95, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.95, opacity: 0 }}
+              transition={{ duration: 0.15 }}
+              onClick={(e) => e.stopPropagation()}
+            >
+              {/* Modal header */}
+              <div className="flex items-start justify-between p-6 border-b border-slate-100 dark:border-slate-800">
+                <div>
+                  <p className="text-xs uppercase tracking-wider text-slate-400 dark:text-slate-500 font-semibold mb-1">
+                    Release de Imprensa
+                  </p>
+                  <h3 className="text-base font-bold text-slate-800 dark:text-white">
+                    {releaseModal.label} — {municipioNome}
+                  </h3>
+                  <p className="text-xs text-slate-400 dark:text-slate-500 mt-1">
+                    Gerado em {fmtDate(releaseModal.release.gerado_em)}
+                  </p>
+                </div>
+                <button
+                  onClick={() => setReleaseModal(null)}
+                  className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 transition-colors ml-4"
+                >
+                  <XMarkIcon className="w-5 h-5" />
+                </button>
+              </div>
+
+              {/* Modal body — 5 paragraphs */}
+              <div className="p-6 space-y-4">
+                {releaseModal.release.bullets.map((paragraph, i) => (
+                  <p
+                    key={i}
+                    className="text-sm leading-relaxed text-slate-700 dark:text-slate-300"
+                  >
+                    {paragraph}
+                  </p>
+                ))}
+              </div>
+
+              {/* Modal footer */}
+              <div className="flex items-center justify-end gap-3 px-6 py-4 border-t border-slate-100 dark:border-slate-800">
+                <button
+                  onClick={() => setReleaseModal(null)}
+                  className="px-4 py-2 rounded-xl border border-slate-200 dark:border-slate-700 text-sm text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors"
+                >
+                  Fechar
+                </button>
+                <button
+                  onClick={() => handlePrintRelease(releaseModal.release, releaseModal.label, municipioNome)}
+                  className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-violet-600 hover:bg-violet-700 text-white text-sm font-medium transition-colors"
+                >
+                  <NewspaperIcon className="w-4 h-4" />
+                  Imprimir / Baixar PDF
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </motion.div>
   );
 }
