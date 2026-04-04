@@ -135,18 +135,14 @@ def por_situacao(db: Session = Depends(get_db), current_user=Depends(get_current
     if current_user.role.nome != "ADMIN_GLOBAL":
         query = query.filter(Empresa.municipio_id == current_user.municipio_id)
     resultados = query.group_by(Empresa.situacao).order_by(func.count(Empresa.id).desc()).all()
-    total = sum(r.total for r in resultados)
-    return {
-        "total": total,
-        "por_situacao": [
-            {
-                "situacao": SITUACAO_LABELS.get(r.situacao or "", r.situacao or "Não informado"),
-                "codigo": r.situacao or "",
-                "total": r.total,
-            }
-            for r in resultados
-        ],
-    }
+    return [
+        {
+            "label": SITUACAO_LABELS.get(r.situacao or "", r.situacao or "Não informado"),
+            "situacao": r.situacao or "",
+            "total": r.total,
+        }
+        for r in resultados
+    ]
 
 
 @router.get("/situacao_por_porte")
@@ -194,7 +190,7 @@ def por_cnae_secao(db: Session = Depends(get_db), current_user=Depends(get_curre
             divisoes[label] = 0
         divisoes[label] += r.total
     return sorted(
-        [{"secao": k, "total": v} for k, v in divisoes.items()],
-        key=lambda x: x["total"],
+        [{"descricao": k, "total_vinculos": v} for k, v in divisoes.items()],
+        key=lambda x: x["total_vinculos"],
         reverse=True,
     )[:20]
