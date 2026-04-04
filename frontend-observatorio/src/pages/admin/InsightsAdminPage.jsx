@@ -205,14 +205,6 @@ export default function InsightsAdminPage() {
       text-align: justify;
       hyphens: auto;
     }
-    footer {
-      border-top: 1px solid #ccc;
-      margin-top: 36px;
-      padding-top: 12px;
-      font-size: 8pt;
-      color: #888;
-      font-style: italic;
-    }
     @media print {
       body { padding: 0; max-width: 100%; }
       @page { margin: 2cm; }
@@ -223,14 +215,11 @@ export default function InsightsAdminPage() {
   <header>
     <div class="tag">Release de Imprensa</div>
     <h1>Prefeitura de ${municipioNome}</h1>
-    <div class="meta">${label} &mdash; ${dataGerado} &mdash; Gerado por UAIZI / Inteligência Artificial</div>
+    <div class="meta">${label} &mdash; ${dataGerado}</div>
   </header>
   <div class="body">
     ${release.bullets.map((p) => `<p>${p}</p>`).join("\n    ")}
   </div>
-  <footer>
-    Este release foi gerado com apoio de inteligência artificial e deve ser revisado pela equipe de comunicação antes da publicação oficial. &mdash; Prefeitura de ${municipioNome}
-  </footer>
   <script>window.onload = function() { window.print(); }</script>
 </body>
 </html>`;
