@@ -53,6 +53,7 @@ const fmtNum = (v) => (v != null ? Number(v).toLocaleString("pt-BR") : "—");
 export default function EstbanPage() {
   const [rawSerie, setRawSerie] = useState([]);
   const [rawCaptacao, setRawCaptacao] = useState([]);
+  const [rawComposicao, setRawComposicao] = useState([]);
   const [resumo, setResumo] = useState(null);
   const [porInstituicao, setPorInstituicao] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -64,13 +65,17 @@ export default function EstbanPage() {
       api.get("/estban/resumo"),
       api.get("/estban/por_instituicao"),
       api.get("/estban/captacao_serie"),
+      api.get("/estban/composicao_credito"),
     ])
-      .then(([serieRes, resumoRes, instRes, captRes]) => {
+      .then(([serieRes, resumoRes, instRes, captRes, composicaoRes]) => {
         const raw = (serieRes.data || []).sort((a, b) =>
           String(a.data_referencia).localeCompare(String(b.data_referencia))
         );
         setRawSerie(raw);
         setRawCaptacao((captRes.data || []).sort((a, b) =>
+          String(a.data_referencia).localeCompare(String(b.data_referencia))
+        ));
+        setRawComposicao((composicaoRes.data || []).sort((a, b) =>
           String(a.data_referencia).localeCompare(String(b.data_referencia))
         ));
         setResumo(resumoRes.data);
@@ -99,6 +104,7 @@ export default function EstbanPage() {
 
   const serie = useMemo(() => rawSerie.filter(applyYearFilter), [rawSerie, filters]);
   const captacao = useMemo(() => rawCaptacao.filter(applyYearFilter), [rawCaptacao, filters]);
+  const composicao = useMemo(() => rawComposicao.filter(applyYearFilter), [rawComposicao, filters]);
 
   const cards = [
     {
@@ -307,6 +313,45 @@ export default function EstbanPage() {
                 <Line type="monotone" dataKey="operacoes_credito" name="Operações de Crédito" stroke="#3b82f6" strokeWidth={2.5} dot={false} />
                 <Line type="monotone" dataKey="total_captacao" name="Total Captação" stroke="#10b981" strokeWidth={2} dot={false} strokeDasharray="4 2" />
               </LineChart>
+            </ResponsiveContainer>
+          </div>
+        )}
+      </div>
+
+      {/* Composição do Crédito */}
+      <div className="bg-white dark:bg-slate-900 p-6 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-800">
+        <h3 className="text-base font-bold mb-5 text-slate-800 dark:text-white">
+          Composição das Operações de Crédito
+        </h3>
+        {loading ? (
+          <div className="animate-pulse h-72 bg-slate-50 dark:bg-slate-800 rounded-xl" />
+        ) : composicao.length === 0 ? (
+          <div className="h-72 flex items-center justify-center text-slate-400 dark:text-slate-500 text-sm">
+            Sem dados disponíveis
+          </div>
+        ) : (
+          <div className="h-72">
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart data={composicao}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
+                <XAxis dataKey="data_referencia" tick={{ fontSize: 10 }} stroke="#94a3b8" interval="preserveStartEnd" />
+                <YAxis
+                  tick={{ fontSize: 11 }}
+                  stroke="#94a3b8"
+                  tickFormatter={(v) =>
+                    `R$ ${(v / 1_000_000).toLocaleString("pt-BR", { maximumFractionDigits: 0 })}M`
+                  }
+                />
+                <Tooltip formatter={(v) => [fmtBRL(v)]} />
+                <Legend />
+                <Bar dataKey="emprestimos_titulos_descontados" name="Empréstimos/Títulos Desc." stackId="a" fill="#3b82f6" />
+                <Bar dataKey="financiamentos_gerais" name="Financiamentos Gerais" stackId="a" fill="#10b981" />
+                <Bar dataKey="financiamentos_imobiliarios" name="Financiamentos Imobiliários" stackId="a" fill="#f59e0b" />
+                <Bar dataKey="financiamento_agropecuario" name="Financiamento Agropecuário" stackId="a" fill="#84cc16" />
+                <Bar dataKey="arrendamento_mercantil" name="Arrendamento Mercantil" stackId="a" fill="#8b5cf6" />
+                <Bar dataKey="emprestimos_setor_publico" name="Setor Público" stackId="a" fill="#06b6d4" />
+                <Bar dataKey="outros_creditos" name="Outros Créditos" stackId="a" fill="#94a3b8" radius={[4, 4, 0, 0]} />
+              </BarChart>
             </ResponsiveContainer>
           </div>
         )}

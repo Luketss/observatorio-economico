@@ -21,6 +21,7 @@ import {
   SunIcon,
   MoonIcon,
   Cog6ToothIcon,
+  NewspaperIcon,
 } from "@heroicons/react/24/outline";
 
 // Module key maps to which plan feature enables it (null = always visible)
@@ -38,6 +39,7 @@ const NAV_ITEMS = [
   { to: "/comex", label: "Comércio Ext.", icon: GlobeAltIcon, modulo: "comex" },
   { to: "/empresas", label: "Empresas", icon: BuildingStorefrontIcon, modulo: "empresas" },
   { to: "/pix", label: "PIX", icon: BanknotesIcon, modulo: "pix" },
+  { to: "/releases", label: "Releases", icon: NewspaperIcon, modulo: null, hideForAdmin: true },
 ];
 
 export default function DashboardLayout() {
@@ -62,6 +64,7 @@ export default function DashboardLayout() {
   }, [user, isGlobal]);
 
   const visibleNav = NAV_ITEMS.filter((item) => {
+    if (item.hideForAdmin && isGlobal) return false;
     if (isGlobal || modulos === null) return true;
     if (item.modulo === null) return true; // always visible
     return modulos.includes(item.modulo);

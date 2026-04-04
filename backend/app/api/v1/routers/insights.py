@@ -122,6 +122,37 @@ def get_insight(
     return _to_response(insight)
 
 
+@router.get("/releases", response_model=List[InsightResponse])
+def listar_releases_municipio(
+    db: Session = Depends(get_db),
+    current_user=Depends(get_current_user),
+):
+    """Returns active releases for the current user's municipality."""
+    mid = current_user.municipio_id
+    if not mid:
+        raise HTTPException(status_code=400, detail="municipio_id não encontrado para este usuário.")
+
+    rows = (
+        db.query(InsightModel)
+        .filter(
+            InsightModel.municipio_id == mid,
+            InsightModel.dataset.like("release_%"),
+            InsightModel.ativo == True,
+        )
+        .order_by(InsightModel.dataset, InsightModel.gerado_em.desc())
+        .all()
+    )
+
+    seen = set()
+    result = []
+    for row in rows:
+        if row.dataset not in seen:
+            seen.add(row.dataset)
+            result.append(_to_response(row))
+
+    return result
+
+
 @router.get("/admin", response_model=List[InsightResponse])
 def listar_insights_admin(
     municipio_id: int = Query(...),

@@ -42,6 +42,13 @@ def carregar_csv(db: Session, caminho: str):
             "valor_depositos_vista": 0.0,
             "valor_poupanca": 0.0,
             "valor_depositos_prazo": 0.0,
+            "emprestimos_titulos_descontados": 0.0,
+            "financiamentos_gerais": 0.0,
+            "financiamento_agropecuario": 0.0,
+            "financiamentos_imobiliarios": 0.0,
+            "arrendamento_mercantil": 0.0,
+            "emprestimos_setor_publico": 0.0,
+            "outros_creditos": 0.0,
         }
     )
     agregado_inst: dict[tuple[str, str, str], dict] = defaultdict(
@@ -51,6 +58,13 @@ def carregar_csv(db: Session, caminho: str):
             "valor_depositos_vista": 0.0,
             "valor_poupanca": 0.0,
             "valor_depositos_prazo": 0.0,
+            "emprestimos_titulos_descontados": 0.0,
+            "financiamentos_gerais": 0.0,
+            "financiamento_agropecuario": 0.0,
+            "financiamentos_imobiliarios": 0.0,
+            "arrendamento_mercantil": 0.0,
+            "emprestimos_setor_publico": 0.0,
+            "outros_creditos": 0.0,
         }
     )
 
@@ -61,32 +75,37 @@ def carregar_csv(db: Session, caminho: str):
             nome_municipio = normalizar_nome(row["MUNICIPIO"])
             data_ref_str = row["DATA_REFERENCIA"].strip()
 
+            # Support both old (VALOR_OPERACOES_CREDITO) and new (TOTAL_OPERACOES_CREDITO) headers
+            credito_col = "TOTAL_OPERACOES_CREDITO" if "TOTAL_OPERACOES_CREDITO" in row else "VALOR_OPERACOES_CREDITO"
+
             chave = (nome_municipio, data_ref_str)
             agregado[chave]["qtd_agencias"] += int(row["QTD_AGENCIAS"] or 0)
-            agregado[chave]["valor_operacoes_credito"] += float(
-                row["VALOR_OPERACOES_CREDITO"] or 0
-            )
-            agregado[chave]["valor_depositos_vista"] += float(
-                row["VALOR_DEPOSITOS_VISTA"] or 0
-            )
+            agregado[chave]["valor_operacoes_credito"] += float(row[credito_col] or 0)
+            agregado[chave]["valor_depositos_vista"] += float(row["VALOR_DEPOSITOS_VISTA"] or 0)
             agregado[chave]["valor_poupanca"] += float(row["VALOR_POUPANCA"] or 0)
-            agregado[chave]["valor_depositos_prazo"] += float(
-                row["VALOR_DEPOSITOS_PRAZO"] or 0
-            )
+            agregado[chave]["valor_depositos_prazo"] += float(row["VALOR_DEPOSITOS_PRAZO"] or 0)
+            agregado[chave]["emprestimos_titulos_descontados"] += float(row.get("EMPRESTIMOS_E_TITULOS_DESCONTADOS") or 0)
+            agregado[chave]["financiamentos_gerais"] += float(row.get("FINANCIAMENTOS_GERAIS") or 0)
+            agregado[chave]["financiamento_agropecuario"] += float(row.get("FINANCIAMENTO_AGROPECUARIO") or 0)
+            agregado[chave]["financiamentos_imobiliarios"] += float(row.get("FINANCIAMENTOS_IMOBILIARIOS") or 0)
+            agregado[chave]["arrendamento_mercantil"] += float(row.get("ARRENDAMENTO_MERCANTIL") or 0)
+            agregado[chave]["emprestimos_setor_publico"] += float(row.get("EMPRESTIMOS_SETOR_PUBLICO") or 0)
+            agregado[chave]["outros_creditos"] += float(row.get("OUTROS_CREDITOS") or 0)
 
             nome_instituicao = row["NOME_INSTITUICAO"].strip()
             chave_inst = (nome_municipio, nome_instituicao, data_ref_str)
             agregado_inst[chave_inst]["qtd_agencias"] += int(row["QTD_AGENCIAS"] or 0)
-            agregado_inst[chave_inst]["valor_operacoes_credito"] += float(
-                row["VALOR_OPERACOES_CREDITO"] or 0
-            )
-            agregado_inst[chave_inst]["valor_depositos_vista"] += float(
-                row["VALOR_DEPOSITOS_VISTA"] or 0
-            )
+            agregado_inst[chave_inst]["valor_operacoes_credito"] += float(row[credito_col] or 0)
+            agregado_inst[chave_inst]["valor_depositos_vista"] += float(row["VALOR_DEPOSITOS_VISTA"] or 0)
             agregado_inst[chave_inst]["valor_poupanca"] += float(row["VALOR_POUPANCA"] or 0)
-            agregado_inst[chave_inst]["valor_depositos_prazo"] += float(
-                row["VALOR_DEPOSITOS_PRAZO"] or 0
-            )
+            agregado_inst[chave_inst]["valor_depositos_prazo"] += float(row["VALOR_DEPOSITOS_PRAZO"] or 0)
+            agregado_inst[chave_inst]["emprestimos_titulos_descontados"] += float(row.get("EMPRESTIMOS_E_TITULOS_DESCONTADOS") or 0)
+            agregado_inst[chave_inst]["financiamentos_gerais"] += float(row.get("FINANCIAMENTOS_GERAIS") or 0)
+            agregado_inst[chave_inst]["financiamento_agropecuario"] += float(row.get("FINANCIAMENTO_AGROPECUARIO") or 0)
+            agregado_inst[chave_inst]["financiamentos_imobiliarios"] += float(row.get("FINANCIAMENTOS_IMOBILIARIOS") or 0)
+            agregado_inst[chave_inst]["arrendamento_mercantil"] += float(row.get("ARRENDAMENTO_MERCANTIL") or 0)
+            agregado_inst[chave_inst]["emprestimos_setor_publico"] += float(row.get("EMPRESTIMOS_SETOR_PUBLICO") or 0)
+            agregado_inst[chave_inst]["outros_creditos"] += float(row.get("OUTROS_CREDITOS") or 0)
 
     for (nome_municipio, data_ref_str), totais in agregado.items():
         municipio = obter_ou_criar_municipio(db, nome_municipio)
@@ -107,11 +126,7 @@ def carregar_csv(db: Session, caminho: str):
         novo = EstbanMensal(
             municipio_id=municipio.id,
             data_referencia=data_referencia,
-            qtd_agencias=totais["qtd_agencias"],
-            valor_operacoes_credito=totais["valor_operacoes_credito"],
-            valor_depositos_vista=totais["valor_depositos_vista"],
-            valor_poupanca=totais["valor_poupanca"],
-            valor_depositos_prazo=totais["valor_depositos_prazo"],
+            **totais,
         )
 
         db.add(novo)

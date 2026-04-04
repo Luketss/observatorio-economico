@@ -24,6 +24,13 @@ def serie_estban(db: Session = Depends(get_db), current_user=Depends(get_current
             valor_depositos_vista=r.valor_depositos_vista,
             valor_poupanca=r.valor_poupanca,
             valor_depositos_prazo=r.valor_depositos_prazo,
+            emprestimos_titulos_descontados=r.emprestimos_titulos_descontados,
+            financiamentos_gerais=r.financiamentos_gerais,
+            financiamento_agropecuario=r.financiamento_agropecuario,
+            financiamentos_imobiliarios=r.financiamentos_imobiliarios,
+            arrendamento_mercantil=r.arrendamento_mercantil,
+            emprestimos_setor_publico=r.emprestimos_setor_publico,
+            outros_creditos=r.outros_creditos,
         )
         for r in registros
     ]
@@ -89,6 +96,35 @@ def por_instituicao(db: Session = Depends(get_db), current_user=Depends(get_curr
             valor_depositos_vista=r.valor_depositos_vista or 0,
             valor_poupanca=r.valor_poupanca or 0,
             valor_depositos_prazo=r.valor_depositos_prazo or 0,
+            emprestimos_titulos_descontados=r.emprestimos_titulos_descontados,
+            financiamentos_gerais=r.financiamentos_gerais,
+            financiamento_agropecuario=r.financiamento_agropecuario,
+            financiamentos_imobiliarios=r.financiamentos_imobiliarios,
+            arrendamento_mercantil=r.arrendamento_mercantil,
+            emprestimos_setor_publico=r.emprestimos_setor_publico,
+            outros_creditos=r.outros_creditos,
         )
         for r in resultados
+    ]
+
+
+@router.get("/composicao_credito")
+def composicao_credito(db: Session = Depends(get_db), current_user=Depends(get_current_user)):
+    """Credit breakdown by type over time (latest record per month)."""
+    query = db.query(EstbanMensal)
+    if current_user.role.nome != "ADMIN_GLOBAL":
+        query = query.filter(EstbanMensal.municipio_id == current_user.municipio_id)
+    registros = query.order_by(EstbanMensal.data_referencia).all()
+    return [
+        {
+            "data_referencia": r.data_referencia,
+            "emprestimos_titulos_descontados": r.emprestimos_titulos_descontados or 0,
+            "financiamentos_gerais": r.financiamentos_gerais or 0,
+            "financiamento_agropecuario": r.financiamento_agropecuario or 0,
+            "financiamentos_imobiliarios": r.financiamentos_imobiliarios or 0,
+            "arrendamento_mercantil": r.arrendamento_mercantil or 0,
+            "emprestimos_setor_publico": r.emprestimos_setor_publico or 0,
+            "outros_creditos": r.outros_creditos or 0,
+        }
+        for r in registros
     ]
