@@ -76,12 +76,12 @@ export default function ComparativoPage() {
           <InfoTooltip dataset="comparativo" />
         </div>
         <p className="text-sm text-slate-400 dark:text-slate-500 mt-1">
-          Ranking dos municípios por indicador e ano. Disponível apenas para administradores.
+          Ranking e comparativo entre municípios por indicador e ano.
         </p>
       </div>
 
       {/* Filters */}
-      <div className="flex flex-wrap gap-4 bg-white p-5 rounded-2xl shadow-sm border border-slate-100">
+      <div className="flex flex-wrap gap-4 bg-white dark:bg-slate-900 p-5 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-800">
         <div className="flex flex-col gap-1">
           <label className="text-xs uppercase tracking-wider text-slate-400 font-medium">
             Indicador
@@ -110,7 +110,7 @@ export default function ComparativoPage() {
           <select
             value={ano}
             onChange={(e) => setAno(Number(e.target.value))}
-            className="px-3 py-2 rounded-lg border border-slate-200 text-sm text-slate-700 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-700 text-sm text-slate-700 dark:text-slate-300 bg-white dark:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500"
           >
             {YEARS.map((y) => (
               <option key={y} value={y}>{y}</option>
@@ -131,8 +131,8 @@ export default function ComparativoPage() {
       )}
 
       {/* Chart */}
-      <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100">
-        <h3 className="text-base font-bold mb-5 text-slate-800">
+      <div className="bg-white dark:bg-slate-900 p-6 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-800">
+        <h3 className="text-base font-bold mb-5 text-slate-800 dark:text-white">
           {metric.label} por Município — {ano}
         </h3>
 
@@ -185,25 +185,25 @@ export default function ComparativoPage() {
 
       {/* Table */}
       {chartData.length > 0 && !loading && (
-        <div className="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
-          <div className="px-6 py-4 border-b border-slate-100">
-            <h3 className="text-base font-bold text-slate-800">Ranking Completo</h3>
+        <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-800 overflow-hidden">
+          <div className="px-6 py-4 border-b border-slate-100 dark:border-slate-800">
+            <h3 className="text-base font-bold text-slate-800 dark:text-white">Ranking Completo</h3>
           </div>
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
-                <tr className="bg-slate-50 text-left text-xs uppercase text-slate-400 tracking-wider">
+                <tr className="bg-slate-50 dark:bg-slate-800 text-left text-xs uppercase text-slate-400 tracking-wider">
                   <th className="px-6 py-3">#</th>
                   <th className="px-6 py-3">Município</th>
                   <th className="px-6 py-3 text-right">{metric.label}</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-50">
+              <tbody className="divide-y divide-slate-50 dark:divide-slate-800">
                 {chartData.map((item, i) => (
-                  <tr key={i} className="hover:bg-slate-50 transition-colors">
+                  <tr key={i} className="hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
                     <td className="px-6 py-3 text-slate-400 font-medium">{i + 1}</td>
-                    <td className="px-6 py-3 font-medium text-slate-700">{item.municipio}</td>
-                    <td className="px-6 py-3 text-right font-semibold text-slate-800">
+                    <td className="px-6 py-3 font-medium text-slate-700 dark:text-slate-300">{item.municipio}</td>
+                    <td className="px-6 py-3 text-right font-semibold text-slate-800 dark:text-white">
                       {fmt(item[metric.valueKey])}
                     </td>
                   </tr>

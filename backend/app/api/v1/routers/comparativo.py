@@ -1,6 +1,6 @@
 from typing import List
 
-from app.api.deps import get_db, require_role
+from app.api.deps import get_current_user, get_db
 from app.models.arrecadacao import ArrecadacaoMensal
 from app.models.caged import CagedMovimentacao
 from app.models.municipio import Municipio
@@ -16,7 +16,7 @@ router = APIRouter(prefix="/comparativo", tags=["Comparativo"])
 def comparativo_arrecadacao(
     ano: int,
     db: Session = Depends(get_db),
-    current_user=Depends(require_role("ADMIN_GLOBAL")),
+    current_user=Depends(get_current_user),
 ):
 
     resultados = (
@@ -38,7 +38,7 @@ def comparativo_arrecadacao(
 def comparativo_caged(
     ano: int,
     db: Session = Depends(get_db),
-    current_user=Depends(require_role("ADMIN_GLOBAL")),
+    current_user=Depends(get_current_user),
 ):
 
     resultados = (
@@ -63,7 +63,7 @@ def comparativo_caged(
 def comparativo_rais(
     ano: int,
     db: Session = Depends(get_db),
-    current_user=Depends(require_role("ADMIN_GLOBAL")),
+    current_user=Depends(get_current_user),
 ):
 
     resultados = (
