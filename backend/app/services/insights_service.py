@@ -46,7 +46,9 @@ DATASET_LABELS = {
 }
 
 
-def buscar_insight(db: Session, municipio_id: int, dataset: str, periodo: str) -> InsightIA | None:
+def buscar_insight(
+    db: Session, municipio_id: int, dataset: str, periodo: str
+) -> InsightIA | None:
     return (
         db.query(InsightIA)
         .filter(
@@ -58,7 +60,9 @@ def buscar_insight(db: Session, municipio_id: int, dataset: str, periodo: str) -
     )
 
 
-def _fetch_dados(db: Session, municipio_id: int, dataset: str) -> tuple[list[dict], str]:
+def _fetch_dados(
+    db: Session, municipio_id: int, dataset: str
+) -> tuple[list[dict], str]:
     """Return (list of data dicts, periodo string)."""
 
     if dataset == "arrecadacao":
@@ -70,8 +74,14 @@ def _fetch_dados(db: Session, municipio_id: int, dataset: str) -> tuple[list[dic
             .all()
         )
         dados = [
-            {"ano": r.ano, "mes": r.mes, "icms": r.valor_icms, "ipva": r.valor_ipva,
-             "ipi": r.valor_ipi, "total": r.valor_total}
+            {
+                "ano": r.ano,
+                "mes": r.mes,
+                "icms": r.valor_icms,
+                "ipva": r.valor_ipva,
+                "ipi": r.valor_ipi,
+                "total": r.valor_total,
+            }
             for r in rows
         ]
         periodo = f"{rows[0].ano}-{rows[0].mes:02d}" if rows else "geral"
@@ -96,8 +106,13 @@ def _fetch_dados(db: Session, municipio_id: int, dataset: str) -> tuple[list[dic
             .all()
         )
         dados = [
-            {"ano": r.ano, "mes": r.mes, "admissoes": r.admissões,
-             "desligamentos": r.desligamentos, "saldo": r.saldo}
+            {
+                "ano": r.ano,
+                "mes": r.mes,
+                "admissoes": r.admissões,
+                "desligamentos": r.desligamentos,
+                "saldo": r.saldo,
+            }
             for r in rows
         ]
         periodo = f"{rows[0].ano}-{rows[0].mes:02d}" if rows else "geral"
@@ -122,7 +137,12 @@ def _fetch_dados(db: Session, municipio_id: int, dataset: str) -> tuple[list[dic
             .all()
         )
         dados = [
-            {"ano": r.ano, "mes": r.mes, "beneficiarios": r.total_beneficiarios, "valor_total": r.valor_total}
+            {
+                "ano": r.ano,
+                "mes": r.mes,
+                "beneficiarios": r.total_beneficiarios,
+                "valor_total": r.valor_total,
+            }
             for r in rows
         ]
         periodo = f"{rows[0].ano}-{rows[0].mes:02d}" if rows else "geral"
@@ -136,7 +156,12 @@ def _fetch_dados(db: Session, municipio_id: int, dataset: str) -> tuple[list[dic
             .all()
         )
         dados = [
-            {"ano": r.ano, "mes": r.mes, "estudantes": r.total_estudantes, "valor_total": r.valor_total}
+            {
+                "ano": r.ano,
+                "mes": r.mes,
+                "estudantes": r.total_estudantes,
+                "valor_total": r.valor_total,
+            }
             for r in rows
         ]
         periodo = f"{rows[0].ano}-{rows[0].mes:02d}" if rows else "geral"
@@ -149,8 +174,15 @@ def _fetch_dados(db: Session, municipio_id: int, dataset: str) -> tuple[list[dic
             .limit(15)
             .all()
         )
-        dados = [{"ano": r.ano, "categoria": r.categoria, "quantidade": r.quantidade_beneficios,
-                  "valor": r.valor_anual} for r in rows]
+        dados = [
+            {
+                "ano": r.ano,
+                "categoria": r.categoria,
+                "quantidade": r.quantidade_beneficios,
+                "valor": r.valor_anual,
+            }
+            for r in rows
+        ]
         periodo = str(rows[0].ano) if rows else "geral"
 
     elif dataset == "estban":
@@ -162,9 +194,13 @@ def _fetch_dados(db: Session, municipio_id: int, dataset: str) -> tuple[list[dic
             .all()
         )
         dados = [
-            {"data": str(r.data_referencia), "agencias": r.qtd_agencias,
-             "credito": r.valor_operacoes_credito, "poupanca": r.valor_poupanca,
-             "depositos_prazo": r.valor_depositos_prazo}
+            {
+                "data": str(r.data_referencia),
+                "agencias": r.qtd_agencias,
+                "credito": r.valor_operacoes_credito,
+                "poupanca": r.valor_poupanca,
+                "depositos_prazo": r.valor_depositos_prazo,
+            }
             for r in rows
         ]
         periodo = str(rows[0].data_referencia)[:7] if rows else "geral"
@@ -178,14 +214,23 @@ def _fetch_dados(db: Session, municipio_id: int, dataset: str) -> tuple[list[dic
             .all()
         )
         dados = [
-            {"ano": r.ano, "mes": r.mes, "tipo": r.tipo_operacao,
-             "valor_usd": r.valor_usd, "peso_kg": r.peso_kg}
+            {
+                "ano": r.ano,
+                "mes": r.mes,
+                "tipo": r.tipo_operacao,
+                "valor_usd": r.valor_usd,
+                "peso_kg": r.peso_kg,
+            }
             for r in rows
         ]
         periodo = f"{rows[0].ano}-{rows[0].mes:02d}" if rows else "geral"
 
     elif dataset == "empresas":
-        total = db.query(func.count(Empresa.id)).filter(Empresa.municipio_id == municipio_id).scalar()
+        total = (
+            db.query(func.count(Empresa.id))
+            .filter(Empresa.municipio_id == municipio_id)
+            .scalar()
+        )
         ativas = (
             db.query(func.count(Empresa.id))
             .filter(Empresa.municipio_id == municipio_id, Empresa.situacao == "02")
@@ -223,7 +268,12 @@ def _fetch_dados(db: Session, municipio_id: int, dataset: str) -> tuple[list[dic
         periodo = f"{rows[0].ano}-{rows[0].mes:02d}" if rows else "geral"
 
     elif dataset == "geral":
-        pib = db.query(PibAnual).filter(PibAnual.municipio_id == municipio_id).order_by(PibAnual.ano.desc()).first()
+        pib = (
+            db.query(PibAnual)
+            .filter(PibAnual.municipio_id == municipio_id)
+            .order_by(PibAnual.ano.desc())
+            .first()
+        )
         arr = (
             db.query(func.sum(ArrecadacaoMensal.valor_total))
             .filter(ArrecadacaoMensal.municipio_id == municipio_id)
@@ -239,16 +289,22 @@ def _fetch_dados(db: Session, municipio_id: int, dataset: str) -> tuple[list[dic
             .filter(BolsaFamiliaResumo.municipio_id == municipio_id)
             .scalar()
         )
-        dados = [{
-            "pib_ultimo_ano": {"ano": pib.ano, "valor": pib.pib_total} if pib else None,
-            "arrecadacao_total": arr,
-            "saldo_caged_total": caged,
-            "beneficiarios_bolsa_familia": bf,
-        }]
+        dados = [
+            {
+                "pib_ultimo_ano": (
+                    {"ano": pib.ano, "valor": pib.pib_total} if pib else None
+                ),
+                "arrecadacao_total": arr,
+                "saldo_caged_total": caged,
+                "beneficiarios_bolsa_familia": bf,
+            }
+        ]
         periodo = str(pib.ano) if pib else "geral"
 
     else:
-        raise HTTPException(status_code=400, detail=f"Dataset '{dataset}' não reconhecido.")
+        raise HTTPException(
+            status_code=400, detail=f"Dataset '{dataset}' não reconhecido."
+        )
 
     return dados, periodo
 
@@ -256,7 +312,9 @@ def _fetch_dados(db: Session, municipio_id: int, dataset: str) -> tuple[list[dic
 def gerar_release(db: Session, municipio_id: int, dataset: str) -> InsightIA:
     """Generate a 5-paragraph institutional press release for a dataset."""
     if not settings.ANTHROPIC_API_KEY:
-        raise HTTPException(status_code=503, detail="ANTHROPIC_API_KEY não configurada no servidor.")
+        raise HTTPException(
+            status_code=503, detail="ANTHROPIC_API_KEY não configurada no servidor."
+        )
 
     municipio = db.get(Municipio, municipio_id)
     if not municipio:
@@ -265,7 +323,9 @@ def gerar_release(db: Session, municipio_id: int, dataset: str) -> InsightIA:
     dados, periodo = _fetch_dados(db, municipio_id, dataset)
 
     if not dados:
-        raise HTTPException(status_code=404, detail="Sem dados suficientes para gerar o release.")
+        raise HTTPException(
+            status_code=404, detail="Sem dados suficientes para gerar o release."
+        )
 
     release_dataset = f"release_{dataset}"
     dataset_label = DATASET_LABELS.get(dataset, dataset)
@@ -380,6 +440,18 @@ REGRAS CRÍTICAS:
 - Se um valor parecer incompatível com regras conhecidas, valide sua plausibilidade antes de interpretar
 - Se a informação não gerar decisão, não incluir
 
+1. O que o dado é
+Estoque, fluxo, saldo, acumulado, média, participação ou valor total.
+
+2. Qual é a unidade
+Pessoa, família, vínculo, benefício, estabelecimento, empresa, operação, transação.
+
+3. Qual é a periodicidade
+Mensal, anual, acumulada, pontual, série histórica.
+
+4. Qual é o escopo da leitura
+Impacto econômico local, impacto social, impacto fiscal municipal, estrutura produtiva ou dinâmica conjuntural.
+
 TESTE DE PLAUSIBILIDADE OBRIGATÓRIO:
 Antes de escrever cada insight, valide mentalmente:
 1. O número faz sentido no mundo real?
@@ -413,6 +485,14 @@ ESTILO:
 - sem jargão excessivo
 - sem linguagem promocional
 - sem menção a IA, algoritmo ou automação
+
+PROIBIÇÕES GERAIS:
+- Não comparar unidades diferentes.
+- Não inferir mensal a partir de anual sem dividir corretamente pelo período.
+- Não chamar de erro o que pode ser calendário de pagamento, regra do programa ou sazonalidade.
+- Não transformar correlação em causalidade.
+- Não escrever insight apenas descritivo.
+- Se houver dúvida de plausibilidade, converter em “necessita validação da base”.
 
 FORMATO DE SAÍDA:
 Responda APENAS com um JSON array contendo exatamente 5 strings em português.
@@ -627,7 +707,9 @@ def _build_prompt(dataset: str, municipio, dataset_label: str, dados_json: str) 
 
 def gerar_insight(db: Session, municipio_id: int, dataset: str) -> InsightIA:
     if not settings.ANTHROPIC_API_KEY:
-        raise HTTPException(status_code=503, detail="ANTHROPIC_API_KEY não configurada no servidor.")
+        raise HTTPException(
+            status_code=503, detail="ANTHROPIC_API_KEY não configurada no servidor."
+        )
 
     municipio = db.get(Municipio, municipio_id)
     if not municipio:
@@ -636,7 +718,9 @@ def gerar_insight(db: Session, municipio_id: int, dataset: str) -> InsightIA:
     dados, periodo = _fetch_dados(db, municipio_id, dataset)
 
     if not dados:
-        raise HTTPException(status_code=404, detail="Sem dados suficientes para gerar insights.")
+        raise HTTPException(
+            status_code=404, detail="Sem dados suficientes para gerar insights."
+        )
 
     dataset_label = DATASET_LABELS.get(dataset, dataset)
     dados_json = json.dumps(dados, ensure_ascii=False, default=str)

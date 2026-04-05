@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext";
 import logo from "../../assets/logo_uaizi.png";
+import bg from "../../assets/back.jpg";
 
 export default function LoginPage() {
   const { login } = useAuth();
@@ -27,12 +28,18 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-50 dark:bg-slate-950 flex items-center justify-center px-4">
-      <div className="w-full max-w-sm">
+    <div className="min-h-screen relative flex items-center justify-center px-4">
+      {/* Background image with opacity */}
+      <div
+        className="absolute inset-0 bg-cover bg-center"
+        style={{ backgroundImage: `url(${bg})` }}
+      />
+      <div className="absolute inset-0 bg-slate-900/60" />
+      <div className="relative z-10 w-full max-w-sm">
         {/* Header */}
         <div className="text-center mb-8">
           <img src={logo} alt="UAIZI" className="h-32 mx-auto mb-4" />
-          <p className="text-sm text-slate-400 dark:text-slate-500 mt-1">
+          <p className="text-sm text-slate-200 mt-1">
             Acesse com suas credenciais
           </p>
         </div>
