@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import api from "../../services/api";
 import { motion } from "framer-motion";
 import InsightsPanel from "../../components/InsightsPanel";
+import ReleasesPanel from "../../components/ReleasesPanel";
 import InfoTooltip from "../../components/InfoTooltip";
 import FilterBar from "../../components/FilterBar";
 import {
@@ -138,6 +139,7 @@ export default function InssPage() {
       </div>
 
       <InsightsPanel dataset="inss" />
+      <ReleasesPanel dataset="inss" />
 
       <FilterBar years={years} value={filters} onChange={setFilters} />
 

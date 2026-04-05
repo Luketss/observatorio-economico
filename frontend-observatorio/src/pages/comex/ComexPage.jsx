@@ -2,6 +2,7 @@ import { useEffect, useState, useMemo } from "react";
 import api from "../../services/api";
 import { motion } from "framer-motion";
 import InsightsPanel from "../../components/InsightsPanel";
+import ReleasesPanel from "../../components/ReleasesPanel";
 import InfoTooltip from "../../components/InfoTooltip";
 import FilterBar from "../../components/FilterBar";
 import {
@@ -182,6 +183,7 @@ export default function ComexPage() {
       </div>
 
       <InsightsPanel dataset="comex" />
+      <ReleasesPanel dataset="comex" />
 
       <FilterBar years={anos.slice().sort()} showMonths value={filters} onChange={setFilters} />
 

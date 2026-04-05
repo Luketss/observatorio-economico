@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import api from "../../services/api";
 import { motion } from "framer-motion";
 import InsightsPanel from "../../components/InsightsPanel";
+import ReleasesPanel from "../../components/ReleasesPanel";
 import InfoTooltip from "../../components/InfoTooltip";
 import FilterBar from "../../components/FilterBar";
 import {
@@ -116,6 +117,7 @@ export default function BolsaFamiliaPage() {
       </div>
 
       <InsightsPanel dataset="bolsa_familia" />
+      <ReleasesPanel dataset="bolsa_familia" />
 
       <FilterBar years={years} showMonths value={filters} onChange={setFilters} />
 

@@ -3,6 +3,7 @@ import api from "../services/api";
 import { useAuth } from "../context/AuthContext";
 import { motion } from "framer-motion";
 import InsightsPanel from "../components/InsightsPanel";
+import ReleasesPanel from "../components/ReleasesPanel";
 import MandatoTimeline from "../components/MandatoTimeline";
 import {
   CurrencyDollarIcon,
@@ -182,6 +183,7 @@ export default function DashboardGeralPage() {
       </div>
 
       <InsightsPanel dataset="geral" />
+      <ReleasesPanel dataset="geral" />
 
       {loading ? (
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6">

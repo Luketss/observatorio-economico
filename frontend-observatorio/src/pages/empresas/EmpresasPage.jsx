@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import api from "../../services/api";
 import { motion } from "framer-motion";
 import InsightsPanel from "../../components/InsightsPanel";
+import ReleasesPanel from "../../components/ReleasesPanel";
 import InfoTooltip from "../../components/InfoTooltip";
 import {
   ResponsiveContainer,
@@ -138,6 +139,7 @@ export default function EmpresasPage() {
       </div>
 
       <InsightsPanel dataset="empresas" />
+      <ReleasesPanel dataset="empresas" />
 
       {/* KPI Cards */}
       {loading ? (

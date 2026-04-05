@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import api from "../../services/api";
 import { motion } from "framer-motion";
 import InsightsPanel from "../../components/InsightsPanel";
+import ReleasesPanel from "../../components/ReleasesPanel";
 import InfoTooltip from "../../components/InfoTooltip";
 import FilterBar from "../../components/FilterBar";
 import {
@@ -205,6 +206,7 @@ export default function CagedPage() {
       </div>
 
       <InsightsPanel dataset="caged" />
+      <ReleasesPanel dataset="caged" />
 
       <FilterBar years={years} showMonths value={filters} onChange={setFilters} />
 
