@@ -31,7 +31,7 @@ export default function LoginPage() {
       <div className="w-full max-w-sm">
         {/* Header */}
         <div className="text-center mb-8">
-          <img src={logo} alt="UAIZI" className="h-16 mx-auto mb-4" />
+          <img src={logo} alt="UAIZI" className="h-32 mx-auto mb-4" />
           <p className="text-sm text-slate-400 dark:text-slate-500 mt-1">
             Acesse com suas credenciais
           </p>
