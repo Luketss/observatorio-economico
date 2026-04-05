@@ -1,7 +1,9 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext";
-import bg from "../../assets/bg_teste.jpeg";
+import bg from "../../assets/bg.jpeg";
+import nidLogo from "../../assets/nid_fundo_transparente.jpeg";
+import logo from "../../assets/logo_uaizi.png";
 
 export default function LoginPage() {
   const { login } = useAuth();
@@ -27,19 +29,24 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="min-h-screen relative flex items-center justify-center px-4">
-      {/* Background image with opacity */}
+    <div className="min-h-screen relative flex flex-col items-center justify-center px-4">
+      {/* Background */}
       <div
         className="absolute inset-0 bg-cover bg-center"
         style={{ backgroundImage: `url(${bg})` }}
       />
-      <div className="absolute inset-0 bg-slate-900/60" />
-      <div className="relative z-10 w-full max-w-sm">
-        {/* Card */}
-        <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-800 p-8">
+      <div className="absolute inset-0 bg-black/40" />
+
+      {/* Content */}
+      <div className="relative z-10 w-full max-w-sm flex flex-col items-center gap-6">
+        {/* NID image above the form */}
+        <img src={nidLogo} alt="NID" className="w-64 object-contain" />
+
+        {/* Login card */}
+        <div className="w-full bg-white/90 backdrop-blur-sm rounded-2xl shadow-xl border border-white/20 p-8">
           <form onSubmit={handleSubmit} className="space-y-5">
             <div className="space-y-1">
-              <label className="text-xs font-medium uppercase tracking-wider text-slate-400 dark:text-slate-500">
+              <label className="text-xs font-medium uppercase tracking-wider text-slate-400">
                 Email
               </label>
               <input
@@ -49,12 +56,12 @@ export default function LoginPage() {
                 required
                 autoComplete="email"
                 placeholder="seu@email.com"
-                className="w-full px-4 py-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm text-slate-800 dark:text-slate-100 placeholder-slate-300 dark:placeholder-slate-600 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
+                className="w-full px-4 py-3 rounded-xl border border-slate-200 bg-white text-sm text-slate-800 placeholder-slate-300 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
               />
             </div>
 
             <div className="space-y-1">
-              <label className="text-xs font-medium uppercase tracking-wider text-slate-400 dark:text-slate-500">
+              <label className="text-xs font-medium uppercase tracking-wider text-slate-400">
                 Senha
               </label>
               <input
@@ -64,12 +71,12 @@ export default function LoginPage() {
                 required
                 autoComplete="current-password"
                 placeholder="••••••••"
-                className="w-full px-4 py-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm text-slate-800 dark:text-slate-100 placeholder-slate-300 dark:placeholder-slate-600 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
+                className="w-full px-4 py-3 rounded-xl border border-slate-200 bg-white text-sm text-slate-800 placeholder-slate-300 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
               />
             </div>
 
             {error && (
-              <div className="bg-red-50 dark:bg-red-950/50 border border-red-100 dark:border-red-900 text-red-600 dark:text-red-400 text-sm px-4 py-3 rounded-xl">
+              <div className="bg-red-50 border border-red-100 text-red-600 text-sm px-4 py-3 rounded-xl">
                 {error}
               </div>
             )}
@@ -83,6 +90,9 @@ export default function LoginPage() {
             </button>
           </form>
         </div>
+
+        {/* UAIZI logo at the bottom */}
+        <img src={logo} alt="UAIZI" className="h-10 object-contain opacity-90" />
       </div>
     </div>
   );
