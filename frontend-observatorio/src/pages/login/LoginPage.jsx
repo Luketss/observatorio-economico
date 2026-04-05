@@ -35,12 +35,12 @@ export default function LoginPage() {
         className="absolute inset-0 bg-cover bg-center"
         style={{ backgroundImage: `url(${bg})` }}
       />
-      <div className="absolute inset-0 bg-black/40" />
+      <div className="absolute inset-0 bg-black/70" />
 
       {/* Content */}
       <div className="relative z-10 w-full max-w-sm flex flex-col items-center gap-6">
         {/* NID image above the form */}
-        <img src={nidLogo} alt="NID" className="w-64 object-contain" />
+        <img src={nidLogo} alt="NID" className="w-64 object-contain mix-blend-multiply" />
 
         {/* Login card */}
         <div className="w-full bg-white/90 backdrop-blur-sm rounded-2xl shadow-xl border border-white/20 p-8">
@@ -92,7 +92,7 @@ export default function LoginPage() {
         </div>
 
         {/* UAIZI logo at the bottom */}
-        <img src={logo} alt="UAIZI" className="h-10 object-contain opacity-90" />
+        <img src={logo} alt="UAIZI" className="h-20 object-contain opacity-90" />
       </div>
     </div>
   );
