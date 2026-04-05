@@ -1,8 +1,7 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext";
-import logo from "../../assets/logo_uaizi.png";
-import bg from "../../assets/back.jpg";
+import bg from "../../assets/bg_teste.jpeg";
 
 export default function LoginPage() {
   const { login } = useAuth();
@@ -36,14 +35,6 @@ export default function LoginPage() {
       />
       <div className="absolute inset-0 bg-slate-900/60" />
       <div className="relative z-10 w-full max-w-sm">
-        {/* Header */}
-        <div className="text-center mb-8">
-          <img src={logo} alt="UAIZI" className="h-32 mx-auto mb-4" />
-          <p className="text-sm text-slate-200 mt-1">
-            Acesse com suas credenciais
-          </p>
-        </div>
-
         {/* Card */}
         <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-800 p-8">
           <form onSubmit={handleSubmit} className="space-y-5">

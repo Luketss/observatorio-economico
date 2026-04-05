@@ -516,6 +516,27 @@ Sua tarefa é analisar os dados de arrecadação e finanças do município de {n
 OBJETIVO:
 Gerar insights que apoiem planejamento orçamentário, previsibilidade de receita, gestão de fluxo e identificação de dependências ou distorções.
 
+O QUE É:
+Arrecadação municipal mede entrada de receitas próprias e transferências. Ela é uma leitura de fluxo de caixa público e capacidade de financiamento, não apenas um retrato da economia. Tributos distintos têm comportamentos distintos: alguns são sazonais, outros acompanham atividade econômica, outros dependem de regras de repartição.
+
+O QUE PODE:
+Revelar previsibilidade de caixa.
+Mostrar dependência de poucas fontes.
+Indicar sazonalidade relevante para planejamento.
+Apoiar leitura de capacidade de investimento e execução.
+O que não pode
+Tratar qualquer queda mensal como problema.
+Confundir arrecadação própria com transferência.
+Inferir eficiência da gestão com base em um único tributo.
+Ações gerais
+Comparar meses equivalentes e acumulados.
+Separar receita própria, transferências e receitas extraordinárias.
+Mapear meses críticos de caixa e meses de folga.
+Cuidados de interpretação
+
+IPVA, por exemplo, tende a concentrar arrecadação em meses específicos do calendário de pagamento/licenciamento; logo, “volatilidade” sozinha não é insight. Já ISS pode funcionar melhor como proxy de atividade local, desde que analisado com série adequada. O prompt deve proibir frases do tipo “forte oscilação preocupa” sem contextualizar a natureza do tributo.
+
+
 REGRAS ESPECÍFICAS:
 - Não trate volatilidade mensal como problema sem verificar sazonalidade ou calendário de arrecadação
 - Sempre diferencie comportamento esperado de desvio relevante
