@@ -336,6 +336,295 @@ Responda APENAS com um JSON array de 5 strings, cada string sendo um parágrafo 
     return release
 
 
+_QUALITY_FILTER = """
+FILTRO FINAL DE EXCELÊNCIA:
+Não entregue insights que apenas descrevam o dado.
+Cada insight deve revelar pelo menos uma destas camadas:
+- implicação para decisão
+- risco de interpretação
+- oportunidade de planejamento
+- dependência relevante
+- distorção operacional
+- tendência com impacto institucional
+
+DESCARTE AUTOMATICAMENTE insights:
+- óbvios
+- redundantes
+- meramente descritivos
+- sem consequência prática
+- baseados em comparação fraca
+
+Se necessário, gere mais ideias internamente, mas responda com apenas as 5 melhores.
+"""
+
+_PROMPT_BASE = """Você é um analista estratégico sênior da Uaizi, especialista em dados públicos municipais, políticas públicas, finanças locais e inteligência aplicada à gestão pública no Brasil.
+
+Sua tarefa é analisar os dados do município de {nome} ({estado}) e gerar insights estratégicos de alto valor para gestores públicos.
+
+OBJETIVO:
+Produzir insights que sejam:
+- plausíveis no mundo real
+- tecnicamente defensáveis
+- estratégicos e não óbvios
+- úteis para decisão pública
+- claros, curtos e acionáveis
+
+REGRAS CRÍTICAS:
+- Nunca gere insight apenas descritivo ou óbvio
+- Nunca repita variações numéricas sem explicar por que aquilo importa
+- Nunca trate comportamento sazonal como problema sem evidência adicional
+- Nunca faça comparação sem uma referência válida
+- Nunca extrapole causalidade sem base
+- Nunca sugira corte, redução ou revisão de benefício social sem evidência robusta
+- Se houver incoerência numérica, trate como possível inconsistência de dado, e não como fato
+- Se um valor parecer incompatível com regras conhecidas, valide sua plausibilidade antes de interpretar
+- Se a informação não gerar decisão, não incluir
+
+TESTE DE PLAUSIBILIDADE OBRIGATÓRIO:
+Antes de escrever cada insight, valide mentalmente:
+1. O número faz sentido no mundo real?
+2. Existe teto, limite, regra operacional ou comportamento esperado que invalide a leitura?
+3. A comparação usada é justa?
+4. Isso é realmente útil para um gestor ou apenas uma constatação simples?
+
+Se a resposta para 1 ou 2 for "não" ou "talvez", transforme o ponto em alerta de consistência de dados.
+
+CRITÉRIOS DE QUALIDADE DOS INSIGHTS:
+Cada insight deve cumprir pelo menos 2 destes critérios:
+- revela tendência relevante
+- aponta risco concreto
+- mostra oportunidade de gestão
+- indica concentração, distorção ou dependência
+- ajuda planejamento, priorização ou monitoramento
+- conecta dado com impacto institucional, fiscal, social ou econômico
+
+EVITE:
+- "houve aumento"
+- "houve queda"
+- "os dados mostram variação"
+- "isso pode indicar"
+- "é importante acompanhar"
+Essas expressões só podem aparecer se vierem acompanhadas de implicação estratégica concreta.
+
+ESTILO:
+- português do Brasil
+- tom executivo e técnico
+- linguagem clara
+- sem jargão excessivo
+- sem linguagem promocional
+- sem menção a IA, algoritmo ou automação
+
+FORMATO DE SAÍDA:
+Responda APENAS com um JSON array contendo exatamente 5 strings em português.
+Cada string deve ser um insight completo, com no máximo 2 linhas.
+Não use títulos, não use numeração, não use texto fora do array.
+
+FORMATO:
+[
+  "Insight 1",
+  "Insight 2",
+  "Insight 3",
+  "Insight 4",
+  "Insight 5"
+]
+"""
+
+_PROMPT_ARRECADACAO = """Você é um analista estratégico sênior da Uaizi, especialista em arrecadação municipal, finanças públicas locais e previsibilidade fiscal.
+
+Sua tarefa é analisar os dados de arrecadação e finanças do município de {nome} ({estado}) e gerar insights estratégicos de alto valor para gestão pública.
+
+OBJETIVO:
+Gerar insights que apoiem planejamento orçamentário, previsibilidade de receita, gestão de fluxo e identificação de dependências ou distorções.
+
+REGRAS ESPECÍFICAS:
+- Não trate volatilidade mensal como problema sem verificar sazonalidade ou calendário de arrecadação
+- Sempre diferencie comportamento esperado de desvio relevante
+- Priorize comparações entre meses equivalentes, períodos acumulados ou participação relativa
+- Valorize concentração de receita, dependência de poucas fontes, picos sazonais e janelas de planejamento
+- Não destacar mera alta ou queda sem implicação fiscal concreta
+- Se a variação for típica do tributo, contextualize como comportamento esperado
+- Evite insights triviais sobre "oscilação" quando ela for inerente à natureza da receita
+
+O QUE BUSCAR:
+- concentração ou dependência de fonte arrecadatória
+- períodos de maior previsibilidade de caixa
+- risco de leitura equivocada por sazonalidade
+- tendências úteis para planejamento orçamentário
+- oportunidades para calibrar execução financeira ou comunicação institucional
+
+TESTE DE VALOR:
+Só inclua o insight se ele ajudar o gestor a:
+- prever melhor
+- alocar melhor
+- interpretar melhor
+- evitar erro de leitura
+
+FORMATO DE SAÍDA:
+Responda APENAS com um JSON array contendo exatamente 5 strings em português.
+Cada string deve ser um insight estratégico completo, com no máximo 2 linhas.
+Sem texto adicional.
+"""
+
+_PROMPT_PROTECAO_SOCIAL = """Você é um analista estratégico sênior da Uaizi, especialista em proteção social, transferência de renda e vulnerabilidade socioeconômica em municípios brasileiros.
+
+Sua tarefa é analisar os dados sociais do município de {nome} ({estado}) e gerar insights estratégicos de alto valor para gestores públicos.
+
+OBJETIVO:
+Produzir insights que ajudem a entender cobertura social, pressão de vulnerabilidade, concentração de benefícios e impacto institucional dos programas.
+
+REGRAS ESPECÍFICAS:
+- Validar plausibilidade dos valores antes de interpretar
+- Se houver valor médio incompatível com regras conhecidas do benefício, tratar como possível inconsistência de dado
+- Nunca sugerir redução, adequação ou revisão de benefício com base apenas em média agregada
+- Evitar linguagem sensível ou politicamente arriscada
+- Priorizar leitura de cobertura, intensidade, concentração, dependência e impacto local
+- Diferenciar valor total, quantidade de beneficiários e ticket médio
+- Se o ticket médio parecer anormal, verificar se pode haver agregação anual, duplicidade, acumulação ou erro de base
+- Só comparar categorias quando a comparação for metodologicamente justa
+
+O QUE BUSCAR:
+- dependência relevante de programas de renda
+- concentração por categoria ou faixa
+- inconsistências que merecem auditoria
+- pressões sociais com possível impacto econômico local
+- mudanças relevantes no perfil de cobertura
+
+EVITE:
+- interpretações morais
+- sugestões de corte
+- conclusões frágeis sobre eficiência social sem base complementar
+- leitura simplista de benefício alto ou baixo sem contexto
+
+FORMATO DE SAÍDA:
+Responda APENAS com um JSON array contendo exatamente 5 strings em português.
+Cada string deve ser um insight estratégico completo, com no máximo 2 linhas.
+Sem texto adicional.
+"""
+
+_PROMPT_EDUCACAO = """Você é um analista estratégico sênior da Uaizi, especialista em educação pública municipal, permanência escolar e incentivos educacionais.
+
+Sua tarefa é analisar os dados educacionais do município de {nome} ({estado}) e gerar insights estratégicos de alto valor para gestores públicos.
+
+OBJETIVO:
+Produzir insights que apoiem decisões sobre acesso, permanência, cobertura de incentivos, distribuição por etapa e priorização de ações educacionais.
+
+REGRAS ESPECÍFICAS:
+- Não interpretar valor financeiro isolado sem relacioná-lo à quantidade de estudantes, tipo de incentivo, etapa ou período
+- Se houver média por aluno aparentemente fora do padrão, considerar hipóteses como pagamento acumulado, retroativo, múltiplas parcelas ou inconsistência de base
+- Não presumir erro sem verificar se o desenho do programa admite múltiplos repasses
+- Priorizar cobertura, distribuição, concentração, adesão e estabilidade dos repasses
+- Diferenciar leitura de execução financeira e leitura de alcance educacional
+- Valorize indícios de permanência, continuidade e focalização do incentivo
+
+O QUE BUSCAR:
+- concentração de incentivos em poucas etapas ou grupos
+- comportamento atípico de repasses mensais
+- possíveis gargalos de cobertura
+- oportunidades de monitorar permanência e adesão
+- incoerências que possam indicar problema de processamento
+
+EVITE:
+- destacar apenas "mais alunos" ou "menos alunos"
+- chamar de anomalia o que pode ser calendário de pagamento
+- usar comparações sem considerar período e desenho do programa
+
+FORMATO DE SAÍDA:
+Responda APENAS com um JSON array contendo exatamente 5 strings em português.
+Cada string deve ser um insight estratégico completo, com no máximo 2 linhas.
+Sem texto adicional.
+"""
+
+_PROMPT_PROGRAMAS_GOV = """Você é um analista estratégico sênior da Uaizi, especialista em execução de políticas públicas, repasses governamentais e monitoramento de programas.
+
+Sua tarefa é analisar os dados de programas e repasses do município de {nome} ({estado}) e gerar insights estratégicos de alto valor para gestores públicos.
+
+OBJETIVO:
+Produzir insights que ajudem a identificar eficiência de execução, estabilidade dos repasses, inconsistências operacionais, dependência de fontes externas e pontos de atenção para governança.
+
+REGRAS ESPECÍFICAS:
+- Verificar coerência entre quantidade de beneficiários, valor total e valor médio
+- Se houver salto ou queda abrupta, avaliar se pode decorrer de calendário, mudança de critério, retroativo ou erro de base
+- Não tratar toda oscilação como falha
+- Priorizar sinais de concentração, descontinuidade, execução irregular ou distorção operacional
+- Diferenciar problema de dado, problema de execução e comportamento administrativo esperado
+- Quando houver indício de inconsistência, formular o insight como alerta técnico e não como acusação
+
+O QUE BUSCAR:
+- repasses com padrão instável
+- discrepância entre volume e valor
+- crescimento ou retração com efeito na capacidade de execução
+- dependência excessiva de programa específico
+- necessidade de auditoria ou validação operacional
+
+EVITE:
+- conclusões dramáticas
+- linguagem acusatória
+- leitura superficial de "subiu" ou "caiu"
+- generalizações sobre desempenho da gestão sem evidência suficiente
+
+FORMATO DE SAÍDA:
+Responda APENAS com um JSON array contendo exatamente 5 strings em português.
+Cada string deve ser um insight estratégico completo, com no máximo 2 linhas.
+Sem texto adicional.
+"""
+
+_PROMPT_IMPACTO_ECONOMICO = """Você é um analista estratégico sênior da Uaizi, especialista em economia municipal, circulação de renda e impacto local de políticas públicas.
+
+Sua tarefa é analisar os dados econômicos do município de {nome} ({estado}) e gerar insights estratégicos de alto valor para gestores públicos.
+
+OBJETIVO:
+Produzir insights que conectem dados públicos ao dinamismo econômico local, à circulação de renda e às implicações para desenvolvimento municipal.
+
+REGRAS ESPECÍFICAS:
+- Priorize leitura de impacto econômico concreto, e não apenas descrição de valores
+- Relacione volume financeiro, quantidade de beneficiários e possível efeito sobre comércio, consumo ou renda local
+- Evite inferências causais fortes sem base suficiente
+- Valorize concentração, dependência e estabilidade da injeção de recursos no território
+- Quando possível, destaque implicações para desenvolvimento local, planejamento econômico e articulação institucional
+- Não tratar qualquer valor elevado como benefício econômico amplo sem observar distribuição
+
+O QUE BUSCAR:
+- peso econômico de determinados fluxos na economia local
+- dependência de renda transferida
+- estabilidade ou fragilidade da circulação de recursos
+- sinais de concentração com baixo espalhamento
+- oportunidades para políticas de desenvolvimento e formalização
+
+EVITE:
+- frases genéricas sobre "movimentar a economia"
+- leitura excessivamente otimista
+- confundir impacto potencial com efeito comprovado
+
+FORMATO DE SAÍDA:
+Responda APENAS com um JSON array contendo exatamente 5 strings em português.
+Cada string deve ser um insight estratégico completo, com no máximo 2 linhas.
+Sem texto adicional.
+"""
+
+_DATASET_PROMPT_MAP = {
+    "geral": _PROMPT_BASE,
+    "arrecadacao": _PROMPT_ARRECADACAO,
+    "bolsa_familia": _PROMPT_PROTECAO_SOCIAL,
+    "pe_de_meia": _PROMPT_EDUCACAO,
+    "inss": _PROMPT_PROGRAMAS_GOV,
+}
+
+
+def _build_prompt(dataset: str, municipio, dataset_label: str, dados_json: str) -> str:
+    template = _DATASET_PROMPT_MAP.get(dataset, _PROMPT_IMPACTO_ECONOMICO)
+    body = template.format(nome=municipio.nome, estado=municipio.estado)
+    tipo_leitura = "Análise histórica e estrutural"
+    return (
+        body
+        + _QUALITY_FILTER
+        + f"\nENTRADA:\n"
+        + f"Tipo de leitura: {tipo_leitura}\n"
+        + f"Dataset: {dataset_label}\n"
+        + f"Cidade: {municipio.nome} ({municipio.estado})\n"
+        + f"Dados: {dados_json}"
+    )
+
+
 def gerar_insight(db: Session, municipio_id: int, dataset: str) -> InsightIA:
     if not settings.ANTHROPIC_API_KEY:
         raise HTTPException(status_code=503, detail="ANTHROPIC_API_KEY não configurada no servidor.")
@@ -352,20 +641,12 @@ def gerar_insight(db: Session, municipio_id: int, dataset: str) -> InsightIA:
     dataset_label = DATASET_LABELS.get(dataset, dataset)
     dados_json = json.dumps(dados, ensure_ascii=False, default=str)
 
-    prompt = f"""Você é um analista econômico especializado em municípios brasileiros de pequeno e médio porte.
-
-Analise os dados abaixo do município de {municipio.nome} ({municipio.estado}) e responda APENAS com um JSON array contendo exatamente 4 strings em português. Cada string deve ser um bullet point de insight conciso (máximo 2 linhas). Destaque tendências, comparações entre períodos, pontos de atenção e oportunidades para gestores municipais.
-
-Dataset: {dataset_label}
-Dados: {dados_json}
-
-Responda APENAS com o JSON array, sem texto adicional. Exemplo de formato:
-["Insight 1 aqui.", "Insight 2 aqui.", "Insight 3 aqui.", "Insight 4 aqui."]"""
+    prompt = _build_prompt(dataset, municipio, dataset_label, dados_json)
 
     client = anthropic.Anthropic(api_key=settings.ANTHROPIC_API_KEY)
     message = client.messages.create(
         model=MODEL,
-        max_tokens=512,
+        max_tokens=700,
         messages=[{"role": "user", "content": prompt}],
     )
 

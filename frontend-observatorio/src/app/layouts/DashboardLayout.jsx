@@ -81,7 +81,7 @@ export default function DashboardLayout() {
               UAIZI
             </h1>
             <p className="text-xs text-slate-400 mt-1 uppercase tracking-widest">
-              Observatório Econômico
+              NID — Núcleo de Inteligência de Dados
             </p>
           </div>
 

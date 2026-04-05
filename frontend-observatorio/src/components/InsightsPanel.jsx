@@ -84,7 +84,7 @@ export default function InsightsPanel({ dataset, municipioId }) {
               ))}
             </ul>
             <p className="text-xs text-gray-400 dark:text-slate-500 mt-4">
-              Gerado em {formatDate(insight.gerado_em)} · {insight.modelo}
+              Gerado em {formatDate(insight.gerado_em)}
             </p>
           </motion.div>
         ) : (
