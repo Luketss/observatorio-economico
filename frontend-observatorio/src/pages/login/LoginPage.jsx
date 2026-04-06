@@ -40,7 +40,7 @@ export default function LoginPage() {
       {/* Content */}
       <div className="relative z-10 w-full max-w-sm flex flex-col items-center gap-6">
         {/* NID image above the form */}
-        <img src={nidLogo} alt="NID" className="w-64 object-contain mix-blend-multiply" />
+        <img src={nidLogo} alt="NID" className="w-128 object-contain mix-blend-multiply" />
 
         {/* Login card */}
         <div className="w-full bg-white/90 backdrop-blur-sm rounded-2xl shadow-xl border border-white/20 p-8">
