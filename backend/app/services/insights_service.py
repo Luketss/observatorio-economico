@@ -11,17 +11,17 @@ import anthropic
 from app.core.config import settings
 from app.models.arrecadacao import ArrecadacaoMensal
 from app.models.bolsa_familia import BolsaFamiliaResumo
-from app.models.caged import CagedMovimentacao
-from app.models.comex import ComexMensal
+from app.models.caged import CagedMovimentacao, CagedPorCnae, CagedSalario
+from app.models.comex import ComexMensal, ComexPorPais, ComexPorProduto
 from app.models.empresa import Empresa
 from app.models.estban import EstbanMensal
 from app.models.insight_ia import InsightIA
 from app.models.inss import InssAnual
 from app.models.municipio import Municipio
-from app.models.pe_de_meia import PeDeMeiaResumo
+from app.models.pe_de_meia import PeDeMeiaEtapa, PeDeMeiaResumo
 from app.models.pib import PibAnual
 from app.models.pix import PixMensal
-from app.models.rais import RaisVinculo
+from app.models.rais import RaisPorCnae, RaisPorEscolaridade, RaisPorSexo, RaisVinculo
 from fastapi import HTTPException
 from sqlalchemy import func
 from sqlalchemy.orm import Session
@@ -70,7 +70,7 @@ def _fetch_dados(
             db.query(ArrecadacaoMensal)
             .filter(ArrecadacaoMensal.municipio_id == municipio_id)
             .order_by(ArrecadacaoMensal.ano.desc(), ArrecadacaoMensal.mes.desc())
-            .limit(12)
+            .limit(24)
             .all()
         )
         dados = [
@@ -82,8 +82,11 @@ def _fetch_dados(
                 "ipi": r.valor_ipi,
                 "total": r.valor_total,
             }
-            for r in rows
+            for r in rows[:12]
         ]
+        if len(rows) >= 13 and rows[12].valor_total:
+            yoy = round((rows[0].valor_total - rows[12].valor_total) / rows[12].valor_total * 100, 1)
+            dados[0]["yoy_crescimento_pct"] = yoy
         periodo = f"{rows[0].ano}-{rows[0].mes:02d}" if rows else "geral"
 
     elif dataset == "pib":
@@ -94,7 +97,18 @@ def _fetch_dados(
             .limit(5)
             .all()
         )
-        dados = [{"ano": r.ano, "valor": r.pib_total} for r in rows]
+        dados = [
+            {
+                "ano": r.ano,
+                "pib_total": r.pib_total,
+                "tipo_dado": r.tipo_dado,
+                "va_agropecuaria": r.va_agropecuaria,
+                "va_industria": r.va_industria,
+                "va_servicos": r.va_servicos,
+                "va_governo": r.va_governo,
+            }
+            for r in rows
+        ]
         periodo = str(rows[0].ano) if rows else "geral"
 
     elif dataset == "caged":
@@ -115,6 +129,30 @@ def _fetch_dados(
             }
             for r in rows
         ]
+        if rows:
+            latest_ano = rows[0].ano
+            cnae_rows = (
+                db.query(CagedPorCnae)
+                .filter(CagedPorCnae.municipio_id == municipio_id, CagedPorCnae.ano == latest_ano)
+                .order_by(func.abs(CagedPorCnae.saldo).desc())
+                .limit(5)
+                .all()
+            )
+            salario = (
+                db.query(CagedSalario)
+                .filter(CagedSalario.municipio_id == municipio_id, CagedSalario.ano == latest_ano)
+                .order_by(CagedSalario.mes.desc())
+                .first()
+            )
+            dados.append({
+                "tipo": "contexto_setorial",
+                "setores_destaque": [
+                    {"setor": r.descricao_secao, "saldo": r.saldo, "admissoes": r.admissoes, "desligamentos": r.desligamentos}
+                    for r in cnae_rows
+                ],
+                "salario_medio_admissoes": salario.salario_medio_admissoes if salario else None,
+                "salario_medio_desligamentos": salario.salario_medio_desligamentos if salario else None,
+            })
         periodo = f"{rows[0].ano}-{rows[0].mes:02d}" if rows else "geral"
 
     elif dataset == "rais":
@@ -125,7 +163,43 @@ def _fetch_dados(
             .limit(5)
             .all()
         )
-        dados = [{"ano": r.ano, "vinculos": r.total_vinculos} for r in rows]
+        dados = [{"ano": r.ano, "vinculos": r.total_vinculos, "remuneracao_media": r.remuneracao_media} for r in rows]
+        if rows:
+            latest_ano = rows[0].ano
+            cnae_rows = (
+                db.query(RaisPorCnae)
+                .filter(RaisPorCnae.municipio_id == municipio_id, RaisPorCnae.ano == latest_ano)
+                .order_by(RaisPorCnae.total_vinculos.desc())
+                .limit(5)
+                .all()
+            )
+            sexo_rows = (
+                db.query(RaisPorSexo)
+                .filter(RaisPorSexo.municipio_id == municipio_id, RaisPorSexo.ano == latest_ano)
+                .all()
+            )
+            edu_rows = (
+                db.query(RaisPorEscolaridade)
+                .filter(RaisPorEscolaridade.municipio_id == municipio_id, RaisPorEscolaridade.ano == latest_ano)
+                .order_by(RaisPorEscolaridade.total_vinculos.desc())
+                .limit(3)
+                .all()
+            )
+            dados.append({
+                "tipo": "contexto_estrutural",
+                "setores_top5": [
+                    {"setor": r.descricao_secao, "vinculos": r.total_vinculos, "remuneracao_media": r.remuneracao_media}
+                    for r in cnae_rows
+                ],
+                "genero": [
+                    {"sexo": r.sexo, "vinculos": r.total_vinculos, "remuneracao_media": r.remuneracao_media}
+                    for r in sexo_rows
+                ],
+                "escolaridade_top3": [
+                    {"nivel": r.grau_instrucao, "vinculos": r.total_vinculos}
+                    for r in edu_rows
+                ],
+            })
         periodo = str(rows[0].ano) if rows else "geral"
 
     elif dataset == "bolsa_familia":
@@ -142,9 +216,14 @@ def _fetch_dados(
                 "mes": r.mes,
                 "beneficiarios": r.total_beneficiarios,
                 "valor_total": r.valor_total,
+                "valor_primeira_infancia": r.valor_primeira_infancia,
+                "beneficiarios_primeira_infancia": r.beneficiarios_primeira_infancia,
             }
             for r in rows
         ]
+        if len(rows) >= 13 and rows[12].valor_total:
+            yoy = round((rows[0].valor_total - rows[12].valor_total) / rows[12].valor_total * 100, 1)
+            dados[0]["yoy_crescimento_pct"] = yoy
         periodo = f"{rows[0].ano}-{rows[0].mes:02d}" if rows else "geral"
 
     elif dataset == "pe_de_meia":
@@ -164,6 +243,24 @@ def _fetch_dados(
             }
             for r in rows
         ]
+        if rows:
+            etapa_rows = (
+                db.query(PeDeMeiaEtapa)
+                .filter(
+                    PeDeMeiaEtapa.municipio_id == municipio_id,
+                    PeDeMeiaEtapa.ano == rows[0].ano,
+                    PeDeMeiaEtapa.mes == rows[0].mes,
+                )
+                .all()
+            )
+            if etapa_rows:
+                dados.append({
+                    "tipo": "distribuicao_etapa",
+                    "etapas": [
+                        {"etapa": r.etapa_ensino, "tipo_parcela": r.tipo_incentivo, "estudantes": r.total_estudantes, "valor": r.valor_total}
+                        for r in etapa_rows
+                    ],
+                })
         periodo = f"{rows[0].ano}-{rows[0].mes:02d}" if rows else "geral"
 
     elif dataset == "inss":
@@ -197,9 +294,16 @@ def _fetch_dados(
             {
                 "data": str(r.data_referencia),
                 "agencias": r.qtd_agencias,
-                "credito": r.valor_operacoes_credito,
+                "credito_total": r.valor_operacoes_credito,
+                "depositos_vista": r.valor_depositos_vista,
                 "poupanca": r.valor_poupanca,
                 "depositos_prazo": r.valor_depositos_prazo,
+                "emprestimos_titulos": r.emprestimos_titulos_descontados,
+                "financiamentos_gerais": r.financiamentos_gerais,
+                "financiamento_agropecuario": r.financiamento_agropecuario,
+                "financiamentos_imobiliarios": r.financiamentos_imobiliarios,
+                "emprestimos_setor_publico": r.emprestimos_setor_publico,
+                "outros_creditos": r.outros_creditos,
             }
             for r in rows
         ]
@@ -223,6 +327,28 @@ def _fetch_dados(
             }
             for r in rows
         ]
+        if rows:
+            latest_ano = rows[0].ano
+            top_produtos = (
+                db.query(ComexPorProduto)
+                .filter(ComexPorProduto.municipio_id == municipio_id, ComexPorProduto.ano == latest_ano, ComexPorProduto.tipo_operacao == "EXP")
+                .order_by(ComexPorProduto.valor_usd.desc())
+                .limit(5)
+                .all()
+            )
+            top_paises = (
+                db.query(ComexPorPais)
+                .filter(ComexPorPais.municipio_id == municipio_id, ComexPorPais.ano == latest_ano, ComexPorPais.tipo_operacao == "EXP")
+                .order_by(ComexPorPais.valor_usd.desc())
+                .limit(5)
+                .all()
+            )
+            if top_produtos or top_paises:
+                dados.append({
+                    "tipo": "composicao_exportacoes",
+                    "top_produtos": [{"produto": r.produto, "valor_usd": r.valor_usd} for r in top_produtos],
+                    "top_paises": [{"pais": r.pais, "valor_usd": r.valor_usd} for r in top_paises],
+                })
         periodo = f"{rows[0].ano}-{rows[0].mes:02d}" if rows else "geral"
 
     elif dataset == "empresas":
@@ -241,7 +367,24 @@ def _fetch_dados(
             .filter(Empresa.municipio_id == municipio_id, Empresa.opcao_mei == True)
             .scalar()
         )
-        dados = [{"total_empresas": total, "ativas": ativas, "mei": mei}]
+        simples = (
+            db.query(func.count(Empresa.id))
+            .filter(Empresa.municipio_id == municipio_id, Empresa.opcao_simples == True)
+            .scalar()
+        )
+        por_porte = (
+            db.query(Empresa.porte, func.count(Empresa.id))
+            .filter(Empresa.municipio_id == municipio_id)
+            .group_by(Empresa.porte)
+            .all()
+        )
+        dados = [{
+            "total_empresas": total,
+            "ativas": ativas,
+            "mei": mei,
+            "simples_nacional": simples,
+            "distribuicao_porte": [{"porte": p or "Não informado", "total": n} for p, n in por_porte],
+        }]
         periodo = "geral"
 
     elif dataset == "pix":
@@ -258,13 +401,27 @@ def _fetch_dados(
                 "mes": r.mes,
                 "vl_pagador_pf": r.vl_pagador_pf,
                 "qt_pagador_pf": r.qt_pagador_pf,
+                "qt_pes_pagador_pf": r.qt_pes_pagador_pf,
                 "vl_pagador_pj": r.vl_pagador_pj,
                 "qt_pagador_pj": r.qt_pagador_pj,
+                "qt_pes_pagador_pj": r.qt_pes_pagador_pj,
                 "vl_recebedor_pf": r.vl_recebedor_pf,
+                "qt_recebedor_pf": r.qt_recebedor_pf,
                 "vl_recebedor_pj": r.vl_recebedor_pj,
+                "qt_recebedor_pj": r.qt_recebedor_pj,
+                "qt_pes_recebedor_pj": r.qt_pes_recebedor_pj,
             }
             for r in rows
         ]
+        if len(rows) >= 13:
+            curr_pf = rows[0].vl_pagador_pf or 0
+            curr_pj = rows[0].vl_pagador_pj or 0
+            prev_pf = rows[12].vl_pagador_pf or 0
+            prev_pj = rows[12].vl_pagador_pj or 0
+            curr_total = curr_pf + curr_pj
+            prev_total = prev_pf + prev_pj
+            if prev_total:
+                dados[0]["yoy_crescimento_pct"] = round((curr_total - prev_total) / prev_total * 100, 1)
         periodo = f"{rows[0].ano}-{rows[0].mes:02d}" if rows else "geral"
 
     elif dataset == "geral":
@@ -838,7 +995,7 @@ def gerar_insight(db: Session, municipio_id: int, dataset: str) -> InsightIA:
     client = anthropic.Anthropic(api_key=settings.ANTHROPIC_API_KEY)
     message = client.messages.create(
         model=MODEL,
-        max_tokens=700,
+        max_tokens=900,
         messages=[{"role": "user", "content": prompt}],
     )
 
