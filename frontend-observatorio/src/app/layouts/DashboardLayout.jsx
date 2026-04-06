@@ -74,7 +74,7 @@ export default function DashboardLayout() {
     <div className="flex h-screen bg-slate-50 dark:bg-slate-950">
       {/* Sidebar */}
       <aside className="w-64 bg-gradient-to-b from-slate-900 to-slate-800 text-white flex flex-col shadow-xl flex-shrink-0">
-        <div className="flex-1 min-h-0 overflow-y-auto">
+        <div className="flex-1 min-h-0 overflow-y-auto [&::-webkit-scrollbar]:hidden [scrollbar-width:none]">
           {/* Logo */}
           <div className="px-6 py-7 border-b border-slate-700">
             <h1 className="text-xl font-extrabold tracking-tight leading-tight">
