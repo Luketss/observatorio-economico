@@ -139,7 +139,6 @@ export default function InssPage() {
       </div>
 
       <InsightsPanel dataset="inss" />
-      <ReleasesPanel dataset="inss" />
 
       <FilterBar years={years} value={filters} onChange={setFilters} />
 
@@ -311,6 +310,8 @@ export default function InssPage() {
           </div>
         )}
       </div>
+      <ReleasesPanel dataset="inss" />
+
     </motion.div>
   );
 }

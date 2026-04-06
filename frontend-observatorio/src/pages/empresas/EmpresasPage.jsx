@@ -139,7 +139,6 @@ export default function EmpresasPage() {
       </div>
 
       <InsightsPanel dataset="empresas" />
-      <ReleasesPanel dataset="empresas" />
 
       {/* KPI Cards */}
       {loading ? (
@@ -333,6 +332,8 @@ export default function EmpresasPage() {
           </div>
         )}
       </div>
+      <ReleasesPanel dataset="empresas" />
+
     </motion.div>
   );
 }

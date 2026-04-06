@@ -110,7 +110,6 @@ export default function ArrecadacaoPage() {
       </div>
 
       <InsightsPanel dataset="arrecadacao" />
-      <ReleasesPanel dataset="arrecadacao" />
 
       <FilterBar years={years} value={filters} onChange={setFilters} />
 
@@ -230,6 +229,8 @@ export default function ArrecadacaoPage() {
           </div>
         </div>
       )}
+      <ReleasesPanel dataset="arrecadacao" />
+
     </motion.div>
   );
 }

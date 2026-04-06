@@ -206,7 +206,6 @@ export default function CagedPage() {
       </div>
 
       <InsightsPanel dataset="caged" />
-      <ReleasesPanel dataset="caged" />
 
       <FilterBar years={years} showMonths value={filters} onChange={setFilters} />
 
@@ -314,6 +313,8 @@ export default function CagedPage() {
           </ResponsiveContainer>
         </div>
       </ChartCard>
+      <ReleasesPanel dataset="caged" />
+
     </motion.div>
   );
 }

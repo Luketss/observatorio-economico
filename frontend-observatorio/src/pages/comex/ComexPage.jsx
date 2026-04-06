@@ -183,7 +183,6 @@ export default function ComexPage() {
       </div>
 
       <InsightsPanel dataset="comex" />
-      <ReleasesPanel dataset="comex" />
 
       <FilterBar years={anos.slice().sort()} showMonths value={filters} onChange={setFilters} />
 
@@ -401,6 +400,8 @@ export default function ComexPage() {
           )}
         </div>
       </div>
+      <ReleasesPanel dataset="comex" />
+
     </motion.div>
   );
 }

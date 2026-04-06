@@ -139,7 +139,6 @@ export default function PeDeMeiaPage() {
       </div>
 
       <InsightsPanel dataset="pe_de_meia" />
-      <ReleasesPanel dataset="pe_de_meia" />
 
       <FilterBar years={years} showMonths value={filters} onChange={setFilters} />
 
@@ -320,6 +319,8 @@ export default function PeDeMeiaPage() {
           )}
         </div>
       </div>
+      <ReleasesPanel dataset="pe_de_meia" />
+
     </motion.div>
   );
 }

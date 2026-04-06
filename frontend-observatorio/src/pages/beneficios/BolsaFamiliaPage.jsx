@@ -117,7 +117,6 @@ export default function BolsaFamiliaPage() {
       </div>
 
       <InsightsPanel dataset="bolsa_familia" />
-      <ReleasesPanel dataset="bolsa_familia" />
 
       <FilterBar years={years} showMonths value={filters} onChange={setFilters} />
 
@@ -242,6 +241,8 @@ export default function BolsaFamiliaPage() {
           </div>
         )}
       </div>
+      <ReleasesPanel dataset="bolsa_familia" />
+
     </motion.div>
   );
 }

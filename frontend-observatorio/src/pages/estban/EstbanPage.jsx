@@ -148,7 +148,6 @@ export default function EstbanPage() {
       </div>
 
       <InsightsPanel dataset="estban" />
-      <ReleasesPanel dataset="estban" />
 
       <FilterBar years={years} value={filters} onChange={setFilters} />
 
@@ -483,6 +482,8 @@ export default function EstbanPage() {
           </div>
         )}
       </div>
+      <ReleasesPanel dataset="estban" />
+
     </motion.div>
   );
 }

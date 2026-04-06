@@ -141,7 +141,6 @@ export default function PibPage() {
       </div>
 
       <InsightsPanel dataset="pib" />
-      <ReleasesPanel dataset="pib" />
 
       <FilterBar years={years} value={filters} onChange={setFilters} />
 
@@ -293,6 +292,8 @@ export default function PibPage() {
           </div>
         </div>
       )}
+      <ReleasesPanel dataset="pib" />
+
     </motion.div>
   );
 }

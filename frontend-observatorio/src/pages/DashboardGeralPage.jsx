@@ -183,7 +183,6 @@ export default function DashboardGeralPage() {
       </div>
 
       <InsightsPanel dataset="geral" />
-      <ReleasesPanel dataset="geral" />
 
       {loading ? (
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6">
@@ -251,6 +250,8 @@ export default function DashboardGeralPage() {
         )}
       </motion.div>
       <MandatoTimeline />
+      <ReleasesPanel dataset="geral" />
+
     </motion.div>
   );
 }

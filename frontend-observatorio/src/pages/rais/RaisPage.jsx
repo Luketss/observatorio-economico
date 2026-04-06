@@ -249,7 +249,6 @@ export default function RaisPage() {
       </div>
 
       <InsightsPanel dataset="rais" />
-      <ReleasesPanel dataset="rais" />
 
       <FilterBar years={years} value={filters} onChange={setFilters} />
 
@@ -478,6 +477,8 @@ export default function RaisPage() {
           </ChartCard>
         </>
       )}
+      <ReleasesPanel dataset="rais" />
+
     </motion.div>
   );
 }
