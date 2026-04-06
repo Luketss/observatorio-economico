@@ -133,7 +133,6 @@ export default function PixPage() {
       </div>
 
       <InsightsPanel dataset="pix" />
-      <ReleasesPanel dataset="pix" />
 
       <FilterBar years={years} showMonths value={filters} onChange={setFilters} />
 
@@ -228,6 +227,8 @@ export default function PixPage() {
           </ResponsiveContainer>
         </div>
       </ChartCard>
+      <ReleasesPanel dataset="pix" />
+
     </motion.div>
   );
 }
