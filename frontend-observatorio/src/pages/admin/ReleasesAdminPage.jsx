@@ -310,21 +310,19 @@ export default function ReleasesAdminPage() {
                     >
                       <TrashIcon className="w-3.5 h-3.5" />
                     </button>
-                    {/* Allow re-editing manual releases */}
-                    {release.modelo === "especialista" && (
-                      <button
-                        onClick={() => {
-                          const key = release.dataset.replace(/^release_/, "");
-                          const d = DATASETS.find((x) => x.key === key);
-                          setManualModal({ key, label: d?.label || key });
-                          setManualText(release.bullets.join("\n\n"));
-                        }}
-                        title="Editar conteúdo"
-                        className="p-1.5 rounded-lg text-slate-400 hover:text-teal-600 hover:bg-teal-50 dark:hover:bg-teal-950/40 transition-colors"
-                      >
-                        <PencilSquareIcon className="w-3.5 h-3.5" />
-                      </button>
-                    )}
+                    {/* Allow inserting/overriding a manual release for any dataset */}
+                    <button
+                      onClick={() => {
+                        const key = release.dataset.replace(/^release_/, "");
+                        const d = DATASETS.find((x) => x.key === key);
+                        setManualModal({ key, label: d?.label || key });
+                        setManualText(release.modelo === "especialista" ? release.bullets.join("\n\n") : "");
+                      }}
+                      title={release.modelo === "especialista" ? "Editar conteúdo" : "Substituir por release manual"}
+                      className="p-1.5 rounded-lg text-slate-400 hover:text-teal-600 hover:bg-teal-50 dark:hover:bg-teal-950/40 transition-colors"
+                    >
+                      <PencilSquareIcon className="w-3.5 h-3.5" />
+                    </button>
                   </div>
                 </div>
               ))}
