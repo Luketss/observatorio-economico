@@ -111,9 +111,10 @@ export default function ComexPage() {
       if (monthTo && item.mes > +monthTo) return;
       const key = `${item.ano}-${String(item.mes).padStart(2, "0")}`;
       if (!map[key]) map[key] = { periodo: key, exportacoes: 0, importacoes: 0 };
-      if (item.tipo_operacao === "EXP") {
+      const tipo = item.tipo_operacao?.toLowerCase();
+      if (tipo === "exp" || tipo === "export") {
         map[key].exportacoes += item.valor_usd ?? 0;
-      } else if (item.tipo_operacao === "IMP") {
+      } else if (tipo === "imp" || tipo === "import") {
         map[key].importacoes += item.valor_usd ?? 0;
       }
     });

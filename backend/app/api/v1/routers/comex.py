@@ -79,9 +79,10 @@ def saldo_mensal(db: Session = Depends(get_db), current_user=Depends(get_current
         key = f"{r.ano}-{str(r.mes).zfill(2)}"
         if key not in periodos:
             periodos[key] = {"periodo": key, "ano": r.ano, "mes": r.mes, "exportacoes": 0, "importacoes": 0}
-        if r.tipo_operacao == "EXP":
+        tipo = (r.tipo_operacao or "").lower()
+        if tipo in ("exp", "export"):
             periodos[key]["exportacoes"] += r.valor_usd or 0
-        elif r.tipo_operacao == "IMP":
+        elif tipo in ("imp", "import"):
             periodos[key]["importacoes"] += r.valor_usd or 0
     result = []
     for p in sorted(periodos.values(), key=lambda x: x["periodo"]):
