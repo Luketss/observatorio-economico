@@ -36,6 +36,13 @@ class InsightUpdateRequest(BaseModel):
     oculto_planos: list[str] | None = None
 
 
+class InserirReleaseRequest(BaseModel):
+    municipio_id: int
+    dataset: str
+    paragrafos: list[str]
+    periodo: str | None = None
+
+
 def _parse_oculto_planos(insight) -> list[str]:
     if not insight.oculto_planos:
         return []
@@ -243,6 +250,43 @@ def post_gerar_release(
         raise HTTPException(status_code=400, detail="municipio_id é obrigatório.")
 
     release = gerar_release(db, body.municipio_id, body.dataset)
+    return _to_response(release)
+
+
+@router.post("/inserir_release", response_model=InsightResponse)
+def inserir_release_manual(
+    body: InserirReleaseRequest,
+    db: Session = Depends(get_db),
+    current_user=Depends(get_current_user),
+):
+    """Insert a human-authored release for a municipality. ADMIN_GLOBAL only."""
+    if current_user.role.nome != "ADMIN_GLOBAL":
+        raise HTTPException(status_code=403, detail="Apenas ADMIN_GLOBAL pode inserir releases.")
+
+    from datetime import timezone
+    periodo = body.periodo or datetime.now(timezone.utc).strftime("%Y-%m")
+    release_dataset = f"release_{body.dataset}"
+    conteudo = json.dumps(body.paragrafos, ensure_ascii=False)
+
+    existing = buscar_insight(db, body.municipio_id, release_dataset, periodo)
+    if existing:
+        existing.conteudo = conteudo
+        existing.modelo = "especialista"
+        existing.gerado_em = datetime.now(timezone.utc)
+        db.commit()
+        db.refresh(existing)
+        return _to_response(existing)
+
+    release = InsightModel(
+        municipio_id=body.municipio_id,
+        dataset=release_dataset,
+        periodo=periodo,
+        conteudo=conteudo,
+        modelo="especialista",
+    )
+    db.add(release)
+    db.commit()
+    db.refresh(release)
     return _to_response(release)
 
 

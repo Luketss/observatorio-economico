@@ -12,6 +12,7 @@ import ComparativoPage from "../../pages/comparativo/ComparativoPage";
 import UsuariosAdminPage from "../../pages/admin/UsuariosAdminPage";
 import MandatoAdminPage from "../../pages/admin/MandatoAdminPage";
 import InsightsAdminPage from "../../pages/admin/InsightsAdminPage";
+import ReleasesAdminPage from "../../pages/admin/ReleasesAdminPage";
 import MunicipiosAdminPage from "../../pages/admin/MunicipiosAdminPage";
 import CustomCardsAdminPage from "../../pages/admin/CustomCardsAdminPage";
 import PlanoConfigAdminPage from "../../pages/admin/PlanoConfigAdminPage";
@@ -95,6 +96,10 @@ export default function AppRouter() {
           <Route
             path="insights"
             element={<AdminRoute><InsightsAdminPage /></AdminRoute>}
+          />
+          <Route
+            path="releases"
+            element={<AdminRoute><ReleasesAdminPage /></AdminRoute>}
           />
           <Route
             path="cards"

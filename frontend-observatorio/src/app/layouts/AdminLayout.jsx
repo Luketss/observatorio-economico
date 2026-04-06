@@ -13,6 +13,7 @@ import {
   BuildingOfficeIcon,
   Squares2X2Icon,
   ShieldCheckIcon,
+  NewspaperIcon,
 } from "@heroicons/react/24/outline";
 
 export default function AdminLayout() {
@@ -27,6 +28,7 @@ export default function AdminLayout() {
       ? [
           { to: "/admin/municipios", label: "Municípios", icon: BuildingOfficeIcon },
           { to: "/admin/insights", label: "Insights IA", icon: SparklesIcon },
+          { to: "/admin/releases", label: "Releases", icon: NewspaperIcon },
           { to: "/admin/cards", label: "Cards Customizados", icon: Squares2X2Icon },
           { to: "/admin/planos", label: "Planos & Acesso", icon: ShieldCheckIcon },
           { to: "/admin/usuarios", label: "Usuários", icon: UsersIcon },

@@ -11,6 +11,7 @@ import {
   TrashIcon,
   NewspaperIcon,
   XMarkIcon,
+  PencilSquareIcon,
 } from "@heroicons/react/24/outline";
 
 const DATASETS = [
@@ -47,6 +48,9 @@ export default function InsightsAdminPage() {
   const [generatingAll, setGeneratingAll] = useState(false);
   const [acting, setActing] = useState({});
   const [releaseModal, setReleaseModal] = useState(null);
+  const [manualModal, setManualModal] = useState(null); // { key, label }
+  const [manualText, setManualText] = useState("");
+  const [submittingManual, setSubmittingManual] = useState(false);
 
   useEffect(() => {
     api.get("/municipios").then((r) => setMunicipios(r.data || []));
@@ -152,6 +156,30 @@ export default function InsightsAdminPage() {
       setInsights((prev) => ({ ...prev, [insight.dataset]: null }));
     } finally {
       setActing((prev) => ({ ...prev, [insight.id]: false }));
+    }
+  };
+
+  const handleInserirManual = async () => {
+    if (!manualText.trim()) return;
+    setSubmittingManual(true);
+    try {
+      const paragrafos = manualText
+        .split(/\n{2,}/)
+        .map((p) => p.trim())
+        .filter(Boolean);
+      const res = await api.post("/insights/inserir_release", {
+        dataset: manualModal.key,
+        municipio_id: parseInt(selectedId),
+        paragrafos,
+      });
+      const baseKey = res.data.dataset.replace(/^release_/, "");
+      setReleases((prev) => ({ ...prev, [baseKey]: res.data }));
+      setManualModal(null);
+      setManualText("");
+    } catch (err) {
+      console.error("Erro ao inserir release manual:", err.response?.data?.detail || err.message);
+    } finally {
+      setSubmittingManual(false);
     }
   };
 
@@ -403,11 +431,20 @@ export default function InsightsAdminPage() {
                           <button
                             onClick={() => handleGerarRelease(d.key)}
                             disabled={isGeneratingRelease}
-                            title={existingRelease ? "Regenerar release de imprensa" : "Gerar release de imprensa"}
+                            title={existingRelease ? "Regenerar release de imprensa (IA)" : "Gerar release de imprensa (IA)"}
                             className="inline-flex items-center gap-1.5 text-xs font-medium text-amber-700 dark:text-amber-400 disabled:opacity-40 transition-colors px-2.5 py-1.5 rounded-lg hover:bg-amber-50 dark:hover:bg-amber-950/40"
                           >
                             <NewspaperIcon className={`w-3.5 h-3.5 ${isGeneratingRelease ? "animate-pulse" : ""}`} />
-                            {isGeneratingRelease ? "Gerando..." : existingRelease ? "Regen. Release" : "Gerar Release"}
+                            {isGeneratingRelease ? "Gerando..." : existingRelease ? "Regen. IA" : "Gerar IA"}
+                          </button>
+
+                          <button
+                            onClick={() => { setManualModal({ key: d.key, label: d.label }); setManualText(""); }}
+                            title="Inserir release redigido por especialista"
+                            className="inline-flex items-center gap-1.5 text-xs font-medium text-teal-700 dark:text-teal-400 transition-colors px-2.5 py-1.5 rounded-lg hover:bg-teal-50 dark:hover:bg-teal-950/40"
+                          >
+                            <PencilSquareIcon className="w-3.5 h-3.5" />
+                            Manual
                           </button>
 
                           {existingRelease && (
@@ -505,6 +542,75 @@ export default function InsightsAdminPage() {
                 >
                   <NewspaperIcon className="w-4 h-4" />
                   Imprimir / Baixar PDF
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Manual release insertion modal */}
+      <AnimatePresence>
+        {manualModal && (
+          <motion.div
+            className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            onClick={() => setManualModal(null)}
+          >
+            <motion.div
+              className="bg-white dark:bg-slate-900 rounded-2xl shadow-xl w-full max-w-2xl"
+              initial={{ scale: 0.95, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.95, opacity: 0 }}
+              transition={{ duration: 0.15 }}
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="flex items-start justify-between p-6 border-b border-slate-100 dark:border-slate-800">
+                <div>
+                  <p className="text-xs uppercase tracking-wider text-teal-600 dark:text-teal-400 font-semibold mb-1">
+                    Especialista
+                  </p>
+                  <h3 className="text-base font-bold text-slate-800 dark:text-white">
+                    Inserir Release Manual — {manualModal.label}
+                  </h3>
+                  <p className="text-xs text-slate-400 dark:text-slate-500 mt-1">
+                    {municipioNome} · Separe os parágrafos com uma linha em branco.
+                  </p>
+                </div>
+                <button
+                  onClick={() => setManualModal(null)}
+                  className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 transition-colors ml-4"
+                >
+                  <XMarkIcon className="w-5 h-5" />
+                </button>
+              </div>
+
+              <div className="p-6">
+                <textarea
+                  value={manualText}
+                  onChange={(e) => setManualText(e.target.value)}
+                  rows={10}
+                  placeholder={"Parágrafo 1...\n\nParágrafo 2...\n\nParágrafo 3..."}
+                  className="w-full border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-3 text-sm text-slate-700 dark:text-slate-200 bg-white dark:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-teal-500 resize-y leading-relaxed"
+                />
+              </div>
+
+              <div className="flex items-center justify-end gap-3 px-6 py-4 border-t border-slate-100 dark:border-slate-800">
+                <button
+                  onClick={() => setManualModal(null)}
+                  className="px-4 py-2 rounded-xl border border-slate-200 dark:border-slate-700 text-sm text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors"
+                >
+                  Cancelar
+                </button>
+                <button
+                  onClick={handleInserirManual}
+                  disabled={submittingManual || !manualText.trim()}
+                  className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-teal-600 hover:bg-teal-700 text-white text-sm font-medium transition-colors disabled:opacity-50"
+                >
+                  <PencilSquareIcon className="w-4 h-4" />
+                  {submittingManual ? "Salvando..." : "Inserir Release"}
                 </button>
               </div>
             </motion.div>
