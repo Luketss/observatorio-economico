@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext";
 import bg from "../../assets/bg.jpeg";
-import nidLogo from "../../assets/nid_logo.jpeg";
+import nidLogo from "../../assets/nid_fundo_transparente.png";
 import logo from "../../assets/logo_uaizi.png";
 
 export default function LoginPage() {
