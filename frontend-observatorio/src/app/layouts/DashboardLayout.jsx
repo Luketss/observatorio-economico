@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { NavLink, Outlet } from "react-router-dom";
+import { NavLink, Outlet, useLocation } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext";
 import { useTheme } from "../../context/ThemeContext";
 import api from "../../services/api";
@@ -17,38 +17,111 @@ import {
   BuildingOfficeIcon,
   GlobeAltIcon,
   BuildingStorefrontIcon,
-  FlagIcon,
   SunIcon,
   MoonIcon,
   Cog6ToothIcon,
   NewspaperIcon,
+  ChevronDownIcon,
 } from "@heroicons/react/24/outline";
 
-// Module key maps to which plan feature enables it (null = always visible)
-const NAV_ITEMS = [
-  { to: "/", label: "Dashboard", icon: HomeIcon, end: true, modulo: "geral" },
-  { to: "/pib", label: "PIB", icon: ChartBarIcon, modulo: "pib" },
-  { to: "/arrecadacao", label: "Arrecadação", icon: BanknotesIcon, modulo: "arrecadacao" },
-  { to: "/caged", label: "CAGED", icon: BriefcaseIcon, modulo: "caged" },
-  { to: "/rais", label: "RAIS", icon: BuildingLibraryIcon, modulo: "rais" },
-  { to: "/comparativo", label: "Comparativo", icon: ArrowsRightLeftIcon, modulo: null },
-  { to: "/bolsa-familia", label: "Bolsa Família", icon: HeartIcon, modulo: "bolsa_familia" },
-  { to: "/pe-de-meia", label: "Pé-de-Meia", icon: AcademicCapIcon, modulo: "pe_de_meia" },
-  { to: "/inss", label: "INSS", icon: ShieldCheckIcon, modulo: "inss" },
-  { to: "/estban", label: "Bancos", icon: BuildingOfficeIcon, modulo: "estban" },
-  { to: "/comex", label: "Comércio Ext.", icon: GlobeAltIcon, modulo: "comex" },
-  { to: "/empresas", label: "Empresas", icon: BuildingStorefrontIcon, modulo: "empresas" },
-  { to: "/pix", label: "PIX", icon: BanknotesIcon, modulo: "pix" },
-  { to: "/releases", label: "Releases", icon: NewspaperIcon, modulo: null, hideForAdmin: true },
+const NAV_STRUCTURE = [
+  {
+    type: "link",
+    to: "/",
+    label: "Dashboard",
+    icon: HomeIcon,
+    end: true,
+    modulo: "geral",
+  },
+  {
+    type: "group",
+    label: "Economia",
+    icon: ChartBarIcon,
+    children: [
+      { to: "/pib", label: "PIB", icon: ChartBarIcon, modulo: "pib" },
+      { to: "/arrecadacao", label: "Arrecadação", icon: BanknotesIcon, modulo: "arrecadacao" },
+      { to: "/comparativo", label: "Comparativo", icon: ArrowsRightLeftIcon, modulo: null },
+    ],
+  },
+  {
+    type: "group",
+    label: "Emprego",
+    icon: BriefcaseIcon,
+    children: [
+      { to: "/caged", label: "CAGED", icon: BriefcaseIcon, modulo: "caged" },
+      { to: "/rais", label: "RAIS", icon: BuildingLibraryIcon, modulo: "rais" },
+    ],
+  },
+  {
+    type: "group",
+    label: "Social",
+    icon: HeartIcon,
+    children: [
+      { to: "/bolsa-familia", label: "Bolsa Família", icon: HeartIcon, modulo: "bolsa_familia" },
+      { to: "/pe-de-meia", label: "Pé-de-Meia", icon: AcademicCapIcon, modulo: "pe_de_meia" },
+      { to: "/inss", label: "INSS", icon: ShieldCheckIcon, modulo: "inss" },
+    ],
+  },
+  {
+    type: "group",
+    label: "Comércio",
+    icon: BuildingStorefrontIcon,
+    children: [
+      { to: "/estban", label: "Bancos", icon: BuildingOfficeIcon, modulo: "estban" },
+      { to: "/comex", label: "Comércio Ext.", icon: GlobeAltIcon, modulo: "comex" },
+      { to: "/empresas", label: "Empresas", icon: BuildingStorefrontIcon, modulo: "empresas" },
+      { to: "/pix", label: "PIX", icon: BanknotesIcon, modulo: "pix" },
+    ],
+  },
+  {
+    type: "link",
+    to: "/releases",
+    label: "Releases",
+    icon: NewspaperIcon,
+    modulo: null,
+    hideForAdmin: true,
+  },
 ];
+
+function isChildActive(children, pathname) {
+  return children.some(
+    (c) => pathname === c.to || (c.to !== "/" && pathname.startsWith(c.to))
+  );
+}
 
 export default function DashboardLayout() {
   const { logout, user } = useAuth();
   const { theme, toggleTheme } = useTheme();
+  const location = useLocation();
   const [brasao, setBrasao] = useState(null);
-  const [modulos, setModulos] = useState(null); // null = no restrictions (ADMIN_GLOBAL or loading)
+  const [modulos, setModulos] = useState(null);
 
   const isGlobal = user?.role === "ADMIN_GLOBAL";
+
+  // Start with the group that contains the current route already open
+  const [openGroups, setOpenGroups] = useState(() => {
+    const open = new Set();
+    NAV_STRUCTURE.forEach((item, idx) => {
+      if (item.type === "group" && isChildActive(item.children, location.pathname)) {
+        open.add(idx);
+      }
+    });
+    return open;
+  });
+
+  // Auto-open parent group on navigation
+  useEffect(() => {
+    NAV_STRUCTURE.forEach((item, idx) => {
+      if (item.type === "group" && isChildActive(item.children, location.pathname)) {
+        setOpenGroups((prev) => {
+          if (prev.has(idx)) return prev;
+          const next = new Set(prev);
+          next.add(idx);
+          return next;
+        });
+      }
+    });
+  }, [location.pathname]);
 
   useEffect(() => {
     if (isGlobal || !user) return;
@@ -63,12 +136,28 @@ export default function DashboardLayout() {
     });
   }, [user, isGlobal]);
 
-  const visibleNav = NAV_ITEMS.filter((item) => {
-    if (item.hideForAdmin && isGlobal) return false;
+  const isVisible = (modulo, hideForAdmin) => {
+    if (hideForAdmin && isGlobal) return false;
     if (isGlobal || modulos === null) return true;
-    if (item.modulo === null) return true; // always visible
-    return modulos.includes(item.modulo);
-  });
+    if (modulo === null) return true;
+    return modulos.includes(modulo);
+  };
+
+  const toggleGroup = (idx) => {
+    setOpenGroups((prev) => {
+      const next = new Set(prev);
+      if (next.has(idx)) next.delete(idx);
+      else next.add(idx);
+      return next;
+    });
+  };
+
+  const linkClass = (isActive) =>
+    `flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-all duration-150 ${
+      isActive
+        ? "bg-blue-600 text-white shadow"
+        : "text-slate-300 hover:bg-slate-700 hover:text-white"
+    }`;
 
   return (
     <div className="flex h-screen bg-slate-50 dark:bg-slate-950">
@@ -86,24 +175,77 @@ export default function DashboardLayout() {
           </div>
 
           {/* Nav */}
-          <nav className="p-4 space-y-1">
-            {visibleNav.map(({ to, label, icon: Icon, end }) => (
-              <NavLink
-                key={to}
-                to={to}
-                end={end}
-                className={({ isActive }) =>
-                  `flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-150 ${
-                    isActive
-                      ? "bg-blue-600 text-white shadow"
-                      : "text-slate-300 hover:bg-slate-700 hover:text-white"
-                  }`
-                }
-              >
-                <Icon className="w-4 h-4 flex-shrink-0" />
-                {label}
-              </NavLink>
-            ))}
+          <nav className="p-4 space-y-0.5">
+            {NAV_STRUCTURE.map((item, idx) => {
+              if (item.type === "link") {
+                if (!isVisible(item.modulo, item.hideForAdmin)) return null;
+                const Icon = item.icon;
+                return (
+                  <NavLink
+                    key={item.to}
+                    to={item.to}
+                    end={item.end}
+                    className={({ isActive }) => linkClass(isActive)}
+                  >
+                    <Icon className="w-4 h-4 flex-shrink-0" />
+                    {item.label}
+                  </NavLink>
+                );
+              }
+
+              if (item.type === "group") {
+                const visibleChildren = item.children.filter((c) =>
+                  isVisible(c.modulo, c.hideForAdmin)
+                );
+                if (visibleChildren.length === 0) return null;
+
+                const Icon = item.icon;
+                const isOpen = openGroups.has(idx);
+                const hasActive = isChildActive(visibleChildren, location.pathname);
+
+                return (
+                  <div key={idx}>
+                    <button
+                      onClick={() => toggleGroup(idx)}
+                      className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-all duration-150 ${
+                        hasActive
+                          ? "text-white bg-slate-700/80"
+                          : "text-slate-300 hover:bg-slate-700 hover:text-white"
+                      }`}
+                    >
+                      <Icon className="w-4 h-4 flex-shrink-0" />
+                      <span className="flex-1 text-left">{item.label}</span>
+                      <ChevronDownIcon
+                        className={`w-3.5 h-3.5 transition-transform duration-200 ${
+                          isOpen ? "rotate-180" : ""
+                        }`}
+                      />
+                    </button>
+
+                    {isOpen && (
+                      <div className="mt-0.5 ml-3 pl-3 border-l border-slate-700 space-y-0.5">
+                        {visibleChildren.map((child) => {
+                          const ChildIcon = child.icon;
+                          return (
+                            <NavLink
+                              key={child.to}
+                              to={child.to}
+                              end={child.end}
+                              className={({ isActive }) => linkClass(isActive)}
+                            >
+                              <ChildIcon className="w-4 h-4 flex-shrink-0" />
+                              {child.label}
+                            </NavLink>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </div>
+                );
+              }
+
+              return null;
+            })}
 
             {(user?.role === "ADMIN_GLOBAL" || user?.role === "ADMIN_MUNICIPIO") && (
               <div className="pt-3 mt-3 border-t border-slate-700">
@@ -112,13 +254,7 @@ export default function DashboardLayout() {
                 </p>
                 <NavLink
                   to="/admin"
-                  className={({ isActive }) =>
-                    `flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-150 ${
-                      isActive
-                        ? "bg-blue-600 text-white shadow"
-                        : "text-slate-300 hover:bg-slate-700 hover:text-white"
-                    }`
-                  }
+                  className={({ isActive }) => linkClass(isActive)}
                 >
                   <Cog6ToothIcon className="w-4 h-4 flex-shrink-0" />
                   Painel Admin
