@@ -29,7 +29,7 @@ import {
 const NAV_STRUCTURE = [
   {
     type: "link",
-    to: "/",
+    to: "/app",
     label: "Dashboard",
     icon: HomeIcon,
     end: true,
@@ -40,9 +40,9 @@ const NAV_STRUCTURE = [
     label: "Economia",
     icon: ChartBarIcon,
     children: [
-      { to: "/pib", label: "PIB", icon: ChartBarIcon, modulo: "pib" },
-      { to: "/arrecadacao", label: "Arrecadação", icon: BanknotesIcon, modulo: "arrecadacao" },
-      { to: "/comparativo", label: "Comparativo", icon: ArrowsRightLeftIcon, modulo: null },
+      { to: "/app/pib", label: "PIB", icon: ChartBarIcon, modulo: "pib" },
+      { to: "/app/arrecadacao", label: "Arrecadação", icon: BanknotesIcon, modulo: "arrecadacao" },
+      { to: "/app/comparativo", label: "Comparativo", icon: ArrowsRightLeftIcon, modulo: null },
     ],
   },
   {
@@ -50,8 +50,8 @@ const NAV_STRUCTURE = [
     label: "Emprego",
     icon: BriefcaseIcon,
     children: [
-      { to: "/caged", label: "CAGED", icon: BriefcaseIcon, modulo: "caged" },
-      { to: "/rais", label: "RAIS", icon: BuildingLibraryIcon, modulo: "rais" },
+      { to: "/app/caged", label: "CAGED", icon: BriefcaseIcon, modulo: "caged" },
+      { to: "/app/rais", label: "RAIS", icon: BuildingLibraryIcon, modulo: "rais" },
     ],
   },
   {
@@ -59,9 +59,9 @@ const NAV_STRUCTURE = [
     label: "Social",
     icon: HeartIcon,
     children: [
-      { to: "/bolsa-familia", label: "Bolsa Família", icon: HeartIcon, modulo: "bolsa_familia" },
-      { to: "/pe-de-meia", label: "Pé-de-Meia", icon: AcademicCapIcon, modulo: "pe_de_meia" },
-      { to: "/inss", label: "INSS", icon: ShieldCheckIcon, modulo: "inss" },
+      { to: "/app/bolsa-familia", label: "Bolsa Família", icon: HeartIcon, modulo: "bolsa_familia" },
+      { to: "/app/pe-de-meia", label: "Pé-de-Meia", icon: AcademicCapIcon, modulo: "pe_de_meia" },
+      { to: "/app/inss", label: "INSS", icon: ShieldCheckIcon, modulo: "inss" },
     ],
   },
   {
@@ -69,15 +69,15 @@ const NAV_STRUCTURE = [
     label: "Comércio",
     icon: BuildingStorefrontIcon,
     children: [
-      { to: "/estban", label: "Bancos", icon: BuildingOfficeIcon, modulo: "estban" },
-      { to: "/comex", label: "Comércio Ext.", icon: GlobeAltIcon, modulo: "comex" },
-      { to: "/empresas", label: "Empresas", icon: BuildingStorefrontIcon, modulo: "empresas" },
-      { to: "/pix", label: "PIX", icon: BanknotesIcon, modulo: "pix" },
+      { to: "/app/estban", label: "Bancos", icon: BuildingOfficeIcon, modulo: "estban" },
+      { to: "/app/comex", label: "Comércio Ext.", icon: GlobeAltIcon, modulo: "comex" },
+      { to: "/app/empresas", label: "Empresas", icon: BuildingStorefrontIcon, modulo: "empresas" },
+      { to: "/app/pix", label: "PIX", icon: BanknotesIcon, modulo: "pix" },
     ],
   },
   {
     type: "link",
-    to: "/releases",
+    to: "/app/releases",
     label: "Releases",
     icon: NewspaperIcon,
     modulo: null,

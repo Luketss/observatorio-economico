@@ -82,7 +82,7 @@ export default function AdminLayout() {
       {/* Back to dashboard */}
       <div className="px-4 pt-4 pb-2">
         <button
-          onClick={() => navigate("/")}
+          onClick={() => navigate("/app")}
           className="flex items-center gap-2 text-slate-400 hover:text-white text-xs font-medium transition-colors px-3 py-2 rounded-lg hover:bg-slate-700 w-full"
         >
           <ArrowLeftIcon className="w-3.5 h-3.5" />

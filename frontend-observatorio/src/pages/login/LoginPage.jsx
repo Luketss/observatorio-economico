@@ -20,7 +20,7 @@ export default function LoginPage() {
     setLoading(true);
     try {
       await login(email, senha);
-      navigate("/");
+      navigate("/app");
     } catch {
       setError("Email ou senha inválidos.");
     } finally {
