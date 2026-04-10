@@ -22,6 +22,8 @@ import {
   Cog6ToothIcon,
   NewspaperIcon,
   ChevronDownIcon,
+  Bars3Icon,
+  XMarkIcon,
 } from "@heroicons/react/24/outline";
 
 const NAV_STRUCTURE = [
@@ -95,6 +97,7 @@ export default function DashboardLayout() {
   const location = useLocation();
   const [brasao, setBrasao] = useState(null);
   const [modulos, setModulos] = useState(null);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
 
   const isGlobal = user?.role === "ADMIN_GLOBAL";
 
@@ -109,8 +112,9 @@ export default function DashboardLayout() {
     return open;
   });
 
-  // Auto-open parent group on navigation
+  // Close sidebar and auto-open parent group on navigation
   useEffect(() => {
+    setSidebarOpen(false);
     NAV_STRUCTURE.forEach((item, idx) => {
       if (item.type === "group" && isChildActive(item.children, location.pathname)) {
         setOpenGroups((prev) => {
@@ -159,109 +163,131 @@ export default function DashboardLayout() {
         : "text-slate-300 hover:bg-slate-700 hover:text-white"
     }`;
 
+  const sidebarContent = (
+    <>
+      {/* Logo */}
+      <div className="px-6 py-7 border-b border-slate-700 relative">
+        <h1 className="text-xl font-extrabold tracking-tight leading-tight">UAIZI</h1>
+        <p className="text-xs text-slate-400 mt-1 uppercase tracking-widest">
+          NID — Núcleo de Inteligência de Dados
+        </p>
+        <button
+          onClick={() => setSidebarOpen(false)}
+          className="absolute top-4 right-4 md:hidden p-1 rounded-lg text-slate-400 hover:text-white hover:bg-slate-700 transition-colors"
+        >
+          <XMarkIcon className="w-5 h-5" />
+        </button>
+      </div>
+
+      {/* Nav */}
+      <nav className="p-4 space-y-0.5">
+        {NAV_STRUCTURE.map((item, idx) => {
+          if (item.type === "link") {
+            if (!isVisible(item.modulo, item.hideForAdmin)) return null;
+            const Icon = item.icon;
+            return (
+              <NavLink
+                key={item.to}
+                to={item.to}
+                end={item.end}
+                className={({ isActive }) => linkClass(isActive)}
+              >
+                <Icon className="w-4 h-4 flex-shrink-0" />
+                {item.label}
+              </NavLink>
+            );
+          }
+
+          if (item.type === "group") {
+            const visibleChildren = item.children.filter((c) =>
+              isVisible(c.modulo, c.hideForAdmin)
+            );
+            if (visibleChildren.length === 0) return null;
+
+            const Icon = item.icon;
+            const isOpen = openGroups.has(idx);
+            const hasActive = isChildActive(visibleChildren, location.pathname);
+
+            return (
+              <div key={idx}>
+                <button
+                  onClick={() => toggleGroup(idx)}
+                  className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-all duration-150 ${
+                    hasActive
+                      ? "text-white bg-slate-700/80"
+                      : "text-slate-300 hover:bg-slate-700 hover:text-white"
+                  }`}
+                >
+                  <Icon className="w-4 h-4 flex-shrink-0" />
+                  <span className="flex-1 text-left">{item.label}</span>
+                  <ChevronDownIcon
+                    className={`w-3.5 h-3.5 transition-transform duration-200 ${
+                      isOpen ? "rotate-180" : ""
+                    }`}
+                  />
+                </button>
+
+                {isOpen && (
+                  <div className="mt-0.5 ml-3 pl-3 border-l border-slate-700 space-y-0.5">
+                    {visibleChildren.map((child) => {
+                      const ChildIcon = child.icon;
+                      return (
+                        <NavLink
+                          key={child.to}
+                          to={child.to}
+                          end={child.end}
+                          className={({ isActive }) => linkClass(isActive)}
+                        >
+                          <ChildIcon className="w-4 h-4 flex-shrink-0" />
+                          {child.label}
+                        </NavLink>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            );
+          }
+
+          return null;
+        })}
+
+        {(user?.role === "ADMIN_GLOBAL" || user?.role === "ADMIN_MUNICIPIO") && (
+          <div className="pt-3 mt-3 border-t border-slate-700">
+            <p className="text-xs uppercase text-slate-500 px-3 mb-2 tracking-widest">
+              Admin
+            </p>
+            <NavLink
+              to="/admin"
+              className={({ isActive }) => linkClass(isActive)}
+            >
+              <Cog6ToothIcon className="w-4 h-4 flex-shrink-0" />
+              Painel Admin
+            </NavLink>
+          </div>
+        )}
+      </nav>
+    </>
+  );
+
   return (
     <div className="flex h-screen bg-slate-50 dark:bg-slate-950">
+      {/* Mobile backdrop */}
+      {sidebarOpen && (
+        <div
+          className="fixed inset-0 bg-black/50 z-40 md:hidden"
+          onClick={() => setSidebarOpen(false)}
+        />
+      )}
+
       {/* Sidebar */}
-      <aside className="w-64 bg-gradient-to-b from-slate-900 to-slate-800 text-white flex flex-col shadow-xl flex-shrink-0">
+      <aside
+        className={`fixed inset-y-0 left-0 z-50 w-64 bg-gradient-to-b from-slate-900 to-slate-800 text-white flex flex-col shadow-xl transform transition-transform duration-300
+          md:relative md:translate-x-0 md:flex-shrink-0
+          ${sidebarOpen ? "translate-x-0" : "-translate-x-full"}`}
+      >
         <div className="flex-1 min-h-0 overflow-y-auto [&::-webkit-scrollbar]:hidden [scrollbar-width:none]">
-          {/* Logo */}
-          <div className="px-6 py-7 border-b border-slate-700">
-            <h1 className="text-xl font-extrabold tracking-tight leading-tight">
-              UAIZI
-            </h1>
-            <p className="text-xs text-slate-400 mt-1 uppercase tracking-widest">
-              NID — Núcleo de Inteligência de Dados
-            </p>
-          </div>
-
-          {/* Nav */}
-          <nav className="p-4 space-y-0.5">
-            {NAV_STRUCTURE.map((item, idx) => {
-              if (item.type === "link") {
-                if (!isVisible(item.modulo, item.hideForAdmin)) return null;
-                const Icon = item.icon;
-                return (
-                  <NavLink
-                    key={item.to}
-                    to={item.to}
-                    end={item.end}
-                    className={({ isActive }) => linkClass(isActive)}
-                  >
-                    <Icon className="w-4 h-4 flex-shrink-0" />
-                    {item.label}
-                  </NavLink>
-                );
-              }
-
-              if (item.type === "group") {
-                const visibleChildren = item.children.filter((c) =>
-                  isVisible(c.modulo, c.hideForAdmin)
-                );
-                if (visibleChildren.length === 0) return null;
-
-                const Icon = item.icon;
-                const isOpen = openGroups.has(idx);
-                const hasActive = isChildActive(visibleChildren, location.pathname);
-
-                return (
-                  <div key={idx}>
-                    <button
-                      onClick={() => toggleGroup(idx)}
-                      className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-all duration-150 ${
-                        hasActive
-                          ? "text-white bg-slate-700/80"
-                          : "text-slate-300 hover:bg-slate-700 hover:text-white"
-                      }`}
-                    >
-                      <Icon className="w-4 h-4 flex-shrink-0" />
-                      <span className="flex-1 text-left">{item.label}</span>
-                      <ChevronDownIcon
-                        className={`w-3.5 h-3.5 transition-transform duration-200 ${
-                          isOpen ? "rotate-180" : ""
-                        }`}
-                      />
-                    </button>
-
-                    {isOpen && (
-                      <div className="mt-0.5 ml-3 pl-3 border-l border-slate-700 space-y-0.5">
-                        {visibleChildren.map((child) => {
-                          const ChildIcon = child.icon;
-                          return (
-                            <NavLink
-                              key={child.to}
-                              to={child.to}
-                              end={child.end}
-                              className={({ isActive }) => linkClass(isActive)}
-                            >
-                              <ChildIcon className="w-4 h-4 flex-shrink-0" />
-                              {child.label}
-                            </NavLink>
-                          );
-                        })}
-                      </div>
-                    )}
-                  </div>
-                );
-              }
-
-              return null;
-            })}
-
-            {(user?.role === "ADMIN_GLOBAL" || user?.role === "ADMIN_MUNICIPIO") && (
-              <div className="pt-3 mt-3 border-t border-slate-700">
-                <p className="text-xs uppercase text-slate-500 px-3 mb-2 tracking-widest">
-                  Admin
-                </p>
-                <NavLink
-                  to="/admin"
-                  className={({ isActive }) => linkClass(isActive)}
-                >
-                  <Cog6ToothIcon className="w-4 h-4 flex-shrink-0" />
-                  Painel Admin
-                </NavLink>
-              </div>
-            )}
-          </nav>
+          {sidebarContent}
         </div>
 
         {/* Footer */}
@@ -277,11 +303,7 @@ export default function DashboardLayout() {
             onClick={toggleTheme}
             className="w-full flex items-center justify-center gap-2 bg-slate-700 hover:bg-slate-600 transition-colors px-4 py-2 rounded-lg text-sm text-slate-300 hover:text-white"
           >
-            {theme === "dark" ? (
-              <SunIcon className="w-4 h-4" />
-            ) : (
-              <MoonIcon className="w-4 h-4" />
-            )}
+            {theme === "dark" ? <SunIcon className="w-4 h-4" /> : <MoonIcon className="w-4 h-4" />}
             {theme === "dark" ? "Modo Claro" : "Modo Escuro"}
           </button>
           <button
@@ -296,14 +318,18 @@ export default function DashboardLayout() {
 
       {/* Main */}
       <main className="flex-1 overflow-y-auto flex flex-col min-w-0">
-        <header className="bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-700 px-8 py-4 flex items-center justify-between flex-shrink-0">
-          <div className="flex items-center gap-3">
+        <header className="bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-700 px-4 md:px-8 py-4 flex items-center gap-3 flex-shrink-0">
+          {/* Hamburger */}
+          <button
+            onClick={() => setSidebarOpen(true)}
+            className="md:hidden p-2 rounded-lg text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+          >
+            <Bars3Icon className="w-6 h-6" />
+          </button>
+
+          <div className="flex items-center gap-3 flex-1">
             {brasao && (
-              <img
-                src={brasao}
-                alt="Brasão"
-                className="w-10 h-10 object-contain rounded"
-              />
+              <img src={brasao} alt="Brasão" className="w-10 h-10 object-contain rounded" />
             )}
             <div>
               <h2 className="text-base font-semibold text-slate-800 dark:text-white">
@@ -316,7 +342,7 @@ export default function DashboardLayout() {
           </div>
         </header>
 
-        <div className="flex-1 p-8">
+        <div className="flex-1 p-4 md:p-8">
           <Outlet />
         </div>
       </main>

@@ -172,7 +172,7 @@ export default function EmpresasPage() {
               Sem dados disponíveis
             </div>
           ) : (
-            <div className="h-64">
+            <div className="h-44 md:h-64">
               <ResponsiveContainer width="100%" height="100%">
                 <PieChart>
                   <Pie
@@ -210,7 +210,7 @@ export default function EmpresasPage() {
               Sem dados disponíveis
             </div>
           ) : (
-            <div className="h-64">
+            <div className="h-44 md:h-64">
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart
                   data={porSituacao}
@@ -254,7 +254,7 @@ export default function EmpresasPage() {
             Sem dados disponíveis
           </div>
         ) : (
-          <div className="h-72">
+          <div className="h-48 md:h-72">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={situacaoPorPorte} margin={{ left: 10, right: 10 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />

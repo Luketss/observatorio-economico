@@ -210,11 +210,11 @@ export default function UsuariosAdminPage() {
             <table className="w-full text-sm">
               <thead>
                 <tr className="bg-slate-50 text-left text-xs uppercase text-slate-400 tracking-wider">
-                  <th className="px-6 py-3">Nome</th>
-                  <th className="px-6 py-3">Email</th>
-                  <th className="px-6 py-3">Município</th>
-                  <th className="px-6 py-3">Perfil</th>
-                  <th className="px-6 py-3 text-center">Ativo</th>
+                  <th className="px-3 py-3 md:px-6">Nome</th>
+                  <th className="px-3 py-3 md:px-6">Email</th>
+                  <th className="px-3 py-3 md:px-6">Município</th>
+                  <th className="px-3 py-3 md:px-6">Perfil</th>
+                  <th className="px-3 py-3 md:px-6 text-center">Ativo</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-50">
@@ -227,17 +227,17 @@ export default function UsuariosAdminPage() {
                 ) : (
                   usuarios.map((u) => (
                     <tr key={u.id} className="hover:bg-slate-50 transition-colors">
-                      <td className="px-6 py-3 font-medium text-slate-700">{u.nome}</td>
-                      <td className="px-6 py-3 text-slate-500">{u.email}</td>
-                      <td className="px-6 py-3 text-slate-500">
+                      <td className="px-3 py-3 md:px-6 font-medium text-slate-700">{u.nome}</td>
+                      <td className="px-3 py-3 md:px-6 text-slate-500">{u.email}</td>
+                      <td className="px-3 py-3 md:px-6 text-slate-500">
                         {municipios.find((m) => m.id === u.municipio_id)?.nome || "—"}
                       </td>
-                      <td className="px-6 py-3">
+                      <td className="px-3 py-3 md:px-6">
                         <span className={`px-2.5 py-1 rounded-full text-xs font-medium ${roleColor(u.role)}`}>
                           {u.role}
                         </span>
                       </td>
-                      <td className="px-6 py-3 text-center">
+                      <td className="px-3 py-3 md:px-6 text-center">
                         <span
                           className={`inline-block w-2 h-2 rounded-full ${u.ativo ? "bg-green-500" : "bg-slate-300"}`}
                           title={u.ativo ? "Ativo" : "Inativo"}

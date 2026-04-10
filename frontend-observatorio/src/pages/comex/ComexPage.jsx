@@ -216,7 +216,7 @@ export default function ComexPage() {
             Sem dados disponíveis
           </div>
         ) : (
-          <div className="h-72">
+          <div className="h-48 md:h-72">
             <ResponsiveContainer width="100%" height="100%">
               <LineChart data={chartSerie}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
@@ -306,7 +306,7 @@ export default function ComexPage() {
               Sem dados disponíveis
             </div>
           ) : (
-            <div className="h-80">
+            <div className="h-52 md:h-80">
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart
                   data={porProduto}
@@ -360,7 +360,7 @@ export default function ComexPage() {
               Sem dados disponíveis
             </div>
           ) : (
-            <div className="h-80">
+            <div className="h-52 md:h-80">
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart
                   data={porPais}

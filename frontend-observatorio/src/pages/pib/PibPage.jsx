@@ -167,7 +167,7 @@ export default function PibPage() {
             Sem dados disponíveis
           </div>
         ) : (
-          <div className="h-64">
+          <div className="h-44 md:h-64">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={serie} barCategoryGap="30%">
                 <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
@@ -204,7 +204,7 @@ export default function PibPage() {
           <h3 className="text-base font-bold mb-5 text-slate-800 dark:text-white">
             Valor Adicionado por Setor
           </h3>
-          <div className="h-72">
+          <div className="h-48 md:h-72">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={vaData} margin={{ left: 10, right: 10 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
@@ -233,7 +233,7 @@ export default function PibPage() {
           <h3 className="text-base font-bold mb-5 text-slate-800 dark:text-white">
             PIB Comparativo — Municípios
           </h3>
-          <div className="h-72">
+          <div className="h-48 md:h-72">
             <ResponsiveContainer width="100%" height="100%">
               <LineChart data={comparativoChart}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />

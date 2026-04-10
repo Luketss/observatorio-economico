@@ -149,7 +149,7 @@ export default function ComparativoPage() {
             Sem dados para {ano}
           </div>
         ) : (
-          <div className="h-72">
+          <div className="h-48 md:h-72">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={chartData} layout="vertical" barCategoryGap="25%">
                 <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" horizontal={false} />

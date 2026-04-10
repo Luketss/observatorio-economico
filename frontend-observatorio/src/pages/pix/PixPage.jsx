@@ -150,7 +150,7 @@ export default function PixPage() {
 
       {/* Volume PF vs PJ — Pagamentos */}
       <ChartCard title="Volume de Pagamentos — PF vs PJ" empty={serie.length === 0}>
-        <div className="h-72">
+        <div className="h-48 md:h-72">
           <ResponsiveContainer width="100%" height="100%">
             <LineChart data={serie}>
               <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
@@ -173,7 +173,7 @@ export default function PixPage() {
 
       {/* Volume Recebimentos — PF vs PJ */}
       <ChartCard title="Volume de Recebimentos — PF vs PJ" empty={serie.length === 0}>
-        <div className="h-64">
+        <div className="h-44 md:h-64">
           <ResponsiveContainer width="100%" height="100%">
             <LineChart data={serie}>
               <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
@@ -196,7 +196,7 @@ export default function PixPage() {
 
       {/* Quantidade de Transações */}
       <ChartCard title="Quantidade de Transações (Pagadores)" empty={serie.length === 0}>
-        <div className="h-64">
+        <div className="h-44 md:h-64">
           <ResponsiveContainer width="100%" height="100%">
             <BarChart data={serie} barCategoryGap="20%">
               <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
@@ -213,7 +213,7 @@ export default function PixPage() {
 
       {/* Pessoas Únicas */}
       <ChartCard title="Pessoas Únicas Pagadoras" empty={serie.length === 0}>
-        <div className="h-64">
+        <div className="h-44 md:h-64">
           <ResponsiveContainer width="100%" height="100%">
             <LineChart data={serie}>
               <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />

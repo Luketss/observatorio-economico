@@ -149,7 +149,7 @@ export default function BolsaFamiliaPage() {
             Sem dados disponíveis
           </div>
         ) : (
-          <div className="h-72">
+          <div className="h-48 md:h-72">
             <ResponsiveContainer width="100%" height="100%">
               <AreaChart data={serie}>
                 <defs>
@@ -199,7 +199,7 @@ export default function BolsaFamiliaPage() {
             Sem dados disponíveis
           </div>
         ) : (
-          <div className="h-72">
+          <div className="h-48 md:h-72">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={serie}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />

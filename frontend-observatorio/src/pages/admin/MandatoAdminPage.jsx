@@ -254,29 +254,29 @@ export default function MandatoAdminPage() {
           <table className="w-full text-sm">
             <thead>
               <tr className="bg-slate-50 dark:bg-slate-800 text-left text-xs uppercase text-slate-400 dark:text-slate-500 tracking-wider">
-                <th className="px-6 py-3">Data</th>
-                <th className="px-6 py-3">Tipo</th>
-                <th className="px-6 py-3">Título</th>
-                <th className="px-6 py-3">Descrição</th>
-                <th className="px-6 py-3 text-right">Ações</th>
+                <th className="px-3 py-3 md:px-6">Data</th>
+                <th className="px-3 py-3 md:px-6">Tipo</th>
+                <th className="px-3 py-3 md:px-6">Título</th>
+                <th className="px-3 py-3 md:px-6">Descrição</th>
+                <th className="px-3 py-3 md:px-6 text-right">Ações</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-50 dark:divide-slate-800">
               {marcos.map((marco) => (
                 <tr key={marco.id} className="hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors">
-                  <td className="px-6 py-4 font-medium text-slate-700 dark:text-slate-200 whitespace-nowrap">
+                  <td className="px-3 py-4 md:px-6 font-medium text-slate-700 dark:text-slate-200 whitespace-nowrap">
                     {fmtDate(marco.data)}
                   </td>
-                  <td className="px-6 py-4">
+                  <td className="px-3 py-4 md:px-6">
                     <span className={`inline-flex items-center px-2 py-1 rounded-lg text-xs font-semibold ${TIPO_COLORS[marco.tipo] || "bg-slate-100 text-slate-600"}`}>
                       {TIPOS.find((t) => t.value === marco.tipo)?.label || marco.tipo}
                     </span>
                   </td>
-                  <td className="px-6 py-4 font-medium text-slate-800 dark:text-white">{marco.titulo}</td>
-                  <td className="px-6 py-4 text-slate-400 dark:text-slate-500 max-w-xs truncate">
+                  <td className="px-3 py-4 md:px-6 font-medium text-slate-800 dark:text-white">{marco.titulo}</td>
+                  <td className="px-3 py-4 md:px-6 text-slate-400 dark:text-slate-500 max-w-xs truncate">
                     {marco.descricao || "—"}
                   </td>
-                  <td className="px-6 py-4 text-right">
+                  <td className="px-3 py-4 md:px-6 text-right">
                     <div className="flex items-center justify-end gap-2">
                       <button
                         onClick={() => openEdit(marco)}

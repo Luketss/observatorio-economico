@@ -100,19 +100,19 @@ export default function MunicipiosAdminPage() {
           <table className="w-full text-sm">
             <thead>
               <tr className="bg-slate-50 dark:bg-slate-800 text-left text-xs uppercase text-slate-400 dark:text-slate-500 tracking-wider">
-                <th className="px-6 py-3">Brasão</th>
-                <th className="px-6 py-3">Nome</th>
-                <th className="px-6 py-3">Estado</th>
-                <th className="px-6 py-3">IBGE</th>
-                <th className="px-6 py-3">Plano</th>
-                <th className="px-6 py-3 text-right">Ações</th>
+                <th className="px-3 py-3 md:px-6">Brasão</th>
+                <th className="px-3 py-3 md:px-6">Nome</th>
+                <th className="px-3 py-3 md:px-6">Estado</th>
+                <th className="px-3 py-3 md:px-6">IBGE</th>
+                <th className="px-3 py-3 md:px-6">Plano</th>
+                <th className="px-3 py-3 md:px-6 text-right">Ações</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-50 dark:divide-slate-800">
               {municipios.map((m) => (
                 <tr key={m.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
                   {/* Brasão */}
-                  <td className="px-6 py-3">
+                  <td className="px-3 py-3 md:px-6">
                     <div className="flex items-center gap-2">
                       {m.brasao ? (
                         <img
@@ -129,12 +129,12 @@ export default function MunicipiosAdminPage() {
                   </td>
 
                   {/* Nome */}
-                  <td className="px-6 py-3 font-medium text-slate-800 dark:text-white">{m.nome}</td>
-                  <td className="px-6 py-3 text-slate-500 dark:text-slate-400">{m.estado}</td>
-                  <td className="px-6 py-3 text-slate-400 dark:text-slate-500">{m.codigo_ibge || "—"}</td>
+                  <td className="px-3 py-3 md:px-6 font-medium text-slate-800 dark:text-white">{m.nome}</td>
+                  <td className="px-3 py-3 md:px-6 text-slate-500 dark:text-slate-400">{m.estado}</td>
+                  <td className="px-3 py-3 md:px-6 text-slate-400 dark:text-slate-500">{m.codigo_ibge || "—"}</td>
 
                   {/* Plano */}
-                  <td className="px-6 py-3">
+                  <td className="px-3 py-3 md:px-6">
                     <span
                       className={`inline-flex items-center px-2.5 py-1 rounded-lg text-xs font-semibold ${
                         m.plano === "paid"
@@ -147,7 +147,7 @@ export default function MunicipiosAdminPage() {
                   </td>
 
                   {/* Ações */}
-                  <td className="px-6 py-3 text-right">
+                  <td className="px-3 py-3 md:px-6 text-right">
                     <div className="flex items-center justify-end gap-2">
                       {/* Toggle plano */}
                       <button
