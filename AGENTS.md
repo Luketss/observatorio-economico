@@ -1,367 +1,273 @@
-# AGENTS.md  
-AI Agent Operational Context — Observatório Econômico Municipal
+# AGENTS.md
+AI Agent Operational Context — UAIZI NID (Núcleo de Inteligência de Dados)
 
 ---
 
 # 1. Project Overview
 
-## Objective
+## Product
 
-The Observatório Econômico Municipal is a multi-tenant SaaS platform designed to provide economic intelligence dashboards for Brazilian municipalities.
+**UAIZI NID** is a multi-tenant SaaS platform providing economic intelligence dashboards for Brazilian municipalities. It consolidates federal data sources, generates AI-powered insights, and produces press releases — all in one place for prefeituras.
 
-It centralizes, processes, and visualizes:
+## Entry Point
 
-- Fiscal data (Arrecadação)
-- Economic production (PIB)
-- Labor market flows (CAGED)
-- Employment stock (RAIS)
-- Social indicators
-- Comparative inter-municipality analytics
+- `/` — Public landing page (Three.js animated scene, UAIZI branding)
+- `/login` — Login form
+- `/app` — Protected dashboard (requires auth)
+- `/admin` — Admin panel (ADMIN_MUNICIPIO or ADMIN_GLOBAL)
 
-## Problem It Solves
+## Active Datasets (12)
 
-Municipal governments often operate with fragmented economic data sources. This system:
+| Key | Source | Description |
+|-----|--------|-------------|
+| `geral` | Composite | Dashboard overview |
+| `arrecadacao` | SEF/Receita | Monthly tax revenue (ICMS, IPVA, IPI) |
+| `pib` | IBGE | Annual GDP by sector |
+| `caged` | MTE | Monthly employment flows |
+| `rais` | MTE | Annual employment census |
+| `bolsa_familia` | MDS | Social benefit beneficiaries |
+| `pe_de_meia` | MEC | Student stipend program |
+| `inss` | INSS | Social security benefits |
+| `estban` | BCB | Banking statistics (credit, deposits) |
+| `comex` | MDIC | Exports and imports |
+| `empresas` | CNPJ | Company registry snapshot |
+| `pix` | BCB | Instant payment transactions |
 
-- Consolidates heterogeneous datasets
-- Applies consistent aggregation logic
-- Enforces data isolation between municipalities
-- Enables secure access via role-based access control (RBAC)
-- Provides comparative analytics for regional decision-making
+## Target Users
 
-## Current Scope
-
-Implemented modules:
-
-- Authentication (JWT-based)
-- Role-based access control
-- Multi-tenant isolation
-- Arrecadação
-- PIB
-- CAGED
-- RAIS
-- Comparative inter-municipal dashboard
-- Administrative user management
-
-## Target Audience
-
-- Municipal administrators
-- Public policy analysts
-- Economic development teams
-- State/regional analysts (ADMIN_GLOBAL)
+- Mayors and secretaries (executive view, presentations)
+- Municipal technical teams (deep data analysis)
+- ADMIN_GLOBAL (platform management, all municipalities)
 
 ---
 
 # 2. System Architecture
 
-## Architectural Style
-
-Modular Monolith with Layered Architecture
-
-The system is composed of:
-
-Frontend (React + Vite)
-↓
-Backend API (FastAPI)
-↓
-Database (PostgreSQL)
-↓
-Data Ingestion Scripts
-↓
-Alembic (Schema versioning)
-
----
-
-## Layer Responsibilities
-
-### Frontend Layer
-Location: `observatorio-economico/`
-
-Responsibilities:
-- Presentation layer
-- Role-based UI restrictions
-- API consumption
-- Data visualization
-
-Must NOT:
-- Perform heavy business logic
-- Perform cross-tenant filtering logic
-- Calculate global aggregates
-
----
-
-### API Layer
-Location: `backend/app/api/v1/routers/`
-
-Responsibilities:
-- Endpoint definition
-- RBAC enforcement
-- Data aggregation
-- Multi-tenant filtering
-
-Must NOT:
-- Contain raw SQL outside ORM
-- Bypass RBAC validation
-
----
-
-### Domain / Models
-Location: `backend/app/models/`
-
-Responsibilities:
-- Data models (SQLAlchemy)
-- Table definitions
-- Relationships
-
-Must NOT:
-- Contain business logic
-- Contain HTTP logic
-
----
-
-### Schemas
-Location: `backend/app/schemas/`
-
-Responsibilities:
-- Request/response contracts
-- Validation layer
-
-Must NOT:
-- Access database
-- Contain business rules
-
----
-
-### Database Layer
-- PostgreSQL
-- Managed via Alembic migrations
-- No `create_all` usage
-
-All schema changes must go through migrations.
-
----
-
-### Data Flow
-
-1. CSV files → Ingestion Scripts
-2. Ingestion Scripts → Database
-3. Frontend → API (JWT)
-4. API → Database (filtered by tenant)
-5. Aggregated results → Frontend
+```
+Landing Page (/)
+    ↓
+Login (/login) → JWT → /app (Dashboard)
+                           ↓
+                    DashboardLayout (sidebar)
+                           ↓
+               12 dataset pages + Comparativo + Releases
+                           ↓
+                    FastAPI backend
+                           ↓
+                    PostgreSQL (Railway)
+                           ↓
+               Python ingestion scripts (local → Railway DB)
+```
 
 ---
 
 # 3. Repository Structure
 
-## Backend
-
 ```
-backend/
-  app/
-    api/
-    core/
-    db/
-    models/
-    schemas/
-  alembic/
+dashboard_prefeituras/
+├── frontend-observatorio/          # React SPA
+│   └── src/
+│       ├── app/
+│       │   ├── layouts/
+│       │   │   ├── DashboardLayout.jsx   # Sidebar with group nav + mobile drawer
+│       │   │   └── AdminLayout.jsx       # Admin sidebar + mobile drawer
+│       │   └── router/
+│       │       └── AppRouter.jsx         # All routes + auth guards
+│       ├── context/
+│       │   ├── AuthContext.jsx
+│       │   └── ThemeContext.jsx
+│       ├── pages/
+│       │   ├── landing/LandingPage.jsx   # Three.js public landing
+│       │   ├── login/LoginPage.jsx
+│       │   ├── DashboardGeralPage.jsx
+│       │   ├── arrecadacao/
+│       │   ├── pib/
+│       │   ├── caged/
+│       │   ├── rais/
+│       │   ├── beneficios/               # BolsaFamilia + PeDeMeia
+│       │   ├── inss/
+│       │   ├── estban/
+│       │   ├── comex/
+│       │   ├── empresas/
+│       │   ├── pix/
+│       │   ├── comparativo/
+│       │   ├── releases/                 # Municipality press releases view
+│       │   └── admin/                    # All admin pages
+│       └── services/api.js
+│
+├── backend/                        # FastAPI API
+│   └── app/
+│       ├── api/v1/routers/         # One router per dataset + auth + insights
+│       ├── models/                 # SQLAlchemy models
+│       ├── schemas/                # Pydantic schemas
+│       ├── services/
+│       │   └── insights_service.py # Claude API integration
+│       └── main.py
+│
+├── dados/                          # Ingestion scripts + raw CSVs
+├── IDEAS.md                        # Product backlog
+└── AGENTS.md                       # This file
 ```
-
-### `/api`
-HTTP routes. Each dataset has its own router.
-
-### `/models`
-SQLAlchemy models only.
-
-### `/schemas`
-Pydantic schemas only.
-
-### `/core`
-Configuration and security.
-
-### `/db`
-Session and base definitions.
-
-### `/alembic`
-Schema migrations.
 
 ---
+
+# 4. Frontend Stack
+
+| Technology | Version | Purpose |
+|-----------|---------|---------|
+| React | 19 | UI framework |
+| Vite | latest | Build tool |
+| React Router | v7 | Client-side routing |
+| Tailwind CSS | v3 | Utility styling |
+| Recharts | v3 | Data charts |
+| Framer Motion | v12 | Animations |
+| Three.js | latest | 3D landing page |
+| @react-three/fiber | latest | React + Three.js |
+| @react-three/drei | latest | Three.js helpers |
+| Heroicons | v2 | Icons |
+| Axios | v1 | HTTP client |
+
+---
+
+# 5. Backend Stack
+
+| Technology | Purpose |
+|-----------|---------|
+| FastAPI | REST API |
+| SQLAlchemy 2.0 | ORM |
+| Alembic | Migrations |
+| PostgreSQL | Database (Railway) |
+| JWT | Auth (access + refresh) |
+| Anthropic Claude | AI insight generation |
+| Pydantic v2 | Schemas / validation |
+
+---
+
+# 6. RBAC
+
+| Role | Scope | Admin panel | Insights | Releases |
+|------|-------|-------------|----------|---------|
+| `ADMIN_GLOBAL` | All municipalities | Full access | Generate + manage all | Manage all |
+| `ADMIN_MUNICIPIO` | Own municipality | Mandato page | View only | View own |
+| `VISUALIZADOR` | Own municipality | None | Read (if active) | Read (if active) |
+
+Route guards in `AppRouter.jsx`:
+- `ProtectedRoute` — requires any authenticated user → `/login`
+- `AdminRoute` — requires `ADMIN_GLOBAL` → `/app`
+- `AdminMunicipioRoute` — requires `ADMIN_MUNICIPIO` or `ADMIN_GLOBAL` → `/app`
+
+---
+
+# 7. AI Insights System
+
+- **Model**: Claude (via `ANTHROPIC_API_KEY`)
+- **Trigger**: On-demand via admin panel (`POST /insights/gerar`)
+- **Storage**: `InsightIA` table — `municipio_id, dataset, periodo, conteudo (JSON), modelo, ativo`
+- **`modelo` field**: `"claude-haiku-*"` for AI, `"especialista"` for human-authored
+- **Release prefix**: Releases use `dataset = "release_{key}"` (e.g. `release_pib`)
+- **Service**: `backend/app/services/insights_service.py`
+- **Endpoints**:
+  - `POST /insights/gerar` — generate AI insight
+  - `POST /insights/gerar_release` — generate AI press release
+  - `POST /insights/inserir_release` — insert manual specialist release
+  - `GET /insights/admin_releases` — list all releases for a municipality
+  - `PATCH /insights/{id}` — toggle active / update
+  - `DELETE /insights/{id}` — delete
+
+---
+
+# 8. Sidebar Navigation
+
+`DashboardLayout.jsx` uses a two-level grouped structure:
+
+| Group | Items |
+|-------|-------|
+| (standalone) | Dashboard |
+| Economia | PIB, Arrecadação, Comparativo |
+| Emprego | CAGED, RAIS |
+| Social | Bolsa Família, Pé-de-Meia, INSS |
+| Comércio | Bancos, Comércio Ext., Empresas, PIX |
+| (standalone) | Releases |
+
+On `< md` breakpoint: sidebar is a fixed overlay drawer triggered by hamburger. On `md+`: always visible.
+
+---
+
+# 9. Plan Gating (Subscription Tiers)
+
+`PlanoConfig` model stores which modules are active per plan (`free`, `paid`, `premium`). The `DashboardLayout` fetches the plan config on mount and filters the nav items. Dataset pages also respect this gating.
+
+---
+
+# 10. Adding a New Dataset
+
+1. Create SQLAlchemy model in `backend/app/models/`
+2. Register in `alembic/env.py` and generate migration
+3. Create Pydantic schemas in `backend/app/schemas/`
+4. Create router in `backend/app/api/v1/routers/` with `/serie` and `/resumo` endpoints
+5. Add dataset key to `insights_service.py` (`_fetch_dados`, `_build_prompt`, `DATASET_LABELS`)
+6. Create frontend page in `src/pages/{dataset}/`
+7. Add route to `AppRouter.jsx` under `/app`
+8. Add nav entry to `NAV_STRUCTURE` in `DashboardLayout.jsx`
+9. Add to `DATASETS` array in `InsightsAdminPage.jsx` and `ReleasesAdminPage.jsx`
+10. Add to `PlanoConfig` module list if plan-gated
+
+---
+
+# 11. Coding Standards
+
+## Backend
+
+- SQLAlchemy ORM only — no raw SQL
+- All DB schema changes require Alembic migration
+- All routes enforce RBAC via `Depends(require_role(...))`
+- Multi-tenant filtering: always filter by `municipio_id`
+- Python string quotes: ASCII straight quotes only (no Unicode curly quotes)
 
 ## Frontend
 
-```
-observatorio-economico/
-  src/
-    pages/
-    components/
-    layouts/
-    services/
-    app/
-```
-
-### `/pages`
-Feature entry points.
-
-### `/components`
-Reusable UI components.
-
-### `/services`
-API abstraction layer.
-
-### `/layouts`
-Structural UI composition.
-
-### `/app/store`
-Global state (auth, theme).
+- Functional components + hooks only
+- All API calls via `src/services/api.js` (Axios instance)
+- Tailwind classes for all styling
+- Responsive: use `md:` breakpoints; chart heights must use `h-XX md:h-XX` pattern
+- No fixed sidebar widths without mobile fallback
 
 ---
 
-# 4. Coding Standards
-
-## Backend
-
-- Use SQLAlchemy ORM only.
-- All DB changes require migration.
-- All routes must validate RBAC.
-- Use dependency injection for DB session.
-
-Naming:
-
-- Models: PascalCase
-- Tables: snake_case
-- Routes: lowercase paths
-- Variables: snake_case
-
----
-
-## Frontend
-
-- Functional components only.
-- Hooks for side effects.
-- API calls centralized in `services/api.ts`.
-- No direct fetch calls outside service layer.
-
-Naming:
-
-- Pages: PascalCase
-- Components: PascalCase
-- Hooks: useSomething
-
----
-
-# 5. Feature Development Guide
-
-## Adding a New Dataset
-
-1. Create SQLAlchemy model.
-2. Register in `alembic/env.py`.
-3. Generate migration.
-4. Create Pydantic schemas.
-5. Create router with:
-   - `/serie`
-   - `/resumo`
-6. Enforce RBAC.
-7. Add ingestion script.
-8. Add frontend page.
-9. Register route.
-10. Update documentation.
-
----
-
-# 6. Architectural Decisions
-
-- FastAPI chosen for async performance and type safety.
-- PostgreSQL chosen for analytical workload.
-- Alembic enforced to prevent schema drift.
-- JWT for stateless authentication.
-- Modular monolith to reduce operational complexity.
-
----
-
-# 7. Dependency Management
-
-Backend:
-- FastAPI
-- SQLAlchemy
-- Pydantic
-- Alembic
-
-Frontend:
-- React
-- Recharts
-- Lucide
-- Zustand
-
-New dependencies require:
-- Justification
-- Impact analysis
-- Compatibility validation
-
----
-
-# 8. Testing Strategy
-
-Currently:
-- Manual integration testing
-
-Recommended:
-- Pytest for backend
-- React Testing Library for frontend
-- Minimum 70% coverage for critical services
-
----
-
-# 9. Refactoring Guidelines
-
-Agents must:
-
-- Preserve API contracts
-- Maintain RBAC logic
-- Maintain multi-tenant filters
-- Create migrations before altering models
-
-Never:
-- Remove tenant filtering
-- Remove role validation
-
----
-
-# 10. Safe Modification Rules
+# 12. Safe Modification Rules
 
 Agents MAY:
-- Add endpoints
-- Add new datasets
-- Refactor internals
-- Improve queries
+- Add endpoints, datasets, pages
+- Refactor internals without changing API shape
+- Add UI features
 
 Agents MAY NOT:
-- Modify API response shape without versioning
 - Remove RBAC checks
 - Alter DB schema without migration
+- Change API response shapes without versioning
+- Use Unicode curly quotes in Python files (breaks parsing)
 
 ---
 
-# 11. Deployment Awareness
+# 13. Deployment
 
-- Docker-based
-- PostgreSQL container
-- API container
-- Frontend container
-- Migrations run before deploy
+- **Platform**: Railway
+- **Backend**: Python + Uvicorn container
+- **Frontend**: Static site (Vite build → `dist/`)
+- **Database**: Railway PostgreSQL
+- **Env vars**: `DATABASE_URL`, `SECRET_KEY`, `ANTHROPIC_API_KEY`, `VITE_API_URL`
+- Migrations run via `alembic upgrade head` before backend starts
 
 ---
 
-# 12. Product Evolution Guidelines
+# 14. Product Backlog
 
-Future direction:
-
-- Regional benchmarking
-- Predictive analytics
-- Time-based filtering
-- Export features
-- Performance optimization via materialized views
-- Multi-state support
-
-Principle:
-Keep core simple. Add features modularly.
+See `IDEAS.md` for the full backlog. Key strategic items:
+- **ISEM** — Composite municipal health score (top priority differentiator)
+- **Monthly PDF report** — auto-emailed to municipality admin
+- **Chat with data** — natural language Q&A over municipality datasets
+- **Presentation mode** — full-screen slideshow for TVs / meetings
+- **Mandate balance report** — delta from start of term to today
 
 ---
 
