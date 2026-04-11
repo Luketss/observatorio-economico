@@ -54,7 +54,7 @@ def listar_usuarios(
 # ==============================
 # Criar usuário (Thin Controller)
 # ==============================
-@router.post("/", response_model=SuccessResponse[UsuarioOut])
+@router.post("", response_model=SuccessResponse[UsuarioOut])
 def criar_usuario(
     data: UsuarioCreate,
     db: Session = Depends(get_db),
