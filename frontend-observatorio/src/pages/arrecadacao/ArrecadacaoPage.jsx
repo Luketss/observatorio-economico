@@ -136,7 +136,7 @@ export default function ArrecadacaoPage() {
             Sem dados disponíveis
           </div>
         ) : (
-          <div className="h-64">
+          <div className="h-44 md:h-64">
             <ResponsiveContainer width="100%" height="100%">
               <AreaChart data={serie}>
                 <defs>
@@ -175,7 +175,7 @@ export default function ArrecadacaoPage() {
           <h3 className="text-base font-bold mb-5 text-slate-800 dark:text-white">
             Composição por Tipo de Imposto (ICMS / IPVA / IPI)
           </h3>
-          <div className="h-72">
+          <div className="h-48 md:h-72">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={serie.slice(-24)} margin={{ left: 10, right: 10 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />

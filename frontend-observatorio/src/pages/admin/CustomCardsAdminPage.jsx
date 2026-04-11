@@ -157,7 +157,7 @@ export default function CustomCardsAdminPage() {
       {/* Cards list */}
       {selectedId && (
         <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-100 dark:border-slate-800 shadow-sm overflow-hidden">
-          <div className="px-6 py-4 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
+          <div className="px-3 py-4 md:px-6 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
             <h3 className="text-base font-bold text-slate-800 dark:text-white">Cards</h3>
             <button
               onClick={openCreate}
@@ -184,12 +184,12 @@ export default function CustomCardsAdminPage() {
             <table className="w-full text-sm">
               <thead>
                 <tr className="bg-slate-50 dark:bg-slate-800 text-left text-xs uppercase text-slate-400 dark:text-slate-500 tracking-wider">
-                  <th className="px-6 py-3">Ícone</th>
-                  <th className="px-6 py-3">Título</th>
-                  <th className="px-6 py-3">Valor</th>
-                  <th className="px-6 py-3">Subtítulo</th>
-                  <th className="px-6 py-3">Ordem</th>
-                  <th className="px-6 py-3 text-right">Ações</th>
+                  <th className="px-3 py-3 md:px-6">Ícone</th>
+                  <th className="px-3 py-3 md:px-6">Título</th>
+                  <th className="px-3 py-3 md:px-6">Valor</th>
+                  <th className="px-3 py-3 md:px-6">Subtítulo</th>
+                  <th className="px-3 py-3 md:px-6">Ordem</th>
+                  <th className="px-3 py-3 md:px-6 text-right">Ações</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-50 dark:divide-slate-800">
@@ -198,16 +198,16 @@ export default function CustomCardsAdminPage() {
                   const color = COLORS.find((c) => c.key === card.cor);
                   return (
                     <tr key={card.id} className="hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors">
-                      <td className="px-6 py-4">
+                      <td className="px-3 py-4 md:px-6">
                         <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${color?.cls || "bg-blue-500"}`}>
                           <Icon className="w-4 h-4 text-white" />
                         </div>
                       </td>
-                      <td className="px-6 py-4 font-medium text-slate-800 dark:text-white">{card.titulo}</td>
-                      <td className="px-6 py-4 text-slate-600 dark:text-slate-300">{card.valor}</td>
-                      <td className="px-6 py-4 text-slate-400 dark:text-slate-500">{card.subtitulo || "—"}</td>
-                      <td className="px-6 py-4 text-slate-400 dark:text-slate-500">{card.ordem}</td>
-                      <td className="px-6 py-4 text-right">
+                      <td className="px-3 py-4 md:px-6 font-medium text-slate-800 dark:text-white">{card.titulo}</td>
+                      <td className="px-3 py-4 md:px-6 text-slate-600 dark:text-slate-300">{card.valor}</td>
+                      <td className="px-3 py-4 md:px-6 text-slate-400 dark:text-slate-500">{card.subtitulo || "—"}</td>
+                      <td className="px-3 py-4 md:px-6 text-slate-400 dark:text-slate-500">{card.ordem}</td>
+                      <td className="px-3 py-4 md:px-6 text-right">
                         <div className="flex items-center justify-end gap-2">
                           <button
                             onClick={() => openEdit(card)}

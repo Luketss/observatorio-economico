@@ -268,7 +268,7 @@ export default function RaisPage() {
 
       {/* Annual vinculos */}
       <ChartCard title="Evolução Anual de Vínculos" empty={chartData.length === 0}>
-        <div className="h-64">
+        <div className="h-44 md:h-64">
           <ResponsiveContainer width="100%" height="100%">
             <AreaChart data={chartData}>
               <defs>
@@ -348,7 +348,7 @@ export default function RaisPage() {
 
       {/* CNAE top sectors */}
       <ChartCard title="Vínculos por Setor (CNAE) — Top 10" empty={cnaeTotais.length === 0}>
-        <div className="h-80">
+        <div className="h-52 md:h-80">
           <ResponsiveContainer width="100%" height="100%">
             <BarChart data={cnaeTotais} layout="vertical">
               <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" horizontal={false} />
@@ -368,7 +368,7 @@ export default function RaisPage() {
       {/* Faixa Etária + Escolaridade */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         <ChartCard title="Vínculos por Faixa Etária" empty={faixaEtariaTotais.length === 0}>
-          <div className="h-64">
+          <div className="h-44 md:h-64">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={faixaEtariaTotais} layout="vertical">
                 <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" horizontal={false} />
@@ -386,7 +386,7 @@ export default function RaisPage() {
         </ChartCard>
 
         <ChartCard title="Vínculos por Grau de Instrução" empty={escolaridadeTotais.length === 0}>
-          <div className="h-64">
+          <div className="h-44 md:h-64">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={escolaridadeTotais} layout="vertical">
                 <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" horizontal={false} />
@@ -407,7 +407,7 @@ export default function RaisPage() {
       {/* Faixa de Remuneração + Tempo de Emprego */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         <ChartCard title="Vínculos por Faixa Salarial (em SM)" empty={faixaRemTotais.length === 0}>
-          <div className="h-64">
+          <div className="h-44 md:h-64">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={faixaRemTotais} layout="vertical">
                 <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" horizontal={false} />
@@ -425,7 +425,7 @@ export default function RaisPage() {
         </ChartCard>
 
         <ChartCard title="Vínculos por Tempo de Emprego" empty={tempoEmpregoTotais.length === 0}>
-          <div className="h-64">
+          <div className="h-44 md:h-64">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={tempoEmpregoTotais} layout="vertical">
                 <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" horizontal={false} />

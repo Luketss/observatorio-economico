@@ -171,7 +171,7 @@ export default function PeDeMeiaPage() {
             Sem dados disponíveis
           </div>
         ) : (
-          <div className="h-72">
+          <div className="h-48 md:h-72">
             <ResponsiveContainer width="100%" height="100%">
               <AreaChart data={serie}>
                 <defs>
@@ -228,7 +228,7 @@ export default function PeDeMeiaPage() {
               Sem dados disponíveis
             </div>
           ) : (
-            <div className="h-72">
+            <div className="h-48 md:h-72">
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart
                   data={porEtapa}
@@ -284,7 +284,7 @@ export default function PeDeMeiaPage() {
               Sem dados disponíveis
             </div>
           ) : (
-            <div className="h-72">
+            <div className="h-48 md:h-72">
               <ResponsiveContainer width="100%" height="100%">
                 <PieChart>
                   <Pie

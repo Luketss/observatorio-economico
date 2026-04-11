@@ -172,7 +172,7 @@ export default function InssPage() {
               Sem dados disponíveis
             </div>
           ) : (
-            <div className="h-80">
+            <div className="h-52 md:h-80">
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart
                   data={topCategorias}
@@ -225,7 +225,7 @@ export default function InssPage() {
               Sem dados disponíveis
             </div>
           ) : (
-            <div className="h-80">
+            <div className="h-52 md:h-80">
               <ResponsiveContainer width="100%" height="100%">
                 <LineChart data={evolucaoAnual}>
                   <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />

@@ -225,7 +225,7 @@ export default function CagedPage() {
 
       {/* Monthly series */}
       <ChartCard title="Admissões vs Desligamentos (Mensal)" empty={serie.length === 0}>
-        <div className="h-72">
+        <div className="h-48 md:h-72">
           <ResponsiveContainer width="100%" height="100%">
             <ComposedChart data={serie}>
               <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
@@ -243,7 +243,7 @@ export default function CagedPage() {
 
       {/* Salary evolution */}
       <ChartCard title="Salário Médio — Admitidos vs Desligados" empty={salarioData.length === 0}>
-        <div className="h-64">
+        <div className="h-44 md:h-64">
           <ResponsiveContainer width="100%" height="100%">
             <LineChart data={salarioData}>
               <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
@@ -261,7 +261,7 @@ export default function CagedPage() {
       {/* Two-column: sexo + raca */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         <ChartCard title="Saldo por Sexo" empty={sexoTotais.length === 0}>
-          <div className="h-56">
+          <div className="h-40 md:h-56">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={sexoTotais} layout="vertical">
                 <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" horizontal={false} />
@@ -277,7 +277,7 @@ export default function CagedPage() {
         </ChartCard>
 
         <ChartCard title="Saldo por Raça/Cor" empty={racaTotais.length === 0}>
-          <div className="h-56">
+          <div className="h-40 md:h-56">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={racaTotais} layout="vertical">
                 <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" horizontal={false} />
@@ -295,7 +295,7 @@ export default function CagedPage() {
 
       {/* CNAE top sectors */}
       <ChartCard title="Saldo por Setor (CNAE) — Top 10" empty={cnaeTotais.length === 0}>
-        <div className="h-80">
+        <div className="h-52 md:h-80">
           <ResponsiveContainer width="100%" height="100%">
             <BarChart data={cnaeTotais} layout="vertical">
               <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" horizontal={false} />

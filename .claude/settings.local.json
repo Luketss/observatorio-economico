@@ -11,7 +11,16 @@
       "Bash(done)",
       "Bash(BASE=\"c:/Users/lucas/Documents/projetos/dashboard_prefeituras/frontend-observatorio/src/pages\")",
       "Read(//c/Users/lucas/Documents/projetos/dashboard_prefeituras/$BASE/**)",
-      "Bash(xargs grep:*)"
+      "Bash(xargs grep:*)",
+      "Bash(xargs sed:*)",
+      "Bash(sed -i 's/className=\"px-6 py-3 /className=\"px-3 py-3 md:px-6 /g' UsuariosAdminPage.jsx MunicipiosAdminPage.jsx)",
+      "Bash(sed -i 's/className=\"px-6 py-3\"/className=\"px-3 py-3 md:px-6\"/g' UsuariosAdminPage.jsx MunicipiosAdminPage.jsx)",
+      "Bash(sed -i 's/className=\"px-6 py-4 /className=\"px-3 py-4 md:px-6 /g' CustomCardsAdminPage.jsx MandatoAdminPage.jsx)",
+      "Bash(sed -i 's/className=\"px-6 py-4\"/className=\"px-3 py-4 md:px-6\"/g' CustomCardsAdminPage.jsx MandatoAdminPage.jsx)",
+      "Bash(sed -i 's/className=\"px-6 py-4 font-medium/className=\"px-3 py-4 md:px-6 font-medium/g' InsightsAdminPage.jsx)",
+      "Bash(sed -i 's/className=\"px-6 py-4 text-slate-400/className=\"px-3 py-4 md:px-6 text-slate-400/g' InsightsAdminPage.jsx)",
+      "Bash(sed -i 's/className=\"px-6 py-4\"/className=\"px-3 py-4 md:px-6\"/g' InsightsAdminPage.jsx)",
+      "Bash(npm install:*)"
     ]
   }
 }

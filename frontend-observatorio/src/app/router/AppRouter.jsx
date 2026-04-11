@@ -2,6 +2,7 @@ import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext";
 import DashboardLayout from "../layouts/DashboardLayout";
 import AdminLayout from "../layouts/AdminLayout";
+import LandingPage from "../../pages/landing/LandingPage";
 import LoginPage from "../../pages/login/LoginPage";
 import DashboardGeralPage from "../../pages/DashboardGeralPage";
 import ArrecadacaoPage from "../../pages/arrecadacao/ArrecadacaoPage";
@@ -36,7 +37,7 @@ function AdminRoute({ children }) {
   const { user, loading } = useAuth();
   if (loading) return null;
   if (!user) return <Navigate to="/login" />;
-  if (user.role !== "ADMIN_GLOBAL") return <Navigate to="/" />;
+  if (user.role !== "ADMIN_GLOBAL") return <Navigate to="/app" />;
   return children;
 }
 
@@ -44,7 +45,7 @@ function AdminMunicipioRoute({ children }) {
   const { user, loading } = useAuth();
   if (loading) return null;
   if (!user) return <Navigate to="/login" />;
-  if (user.role === "VISUALIZADOR") return <Navigate to="/" />;
+  if (user.role === "VISUALIZADOR") return <Navigate to="/app" />;
   return children;
 }
 
@@ -52,11 +53,13 @@ export default function AppRouter() {
   return (
     <BrowserRouter>
       <Routes>
+        {/* ── Public routes ──────────────────────────────── */}
+        <Route path="/" element={<LandingPage />} />
         <Route path="/login" element={<LoginPage />} />
 
         {/* ── Main dashboard ─────────────────────────────── */}
         <Route
-          path="/"
+          path="/app"
           element={
             <ProtectedRoute>
               <DashboardLayout />

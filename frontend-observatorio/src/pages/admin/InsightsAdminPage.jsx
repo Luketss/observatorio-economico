@@ -320,11 +320,11 @@ export default function InsightsAdminPage() {
             <table className="w-full text-sm">
               <thead>
                 <tr className="bg-slate-50 dark:bg-slate-800 text-left text-xs uppercase text-slate-400 dark:text-slate-500 tracking-wider">
-                  <th className="px-6 py-3">Dataset</th>
-                  <th className="px-6 py-3">Status</th>
-                  <th className="px-6 py-3">Última geração</th>
-                  <th className="px-6 py-3">Visibilidade</th>
-                  <th className="px-6 py-3 text-right">Ações</th>
+                  <th className="px-3 py-3 md:px-6">Dataset</th>
+                  <th className="px-3 py-3 md:px-6">Status</th>
+                  <th className="px-3 py-3 md:px-6">Última geração</th>
+                  <th className="px-3 py-3 md:px-6">Visibilidade</th>
+                  <th className="px-3 py-3 md:px-6 text-right">Ações</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-50 dark:divide-slate-800">
@@ -339,12 +339,12 @@ export default function InsightsAdminPage() {
                   return (
                     <tr key={d.key} className="hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors">
                       {/* Dataset name */}
-                      <td className="px-6 py-4 font-medium text-slate-800 dark:text-white">
+                      <td className="px-3 py-4 md:px-6 font-medium text-slate-800 dark:text-white">
                         {d.label}
                       </td>
 
                       {/* Status */}
-                      <td className="px-6 py-4">
+                      <td className="px-3 py-4 md:px-6">
                         {!existing ? (
                           <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-slate-500 bg-slate-100 dark:bg-slate-800 px-2 py-1 rounded-lg">
                             <ClockIcon className="w-3.5 h-3.5" />
@@ -364,12 +364,12 @@ export default function InsightsAdminPage() {
                       </td>
 
                       {/* Last generated */}
-                      <td className="px-6 py-4 text-slate-400 dark:text-slate-500 text-xs">
+                      <td className="px-3 py-4 md:px-6 text-slate-400 dark:text-slate-500 text-xs">
                         {existing ? fmtDate(existing.gerado_em) : "—"}
                       </td>
 
                       {/* Visibility controls */}
-                      <td className="px-6 py-4">
+                      <td className="px-3 py-4 md:px-6">
                         {existing && (
                           <button
                             onClick={() => handleTogglePlanoFree(existing)}
@@ -388,7 +388,7 @@ export default function InsightsAdminPage() {
                       </td>
 
                       {/* Actions */}
-                      <td className="px-6 py-4">
+                      <td className="px-3 py-4 md:px-6">
                         <div className="flex items-center justify-end gap-1 flex-wrap">
                           {/* Insight actions */}
                           <button

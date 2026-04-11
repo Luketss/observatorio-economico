@@ -223,7 +223,7 @@ export default function DashboardGeralPage() {
             Sem dados disponíveis
           </div>
         ) : (
-          <div className="h-64">
+          <div className="h-44 md:h-64">
             <ResponsiveContainer width="100%" height="100%">
               <LineChart data={pibSerie}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
