@@ -4,6 +4,7 @@ import app.api.v1.routers.marcos as marcos
 import app.api.v1.routers.custom_cards as custom_cards
 import app.api.v1.routers.plano_config as plano_config
 import app.api.v1.routers.dataset_info as dataset_info
+import app.api.v1.routers.admin_explorer as admin_explorer
 import app.api.v1.routers.auth as auth
 import app.api.v1.routers.bolsa_familia as bolsa_familia
 import app.api.v1.routers.caged as caged
@@ -72,6 +73,7 @@ app.include_router(marcos.router, prefix=API_PREFIX)
 app.include_router(custom_cards.router, prefix=API_PREFIX)
 app.include_router(plano_config.router, prefix=API_PREFIX)
 app.include_router(dataset_info.router, prefix=API_PREFIX)
+app.include_router(admin_explorer.router, prefix=API_PREFIX)
 
 
 @app.get("/health")
