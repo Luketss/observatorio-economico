@@ -17,6 +17,7 @@ import ReleasesAdminPage from "../../pages/admin/ReleasesAdminPage";
 import MunicipiosAdminPage from "../../pages/admin/MunicipiosAdminPage";
 import CustomCardsAdminPage from "../../pages/admin/CustomCardsAdminPage";
 import PlanoConfigAdminPage from "../../pages/admin/PlanoConfigAdminPage";
+import ExplorerPage from "../../pages/admin/ExplorerPage";
 import BolsaFamiliaPage from "../../pages/beneficios/BolsaFamiliaPage";
 import PeDeMeiaPage from "../../pages/beneficios/PeDeMeiaPage";
 import InssPage from "../../pages/inss/InssPage";
@@ -116,6 +117,10 @@ export default function AppRouter() {
           <Route
             path="usuarios"
             element={<AdminRoute><UsuariosAdminPage /></AdminRoute>}
+          />
+          <Route
+            path="explorer"
+            element={<AdminRoute><ExplorerPage /></AdminRoute>}
           />
         </Route>
       </Routes>

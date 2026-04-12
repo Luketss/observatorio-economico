@@ -21,7 +21,7 @@ from app.db.session import SessionLocal
 from app.models.municipio import Municipio
 from app.models.pix import PixMensal
 
-CSV_PATH = os.path.join(os.path.dirname(__file__), "..", "dados", "pix_nova_lima.csv")
+CSV_PATH = os.path.join(os.path.dirname(__file__), "..", "dados", "pix_cabo_verde.csv")
 
 
 def _float(val: str) -> float | None:
@@ -46,7 +46,9 @@ def main():
     db = SessionLocal()
     try:
         # Build name → municipio_id cache (same pattern as other ingestion scripts)
-        municipios_by_name = {m.nome.strip().lower(): m.id for m in db.query(Municipio).all()}
+        municipios_by_name = {
+            m.nome.strip().lower(): m.id for m in db.query(Municipio).all()
+        }
 
         rows_inserted = 0
         rows_skipped = 0

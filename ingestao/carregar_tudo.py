@@ -34,19 +34,19 @@ import ingestao.carregar_rais as rais
 #   CIDADES = []   # loads everything
 # ─────────────────────────────────────────────────────────────────────────────
 # CIDADES = ["Nova Lima", "Oliveira", "Claudio", "Nova Serrana"]
-CIDADES = ["Nova Serrana"]
+CIDADES = ["Cabo Verde"]
 
 
 LOADERS = [
-    # ("Arrecadação", arrecadacao),
-    # ("PIB", pib),
-    # ("CAGED", caged),
-    # ("RAIS", rais),
-    # ("Bolsa Família", bolsa_familia),
-    # ("Pé-de-Meia", pe_de_meia),
-    # ("INSS", inss),
-    # ("Estban", estban),
-    # ("Comex", comex),
+    ("Arrecadação", arrecadacao),
+    ("PIB", pib),
+    ("CAGED", caged),
+    ("RAIS", rais),
+    ("Bolsa Família", bolsa_familia),
+    ("Pé-de-Meia", pe_de_meia),
+    ("INSS", inss),
+    ("Estban", estban),
+    ("Comex", comex),
     ("CNPJ", cnpj),
 ]
 
