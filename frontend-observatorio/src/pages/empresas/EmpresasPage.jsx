@@ -4,6 +4,8 @@ import { motion } from "framer-motion";
 import InsightsPanel from "../../components/InsightsPanel";
 import ReleasesPanel from "../../components/ReleasesPanel";
 import InfoTooltip from "../../components/InfoTooltip";
+import KpiCard from "../../components/KpiCard";
+import PlanGate from "../../components/PlanGate";
 import {
   ResponsiveContainer,
   BarChart,
@@ -28,20 +30,6 @@ const COLORS = [
   "#f97316",
   "#a855f7",
 ];
-
-function KpiCard({ label, value, sub, accent }) {
-  return (
-    <div className="bg-white dark:bg-slate-900 p-6 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-800">
-      <p className="text-xs uppercase tracking-wider text-slate-400 dark:text-slate-500 font-medium">
-        {label}
-      </p>
-      <p className={`text-2xl font-bold mt-2 ${accent || "text-slate-800 dark:text-white"}`}>
-        {value}
-      </p>
-      {sub && <p className="text-xs text-slate-400 dark:text-slate-500 mt-1">{sub}</p>}
-    </div>
-  );
-}
 
 function MiniStat({ label, value, color }) {
   return (
@@ -98,24 +86,32 @@ export default function EmpresasPage() {
       value: fmtNum(resumo?.total_empresas),
       sub: "Cadastradas",
       accent: "text-blue-600",
+      dataset: "empresas",
+      indicadorKey: "total_empresas",
     },
     {
       label: "Empresas Ativas",
       value: fmtNum(resumo?.total_ativas),
       sub: fmtPct(resumo?.total_ativas, resumo?.total_empresas) + " do total",
       accent: "text-green-600",
+      dataset: "empresas",
+      indicadorKey: "ativas",
     },
     {
       label: "MEI",
       value: fmtNum(resumo?.total_mei),
       sub: fmtPct(resumo?.total_mei, resumo?.total_empresas) + " do total",
       accent: "text-purple-600",
+      dataset: "empresas",
+      indicadorKey: "mei",
     },
     {
       label: "Simples Nacional",
       value: fmtNum(resumo?.total_simples),
       sub: fmtPct(resumo?.total_simples, resumo?.total_empresas) + " do total",
       accent: "text-orange-500",
+      dataset: "empresas",
+      indicadorKey: "simples",
     },
   ];
 
@@ -161,6 +157,7 @@ export default function EmpresasPage() {
       {/* Distribuição por Porte + Situação */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Pie — porte */}
+        <PlanGate planKey="empresas.por_porte">
         <div className="bg-white dark:bg-slate-900 p-6 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-800">
           <h3 className="text-base font-bold mb-5 text-slate-800 dark:text-white">
             Distribuição por Porte
@@ -197,6 +194,8 @@ export default function EmpresasPage() {
             </div>
           )}
         </div>
+
+        </PlanGate>
 
         {/* Situação cadastral */}
         <div className="bg-white dark:bg-slate-900 p-6 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-800">
@@ -271,6 +270,7 @@ export default function EmpresasPage() {
       </div>
 
       {/* Empresas por Setor CNAE */}
+      <PlanGate planKey="empresas.por_cnae">
       <div className="bg-white dark:bg-slate-900 p-6 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-800">
         <h3 className="text-base font-bold mb-5 text-slate-800 dark:text-white">
           Empresas por Setor de Atividade (CNAE — Seção)
@@ -309,6 +309,8 @@ export default function EmpresasPage() {
           </div>
         )}
       </div>
+
+      </PlanGate>
 
       {/* Composição Adicional */}
       <div className="bg-white dark:bg-slate-900 p-6 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-800">

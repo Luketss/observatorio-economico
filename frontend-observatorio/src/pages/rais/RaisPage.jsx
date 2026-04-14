@@ -5,6 +5,8 @@ import InsightsPanel from "../../components/InsightsPanel";
 import ReleasesPanel from "../../components/ReleasesPanel";
 import InfoTooltip from "../../components/InfoTooltip";
 import FilterBar from "../../components/FilterBar";
+import KpiCard from "../../components/KpiCard";
+import PlanGate from "../../components/PlanGate";
 import {
   ResponsiveContainer,
   AreaChart,
@@ -25,16 +27,6 @@ const COLORS = [
   "#8b5cf6", "#3b82f6", "#10b981", "#f97316", "#f59e0b",
   "#ec4899", "#06b6d4", "#84cc16", "#ef4444", "#6366f1",
 ];
-
-function KpiCard({ label, value, sub, accent }) {
-  return (
-    <div className="bg-white dark:bg-slate-900 p-6 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-800">
-      <p className="text-xs uppercase tracking-wider text-slate-400 dark:text-slate-500 font-medium">{label}</p>
-      <p className={`text-2xl font-bold mt-2 ${accent || "text-slate-800 dark:text-white"}`}>{value}</p>
-      {sub && <p className="text-xs text-slate-400 dark:text-slate-500 mt-1">{sub}</p>}
-    </div>
-  );
-}
 
 function ChartCard({ title, children, empty }) {
   return (
@@ -219,13 +211,15 @@ export default function RaisPage() {
   const metricasAnuais = metricasFiltradas.sort((a, b) => a.ano - b.ano);
 
   const cards = [
-    { label: "Total de Vínculos", value: fmt(resumo?.total_vinculos), sub: "Acumulado no período" },
-    { label: "Último Ano", value: vinculosUltimoAno != null ? fmt(vinculosUltimoAno) : "—", sub: `Vínculos em ${ultimoAno}` },
+    { label: "Total de Vínculos", value: fmt(resumo?.total_vinculos), sub: "Acumulado no período", dataset: "rais", indicadorKey: "total_vinculos" },
+    { label: "Último Ano", value: vinculosUltimoAno != null ? fmt(vinculosUltimoAno) : "—", sub: `Vínculos em ${ultimoAno}`, dataset: "rais", indicadorKey: "ultimo_ano" },
     {
       label: "Remuneração Média",
       value: fmtCurrency(resumo?.remuneracao_media),
       sub: "Média geral do período",
       accent: "text-purple-600",
+      dataset: "rais",
+      indicadorKey: "remuneracao_media",
     },
   ];
 
@@ -289,16 +283,81 @@ export default function RaisPage() {
 
       {/* Sexo + Raca breakdown */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <ChartCard title="Vínculos por Sexo" empty={sexoTotais.length === 0}>
-          <div className="h-52">
+        <PlanGate planKey="rais.por_sexo">
+          <ChartCard title="Vínculos por Sexo" empty={sexoTotais.length === 0}>
+            <div className="h-52">
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={sexoTotais} layout="vertical">
+                  <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" horizontal={false} />
+                  <XAxis type="number" tick={{ fontSize: 10 }} stroke="#94a3b8" tickFormatter={(v) => v.toLocaleString("pt-BR")} />
+                  <YAxis type="category" dataKey="sexo" tick={{ fontSize: 12 }} stroke="#94a3b8" width={90} />
+                  <Tooltip formatter={(v) => [Number(v).toLocaleString("pt-BR"), "Vínculos"]} />
+                  <Bar dataKey="total" name="Vínculos" radius={[0, 4, 4, 0]}>
+                    {sexoTotais.map((_, idx) => (
+                      <Cell key={idx} fill={COLORS[idx % COLORS.length]} />
+                    ))}
+                  </Bar>
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+          </ChartCard>
+        </PlanGate>
+
+        <PlanGate planKey="rais.por_raca">
+          <ChartCard title="Vínculos por Raça/Cor" empty={racaTotais.length === 0}>
+            <div className="h-52">
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={racaTotais} layout="vertical">
+                  <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" horizontal={false} />
+                  <XAxis type="number" tick={{ fontSize: 10 }} stroke="#94a3b8" tickFormatter={(v) => v.toLocaleString("pt-BR")} />
+                  <YAxis type="category" dataKey="raca" tick={{ fontSize: 11 }} stroke="#94a3b8" width={100} />
+                  <Tooltip formatter={(v) => [Number(v).toLocaleString("pt-BR"), "Vínculos"]} />
+                  <Bar dataKey="total" name="Vínculos" radius={[0, 4, 4, 0]}>
+                    {racaTotais.map((_, idx) => (
+                      <Cell key={idx} fill={COLORS[(idx + 3) % COLORS.length]} />
+                    ))}
+                  </Bar>
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+          </ChartCard>
+        </PlanGate>
+      </div>
+
+      {/* Remuneration by gender over years */}
+      {remSexoAnual.length > 0 && sexoLabels.length > 0 && (
+        <PlanGate planKey="rais.por_sexo">
+          <ChartCard title="Remuneração Média por Sexo (Anual)" empty={remSexoAnual.length === 0}>
+            <div className="h-60">
+              <ResponsiveContainer width="100%" height="100%">
+                <LineChart data={remSexoAnual}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
+                  <XAxis dataKey="ano" tick={{ fontSize: 12 }} stroke="#94a3b8" />
+                  <YAxis tick={{ fontSize: 11 }} stroke="#94a3b8" tickFormatter={(v) => `R$${(v / 1000).toFixed(1)}k`} />
+                  <Tooltip formatter={(v) => [fmtCurrency(v)]} />
+                  <Legend />
+                  {sexoLabels.map((s, i) => (
+                    <Line key={s} type="monotone" dataKey={s} name={s} stroke={COLORS[i % COLORS.length]} strokeWidth={2} dot />
+                  ))}
+                </LineChart>
+              </ResponsiveContainer>
+            </div>
+          </ChartCard>
+        </PlanGate>
+      )}
+
+      {/* CNAE top sectors */}
+      <PlanGate planKey="rais.por_cnae">
+        <ChartCard title="Vínculos por Setor (CNAE) — Top 10" empty={cnaeTotais.length === 0}>
+          <div className="h-52 md:h-80">
             <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={sexoTotais} layout="vertical">
+              <BarChart data={cnaeTotais} layout="vertical">
                 <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" horizontal={false} />
                 <XAxis type="number" tick={{ fontSize: 10 }} stroke="#94a3b8" tickFormatter={(v) => v.toLocaleString("pt-BR")} />
-                <YAxis type="category" dataKey="sexo" tick={{ fontSize: 12 }} stroke="#94a3b8" width={90} />
-                <Tooltip formatter={(v) => [Number(v).toLocaleString("pt-BR"), "Vínculos"]} />
+                <YAxis type="category" dataKey="nome" tick={{ fontSize: 10 }} stroke="#94a3b8" width={200} />
+                <Tooltip formatter={(v) => [Number(v).toLocaleString("pt-BR")]} />
                 <Bar dataKey="total" name="Vínculos" radius={[0, 4, 4, 0]}>
-                  {sexoTotais.map((_, idx) => (
+                  {cnaeTotais.map((_, idx) => (
                     <Cell key={idx} fill={COLORS[idx % COLORS.length]} />
                   ))}
                 </Bar>
@@ -306,123 +365,72 @@ export default function RaisPage() {
             </ResponsiveContainer>
           </div>
         </ChartCard>
-
-        <ChartCard title="Vínculos por Raça/Cor" empty={racaTotais.length === 0}>
-          <div className="h-52">
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={racaTotais} layout="vertical">
-                <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" horizontal={false} />
-                <XAxis type="number" tick={{ fontSize: 10 }} stroke="#94a3b8" tickFormatter={(v) => v.toLocaleString("pt-BR")} />
-                <YAxis type="category" dataKey="raca" tick={{ fontSize: 11 }} stroke="#94a3b8" width={100} />
-                <Tooltip formatter={(v) => [Number(v).toLocaleString("pt-BR"), "Vínculos"]} />
-                <Bar dataKey="total" name="Vínculos" radius={[0, 4, 4, 0]}>
-                  {racaTotais.map((_, idx) => (
-                    <Cell key={idx} fill={COLORS[(idx + 3) % COLORS.length]} />
-                  ))}
-                </Bar>
-              </BarChart>
-            </ResponsiveContainer>
-          </div>
-        </ChartCard>
-      </div>
-
-      {/* Remuneration by gender over years */}
-      {remSexoAnual.length > 0 && sexoLabels.length > 0 && (
-        <ChartCard title="Remuneração Média por Sexo (Anual)" empty={remSexoAnual.length === 0}>
-          <div className="h-60">
-            <ResponsiveContainer width="100%" height="100%">
-              <LineChart data={remSexoAnual}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
-                <XAxis dataKey="ano" tick={{ fontSize: 12 }} stroke="#94a3b8" />
-                <YAxis tick={{ fontSize: 11 }} stroke="#94a3b8" tickFormatter={(v) => `R$${(v / 1000).toFixed(1)}k`} />
-                <Tooltip formatter={(v) => [fmtCurrency(v)]} />
-                <Legend />
-                {sexoLabels.map((s, i) => (
-                  <Line key={s} type="monotone" dataKey={s} name={s} stroke={COLORS[i % COLORS.length]} strokeWidth={2} dot />
-                ))}
-              </LineChart>
-            </ResponsiveContainer>
-          </div>
-        </ChartCard>
-      )}
-
-      {/* CNAE top sectors */}
-      <ChartCard title="Vínculos por Setor (CNAE) — Top 10" empty={cnaeTotais.length === 0}>
-        <div className="h-52 md:h-80">
-          <ResponsiveContainer width="100%" height="100%">
-            <BarChart data={cnaeTotais} layout="vertical">
-              <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" horizontal={false} />
-              <XAxis type="number" tick={{ fontSize: 10 }} stroke="#94a3b8" tickFormatter={(v) => v.toLocaleString("pt-BR")} />
-              <YAxis type="category" dataKey="nome" tick={{ fontSize: 10 }} stroke="#94a3b8" width={200} />
-              <Tooltip formatter={(v) => [Number(v).toLocaleString("pt-BR")]} />
-              <Bar dataKey="total" name="Vínculos" radius={[0, 4, 4, 0]}>
-                {cnaeTotais.map((_, idx) => (
-                  <Cell key={idx} fill={COLORS[idx % COLORS.length]} />
-                ))}
-              </Bar>
-            </BarChart>
-          </ResponsiveContainer>
-        </div>
-      </ChartCard>
+      </PlanGate>
 
       {/* Faixa Etária + Escolaridade */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <ChartCard title="Vínculos por Faixa Etária" empty={faixaEtariaTotais.length === 0}>
-          <div className="h-44 md:h-64">
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={faixaEtariaTotais} layout="vertical">
-                <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" horizontal={false} />
-                <XAxis type="number" tick={{ fontSize: 10 }} stroke="#94a3b8" tickFormatter={(v) => v.toLocaleString("pt-BR")} />
-                <YAxis type="category" dataKey="faixa" tick={{ fontSize: 10 }} stroke="#94a3b8" width={100} />
-                <Tooltip formatter={(v) => [Number(v).toLocaleString("pt-BR"), "Vínculos"]} />
-                <Bar dataKey="total" name="Vínculos" radius={[0, 4, 4, 0]}>
-                  {faixaEtariaTotais.map((_, i) => (
-                    <Cell key={i} fill={COLORS[i % COLORS.length]} />
-                  ))}
-                </Bar>
-              </BarChart>
-            </ResponsiveContainer>
-          </div>
-        </ChartCard>
+        <PlanGate planKey="rais.por_faixa_etaria">
+          <ChartCard title="Vínculos por Faixa Etária" empty={faixaEtariaTotais.length === 0}>
+            <div className="h-44 md:h-64">
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={faixaEtariaTotais} layout="vertical">
+                  <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" horizontal={false} />
+                  <XAxis type="number" tick={{ fontSize: 10 }} stroke="#94a3b8" tickFormatter={(v) => v.toLocaleString("pt-BR")} />
+                  <YAxis type="category" dataKey="faixa" tick={{ fontSize: 10 }} stroke="#94a3b8" width={100} />
+                  <Tooltip formatter={(v) => [Number(v).toLocaleString("pt-BR"), "Vínculos"]} />
+                  <Bar dataKey="total" name="Vínculos" radius={[0, 4, 4, 0]}>
+                    {faixaEtariaTotais.map((_, i) => (
+                      <Cell key={i} fill={COLORS[i % COLORS.length]} />
+                    ))}
+                  </Bar>
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+          </ChartCard>
+        </PlanGate>
 
-        <ChartCard title="Vínculos por Grau de Instrução" empty={escolaridadeTotais.length === 0}>
-          <div className="h-44 md:h-64">
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={escolaridadeTotais} layout="vertical">
-                <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" horizontal={false} />
-                <XAxis type="number" tick={{ fontSize: 10 }} stroke="#94a3b8" tickFormatter={(v) => v.toLocaleString("pt-BR")} />
-                <YAxis type="category" dataKey="grau" tick={{ fontSize: 9 }} stroke="#94a3b8" width={140} />
-                <Tooltip formatter={(v) => [Number(v).toLocaleString("pt-BR"), "Vínculos"]} />
-                <Bar dataKey="total" name="Vínculos" radius={[0, 4, 4, 0]}>
-                  {escolaridadeTotais.map((_, i) => (
-                    <Cell key={i} fill={COLORS[(i + 2) % COLORS.length]} />
-                  ))}
-                </Bar>
-              </BarChart>
-            </ResponsiveContainer>
-          </div>
-        </ChartCard>
+        <PlanGate planKey="rais.por_escolaridade">
+          <ChartCard title="Vínculos por Grau de Instrução" empty={escolaridadeTotais.length === 0}>
+            <div className="h-44 md:h-64">
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={escolaridadeTotais} layout="vertical">
+                  <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" horizontal={false} />
+                  <XAxis type="number" tick={{ fontSize: 10 }} stroke="#94a3b8" tickFormatter={(v) => v.toLocaleString("pt-BR")} />
+                  <YAxis type="category" dataKey="grau" tick={{ fontSize: 9 }} stroke="#94a3b8" width={140} />
+                  <Tooltip formatter={(v) => [Number(v).toLocaleString("pt-BR"), "Vínculos"]} />
+                  <Bar dataKey="total" name="Vínculos" radius={[0, 4, 4, 0]}>
+                    {escolaridadeTotais.map((_, i) => (
+                      <Cell key={i} fill={COLORS[(i + 2) % COLORS.length]} />
+                    ))}
+                  </Bar>
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+          </ChartCard>
+        </PlanGate>
       </div>
 
       {/* Faixa de Remuneração + Tempo de Emprego */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <ChartCard title="Vínculos por Faixa Salarial (em SM)" empty={faixaRemTotais.length === 0}>
-          <div className="h-44 md:h-64">
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={faixaRemTotais} layout="vertical">
-                <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" horizontal={false} />
-                <XAxis type="number" tick={{ fontSize: 10 }} stroke="#94a3b8" tickFormatter={(v) => v.toLocaleString("pt-BR")} />
-                <YAxis type="category" dataKey="faixa" tick={{ fontSize: 10 }} stroke="#94a3b8" width={110} />
-                <Tooltip formatter={(v) => [Number(v).toLocaleString("pt-BR"), "Vínculos"]} />
-                <Bar dataKey="total" name="Vínculos" radius={[0, 4, 4, 0]}>
-                  {faixaRemTotais.map((_, i) => (
-                    <Cell key={i} fill={COLORS[(i + 1) % COLORS.length]} />
-                  ))}
-                </Bar>
-              </BarChart>
-            </ResponsiveContainer>
-          </div>
-        </ChartCard>
+        <PlanGate planKey="rais.por_remuneracao">
+          <ChartCard title="Vínculos por Faixa Salarial (em SM)" empty={faixaRemTotais.length === 0}>
+            <div className="h-44 md:h-64">
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={faixaRemTotais} layout="vertical">
+                  <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" horizontal={false} />
+                  <XAxis type="number" tick={{ fontSize: 10 }} stroke="#94a3b8" tickFormatter={(v) => v.toLocaleString("pt-BR")} />
+                  <YAxis type="category" dataKey="faixa" tick={{ fontSize: 10 }} stroke="#94a3b8" width={110} />
+                  <Tooltip formatter={(v) => [Number(v).toLocaleString("pt-BR"), "Vínculos"]} />
+                  <Bar dataKey="total" name="Vínculos" radius={[0, 4, 4, 0]}>
+                    {faixaRemTotais.map((_, i) => (
+                      <Cell key={i} fill={COLORS[(i + 1) % COLORS.length]} />
+                    ))}
+                  </Bar>
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+          </ChartCard>
+        </PlanGate>
 
         <ChartCard title="Vínculos por Tempo de Emprego" empty={tempoEmpregoTotais.length === 0}>
           <div className="h-44 md:h-64">
@@ -445,37 +453,39 @@ export default function RaisPage() {
 
       {/* Métricas Anuais — PCD, Outro Município, Afastamento */}
       {metricasAnuais.length > 0 && (
-        <>
-          <ChartCard title="PCD e Trabalhadores de Outro Município (Evolução Anual)" empty={false}>
-            <div className="h-60">
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={metricasAnuais} barCategoryGap="35%">
-                  <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
-                  <XAxis dataKey="ano" tick={{ fontSize: 12 }} stroke="#94a3b8" />
-                  <YAxis tick={{ fontSize: 11 }} stroke="#94a3b8" tickFormatter={(v) => v.toLocaleString("pt-BR")} />
-                  <Tooltip formatter={(v) => [Number(v).toLocaleString("pt-BR")]} />
-                  <Legend />
-                  <Bar dataKey="total_pcd" name="PCD" fill="#8b5cf6" radius={[4, 4, 0, 0]} />
-                  <Bar dataKey="total_outro_municipio" name="Outro Município" fill="#06b6d4" radius={[4, 4, 0, 0]} />
-                </BarChart>
-              </ResponsiveContainer>
-            </div>
-          </ChartCard>
+        <PlanGate planKey="rais.metricas">
+          <>
+            <ChartCard title="PCD e Trabalhadores de Outro Município (Evolução Anual)" empty={false}>
+              <div className="h-60">
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={metricasAnuais} barCategoryGap="35%">
+                    <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
+                    <XAxis dataKey="ano" tick={{ fontSize: 12 }} stroke="#94a3b8" />
+                    <YAxis tick={{ fontSize: 11 }} stroke="#94a3b8" tickFormatter={(v) => v.toLocaleString("pt-BR")} />
+                    <Tooltip formatter={(v) => [Number(v).toLocaleString("pt-BR")]} />
+                    <Legend />
+                    <Bar dataKey="total_pcd" name="PCD" fill="#8b5cf6" radius={[4, 4, 0, 0]} />
+                    <Bar dataKey="total_outro_municipio" name="Outro Município" fill="#06b6d4" radius={[4, 4, 0, 0]} />
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+            </ChartCard>
 
-          <ChartCard title="Média de Dias de Afastamento Anual" empty={metricasAnuais.every((d) => !d.media_dias_afastamento)}>
-            <div className="h-52">
-              <ResponsiveContainer width="100%" height="100%">
-                <LineChart data={metricasAnuais}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
-                  <XAxis dataKey="ano" tick={{ fontSize: 12 }} stroke="#94a3b8" />
-                  <YAxis tick={{ fontSize: 11 }} stroke="#94a3b8" tickFormatter={(v) => `${v.toFixed(1)} dias`} />
-                  <Tooltip formatter={(v) => [`${Number(v).toFixed(1)} dias`, "Média de Afastamento"]} />
-                  <Line type="monotone" dataKey="media_dias_afastamento" name="Média Afastamento" stroke="#f97316" strokeWidth={2.5} dot />
-                </LineChart>
-              </ResponsiveContainer>
-            </div>
-          </ChartCard>
-        </>
+            <ChartCard title="Média de Dias de Afastamento Anual" empty={metricasAnuais.every((d) => !d.media_dias_afastamento)}>
+              <div className="h-52">
+                <ResponsiveContainer width="100%" height="100%">
+                  <LineChart data={metricasAnuais}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
+                    <XAxis dataKey="ano" tick={{ fontSize: 12 }} stroke="#94a3b8" />
+                    <YAxis tick={{ fontSize: 11 }} stroke="#94a3b8" tickFormatter={(v) => `${v.toFixed(1)} dias`} />
+                    <Tooltip formatter={(v) => [`${Number(v).toFixed(1)} dias`, "Média de Afastamento"]} />
+                    <Line type="monotone" dataKey="media_dias_afastamento" name="Média Afastamento" stroke="#f97316" strokeWidth={2.5} dot />
+                  </LineChart>
+                </ResponsiveContainer>
+              </div>
+            </ChartCard>
+          </>
+        </PlanGate>
       )}
       <ReleasesPanel dataset="rais" />
 

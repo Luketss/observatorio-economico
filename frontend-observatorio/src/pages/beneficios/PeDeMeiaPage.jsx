@@ -5,6 +5,7 @@ import InsightsPanel from "../../components/InsightsPanel";
 import ReleasesPanel from "../../components/ReleasesPanel";
 import InfoTooltip from "../../components/InfoTooltip";
 import FilterBar from "../../components/FilterBar";
+import KpiCard from "../../components/KpiCard";
 import {
   ResponsiveContainer,
   AreaChart,
@@ -29,20 +30,6 @@ const COLORS = [
   "#ef4444",
   "#06b6d4",
 ];
-
-function KpiCard({ label, value, sub, accent }) {
-  return (
-    <div className="bg-white dark:bg-slate-900 p-6 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-800">
-      <p className="text-xs uppercase tracking-wider text-slate-400 dark:text-slate-500 font-medium">
-        {label}
-      </p>
-      <p className={`text-2xl font-bold mt-2 ${accent || "text-slate-800 dark:text-white"}`}>
-        {value}
-      </p>
-      {sub && <p className="text-xs text-slate-400 dark:text-slate-500 mt-1">{sub}</p>}
-    </div>
-  );
-}
 
 const fmtBRL = (v) =>
   v != null
@@ -110,12 +97,16 @@ export default function PeDeMeiaPage() {
       value: fmtNum(resumo?.total_estudantes),
       sub: "No período",
       accent: "text-blue-600",
+      dataset: "pe_de_meia",
+      indicadorKey: "total_estudantes",
     },
     {
       label: "Valor Total",
       value: fmtBRL(resumo?.valor_total),
       sub: "Repasses totais",
       accent: "text-green-600",
+      dataset: "pe_de_meia",
+      indicadorKey: "valor_total",
     },
   ];
 

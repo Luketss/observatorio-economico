@@ -5,6 +5,8 @@ import InsightsPanel from "../../components/InsightsPanel";
 import ReleasesPanel from "../../components/ReleasesPanel";
 import InfoTooltip from "../../components/InfoTooltip";
 import FilterBar from "../../components/FilterBar";
+import KpiCard from "../../components/KpiCard";
+import PlanGate from "../../components/PlanGate";
 import {
   ResponsiveContainer,
   LineChart,
@@ -29,20 +31,6 @@ const COLORS = [
   "#ef4444",
   "#06b6d4",
 ];
-
-function KpiCard({ label, value, sub, accent }) {
-  return (
-    <div className="bg-white dark:bg-slate-900 p-6 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-800">
-      <p className="text-xs uppercase tracking-wider text-slate-400 dark:text-slate-500 font-medium">
-        {label}
-      </p>
-      <p className={`text-2xl font-bold mt-2 ${accent || "text-slate-800 dark:text-white"}`}>
-        {value}
-      </p>
-      {sub && <p className="text-xs text-slate-400 dark:text-slate-500 mt-1">{sub}</p>}
-    </div>
-  );
-}
 
 const fmtBRL = (v) =>
   v != null
@@ -113,18 +101,24 @@ export default function EstbanPage() {
       value: fmtNum(resumo?.qtd_agencias),
       sub: "Unidades ativas",
       accent: "text-blue-600",
+      dataset: "estban",
+      indicadorKey: "agencias",
     },
     {
       label: "Operações de Crédito",
       value: fmtBRL(resumo?.total_operacoes_credito),
       sub: "Saldo total",
       accent: "text-green-600",
+      dataset: "estban",
+      indicadorKey: "credito_total",
     },
     {
       label: "Total Depósitos",
       value: fmtBRL(resumo?.total_depositos),
       sub: "Vista + Poupança + Prazo",
       accent: "text-purple-600",
+      dataset: "estban",
+      indicadorKey: "depositos_total",
     },
   ];
 
@@ -359,6 +353,7 @@ export default function EstbanPage() {
       </div>
 
       {/* Crédito por Instituição */}
+      <PlanGate planKey="estban.por_instituicao">
       <div className="bg-white dark:bg-slate-900 p-6 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-800">
         <h3 className="text-base font-bold mb-5 text-slate-800 dark:text-white">
           Operações de Crédito por Instituição
@@ -415,7 +410,7 @@ export default function EstbanPage() {
         )}
       </div>
 
-      {/* Tabela de Instituições */}
+      {/* Tabela de Instituições — still inside PlanGate */}
       <div className="bg-white dark:bg-slate-900 p-6 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-800">
         <h3 className="text-base font-bold mb-5 text-slate-800 dark:text-white">
           Detalhamento por Instituição
@@ -482,6 +477,7 @@ export default function EstbanPage() {
           </div>
         )}
       </div>
+      </PlanGate>
       <ReleasesPanel dataset="estban" />
 
     </motion.div>

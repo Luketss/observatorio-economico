@@ -5,6 +5,8 @@ import InsightsPanel from "../../components/InsightsPanel";
 import ReleasesPanel from "../../components/ReleasesPanel";
 import InfoTooltip from "../../components/InfoTooltip";
 import FilterBar from "../../components/FilterBar";
+import KpiCard from "../../components/KpiCard";
+import PlanGate from "../../components/PlanGate";
 import {
   ResponsiveContainer,
   BarChart,
@@ -18,18 +20,6 @@ import {
   Legend,
   Cell,
 } from "recharts";
-
-function KpiCard({ label, value, sub }) {
-  return (
-    <div className="bg-white dark:bg-slate-900 p-6 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-800">
-      <p className="text-xs uppercase tracking-wider text-slate-400 dark:text-slate-500 font-medium">
-        {label}
-      </p>
-      <p className="text-2xl font-bold mt-2 text-slate-800 dark:text-white">{value}</p>
-      {sub && <p className="text-xs text-slate-400 dark:text-slate-500 mt-1">{sub}</p>}
-    </div>
-  );
-}
 
 const fmtBRL = (v) =>
   `R$ ${Number(v).toLocaleString("pt-BR", { maximumFractionDigits: 0 })}`;
@@ -102,6 +92,8 @@ export default function PibPage() {
       label: "PIB Último Ano",
       value: resumo ? fmtBRL(resumo.pib_ultimo_ano) : "—",
       sub: resumo?.ultimo_ano ? `Ano ${resumo.ultimo_ano}` : null,
+      dataset: "pib",
+      indicadorKey: "ultimo_ano",
     },
     {
       label: "Crescimento",
@@ -110,6 +102,8 @@ export default function PibPage() {
           ? `${resumo.crescimento_percentual > 0 ? "+" : ""}${resumo.crescimento_percentual.toFixed(1)}%`
           : "—",
       sub: "Variação vs ano anterior",
+      dataset: "pib",
+      indicadorKey: "crescimento",
     },
     {
       label: "Anos na Série",
@@ -118,6 +112,8 @@ export default function PibPage() {
         serie.length > 0
           ? `${serie[0].ano} – ${serie[serie.length - 1].ano}`
           : null,
+      dataset: "pib",
+      indicadorKey: "anos_serie",
     },
   ];
 
@@ -200,31 +196,33 @@ export default function PibPage() {
 
       {/* VA Breakdown */}
       {vaData.length > 0 && (
-        <div className="bg-white dark:bg-slate-900 p-6 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-800">
-          <h3 className="text-base font-bold mb-5 text-slate-800 dark:text-white">
-            Valor Adicionado por Setor
-          </h3>
-          <div className="h-48 md:h-72">
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={vaData} margin={{ left: 10, right: 10 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
-                <XAxis dataKey="ano" tick={{ fontSize: 12 }} stroke="#94a3b8" />
-                <YAxis
-                  tick={{ fontSize: 11 }}
-                  stroke="#94a3b8"
-                  width={75}
-                  tickFormatter={(v) => `${(v / 1_000_000).toFixed(0)}M`}
-                />
-                <Tooltip formatter={(v) => [fmtBRL(v)]} />
-                <Legend />
-                <Bar dataKey="va_agropecuaria" name="Agropecuária" stackId="va" fill="#10b981" />
-                <Bar dataKey="va_industria" name="Indústria" stackId="va" fill="#3b82f6" />
-                <Bar dataKey="va_servicos" name="Serviços" stackId="va" fill="#f59e0b" />
-                <Bar dataKey="va_governo" name="Governo" stackId="va" fill="#8b5cf6" radius={[4, 4, 0, 0]} />
-              </BarChart>
-            </ResponsiveContainer>
+        <PlanGate planKey="pib.por_setor">
+          <div className="bg-white dark:bg-slate-900 p-6 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-800">
+            <h3 className="text-base font-bold mb-5 text-slate-800 dark:text-white">
+              Valor Adicionado por Setor
+            </h3>
+            <div className="h-48 md:h-72">
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={vaData} margin={{ left: 10, right: 10 }}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
+                  <XAxis dataKey="ano" tick={{ fontSize: 12 }} stroke="#94a3b8" />
+                  <YAxis
+                    tick={{ fontSize: 11 }}
+                    stroke="#94a3b8"
+                    width={75}
+                    tickFormatter={(v) => `${(v / 1_000_000).toFixed(0)}M`}
+                  />
+                  <Tooltip formatter={(v) => [fmtBRL(v)]} />
+                  <Legend />
+                  <Bar dataKey="va_agropecuaria" name="Agropecuária" stackId="va" fill="#10b981" />
+                  <Bar dataKey="va_industria" name="Indústria" stackId="va" fill="#3b82f6" />
+                  <Bar dataKey="va_servicos" name="Serviços" stackId="va" fill="#f59e0b" />
+                  <Bar dataKey="va_governo" name="Governo" stackId="va" fill="#8b5cf6" radius={[4, 4, 0, 0]} />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
           </div>
-        </div>
+        </PlanGate>
       )}
 
       {/* Comparativo entre cidades */}

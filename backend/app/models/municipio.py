@@ -11,7 +11,7 @@ class Municipio(Base):
     estado: Mapped[str] = mapped_column(String(2), nullable=False)
     codigo_ibge: Mapped[str] = mapped_column(String(10), nullable=True)
     ativo: Mapped[bool] = mapped_column(Boolean, default=True)
-    plano: Mapped[str] = mapped_column(String(10), nullable=False, default="paid")
+    plano: Mapped[str] = mapped_column(String(10), nullable=False, default="free")
     brasao: Mapped[str | None] = mapped_column(Text, nullable=True)
 
     usuarios = relationship("Usuario", back_populates="municipio")

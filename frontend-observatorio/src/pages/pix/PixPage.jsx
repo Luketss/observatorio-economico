@@ -5,6 +5,8 @@ import InsightsPanel from "../../components/InsightsPanel";
 import ReleasesPanel from "../../components/ReleasesPanel";
 import InfoTooltip from "../../components/InfoTooltip";
 import FilterBar from "../../components/FilterBar";
+import KpiCard from "../../components/KpiCard";
+import PlanGate from "../../components/PlanGate";
 import {
   ResponsiveContainer,
   LineChart,
@@ -17,20 +19,6 @@ import {
   Tooltip,
   Legend,
 } from "recharts";
-
-function KpiCard({ label, value, sub, accent }) {
-  return (
-    <div className="bg-white dark:bg-slate-900 p-6 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-800">
-      <p className="text-xs uppercase tracking-wider text-slate-400 dark:text-slate-500 font-medium">
-        {label}
-      </p>
-      <p className={`text-2xl font-bold mt-2 ${accent || "text-slate-800 dark:text-white"}`}>
-        {value}
-      </p>
-      {sub && <p className="text-xs text-slate-400 dark:text-slate-500 mt-1">{sub}</p>}
-    </div>
-  );
-}
 
 function ChartCard({ title, children, empty }) {
   return (
@@ -98,18 +86,24 @@ export default function PixPage() {
       value: resumo ? fmtBRL(resumo.volume_total_pf) : "—",
       sub: "Total acumulado",
       accent: "text-blue-600",
+      dataset: "pix",
+      indicadorKey: "volume_pf",
     },
     {
       label: "Volume PJ (Pagamentos)",
       value: resumo ? fmtBRL(resumo.volume_total_pj) : "—",
       sub: "Total acumulado",
       accent: "text-green-600",
+      dataset: "pix",
+      indicadorKey: "volume_pj",
     },
     {
       label: "Total de Transações",
       value: resumo ? fmtNum(resumo.total_transacoes) : "—",
       sub: "PF + PJ (pagadores)",
       accent: "text-purple-600",
+      dataset: "pix",
+      indicadorKey: "volume_total",
     },
   ];
 
@@ -149,6 +143,7 @@ export default function PixPage() {
       )}
 
       {/* Volume PF vs PJ — Pagamentos */}
+      <PlanGate planKey="pix.detalhado">
       <ChartCard title="Volume de Pagamentos — PF vs PJ" empty={serie.length === 0}>
         <div className="h-48 md:h-72">
           <ResponsiveContainer width="100%" height="100%">
@@ -227,6 +222,7 @@ export default function PixPage() {
           </ResponsiveContainer>
         </div>
       </ChartCard>
+      </PlanGate>
       <ReleasesPanel dataset="pix" />
 
     </motion.div>

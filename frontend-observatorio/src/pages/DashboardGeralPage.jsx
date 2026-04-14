@@ -5,6 +5,7 @@ import { motion } from "framer-motion";
 import InsightsPanel from "../components/InsightsPanel";
 import ReleasesPanel from "../components/ReleasesPanel";
 import MandatoTimeline from "../components/MandatoTimeline";
+import KpiCard from "../components/KpiCard";
 import {
   CurrencyDollarIcon,
   BanknotesIcon,
@@ -54,29 +55,6 @@ const CUSTOM_COLOR_MAP = {
   slate: { bg: "bg-slate-100 dark:bg-slate-800", text: "text-slate-600 dark:text-slate-300" },
 };
 
-function KpiCard({ label, value, sub, icon: Icon, color, delay }) {
-  return (
-    <motion.div
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ delay }}
-      className="bg-white dark:bg-slate-900 p-6 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-800 hover:shadow-md transition-shadow duration-200"
-    >
-      <div className="flex items-start justify-between">
-        <div>
-          <p className="text-xs uppercase tracking-wider text-slate-400 dark:text-slate-500 font-medium">
-            {label}
-          </p>
-          <p className="text-2xl font-bold mt-2 text-slate-800 dark:text-white">{value}</p>
-          {sub && <p className="text-xs text-slate-400 dark:text-slate-500 mt-1">{sub}</p>}
-        </div>
-        <div className={`p-2 rounded-xl ${color.bg}`}>
-          <Icon className={`w-5 h-5 ${color.text}`} />
-        </div>
-      </div>
-    </motion.div>
-  );
-}
 
 export default function DashboardGeralPage() {
   const { user } = useAuth();

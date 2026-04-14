@@ -5,6 +5,8 @@ import InsightsPanel from "../../components/InsightsPanel";
 import ReleasesPanel from "../../components/ReleasesPanel";
 import InfoTooltip from "../../components/InfoTooltip";
 import FilterBar from "../../components/FilterBar";
+import KpiCard from "../../components/KpiCard";
+import PlanGate from "../../components/PlanGate";
 import {
   ResponsiveContainer,
   ComposedChart,
@@ -24,16 +26,6 @@ const COLORS = [
   "#3b82f6", "#f97316", "#10b981", "#8b5cf6", "#f59e0b",
   "#ec4899", "#06b6d4", "#84cc16", "#ef4444", "#6366f1",
 ];
-
-function KpiCard({ label, value, sub, accent }) {
-  return (
-    <div className="bg-white dark:bg-slate-900 p-6 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-800">
-      <p className="text-xs uppercase tracking-wider text-slate-400 dark:text-slate-500 font-medium">{label}</p>
-      <p className={`text-2xl font-bold mt-2 ${accent || "text-slate-800 dark:text-white"}`}>{value}</p>
-      {sub && <p className="text-xs text-slate-400 dark:text-slate-500 mt-1">{sub}</p>}
-    </div>
-  );
-}
 
 function ChartCard({ title, children, empty }) {
   return (
@@ -174,8 +166,8 @@ export default function CagedPage() {
   const salarioData = Object.values(salarioChart).sort((a, b) => a.periodo.localeCompare(b.periodo));
 
   const cards = [
-    { label: "Total Admissões", value: fmt(resumo?.total_admissoes), sub: "No período", accent: "text-blue-600" },
-    { label: "Total Desligamentos", value: fmt(resumo?.total_desligamentos), sub: "No período", accent: "text-orange-500" },
+    { label: "Total Admissões", value: fmt(resumo?.total_admissoes), sub: "No período", accent: "text-blue-600", dataset: "caged", indicadorKey: "admissoes" },
+    { label: "Total Desligamentos", value: fmt(resumo?.total_desligamentos), sub: "No período", accent: "text-orange-500", dataset: "caged", indicadorKey: "desligamentos" },
     {
       label: "Saldo Líquido",
       value: resumo?.saldo_total != null
@@ -183,6 +175,8 @@ export default function CagedPage() {
         : "—",
       sub: "Admissões − Desligamentos",
       accent: saldoColor,
+      dataset: "caged",
+      indicadorKey: "saldo_liquido",
     },
   ];
 
@@ -242,6 +236,7 @@ export default function CagedPage() {
       </ChartCard>
 
       {/* Salary evolution */}
+      <PlanGate planKey="caged.salario">
       <ChartCard title="Salário Médio — Admitidos vs Desligados" empty={salarioData.length === 0}>
         <div className="h-44 md:h-64">
           <ResponsiveContainer width="100%" height="100%">
@@ -257,62 +252,69 @@ export default function CagedPage() {
           </ResponsiveContainer>
         </div>
       </ChartCard>
+      </PlanGate>
 
       {/* Two-column: sexo + raca */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <ChartCard title="Saldo por Sexo" empty={sexoTotais.length === 0}>
-          <div className="h-40 md:h-56">
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={sexoTotais} layout="vertical">
-                <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" horizontal={false} />
-                <XAxis type="number" tick={{ fontSize: 10 }} stroke="#94a3b8" tickFormatter={(v) => v.toLocaleString("pt-BR")} />
-                <YAxis type="category" dataKey="sexo" tick={{ fontSize: 12 }} stroke="#94a3b8" width={80} />
-                <Tooltip formatter={(v) => [Number(v).toLocaleString("pt-BR")]} />
-                <Legend />
-                <Bar dataKey="admissoes" name="Admissões" fill="#3b82f6" radius={[0, 3, 3, 0]} />
-                <Bar dataKey="desligamentos" name="Desligamentos" fill="#f97316" radius={[0, 3, 3, 0]} />
-              </BarChart>
-            </ResponsiveContainer>
-          </div>
-        </ChartCard>
+        <PlanGate planKey="caged.por_sexo">
+          <ChartCard title="Saldo por Sexo" empty={sexoTotais.length === 0}>
+            <div className="h-40 md:h-56">
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={sexoTotais} layout="vertical">
+                  <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" horizontal={false} />
+                  <XAxis type="number" tick={{ fontSize: 10 }} stroke="#94a3b8" tickFormatter={(v) => v.toLocaleString("pt-BR")} />
+                  <YAxis type="category" dataKey="sexo" tick={{ fontSize: 12 }} stroke="#94a3b8" width={80} />
+                  <Tooltip formatter={(v) => [Number(v).toLocaleString("pt-BR")]} />
+                  <Legend />
+                  <Bar dataKey="admissoes" name="Admissões" fill="#3b82f6" radius={[0, 3, 3, 0]} />
+                  <Bar dataKey="desligamentos" name="Desligamentos" fill="#f97316" radius={[0, 3, 3, 0]} />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+          </ChartCard>
+        </PlanGate>
 
-        <ChartCard title="Saldo por Raça/Cor" empty={racaTotais.length === 0}>
-          <div className="h-40 md:h-56">
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={racaTotais} layout="vertical">
-                <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" horizontal={false} />
-                <XAxis type="number" tick={{ fontSize: 10 }} stroke="#94a3b8" tickFormatter={(v) => v.toLocaleString("pt-BR")} />
-                <YAxis type="category" dataKey="raca" tick={{ fontSize: 11 }} stroke="#94a3b8" width={90} />
-                <Tooltip formatter={(v) => [Number(v).toLocaleString("pt-BR")]} />
-                <Legend />
-                <Bar dataKey="admissoes" name="Admissões" fill="#8b5cf6" radius={[0, 3, 3, 0]} />
-                <Bar dataKey="desligamentos" name="Desligamentos" fill="#ec4899" radius={[0, 3, 3, 0]} />
-              </BarChart>
-            </ResponsiveContainer>
-          </div>
-        </ChartCard>
+        <PlanGate planKey="caged.por_raca">
+          <ChartCard title="Saldo por Raça/Cor" empty={racaTotais.length === 0}>
+            <div className="h-40 md:h-56">
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={racaTotais} layout="vertical">
+                  <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" horizontal={false} />
+                  <XAxis type="number" tick={{ fontSize: 10 }} stroke="#94a3b8" tickFormatter={(v) => v.toLocaleString("pt-BR")} />
+                  <YAxis type="category" dataKey="raca" tick={{ fontSize: 11 }} stroke="#94a3b8" width={90} />
+                  <Tooltip formatter={(v) => [Number(v).toLocaleString("pt-BR")]} />
+                  <Legend />
+                  <Bar dataKey="admissoes" name="Admissões" fill="#8b5cf6" radius={[0, 3, 3, 0]} />
+                  <Bar dataKey="desligamentos" name="Desligamentos" fill="#ec4899" radius={[0, 3, 3, 0]} />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+          </ChartCard>
+        </PlanGate>
       </div>
 
       {/* CNAE top sectors */}
-      <ChartCard title="Saldo por Setor (CNAE) — Top 10" empty={cnaeTotais.length === 0}>
-        <div className="h-52 md:h-80">
-          <ResponsiveContainer width="100%" height="100%">
-            <BarChart data={cnaeTotais} layout="vertical">
-              <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" horizontal={false} />
-              <XAxis type="number" tick={{ fontSize: 10 }} stroke="#94a3b8" tickFormatter={(v) => v.toLocaleString("pt-BR")} />
-              <YAxis type="category" dataKey="nome" tick={{ fontSize: 10 }} stroke="#94a3b8" width={200} />
-              <Tooltip formatter={(v) => [Number(v).toLocaleString("pt-BR")]} />
-              <Legend />
-              <Bar dataKey="admissoes" name="Admissões" radius={[0, 3, 3, 0]}>
-                {cnaeTotais.map((_, idx) => (
-                  <Cell key={idx} fill={COLORS[idx % COLORS.length]} />
-                ))}
-              </Bar>
-              <Bar dataKey="saldo" name="Saldo" fill="#10b981" opacity={0.7} radius={[0, 3, 3, 0]} />
-            </BarChart>
-          </ResponsiveContainer>
-        </div>
-      </ChartCard>
+      <PlanGate planKey="caged.por_cnae">
+        <ChartCard title="Saldo por Setor (CNAE) — Top 10" empty={cnaeTotais.length === 0}>
+          <div className="h-52 md:h-80">
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart data={cnaeTotais} layout="vertical">
+                <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" horizontal={false} />
+                <XAxis type="number" tick={{ fontSize: 10 }} stroke="#94a3b8" tickFormatter={(v) => v.toLocaleString("pt-BR")} />
+                <YAxis type="category" dataKey="nome" tick={{ fontSize: 10 }} stroke="#94a3b8" width={200} />
+                <Tooltip formatter={(v) => [Number(v).toLocaleString("pt-BR")]} />
+                <Legend />
+                <Bar dataKey="admissoes" name="Admissões" radius={[0, 3, 3, 0]}>
+                  {cnaeTotais.map((_, idx) => (
+                    <Cell key={idx} fill={COLORS[idx % COLORS.length]} />
+                  ))}
+                </Bar>
+                <Bar dataKey="saldo" name="Saldo" fill="#10b981" opacity={0.7} radius={[0, 3, 3, 0]} />
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+        </ChartCard>
+      </PlanGate>
       <ReleasesPanel dataset="caged" />
 
     </motion.div>
