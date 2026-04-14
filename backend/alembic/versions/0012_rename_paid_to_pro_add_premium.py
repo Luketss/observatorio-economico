@@ -8,7 +8,7 @@ Create Date: 2026-04-14
 from alembic import op
 import sqlalchemy as sa
 
-revision = "0012_rename_paid_to_pro_add_premium"
+revision = "0012_paid_to_pro_premium"
 down_revision = "0011_estban_novos_campos"
 branch_labels = None
 depends_on = None
