@@ -5,6 +5,7 @@ import InsightsPanel from "../../components/InsightsPanel";
 import ReleasesPanel from "../../components/ReleasesPanel";
 import InfoTooltip from "../../components/InfoTooltip";
 import FilterBar from "../../components/FilterBar";
+import KpiCard from "../../components/KpiCard";
 import {
   ResponsiveContainer,
   AreaChart,
@@ -17,18 +18,6 @@ import {
   Tooltip,
   Legend,
 } from "recharts";
-
-function KpiCard({ label, value, sub }) {
-  return (
-    <div className="bg-white dark:bg-slate-900 p-6 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-800">
-      <p className="text-xs uppercase tracking-wider text-slate-400 dark:text-slate-500 font-medium">
-        {label}
-      </p>
-      <p className="text-2xl font-bold mt-2 text-slate-800 dark:text-white">{value}</p>
-      {sub && <p className="text-xs text-slate-400 dark:text-slate-500 mt-1">{sub}</p>}
-    </div>
-  );
-}
 
 const fmtBRL = (v) =>
   `R$ ${Number(v).toLocaleString("pt-BR", { maximumFractionDigits: 0 })}`;
@@ -69,16 +58,22 @@ export default function ArrecadacaoPage() {
       label: "Total Arrecadado",
       value: resumo ? fmtBRL(resumo.total_geral) : "—",
       sub: "Todos os períodos",
+      dataset: "arrecadacao",
+      indicadorKey: "total_arrecadado",
     },
     {
       label: "Último Ano",
       value: resumo ? fmtBRL(resumo.total_ultimo_ano) : "—",
       sub: serie.length ? `Ano ${serie[serie.length - 1].ano}` : null,
+      dataset: "arrecadacao",
+      indicadorKey: "ultimo_ano",
     },
     {
       label: "Média Mensal",
       value: resumo ? fmtBRL(resumo.media_mensal) : "—",
       sub: "Por mês no período",
+      dataset: "arrecadacao",
+      indicadorKey: "media_mensal",
     },
     {
       label: "Crescimento",
@@ -87,6 +82,8 @@ export default function ArrecadacaoPage() {
           ? `${resumo.crescimento_percentual > 0 ? "+" : ""}${resumo.crescimento_percentual.toFixed(1)}%`
           : "—",
       sub: "vs ano anterior",
+      dataset: "arrecadacao",
+      indicadorKey: "crescimento_anual",
     },
   ];
 

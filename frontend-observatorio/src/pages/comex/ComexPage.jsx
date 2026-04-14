@@ -5,6 +5,8 @@ import InsightsPanel from "../../components/InsightsPanel";
 import ReleasesPanel from "../../components/ReleasesPanel";
 import InfoTooltip from "../../components/InfoTooltip";
 import FilterBar from "../../components/FilterBar";
+import KpiCard from "../../components/KpiCard";
+import PlanGate from "../../components/PlanGate";
 import {
   ResponsiveContainer,
   LineChart,
@@ -27,20 +29,6 @@ const COLORS = [
   "#ef4444",
   "#06b6d4",
 ];
-
-function KpiCard({ label, value, sub, accent }) {
-  return (
-    <div className="bg-white dark:bg-slate-900 p-6 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-800">
-      <p className="text-xs uppercase tracking-wider text-slate-400 dark:text-slate-500 font-medium">
-        {label}
-      </p>
-      <p className={`text-2xl font-bold mt-2 ${accent || "text-slate-800 dark:text-white"}`}>
-        {value}
-      </p>
-      {sub && <p className="text-xs text-slate-400 dark:text-slate-500 mt-1">{sub}</p>}
-    </div>
-  );
-}
 
 const fmtUSD = (v) =>
   v != null
@@ -131,18 +119,24 @@ export default function ComexPage() {
       value: fmtUSD(resumo?.total_exportado_usd),
       sub: "No período",
       accent: "text-green-600",
+      dataset: "comex",
+      indicadorKey: "exportacoes",
     },
     {
       label: "Total Importado",
       value: fmtUSD(resumo?.total_importado_usd),
       sub: "No período",
       accent: "text-orange-500",
+      dataset: "comex",
+      indicadorKey: "importacoes",
     },
     {
       label: "Balança Comercial",
       value: fmtUSD(resumo?.balanca_comercial),
       sub: "Exportações − Importações",
       accent: balancaPositiva ? "text-green-600" : "text-red-600",
+      dataset: "comex",
+      indicadorKey: "saldo",
     },
   ];
 
@@ -294,6 +288,7 @@ export default function ComexPage() {
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Top Produtos */}
+        <PlanGate planKey="comex.por_produto">
         <div className="bg-white dark:bg-slate-900 p-6 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-800">
           <h3 className="text-base font-bold mb-1 text-slate-800 dark:text-white">
             Top 10 Produtos
@@ -347,7 +342,10 @@ export default function ComexPage() {
           )}
         </div>
 
+        </PlanGate>
+
         {/* Top Países */}
+        <PlanGate planKey="comex.por_pais">
         <div className="bg-white dark:bg-slate-900 p-6 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-800">
           <h3 className="text-base font-bold mb-1 text-slate-800 dark:text-white">
             Top 10 Países
@@ -400,6 +398,7 @@ export default function ComexPage() {
             </div>
           )}
         </div>
+        </PlanGate>
       </div>
       <ReleasesPanel dataset="comex" />
 

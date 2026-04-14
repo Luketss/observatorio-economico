@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { NavLink, Outlet, useLocation } from "react-router-dom";
+import { PlanContext } from "../../context/PlanContext";
 import { useAuth } from "../../context/AuthContext";
 import { useTheme } from "../../context/ThemeContext";
 import api from "../../services/api";
@@ -343,7 +344,14 @@ export default function DashboardLayout() {
         </header>
 
         <div className="flex-1 p-4 md:p-8">
-          <Outlet />
+          <PlanContext.Provider
+            value={{
+              modulos,
+              canAccess: (key) => isGlobal || modulos === null || (modulos && modulos.includes(key)),
+            }}
+          >
+            <Outlet />
+          </PlanContext.Provider>
         </div>
       </main>
     </div>

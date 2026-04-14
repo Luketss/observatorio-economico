@@ -75,7 +75,13 @@ dashboard_prefeituras/
 │       │       └── AppRouter.jsx         # All routes + auth guards
 │       ├── context/
 │       │   ├── AuthContext.jsx
-│       │   └── ThemeContext.jsx
+│       │   ├── ThemeContext.jsx
+│       │   └── PlanContext.jsx          # modulos[] + canAccess(key) for plan gating
+│       ├── components/
+│       │   ├── KpiCard.jsx              # Shared KPI card — label/value/sub/icon/color/accent/delay/dataset/indicadorKey
+│       │   ├── PlanGate.jsx             # Blur + padlock overlay for restricted content
+│       │   ├── InfoTooltip.jsx          # Dataset-level tooltip (hover)
+│       │   └── ...                      # InsightsPanel, ReleasesPanel, FilterBar, etc.
 │       ├── pages/
 │       │   ├── landing/LandingPage.jsx   # Three.js public landing
 │       │   ├── login/LoginPage.jsx
@@ -97,8 +103,8 @@ dashboard_prefeituras/
 │
 ├── backend/                        # FastAPI API
 │   └── app/
-│       ├── api/v1/routers/         # One router per dataset + auth + insights
-│       ├── models/                 # SQLAlchemy models
+│       ├── api/v1/routers/         # One router per dataset + auth + insights + indicadores
+│       ├── models/                 # SQLAlchemy models (incl. IndicadorInfo)
 │       ├── schemas/                # Pydantic schemas
 │       ├── services/
 │       │   └── insights_service.py # Claude API integration
@@ -195,11 +201,50 @@ On `< md` breakpoint: sidebar is a fixed overlay drawer triggered by hamburger. 
 
 # 9. Plan Gating (Subscription Tiers)
 
-`PlanoConfig` model stores which modules are active per plan (`free`, `paid`, `premium`). The `DashboardLayout` fetches the plan config on mount and filters the nav items. Dataset pages also respect this gating.
+Three tiers: **free**, **pro**, **premium**. (Legacy `paid` was renamed to `pro` in migration `0012_rename_paid_to_pro_add_premium`.)
+
+**Backend:** `PlanoConfig` model stores a `modulos: JSON` array per plan. ADMIN_GLOBAL manages this via `GET/PUT /plano-config?plano={tier}`.
+
+**Module keys** follow a two-level convention:
+- Page-level: `"pib"`, `"caged"`, `"rais"`, etc.
+- Component-level (advanced charts): `"pib.por_setor"`, `"caged.por_sexo"`, `"rais.metricas"`, etc.
+
+**Frontend flow:**
+1. `DashboardLayout` fetches `municipio.plano` then `GET /plano-config?plano={tier}` on mount.
+2. Result stored in `PlanContext` (`modulos` array + `canAccess(key)` function).
+3. Nav items filtered by page-level module keys via `isVisible()`.
+4. Individual chart sections wrapped in `<PlanGate planKey="...">` which renders blur + padlock overlay if `canAccess()` returns false.
+
+**Admin page:** `PlanoConfigAdminPage.jsx` shows three columns (one per plan), each with two sections: "Módulos (Páginas)" and "Componentes Avançados". Toggles save immediately to `/plano-config/{tier}`.
+
+**Municipality plan:** Cycled free → pro → premium → free in `MunicipiosAdminPage.jsx`.
 
 ---
 
-# 10. Adding a New Dataset
+# 10. KPI Indicator Descriptions
+
+Each KPI card can display a short hover tooltip and a full modal description, editable by ADMIN_GLOBAL.
+
+**Backend:** `IndicadorInfo` model (`indicadores_info` table) — upserted by `(dataset, indicador_key)`.
+- `GET /indicadores?dataset={d}&indicador_key={k}` — returns empty strings if not configured (never 404)
+- `PUT /indicadores/{dataset}/{indicador_key}` — ADMIN_GLOBAL only, upserts tooltip/descricao/fonte
+
+**Frontend:** `KpiCard` component accepts optional `dataset` + `indicadorKey` props.
+- Fetches on mount; shows teal `ⓘ` icon if content exists (grey for admin with no content yet)
+- Hover → dark tooltip popover with short `tooltip` text
+- Click → modal with full `descricao` and `fonte`
+- ADMIN_GLOBAL: modal shows "Editar" button → inline edit form
+
+**Key slugs by dataset:** (examples)
+- `pib`: `ultimo_ano`, `crescimento`, `anos_serie`
+- `caged`: `admissoes`, `desligamentos`, `saldo_liquido`
+- `rais`: `total_vinculos`, `ultimo_ano`, `remuneracao_media`
+- `estban`: `agencias`, `credito_total`, `depositos_total`
+- See each page's `cards` array for the full list.
+
+---
+
+# 11. Adding a New Dataset
 
 1. Create SQLAlchemy model in `backend/app/models/`
 2. Register in `alembic/env.py` and generate migration
@@ -207,14 +252,17 @@ On `< md` breakpoint: sidebar is a fixed overlay drawer triggered by hamburger. 
 4. Create router in `backend/app/api/v1/routers/` with `/serie` and `/resumo` endpoints
 5. Add dataset key to `insights_service.py` (`_fetch_dados`, `_build_prompt`, `DATASET_LABELS`)
 6. Create frontend page in `src/pages/{dataset}/`
+   - Use shared `KpiCard` from `../../components/KpiCard` (add `dataset` + `indicadorKey` props to each card)
+   - Wrap advanced chart sections with `<PlanGate planKey="{dataset}.{component}">` for paid-only content
 7. Add route to `AppRouter.jsx` under `/app`
-8. Add nav entry to `NAV_STRUCTURE` in `DashboardLayout.jsx`
+8. Add nav entry to `NAV_STRUCTURE` in `DashboardLayout.jsx` with the correct `modulo` key
 9. Add to `DATASETS` array in `InsightsAdminPage.jsx` and `ReleasesAdminPage.jsx`
-10. Add to `PlanoConfig` module list if plan-gated
+10. Add page-level key to `MODULOS` in `PlanoConfigAdminPage.jsx`
+11. Add component-level keys (if any) to `COMPONENTES` in `PlanoConfigAdminPage.jsx`
 
 ---
 
-# 11. Coding Standards
+# 12. Coding Standards
 
 ## Backend
 
@@ -234,7 +282,7 @@ On `< md` breakpoint: sidebar is a fixed overlay drawer triggered by hamburger. 
 
 ---
 
-# 12. Safe Modification Rules
+# 13. Safe Modification Rules
 
 Agents MAY:
 - Add endpoints, datasets, pages
@@ -249,7 +297,7 @@ Agents MAY NOT:
 
 ---
 
-# 13. Deployment
+# 14. Deployment
 
 - **Platform**: Railway
 - **Backend**: Python + Uvicorn container
@@ -260,7 +308,7 @@ Agents MAY NOT:
 
 ---
 
-# 14. Product Backlog
+# 15. Product Backlog
 
 See `IDEAS.md` for the full backlog. Key strategic items:
 - **ISEM** — Composite municipal health score (top priority differentiator)

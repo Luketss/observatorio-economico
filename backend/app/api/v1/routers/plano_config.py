@@ -9,7 +9,7 @@ from sqlalchemy.orm import Session
 
 router = APIRouter(prefix="/plano-config", tags=["Plano Config"])
 
-PLANOS_VALIDOS = {"free", "paid"}
+PLANOS_VALIDOS = {"free", "pro", "premium"}
 
 
 @router.get("", response_model=PlanoConfigOut)
@@ -19,11 +19,10 @@ def get_plano_config(
     current_user=Depends(get_current_user),
 ):
     if plano not in PLANOS_VALIDOS:
-        raise HTTPException(status_code=400, detail="Plano inválido. Use 'free' ou 'paid'.")
+        raise HTTPException(status_code=400, detail="Plano invalido. Use 'free', 'pro' ou 'premium'.")
 
     config = db.query(PlanoConfig).filter(PlanoConfig.plano == plano).first()
     if not config:
-        # fallback: all modules
         return PlanoConfigOut(plano=plano, modulos=[])
 
     return PlanoConfigOut(plano=config.plano, modulos=json.loads(config.modulos))
@@ -37,7 +36,7 @@ def atualizar_plano_config(
     current_user=Depends(require_role("ADMIN_GLOBAL")),
 ):
     if plano not in PLANOS_VALIDOS:
-        raise HTTPException(status_code=400, detail="Plano inválido. Use 'free' ou 'paid'.")
+        raise HTTPException(status_code=400, detail="Plano invalido. Use 'free', 'pro' ou 'premium'.")
 
     config = db.query(PlanoConfig).filter(PlanoConfig.plano == plano).first()
     if not config:

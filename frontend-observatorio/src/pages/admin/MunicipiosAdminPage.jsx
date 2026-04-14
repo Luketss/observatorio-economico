@@ -20,8 +20,28 @@ export default function MunicipiosAdminPage() {
 
   useEffect(() => { load(); }, []);
 
+  const nextPlano = (atual) => {
+    if (atual === "free") return "pro";
+    if (atual === "pro") return "premium";
+    return "free";
+  };
+
+  const planoLabel = (plano) => {
+    if (plano === "pro") return "Pro";
+    if (plano === "premium") return "Premium";
+    return "Gratuito";
+  };
+
+  const planoBadgeClass = (plano) => {
+    if (plano === "pro")
+      return "bg-violet-50 dark:bg-violet-950/40 text-violet-700 dark:text-violet-400";
+    if (plano === "premium")
+      return "bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-400";
+    return "bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400";
+  };
+
   const togglePlano = async (municipio) => {
-    const novoPlano = municipio.plano === "free" ? "paid" : "free";
+    const novoPlano = nextPlano(municipio.plano);
     setSaving((prev) => ({ ...prev, [municipio.id]: true }));
     try {
       await api.put(`/municipios/${municipio.id}`, { plano: novoPlano });
@@ -135,14 +155,8 @@ export default function MunicipiosAdminPage() {
 
                   {/* Plano */}
                   <td className="px-3 py-3 md:px-6">
-                    <span
-                      className={`inline-flex items-center px-2.5 py-1 rounded-lg text-xs font-semibold ${
-                        m.plano === "paid"
-                          ? "bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-400"
-                          : "bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400"
-                      }`}
-                    >
-                      {m.plano === "paid" ? "Pago" : "Gratuito"}
+                    <span className={`inline-flex items-center px-2.5 py-1 rounded-lg text-xs font-semibold ${planoBadgeClass(m.plano)}`}>
+                      {planoLabel(m.plano)}
                     </span>
                   </td>
 
@@ -155,7 +169,7 @@ export default function MunicipiosAdminPage() {
                         disabled={saving[m.id]}
                         className="text-xs font-medium px-3 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors disabled:opacity-40"
                       >
-                        {saving[m.id] ? "..." : m.plano === "paid" ? "→ Gratuito" : "→ Pago"}
+                        {saving[m.id] ? "..." : `→ ${planoLabel(nextPlano(m.plano))}`}
                       </button>
 
                       {/* Upload brasão */}

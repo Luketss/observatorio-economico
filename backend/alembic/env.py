@@ -11,6 +11,7 @@ from app.models import (  # noqa
     comex,
     empresa,
     estban,
+    indicador_info,
     inss,
     municipio,
     pe_de_meia,
