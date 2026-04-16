@@ -144,15 +144,15 @@ def upgrade() -> None:
         [
             {
                 "nome": "Administrador Global",
-                "email": "admin@observatorio.com",
-                "senha_hash": "$2b$12$KIXQ4QfQe7YQDdyCjTiMQuYzfoalGexiLRNvKcJsteVEh9UpAJZci",
+                "email": "admin@uaizi.com",
+                "senha_hash": "$2b$12$xYN4GAACMX6XVxN2I13CluYHQ9vbEGaHEsfZoAAg8UxymWNuDrs86",
                 "municipio_id": None,
                 "role_id": 1,
                 "ativo": True,
             },
             {
                 "nome": "Administrador Municipal",
-                "email": "admin.municipio@observatorio.com",
+                "email": "admin.municipio@nid.com",
                 "senha_hash": "$2b$12$KIXQ4QfQe7YQDdyCjTiMQuYzfoalGexiLRNvKcJsteVEh9UpAJZci",
                 "municipio_id": 1,
                 "role_id": 2,

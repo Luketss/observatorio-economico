@@ -61,3 +61,41 @@ def resumo_pix(
         volume_total_pf=volume_pf,
         volume_total_pj=volume_pj,
     )
+
+
+@router.get("/comparativo")
+def comparativo_pix(
+    ano: int | None = None,
+    db: Session = Depends(get_db),
+    current_user=Depends(get_current_user),
+):
+    from app.models.municipio import Municipio
+    from sqlalchemy import func
+
+    query = (
+        db.query(
+            Municipio.nome.label("municipio"),
+            Municipio.id.label("municipio_id"),
+            (
+                func.coalesce(func.sum(PixMensal.vl_pagador_pf), 0)
+                + func.coalesce(func.sum(PixMensal.vl_pagador_pj), 0)
+            ).label("volume_total"),
+        )
+        .join(PixMensal, PixMensal.municipio_id == Municipio.id)
+    )
+    if ano:
+        query = query.filter(PixMensal.ano == ano)
+    resultados = (
+        query.group_by(Municipio.nome, Municipio.id)
+        .order_by(
+            (
+                func.coalesce(func.sum(PixMensal.vl_pagador_pf), 0)
+                + func.coalesce(func.sum(PixMensal.vl_pagador_pj), 0)
+            ).desc()
+        )
+        .all()
+    )
+    return [
+        {"municipio": r.municipio, "municipio_id": r.municipio_id, "volume_total": r.volume_total or 0}
+        for r in resultados
+    ]

@@ -194,3 +194,30 @@ def por_cnae_secao(db: Session = Depends(get_db), current_user=Depends(get_curre
         key=lambda x: x["total_vinculos"],
         reverse=True,
     )[:20]
+
+
+@router.get("/comparativo")
+def comparativo_empresas(
+    db: Session = Depends(get_db),
+    current_user=Depends(get_current_user),
+):
+    from app.models.municipio import Municipio
+    from app.models.empresa import Empresa
+    from sqlalchemy import func
+
+    resultados = (
+        db.query(
+            Municipio.nome.label("municipio"),
+            Municipio.id.label("municipio_id"),
+            func.count(Empresa.id).label("total_empresas"),
+        )
+        .join(Empresa, Empresa.municipio_id == Municipio.id)
+        .filter(Empresa.situacao == "02")
+        .group_by(Municipio.nome, Municipio.id)
+        .order_by(func.count(Empresa.id).desc())
+        .all()
+    )
+    return [
+        {"municipio": r.municipio, "municipio_id": r.municipio_id, "total_empresas": r.total_empresas or 0}
+        for r in resultados
+    ]

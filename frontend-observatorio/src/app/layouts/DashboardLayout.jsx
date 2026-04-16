@@ -4,6 +4,7 @@ import { PlanContext } from "../../context/PlanContext";
 import { useAuth } from "../../context/AuthContext";
 import { useTheme } from "../../context/ThemeContext";
 import api from "../../services/api";
+import NotificationBell from "../../components/NotificationBell";
 import {
   HomeIcon,
   ChartBarIcon,
@@ -25,6 +26,7 @@ import {
   ChevronDownIcon,
   Bars3Icon,
   XMarkIcon,
+  ChartBarSquareIcon,
 } from "@heroicons/react/24/outline";
 
 const NAV_STRUCTURE = [
@@ -37,13 +39,19 @@ const NAV_STRUCTURE = [
     modulo: "geral",
   },
   {
+    type: "link",
+    to: "/app/benchmark",
+    label: "Benchmark",
+    icon: ChartBarSquareIcon,
+    modulo: null,
+  },
+  {
     type: "group",
     label: "Economia",
     icon: ChartBarIcon,
     children: [
       { to: "/app/pib", label: "PIB", icon: ChartBarIcon, modulo: "pib" },
       { to: "/app/arrecadacao", label: "Arrecadação", icon: BanknotesIcon, modulo: "arrecadacao" },
-      { to: "/app/comparativo", label: "Comparativo", icon: ArrowsRightLeftIcon, modulo: null },
     ],
   },
   {
@@ -341,6 +349,7 @@ export default function DashboardLayout() {
               </p>
             </div>
           </div>
+          <NotificationBell />
         </header>
 
         <div className="flex-1 p-4 md:p-8">

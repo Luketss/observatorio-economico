@@ -21,7 +21,7 @@ from app.db.session import SessionLocal
 from app.models.municipio import Municipio
 from app.models.pix import PixMensal
 
-CSV_PATH = os.path.join(os.path.dirname(__file__), "..", "dados", "pix_cabo_verde.csv")
+CSV_PATH = os.path.join(os.path.dirname(__file__), "..", "dados", "pix_nova_lima.csv")
 
 
 def _float(val: str) -> float | None:

@@ -1,65 +1,89 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import api from "../../services/api";
+import { useAuth } from "../../context/AuthContext";
 import { motion } from "framer-motion";
-import InfoTooltip from "../../components/InfoTooltip";
 import {
   ResponsiveContainer,
   BarChart,
   Bar,
-  CartesianGrid,
   XAxis,
   YAxis,
   Tooltip,
   Cell,
 } from "recharts";
 
-const METRICS = [
-  { key: "arrecadacao", label: "Arrecadação", endpoint: "/comparativo/arrecadacao", valueKey: "total" },
-  { key: "caged", label: "CAGED (Saldo)", endpoint: "/comparativo/caged", valueKey: "saldo_total" },
-  { key: "rais", label: "RAIS (Vínculos)", endpoint: "/comparativo/rais", valueKey: "total_vinculos" },
-];
-
-const COLORS = [
-  "#3b82f6", "#10b981", "#f59e0b", "#8b5cf6", "#ef4444",
-  "#06b6d4", "#84cc16", "#f97316", "#ec4899", "#6366f1",
-];
-
-const currentYear = new Date().getFullYear();
-const YEARS = Array.from({ length: 8 }, (_, i) => currentYear - i);
-
 const fmtBRL = (v) =>
-  `R$ ${Number(v).toLocaleString("pt-BR", { maximumFractionDigits: 0 })}`;
-const fmtNum = (v) => Number(v).toLocaleString("pt-BR");
+  v != null
+    ? `R$ ${Number(v).toLocaleString("pt-BR", { maximumFractionDigits: 0 })}`
+    : "—";
 
-export default function ComparativoPage() {
-  const [metricKey, setMetricKey] = useState("arrecadacao");
-  const [ano, setAno] = useState(currentYear - 1);
+const fmtNum = (v) =>
+  v != null ? Number(v).toLocaleString("pt-BR") : "—";
+
+const DATASETS = [
+  { key: "arrecadacao", label: "Arrecadação", endpoint: "/comparativo/arrecadacao", metrica: "total", fmt: fmtBRL, hasAno: true },
+  { key: "pib", label: "PIB", endpoint: "/pib/ranking", metrica: "pib_total", fmt: fmtBRL, hasAno: true },
+  { key: "caged", label: "CAGED", endpoint: "/comparativo/caged", metrica: "saldo_total", fmt: fmtNum, hasAno: true },
+  { key: "rais", label: "RAIS", endpoint: "/comparativo/rais", metrica: "total_vinculos", fmt: fmtNum, hasAno: true },
+  { key: "estban", label: "Bancos", endpoint: "/estban/comparativo", metrica: "credito_total", fmt: fmtBRL, hasAno: true },
+  { key: "comex", label: "Comex", endpoint: "/comex/comparativo", metrica: "exportacoes", fmt: fmtBRL, hasAno: true },
+  { key: "empresas", label: "Empresas", endpoint: "/empresas/comparativo", metrica: "total_empresas", fmt: fmtNum, hasAno: false },
+  { key: "bolsa_familia", label: "Bolsa Família", endpoint: "/bolsa_familia/comparativo", metrica: "valor_total", fmt: fmtBRL, hasAno: true },
+  { key: "inss", label: "INSS", endpoint: "/inss/comparativo", metrica: "valor_total", fmt: fmtBRL, hasAno: true },
+  { key: "pix", label: "PIX", endpoint: "/pix/comparativo", metrica: "volume_total", fmt: fmtBRL, hasAno: true },
+  { key: "pe_de_meia", label: "Pé-de-Meia", endpoint: "/pe_de_meia/comparativo", metrica: "total_estudantes", fmt: fmtNum, hasAno: true },
+];
+
+const METRIC_LABELS = {
+  arrecadacao: "Total Arrecadado",
+  pib: "PIB Total",
+  caged: "Saldo CAGED",
+  rais: "Vínculos Empregatícios",
+  estban: "Crédito Total",
+  comex: "Exportações (USD)",
+  empresas: "Empresas Ativas",
+  bolsa_familia: "Repasses Totais",
+  inss: "Valor Total INSS",
+  pix: "Volume PIX",
+  pe_de_meia: "Estudantes Beneficiados",
+};
+
+const CURRENT_YEAR = new Date().getFullYear();
+const YEAR_OPTIONS = Array.from({ length: 8 }, (_, i) => CURRENT_YEAR - i);
+
+export default function BenchmarkPage() {
+  const { user } = useAuth();
+  const [activeKey, setActiveKey] = useState("arrecadacao");
+  const [ano, setAno] = useState(CURRENT_YEAR - 1);
   const [data, setData] = useState([]);
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState(null);
 
-  const metric = METRICS.find((m) => m.key === metricKey);
+  const activeDataset = DATASETS.find((d) => d.key === activeKey);
 
   useEffect(() => {
+    if (!activeDataset) return;
     setLoading(true);
-    setError(null);
+    setData([]);
+    const params = activeDataset.hasAno ? { ano } : {};
     api
-      .get(`${metric.endpoint}?ano=${ano}`)
+      .get(activeDataset.endpoint, { params })
       .then((res) => setData(res.data || []))
-      .catch((err) => {
-        console.error("Erro comparativo:", err);
-        setError("Sem permissão ou sem dados para os filtros selecionados.");
-        setData([]);
-      })
+      .catch(() => setData([]))
       .finally(() => setLoading(false));
-  }, [metricKey, ano]);
+  }, [activeKey, ano]);
 
-  const isCurrency = metricKey === "arrecadacao";
-  const fmt = isCurrency ? fmtBRL : fmtNum;
+  const chartData = useMemo(() => {
+    if (!activeDataset || !data.length) return [];
+    return data.map((row) => ({
+      municipio: row.municipio,
+      municipio_id: row.municipio_id,
+      valor: row[activeDataset.metrica] ?? 0,
+    }));
+  }, [data, activeDataset]);
 
-  const chartData = [...data].sort((a, b) => b[metric.valueKey] - a[metric.valueKey]);
+  const myId = user?.municipio_id;
 
-  const best = chartData[0];
+  const tooltipFormatter = (v) => [activeDataset?.fmt(v), METRIC_LABELS[activeKey]];
 
   return (
     <motion.div
@@ -69,112 +93,98 @@ export default function ComparativoPage() {
       className="space-y-8"
     >
       <div>
-        <div className="flex items-center gap-2">
-          <h1 className="text-2xl font-extrabold tracking-tight text-slate-800 dark:text-white">
-            Comparativo entre Municípios
-          </h1>
-          <InfoTooltip dataset="comparativo" />
-        </div>
+        <h1 className="text-2xl font-extrabold tracking-tight text-slate-800 dark:text-white">
+          Benchmark Municipal
+        </h1>
         <p className="text-sm text-slate-400 dark:text-slate-500 mt-1">
-          Ranking e comparativo entre municípios por indicador e ano.
+          Comparativo de indicadores entre municípios da plataforma.
         </p>
       </div>
 
-      {/* Filters */}
-      <div className="flex flex-wrap gap-4 bg-white dark:bg-slate-900 p-5 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-800">
-        <div className="flex flex-col gap-1">
-          <label className="text-xs uppercase tracking-wider text-slate-400 font-medium">
-            Indicador
-          </label>
-          <div className="flex gap-2">
-            {METRICS.map((m) => (
-              <button
-                key={m.key}
-                onClick={() => setMetricKey(m.key)}
-                className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
-                  metricKey === m.key
-                    ? "bg-blue-600 text-white"
-                    : "bg-slate-100 text-slate-600 hover:bg-slate-200"
-                }`}
-              >
-                {m.label}
-              </button>
-            ))}
-          </div>
-        </div>
+      {/* Dataset tabs */}
+      <div className="flex flex-wrap gap-2">
+        {DATASETS.map((ds) => (
+          <button
+            key={ds.key}
+            onClick={() => setActiveKey(ds.key)}
+            className={`px-3 py-1.5 rounded-full text-sm font-medium transition-colors ${
+              activeKey === ds.key
+                ? "bg-blue-600 text-white shadow"
+                : "bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-700 hover:border-blue-400"
+            }`}
+          >
+            {ds.label}
+          </button>
+        ))}
+      </div>
 
-        <div className="flex flex-col gap-1">
-          <label className="text-xs uppercase tracking-wider text-slate-400 font-medium">
-            Ano
+      {/* Year selector */}
+      {activeDataset?.hasAno && (
+        <div className="flex items-center gap-3">
+          <label className="text-sm font-medium text-slate-600 dark:text-slate-300">
+            Ano:
           </label>
           <select
             value={ano}
-            onChange={(e) => setAno(Number(e.target.value))}
-            className="px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-700 text-sm text-slate-700 dark:text-slate-300 bg-white dark:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            onChange={(e) => setAno(+e.target.value)}
+            className="text-sm border border-slate-200 dark:border-slate-700 rounded-lg px-3 py-1.5 bg-white dark:bg-slate-800 text-slate-800 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
           >
-            {YEARS.map((y) => (
+            {YEAR_OPTIONS.map((y) => (
               <option key={y} value={y}>{y}</option>
             ))}
           </select>
-        </div>
-      </div>
-
-      {/* Summary card */}
-      {best && !loading && (
-        <div className="bg-blue-600 text-white p-5 rounded-2xl flex items-center justify-between">
-          <div>
-            <p className="text-xs uppercase tracking-wider opacity-70">Melhor desempenho — {ano}</p>
-            <p className="text-xl font-bold mt-1">{best.municipio}</p>
-          </div>
-          <p className="text-2xl font-extrabold">{fmt(best[metric.valueKey])}</p>
         </div>
       )}
 
       {/* Chart */}
       <div className="bg-white dark:bg-slate-900 p-6 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-800">
         <h3 className="text-base font-bold mb-5 text-slate-800 dark:text-white">
-          {metric.label} por Município — {ano}
+          {METRIC_LABELS[activeKey]}{activeDataset?.hasAno ? ` — ${ano}` : ""}
         </h3>
 
         {loading ? (
-          <div className="h-72 flex items-center justify-center">
-            <div className="w-8 h-8 border-4 border-blue-600 border-t-transparent rounded-full animate-spin" />
-          </div>
-        ) : error ? (
-          <div className="h-72 flex items-center justify-center text-slate-400 text-sm">
-            {error}
-          </div>
+          <div className="animate-pulse h-64 bg-slate-50 dark:bg-slate-800 rounded-xl" />
         ) : chartData.length === 0 ? (
-          <div className="h-72 flex items-center justify-center text-slate-400 text-sm">
-            Sem dados para {ano}
+          <div className="h-64 flex items-center justify-center text-slate-400 dark:text-slate-500 text-sm">
+            Sem dados disponíveis
           </div>
         ) : (
-          <div className="h-48 md:h-72">
+          <div className="h-64 md:h-96">
             <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={chartData} layout="vertical" barCategoryGap="25%">
-                <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" horizontal={false} />
+              <BarChart
+                data={chartData}
+                layout="vertical"
+                margin={{ left: 8, right: 24, top: 4, bottom: 4 }}
+              >
                 <XAxis
                   type="number"
-                  tick={{ fontSize: 11 }}
+                  tick={{ fontSize: 10 }}
                   stroke="#94a3b8"
-                  tickFormatter={(v) =>
-                    isCurrency ? `${(v / 1_000_000).toFixed(0)}M` : v.toLocaleString("pt-BR")
-                  }
+                  tickFormatter={(v) => {
+                    if (v >= 1_000_000_000) return `${(v / 1e9).toFixed(1)}B`;
+                    if (v >= 1_000_000) return `${(v / 1e6).toFixed(1)}M`;
+                    if (v >= 1_000) return `${(v / 1e3).toFixed(0)}K`;
+                    return v;
+                  }}
                 />
                 <YAxis
                   type="category"
                   dataKey="municipio"
-                  width={130}
                   tick={{ fontSize: 11 }}
                   stroke="#94a3b8"
+                  width={160}
                 />
-                <Tooltip
-                  formatter={(v) => [fmt(v), metric.label]}
-                  cursor={{ fill: "#f8fafc" }}
-                />
-                <Bar dataKey={metric.valueKey} radius={[0, 4, 4, 0]}>
-                  {chartData.map((_, i) => (
-                    <Cell key={i} fill={COLORS[i % COLORS.length]} />
+                <Tooltip formatter={tooltipFormatter} />
+                <Bar dataKey="valor" radius={[0, 4, 4, 0]}>
+                  {chartData.map((row, i) => (
+                    <Cell
+                      key={i}
+                      fill={
+                        myId && row.municipio_id === myId
+                          ? "#f59e0b"
+                          : "#3b82f6"
+                      }
+                    />
                   ))}
                 </Bar>
               </BarChart>
@@ -183,34 +193,49 @@ export default function ComparativoPage() {
         )}
       </div>
 
-      {/* Table */}
-      {chartData.length > 0 && !loading && (
+      {/* Ranking table */}
+      {!loading && chartData.length > 0 && (
         <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-800 overflow-hidden">
-          <div className="px-6 py-4 border-b border-slate-100 dark:border-slate-800">
-            <h3 className="text-base font-bold text-slate-800 dark:text-white">Ranking Completo</h3>
-          </div>
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="bg-slate-50 dark:bg-slate-800 text-left text-xs uppercase text-slate-400 tracking-wider">
-                  <th className="px-6 py-3">#</th>
-                  <th className="px-6 py-3">Município</th>
-                  <th className="px-6 py-3 text-right">{metric.label}</th>
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="border-b border-slate-100 dark:border-slate-800">
+                <th className="text-left px-6 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider w-12">
+                  #
+                </th>
+                <th className="text-left px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider">
+                  Município
+                </th>
+                <th className="text-right px-6 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider">
+                  {METRIC_LABELS[activeKey]}
+                </th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-50 dark:divide-slate-800">
+              {chartData.map((row, i) => (
+                <tr
+                  key={i}
+                  className={`transition-colors ${
+                    myId && row.municipio_id === myId
+                      ? "bg-amber-50 dark:bg-amber-900/10"
+                      : "hover:bg-slate-50 dark:hover:bg-slate-800/40"
+                  }`}
+                >
+                  <td className="px-6 py-3 text-slate-400 font-mono text-xs">{i + 1}</td>
+                  <td className="px-4 py-3 font-medium text-slate-800 dark:text-white">
+                    {row.municipio}
+                    {myId && row.municipio_id === myId && (
+                      <span className="ml-2 text-xs text-amber-600 dark:text-amber-400 font-semibold">
+                        (seu município)
+                      </span>
+                    )}
+                  </td>
+                  <td className="px-6 py-3 text-right font-semibold text-slate-700 dark:text-slate-200">
+                    {activeDataset?.fmt(row.valor)}
+                  </td>
                 </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-50 dark:divide-slate-800">
-                {chartData.map((item, i) => (
-                  <tr key={i} className="hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
-                    <td className="px-6 py-3 text-slate-400 font-medium">{i + 1}</td>
-                    <td className="px-6 py-3 font-medium text-slate-700 dark:text-slate-300">{item.municipio}</td>
-                    <td className="px-6 py-3 text-right font-semibold text-slate-800 dark:text-white">
-                      {fmt(item[metric.valueKey])}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+              ))}
+            </tbody>
+          </table>
         </div>
       )}
     </motion.div>

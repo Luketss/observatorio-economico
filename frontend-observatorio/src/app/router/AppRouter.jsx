@@ -9,7 +9,8 @@ import ArrecadacaoPage from "../../pages/arrecadacao/ArrecadacaoPage";
 import PibPage from "../../pages/pib/PibPage";
 import CagedPage from "../../pages/caged/CagedPage";
 import RaisPage from "../../pages/rais/RaisPage";
-import ComparativoPage from "../../pages/comparativo/ComparativoPage";
+import BenchmarkPage from "../../pages/comparativo/ComparativoPage";
+import NotificacoesAdminPage from "../../pages/admin/NotificacoesAdminPage";
 import UsuariosAdminPage from "../../pages/admin/UsuariosAdminPage";
 import MandatoAdminPage from "../../pages/admin/MandatoAdminPage";
 import InsightsAdminPage from "../../pages/admin/InsightsAdminPage";
@@ -72,7 +73,8 @@ export default function AppRouter() {
           <Route path="pib" element={<PibPage />} />
           <Route path="caged" element={<CagedPage />} />
           <Route path="rais" element={<RaisPage />} />
-          <Route path="comparativo" element={<ComparativoPage />} />
+          <Route path="benchmark" element={<BenchmarkPage />} />
+          <Route path="comparativo" element={<Navigate to="/app/benchmark" replace />} />
           <Route path="bolsa-familia" element={<BolsaFamiliaPage />} />
           <Route path="pe-de-meia" element={<PeDeMeiaPage />} />
           <Route path="inss" element={<InssPage />} />
@@ -121,6 +123,10 @@ export default function AppRouter() {
           <Route
             path="explorer"
             element={<AdminRoute><ExplorerPage /></AdminRoute>}
+          />
+          <Route
+            path="notificacoes"
+            element={<AdminRoute><NotificacoesAdminPage /></AdminRoute>}
           />
         </Route>
       </Routes>

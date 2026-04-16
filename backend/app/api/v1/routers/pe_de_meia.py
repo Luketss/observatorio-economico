@@ -76,3 +76,33 @@ def por_incentivo(db: Session = Depends(get_db), current_user=Depends(get_curren
         )
         for r in resultados
     ]
+
+
+@router.get("/comparativo")
+def comparativo_pe_de_meia(
+    ano: int | None = None,
+    db: Session = Depends(get_db),
+    current_user=Depends(get_current_user),
+):
+    from app.models.municipio import Municipio
+    from sqlalchemy import func
+
+    query = (
+        db.query(
+            Municipio.nome.label("municipio"),
+            Municipio.id.label("municipio_id"),
+            func.sum(PeDeMeiaResumoModel.total_estudantes).label("total_estudantes"),
+        )
+        .join(PeDeMeiaResumoModel, PeDeMeiaResumoModel.municipio_id == Municipio.id)
+    )
+    if ano:
+        query = query.filter(PeDeMeiaResumoModel.ano == ano)
+    resultados = (
+        query.group_by(Municipio.nome, Municipio.id)
+        .order_by(func.sum(PeDeMeiaResumoModel.total_estudantes).desc())
+        .all()
+    )
+    return [
+        {"municipio": r.municipio, "municipio_id": r.municipio_id, "total_estudantes": r.total_estudantes or 0}
+        for r in resultados
+    ]

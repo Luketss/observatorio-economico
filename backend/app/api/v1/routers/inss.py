@@ -36,3 +36,33 @@ def resumo_inss(db: Session = Depends(get_db), current_user=Depends(get_current_
         total_beneficios=sum(r.quantidade_beneficios for r in registros),
         valor_total=sum(r.valor_anual for r in registros),
     )
+
+
+@router.get("/comparativo")
+def comparativo_inss(
+    ano: int | None = None,
+    db: Session = Depends(get_db),
+    current_user=Depends(get_current_user),
+):
+    from app.models.municipio import Municipio
+    from sqlalchemy import func
+
+    query = (
+        db.query(
+            Municipio.nome.label("municipio"),
+            Municipio.id.label("municipio_id"),
+            func.sum(InssAnual.valor_anual).label("valor_total"),
+        )
+        .join(InssAnual, InssAnual.municipio_id == Municipio.id)
+    )
+    if ano:
+        query = query.filter(InssAnual.ano == ano)
+    resultados = (
+        query.group_by(Municipio.nome, Municipio.id)
+        .order_by(func.sum(InssAnual.valor_anual).desc())
+        .all()
+    )
+    return [
+        {"municipio": r.municipio, "municipio_id": r.municipio_id, "valor_total": r.valor_total or 0}
+        for r in resultados
+    ]
