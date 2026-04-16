@@ -125,3 +125,38 @@ def comparativo_pib(
         )
         for r, nome in registros
     ]
+
+
+@router.get("/ranking")
+def ranking_pib(
+    ano: int | None = None,
+    db: Session = Depends(get_db),
+    current_user=Depends(get_current_user),
+):
+    from sqlalchemy import func
+
+    query = (
+        db.query(
+            Municipio.nome.label("municipio"),
+            Municipio.id.label("municipio_id"),
+            func.sum(PibAnual.pib_total).label("pib_total"),
+        )
+        .join(PibAnual, PibAnual.municipio_id == Municipio.id)
+    )
+    if ano:
+        query = query.filter(PibAnual.ano == ano)
+    else:
+        # Use latest available year
+        latest = db.query(func.max(PibAnual.ano)).scalar()
+        if latest:
+            query = query.filter(PibAnual.ano == latest)
+
+    resultados = (
+        query.group_by(Municipio.nome, Municipio.id)
+        .order_by(func.sum(PibAnual.pib_total).desc())
+        .all()
+    )
+    return [
+        {"municipio": r.municipio, "municipio_id": r.municipio_id, "pib_total": r.pib_total or 0}
+        for r in resultados
+    ]

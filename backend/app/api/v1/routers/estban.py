@@ -128,3 +128,33 @@ def composicao_credito(db: Session = Depends(get_db), current_user=Depends(get_c
         }
         for r in registros
     ]
+
+
+@router.get("/comparativo")
+def comparativo_estban(
+    ano: int | None = None,
+    db: Session = Depends(get_db),
+    current_user=Depends(get_current_user),
+):
+    from app.models.municipio import Municipio
+    from sqlalchemy import extract
+
+    query = (
+        db.query(
+            Municipio.nome.label("municipio"),
+            Municipio.id.label("municipio_id"),
+            func.sum(EstbanMensal.valor_operacoes_credito).label("credito_total"),
+        )
+        .join(EstbanMensal, EstbanMensal.municipio_id == Municipio.id)
+    )
+    if ano:
+        query = query.filter(extract("year", EstbanMensal.data_referencia) == ano)
+    resultados = (
+        query.group_by(Municipio.nome, Municipio.id)
+        .order_by(func.sum(EstbanMensal.valor_operacoes_credito).desc())
+        .all()
+    )
+    return [
+        {"municipio": r.municipio, "municipio_id": r.municipio_id, "credito_total": r.credito_total or 0}
+        for r in resultados
+    ]

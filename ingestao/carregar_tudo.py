@@ -33,8 +33,8 @@ import ingestao.carregar_rais as rais
 #   CIDADES = ["Nova Serrana", "Claudio", "Para de Minas"]
 #   CIDADES = []   # loads everything
 # ─────────────────────────────────────────────────────────────────────────────
-# CIDADES = ["Nova Lima", "Oliveira", "Claudio", "Nova Serrana"]
-CIDADES = ["Cabo Verde"]
+# CIDADES = ["Nova Lima"]
+CIDADES = ["Nova Serrana", "Oliveira"]
 
 
 LOADERS = [

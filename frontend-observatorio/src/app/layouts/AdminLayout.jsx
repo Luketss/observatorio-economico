@@ -18,6 +18,7 @@ import {
   Bars3Icon,
   XMarkIcon,
   CircleStackIcon,
+  BellIcon,
 } from "@heroicons/react/24/outline";
 
 export default function AdminLayout() {
@@ -44,6 +45,7 @@ export default function AdminLayout() {
           { to: "/admin/planos", label: "Planos & Acesso", icon: ShieldCheckIcon },
           { to: "/admin/usuarios", label: "Usuários", icon: UsersIcon },
           { to: "/admin/explorer", label: "Explorador de Dados", icon: CircleStackIcon },
+          { to: "/admin/notificacoes", label: "Notificações", icon: BellIcon },
         ]
       : []),
     { to: "/admin/mandato", label: "Timeline do Mandato", icon: FlagIcon },

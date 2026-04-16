@@ -14,6 +14,7 @@ from app.models import (  # noqa
     indicador_info,
     inss,
     municipio,
+    notificacao,
     pe_de_meia,
     pib,
     rais,

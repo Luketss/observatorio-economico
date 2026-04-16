@@ -109,3 +109,34 @@ def por_pais(
         func.sum(ComexPaisModel.valor_usd).desc()
     ).limit(15).all()
     return [ComexPorPaisItem(pais=r.pais, valor_usd=r.valor_usd or 0) for r in resultados]
+
+
+@router.get("/comparativo")
+def comparativo_comex(
+    ano: int | None = None,
+    db: Session = Depends(get_db),
+    current_user=Depends(get_current_user),
+):
+    from app.models.municipio import Municipio
+    from sqlalchemy import func
+
+    query = (
+        db.query(
+            Municipio.nome.label("municipio"),
+            Municipio.id.label("municipio_id"),
+            func.sum(ComexMensal.valor_usd).label("exportacoes"),
+        )
+        .join(ComexMensal, ComexMensal.municipio_id == Municipio.id)
+        .filter(ComexMensal.tipo_operacao == "export")
+    )
+    if ano:
+        query = query.filter(ComexMensal.ano == ano)
+    resultados = (
+        query.group_by(Municipio.nome, Municipio.id)
+        .order_by(func.sum(ComexMensal.valor_usd).desc())
+        .all()
+    )
+    return [
+        {"municipio": r.municipio, "municipio_id": r.municipio_id, "exportacoes": r.exportacoes or 0}
+        for r in resultados
+    ]

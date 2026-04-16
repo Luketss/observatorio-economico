@@ -9,6 +9,7 @@ Do NOT import models inside db/base.py to avoid circular imports.
 """
 
 from app.models.arrecadacao import ArrecadacaoMensal
+from app.models.notificacao import Notificacao, NotificacaoLida
 from app.models.bolsa_familia import BolsaFamiliaResumo
 from app.models.caged import CagedMovimentacao, CagedPorSexo, CagedPorRaca, CagedSalario, CagedPorCnae
 from app.models.comex import ComexMensal
@@ -64,4 +65,6 @@ __all__ = [
     "DashboardCardCustom",
     "PlanoConfig",
     "DatasetInfo",
+    "Notificacao",
+    "NotificacaoLida",
 ]

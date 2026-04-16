@@ -42,3 +42,33 @@ def resumo_bolsa_familia(db: Session = Depends(get_db), current_user=Depends(get
         valor_primeira_infancia=sum((r.valor_primeira_infancia or 0) for r in registros),
         beneficiarios_primeira_infancia=sum((r.beneficiarios_primeira_infancia or 0) for r in registros),
     )
+
+
+@router.get("/comparativo")
+def comparativo_bolsa_familia(
+    ano: int | None = None,
+    db: Session = Depends(get_db),
+    current_user=Depends(get_current_user),
+):
+    from app.models.municipio import Municipio
+    from sqlalchemy import func
+
+    query = (
+        db.query(
+            Municipio.nome.label("municipio"),
+            Municipio.id.label("municipio_id"),
+            func.sum(BFModel.valor_total).label("valor_total"),
+        )
+        .join(BFModel, BFModel.municipio_id == Municipio.id)
+    )
+    if ano:
+        query = query.filter(BFModel.ano == ano)
+    resultados = (
+        query.group_by(Municipio.nome, Municipio.id)
+        .order_by(func.sum(BFModel.valor_total).desc())
+        .all()
+    )
+    return [
+        {"municipio": r.municipio, "municipio_id": r.municipio_id, "valor_total": r.valor_total or 0}
+        for r in resultados
+    ]
