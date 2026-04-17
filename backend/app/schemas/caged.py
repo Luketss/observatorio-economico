@@ -7,7 +7,6 @@ class CagedItem(BaseModel):
     admissões: int
     desligamentos: int
     saldo: int
-    setor: str | None
 
 
 class CagedResumo(BaseModel):
