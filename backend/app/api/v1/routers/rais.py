@@ -34,7 +34,6 @@ def serie_rais(
         RaisItem(
             ano=r.ano,
             total_vinculos=r.total_vinculos,
-            setor=r.setor,
             remuneracao_media=r.remuneracao_media,
         )
         for r in registros

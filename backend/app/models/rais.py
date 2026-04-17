@@ -18,7 +18,6 @@ class RaisVinculo(Base):
     ano: Mapped[int] = mapped_column(Integer, index=True)
 
     total_vinculos: Mapped[int] = mapped_column(Integer)
-    setor: Mapped[str | None] = mapped_column(String(100), nullable=True)
     remuneracao_media: Mapped[float | None] = mapped_column(Float, nullable=True)
 
     municipio = relationship("Municipio")

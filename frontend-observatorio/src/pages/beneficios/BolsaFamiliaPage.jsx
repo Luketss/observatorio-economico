@@ -12,6 +12,8 @@ import {
   Area,
   BarChart,
   Bar,
+  LineChart,
+  Line,
   CartesianGrid,
   XAxis,
   YAxis,
@@ -175,6 +177,53 @@ export default function BolsaFamiliaPage() {
                   dot={false}
                 />
               </AreaChart>
+            </ResponsiveContainer>
+          </div>
+        )}
+      </div>
+
+      {/* Beneficiários: Total vs Primeira Infância */}
+      <div className="bg-white dark:bg-slate-900 p-6 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-800">
+        <h3 className="text-base font-bold mb-5 text-slate-800 dark:text-white">
+          Beneficiários: Total vs Primeira Infância
+        </h3>
+        {loading ? (
+          <div className="animate-pulse h-64 bg-slate-50 dark:bg-slate-800 rounded-xl" />
+        ) : serie.length === 0 ? (
+          <div className="h-64 flex items-center justify-center text-slate-400 dark:text-slate-500 text-sm">
+            Sem dados disponíveis
+          </div>
+        ) : (
+          <div className="h-48 md:h-72">
+            <ResponsiveContainer width="100%" height="100%">
+              <LineChart data={serie}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
+                <XAxis
+                  dataKey="periodo"
+                  tick={{ fontSize: 10 }}
+                  stroke="#94a3b8"
+                  interval="preserveStartEnd"
+                />
+                <YAxis tick={{ fontSize: 11 }} stroke="#94a3b8" tickFormatter={(v) => v.toLocaleString("pt-BR")} />
+                <Tooltip formatter={(v, name) => [fmtNum(v), name]} />
+                <Legend />
+                <Line
+                  type="monotone"
+                  dataKey="total_beneficiarios"
+                  name="Total Beneficiários"
+                  stroke="#3b82f6"
+                  strokeWidth={2.5}
+                  dot={false}
+                />
+                <Line
+                  type="monotone"
+                  dataKey="beneficiarios_primeira_infancia"
+                  name="Primeira Infância"
+                  stroke="#8b5cf6"
+                  strokeWidth={2.5}
+                  dot={false}
+                />
+              </LineChart>
             </ResponsiveContainer>
           </div>
         )}

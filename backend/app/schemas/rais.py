@@ -4,7 +4,6 @@ from pydantic import BaseModel
 class RaisItem(BaseModel):
     ano: int
     total_vinculos: int
-    setor: str | None
     remuneracao_media: float | None = None
 
 

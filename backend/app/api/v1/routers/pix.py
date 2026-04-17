@@ -34,6 +34,7 @@ def serie_pix(
             qt_pes_pagador_pj=r.qt_pes_pagador_pj,
             vl_recebedor_pf=r.vl_recebedor_pf,
             qt_recebedor_pf=r.qt_recebedor_pf,
+            qt_pes_recebedor_pf=r.qt_pes_recebedor_pf,
             vl_recebedor_pj=r.vl_recebedor_pj,
             qt_recebedor_pj=r.qt_recebedor_pj,
             qt_pes_recebedor_pj=r.qt_pes_recebedor_pj,

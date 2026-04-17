@@ -206,7 +206,7 @@ export default function PixPage() {
         </div>
       </ChartCard>
 
-      {/* Pessoas Únicas */}
+      {/* Pessoas Únicas Pagadoras */}
       <ChartCard title="Pessoas Únicas Pagadoras" empty={serie.length === 0}>
         <div className="h-44 md:h-64">
           <ResponsiveContainer width="100%" height="100%">
@@ -218,6 +218,23 @@ export default function PixPage() {
               <Legend />
               <Line type="monotone" dataKey="qt_pes_pagador_pf" name="Pessoas PF" stroke="#8b5cf6" strokeWidth={2} dot={false} />
               <Line type="monotone" dataKey="qt_pes_pagador_pj" name="Pessoas PJ" stroke="#f97316" strokeWidth={2} dot={false} />
+            </LineChart>
+          </ResponsiveContainer>
+        </div>
+      </ChartCard>
+
+      {/* Pessoas Únicas Recebedoras */}
+      <ChartCard title="Pessoas Únicas Recebedoras" empty={serie.length === 0}>
+        <div className="h-44 md:h-64">
+          <ResponsiveContainer width="100%" height="100%">
+            <LineChart data={serie}>
+              <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
+              <XAxis dataKey="periodo" tick={{ fontSize: 10 }} stroke="#94a3b8" interval="preserveStartEnd" />
+              <YAxis tick={{ fontSize: 11 }} stroke="#94a3b8" tickFormatter={(v) => v.toLocaleString("pt-BR")} />
+              <Tooltip formatter={(v) => [fmtNum(v)]} />
+              <Legend />
+              <Line type="monotone" dataKey="qt_pes_recebedor_pf" name="Recebedores PF" stroke="#06b6d4" strokeWidth={2} dot={false} />
+              <Line type="monotone" dataKey="qt_pes_recebedor_pj" name="Recebedores PJ" stroke="#f43f5e" strokeWidth={2} dot={false} />
             </LineChart>
           </ResponsiveContainer>
         </div>

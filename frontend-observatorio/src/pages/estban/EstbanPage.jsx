@@ -410,6 +410,42 @@ export default function EstbanPage() {
         )}
       </div>
 
+      {/* Composição do Crédito por Instituição */}
+      {!loading && porInstituicao.length > 0 && porInstituicao.some(r => r.financiamentos_gerais > 0 || r.emprestimos_titulos_descontados > 0) && (
+        <div className="bg-white dark:bg-slate-900 p-6 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-800">
+          <h3 className="text-base font-bold mb-5 text-slate-800 dark:text-white">
+            Composição do Crédito por Instituição
+          </h3>
+          <div className="h-52 md:h-80">
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart
+                data={porInstituicao.slice(0, 8)}
+                layout="vertical"
+                margin={{ left: 20, right: 20 }}
+              >
+                <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" horizontal={false} />
+                <XAxis
+                  type="number"
+                  tick={{ fontSize: 11 }}
+                  stroke="#94a3b8"
+                  tickFormatter={(v) => `R$ ${(v / 1_000_000).toLocaleString("pt-BR", { maximumFractionDigits: 0 })}M`}
+                />
+                <YAxis type="category" dataKey="nome_instituicao" tick={{ fontSize: 9 }} stroke="#94a3b8" width={140} />
+                <Tooltip formatter={(v) => [fmtBRL(v)]} />
+                <Legend />
+                <Bar dataKey="emprestimos_titulos_descontados" name="Empréstimos/Títulos" stackId="a" fill="#3b82f6" />
+                <Bar dataKey="financiamentos_gerais" name="Financiamentos Gerais" stackId="a" fill="#10b981" />
+                <Bar dataKey="financiamentos_imobiliarios" name="Imobiliário" stackId="a" fill="#f59e0b" />
+                <Bar dataKey="financiamento_agropecuario" name="Agropecuário" stackId="a" fill="#84cc16" />
+                <Bar dataKey="arrendamento_mercantil" name="Arrendamento" stackId="a" fill="#8b5cf6" />
+                <Bar dataKey="emprestimos_setor_publico" name="Setor Público" stackId="a" fill="#06b6d4" />
+                <Bar dataKey="outros_creditos" name="Outros" stackId="a" fill="#94a3b8" radius={[0, 4, 4, 0]} />
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+        </div>
+      )}
+
       {/* Tabela de Instituições — still inside PlanGate */}
       <div className="bg-white dark:bg-slate-900 p-6 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-800">
         <h3 className="text-base font-bold mb-5 text-slate-800 dark:text-white">
