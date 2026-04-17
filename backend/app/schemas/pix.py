@@ -12,6 +12,7 @@ class PixMensalItem(BaseModel):
     qt_pes_pagador_pj: int | None = None
     vl_recebedor_pf: float | None = None
     qt_recebedor_pf: int | None = None
+    qt_pes_recebedor_pf: int | None = None
     vl_recebedor_pj: float | None = None
     qt_recebedor_pj: int | None = None
     qt_pes_recebedor_pj: int | None = None

@@ -25,6 +25,7 @@ class PixMensal(Base):
     # Recebedor PF
     vl_recebedor_pf: Mapped[float | None] = mapped_column(Float, nullable=True)
     qt_recebedor_pf: Mapped[int | None] = mapped_column(BigInteger, nullable=True)
+    qt_pes_recebedor_pf: Mapped[int | None] = mapped_column(BigInteger, nullable=True)
 
     # Recebedor PJ
     vl_recebedor_pj: Mapped[float | None] = mapped_column(Float, nullable=True)

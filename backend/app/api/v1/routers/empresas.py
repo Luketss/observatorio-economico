@@ -196,6 +196,29 @@ def por_cnae_secao(db: Session = Depends(get_db), current_user=Depends(get_curre
     )[:20]
 
 
+@router.get("/capital_por_porte")
+def capital_por_porte(db: Session = Depends(get_db), current_user=Depends(get_current_user)):
+    """Average and total capital social grouped by porte (active companies only)."""
+    query = db.query(
+        Empresa.porte,
+        func.avg(Empresa.capital_social).label("capital_medio"),
+        func.sum(Empresa.capital_social).label("capital_total"),
+        func.count(Empresa.id).label("total"),
+    ).filter(Empresa.capital_social.isnot(None), Empresa.capital_social > 0)
+    if current_user.role.nome != "ADMIN_GLOBAL":
+        query = query.filter(Empresa.municipio_id == current_user.municipio_id)
+    resultados = query.group_by(Empresa.porte).order_by(func.sum(Empresa.capital_social).desc()).all()
+    return [
+        {
+            "porte": PORTE_LABELS.get(r.porte or "00", r.porte or "Não informado"),
+            "capital_medio": round(r.capital_medio or 0, 2),
+            "capital_total": round(r.capital_total or 0, 2),
+            "total": r.total,
+        }
+        for r in resultados
+    ]
+
+
 @router.get("/comparativo")
 def comparativo_empresas(
     db: Session = Depends(get_db),

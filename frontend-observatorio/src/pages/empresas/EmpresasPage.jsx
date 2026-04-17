@@ -43,6 +43,8 @@ function MiniStat({ label, value, color }) {
 }
 
 const fmtNum = (v) => (v != null ? Number(v).toLocaleString("pt-BR") : "—");
+const fmtBRL = (v) =>
+  v != null ? `R$ ${Number(v).toLocaleString("pt-BR", { maximumFractionDigits: 0 })}` : "—";
 const fmtPct = (num, total) => {
   if (!num || !total) return "—";
   return `${((num / total) * 100).toFixed(1)}%`;
@@ -54,6 +56,7 @@ export default function EmpresasPage() {
   const [porSituacao, setPorSituacao] = useState([]);
   const [situacaoPorPorte, setSituacaoPorPorte] = useState([]);
   const [porCnaeSecao, setPorCnaeSecao] = useState([]);
+  const [capitalPorPorte, setCapitalPorPorte] = useState([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -63,8 +66,9 @@ export default function EmpresasPage() {
       api.get("/empresas/por_situacao"),
       api.get("/empresas/situacao_por_porte"),
       api.get("/empresas/por_cnae_secao"),
+      api.get("/empresas/capital_por_porte"),
     ])
-      .then(([resumoRes, porteRes, situacaoRes, situPorteRes, cnaeSecaoRes]) => {
+      .then(([resumoRes, porteRes, situacaoRes, situPorteRes, cnaeSecaoRes, capitalRes]) => {
         setResumo(resumoRes.data);
         setPorPorte(
           (porteRes.data || []).map((d) => ({ name: d.porte, value: d.total }))
@@ -75,6 +79,7 @@ export default function EmpresasPage() {
           (a, b) => (b.total_vinculos ?? 0) - (a.total_vinculos ?? 0)
         );
         setPorCnaeSecao(sorted.slice(0, 12));
+        setCapitalPorPorte(capitalRes.data || []);
       })
       .catch((err) => console.error("Erro ao carregar Empresas:", err))
       .finally(() => setLoading(false));
@@ -334,6 +339,42 @@ export default function EmpresasPage() {
           </div>
         )}
       </div>
+      {/* Capital Social por Porte */}
+      {!loading && capitalPorPorte.length > 0 && (
+        <div className="bg-white dark:bg-slate-900 p-6 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-800">
+          <h3 className="text-base font-bold mb-1 text-slate-800 dark:text-white">
+            Capital Social por Porte de Empresa
+          </h3>
+          <p className="text-xs text-slate-400 dark:text-slate-500 mb-5">
+            Capital médio declarado por empresas com registro ativo
+          </p>
+          <div className="h-48 md:h-72">
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart data={capitalPorPorte} margin={{ left: 10, right: 20 }}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
+                <XAxis dataKey="porte" tick={{ fontSize: 11 }} stroke="#94a3b8" />
+                <YAxis
+                  tick={{ fontSize: 11 }}
+                  stroke="#94a3b8"
+                  tickFormatter={(v) => {
+                    if (v >= 1_000_000) return `R$ ${(v / 1_000_000).toFixed(1)}M`;
+                    if (v >= 1_000) return `R$ ${(v / 1_000).toFixed(0)}k`;
+                    return `R$ ${v}`;
+                  }}
+                />
+                <Tooltip formatter={(v) => [fmtBRL(v)]} />
+                <Legend />
+                <Bar dataKey="capital_medio" name="Capital Médio" fill="#3b82f6" radius={[4, 4, 0, 0]}>
+                  {capitalPorPorte.map((_, i) => (
+                    <Cell key={i} fill={COLORS[i % COLORS.length]} />
+                  ))}
+                </Bar>
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+        </div>
+      )}
+
       <ReleasesPanel dataset="empresas" />
 
     </motion.div>

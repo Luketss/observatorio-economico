@@ -22,8 +22,6 @@ class CagedMovimentacao(Base):
     desligamentos: Mapped[int] = mapped_column(Integer)
     saldo: Mapped[int] = mapped_column(Integer)
 
-    setor: Mapped[str | None] = mapped_column(String(100), nullable=True)
-
     municipio = relationship("Municipio")
 
 

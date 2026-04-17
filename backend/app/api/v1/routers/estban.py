@@ -82,6 +82,13 @@ def por_instituicao(db: Session = Depends(get_db), current_user=Depends(get_curr
         func.sum(EstbanInstModel.valor_depositos_vista).label("valor_depositos_vista"),
         func.sum(EstbanInstModel.valor_poupanca).label("valor_poupanca"),
         func.sum(EstbanInstModel.valor_depositos_prazo).label("valor_depositos_prazo"),
+        func.sum(EstbanInstModel.emprestimos_titulos_descontados).label("emprestimos_titulos_descontados"),
+        func.sum(EstbanInstModel.financiamentos_gerais).label("financiamentos_gerais"),
+        func.sum(EstbanInstModel.financiamento_agropecuario).label("financiamento_agropecuario"),
+        func.sum(EstbanInstModel.financiamentos_imobiliarios).label("financiamentos_imobiliarios"),
+        func.sum(EstbanInstModel.arrendamento_mercantil).label("arrendamento_mercantil"),
+        func.sum(EstbanInstModel.emprestimos_setor_publico).label("emprestimos_setor_publico"),
+        func.sum(EstbanInstModel.outros_creditos).label("outros_creditos"),
     )
     if current_user.role.nome != "ADMIN_GLOBAL":
         query = query.filter(EstbanInstModel.municipio_id == current_user.municipio_id)

@@ -88,7 +88,7 @@ export default function ComexPage() {
       .finally(() => setLoadingFilters(false));
   }, [anoSelecionado]);
 
-  // Build time series: group by period, separate exports and imports
+  // Build time series: group by period, separate exports and imports (value + weight)
   const chartSerie = useMemo(() => {
     const { yearFrom, yearTo, monthFrom, monthTo } = filters;
     const map = {};
@@ -98,12 +98,14 @@ export default function ComexPage() {
       if (monthFrom && item.mes < +monthFrom) return;
       if (monthTo && item.mes > +monthTo) return;
       const key = `${item.ano}-${String(item.mes).padStart(2, "0")}`;
-      if (!map[key]) map[key] = { periodo: key, exportacoes: 0, importacoes: 0 };
+      if (!map[key]) map[key] = { periodo: key, exportacoes: 0, importacoes: 0, peso_export: 0, peso_import: 0 };
       const tipo = item.tipo_operacao?.toLowerCase();
       if (tipo === "exp" || tipo === "export") {
         map[key].exportacoes += item.valor_usd ?? 0;
+        map[key].peso_export += item.peso_kg ?? 0;
       } else if (tipo === "imp" || tipo === "import") {
         map[key].importacoes += item.valor_usd ?? 0;
+        map[key].peso_import += item.peso_kg ?? 0;
       }
     });
     return Object.values(map)
@@ -286,6 +288,36 @@ export default function ComexPage() {
         </div>
       )}
 
+      {/* Peso Total por Período (kg) */}
+      {chartSerie.length > 0 && (chartSerie.some(d => d.peso_export > 0 || d.peso_import > 0)) && (
+        <div className="bg-white dark:bg-slate-900 p-6 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-800">
+          <h3 className="text-base font-bold mb-5 text-slate-800 dark:text-white">
+            Volume Físico — Peso Exportado vs Importado (kg)
+          </h3>
+          <div className="h-48 md:h-64">
+            <ResponsiveContainer width="100%" height="100%">
+              <LineChart data={chartSerie}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
+                <XAxis dataKey="periodo" tick={{ fontSize: 10 }} stroke="#94a3b8" interval="preserveStartEnd" />
+                <YAxis
+                  tick={{ fontSize: 11 }}
+                  stroke="#94a3b8"
+                  tickFormatter={(v) => {
+                    if (v >= 1_000_000) return `${(v / 1_000_000).toFixed(1)}M kg`;
+                    if (v >= 1_000) return `${(v / 1_000).toFixed(0)}t`;
+                    return `${v} kg`;
+                  }}
+                />
+                <Tooltip formatter={(v) => [`${Number(v).toLocaleString("pt-BR")} kg`]} />
+                <Legend />
+                <Line type="monotone" dataKey="peso_export" name="Peso Exportado" stroke="#10b981" strokeWidth={2.5} dot={false} />
+                <Line type="monotone" dataKey="peso_import" name="Peso Importado" stroke="#f97316" strokeWidth={2.5} dot={false} />
+              </LineChart>
+            </ResponsiveContainer>
+          </div>
+        </div>
+      )}
+
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Top Produtos */}
         <PlanGate planKey="comex.por_produto">
@@ -342,6 +374,35 @@ export default function ComexPage() {
           )}
         </div>
 
+        {/* Top Produtos por Peso */}
+        {!loading && !loadingFilters && porProduto.length > 0 && porProduto.some(p => p.peso_kg > 0) && (
+          <div className="bg-white dark:bg-slate-900 p-6 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-800">
+            <h3 className="text-base font-bold mb-1 text-slate-800 dark:text-white">Top Produtos por Peso</h3>
+            <p className="text-xs text-slate-400 dark:text-slate-500 mb-5">Ano: {anoSelecionado}</p>
+            <div className="h-52 md:h-80">
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart
+                  data={[...porProduto].sort((a, b) => (b.peso_kg ?? 0) - (a.peso_kg ?? 0)).slice(0, 10)}
+                  layout="vertical"
+                  margin={{ left: 10, right: 20 }}
+                >
+                  <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" horizontal={false} />
+                  <XAxis
+                    type="number"
+                    tick={{ fontSize: 11 }}
+                    stroke="#94a3b8"
+                    tickFormatter={(v) => v >= 1_000_000 ? `${(v / 1_000_000).toFixed(1)}M kg` : `${(v / 1_000).toFixed(0)}t`}
+                  />
+                  <YAxis type="category" dataKey="produto" tick={{ fontSize: 9 }} stroke="#94a3b8" width={130} />
+                  <Tooltip formatter={(v) => [`${Number(v).toLocaleString("pt-BR")} kg`, "Peso"]} />
+                  <Bar dataKey="peso_kg" name="Peso (kg)" radius={[0, 4, 4, 0]}>
+                    {porProduto.map((_, i) => <Cell key={i} fill={COLORS[i % COLORS.length]} />)}
+                  </Bar>
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+          </div>
+        )}
         </PlanGate>
 
         {/* Top Países */}
