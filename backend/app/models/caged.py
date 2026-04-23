@@ -18,7 +18,7 @@ class CagedMovimentacao(Base):
     ano: Mapped[int] = mapped_column(Integer, index=True)
     mes: Mapped[int] = mapped_column(Integer, index=True)
 
-    admissões: Mapped[int] = mapped_column(Integer)
+    admissoes: Mapped[int] = mapped_column(Integer)
     desligamentos: Mapped[int] = mapped_column(Integer)
     saldo: Mapped[int] = mapped_column(Integer)
 

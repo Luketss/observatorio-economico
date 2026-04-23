@@ -140,6 +140,7 @@ def composicao_credito(db: Session = Depends(get_db), current_user=Depends(get_c
 @router.get("/comparativo")
 def comparativo_estban(
     ano: int | None = None,
+    estado: str | None = None,
     db: Session = Depends(get_db),
     current_user=Depends(get_current_user),
 ):
@@ -150,18 +151,21 @@ def comparativo_estban(
         db.query(
             Municipio.nome.label("municipio"),
             Municipio.id.label("municipio_id"),
+            Municipio.estado.label("estado"),
             func.sum(EstbanMensal.valor_operacoes_credito).label("credito_total"),
         )
         .join(EstbanMensal, EstbanMensal.municipio_id == Municipio.id)
     )
     if ano:
         query = query.filter(extract("year", EstbanMensal.data_referencia) == ano)
+    if estado:
+        query = query.filter(Municipio.estado == estado.upper())
     resultados = (
-        query.group_by(Municipio.nome, Municipio.id)
+        query.group_by(Municipio.nome, Municipio.id, Municipio.estado)
         .order_by(func.sum(EstbanMensal.valor_operacoes_credito).desc())
         .all()
     )
     return [
-        {"municipio": r.municipio, "municipio_id": r.municipio_id, "credito_total": r.credito_total or 0}
+        {"municipio": r.municipio, "municipio_id": r.municipio_id, "estado": r.estado, "credito_total": r.credito_total or 0}
         for r in resultados
     ]

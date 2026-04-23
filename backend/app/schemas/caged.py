@@ -4,7 +4,7 @@ from pydantic import BaseModel
 class CagedItem(BaseModel):
     ano: int
     mes: int
-    admissões: int
+    admissoes: int
     desligamentos: int
     saldo: int
 

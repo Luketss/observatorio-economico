@@ -56,31 +56,28 @@ def normalizar_nome(nome: str) -> str:
     return nome.strip().replace("_", " ").upper()
 
 
-def obter_ou_criar_municipio(db: Session, nome: str) -> Municipio:
-    municipio = db.query(Municipio).filter(Municipio.nome == nome).first()
-
+def obter_ou_criar_municipio(db: Session, nome: str, estado: str, codigo_ibge: str | None = None) -> Municipio:
+    if codigo_ibge:
+        m = db.query(Municipio).filter(Municipio.codigo_ibge == codigo_ibge).first()
+        if m:
+            return m
+    municipio = db.query(Municipio).filter(Municipio.nome == nome, Municipio.estado == estado).first()
     if not municipio:
-        municipio = Municipio(
-            nome=nome,
-            estado="MG",
-            codigo_ibge=None,
-            ativo=True,
-        )
+        municipio = Municipio(nome=nome, estado=estado, codigo_ibge=codigo_ibge, ativo=True)
         db.add(municipio)
         db.commit()
         db.refresh(municipio)
-
     return municipio
 
 
-def carregar_csv(db: Session, caminho: str):
+def carregar_csv(db: Session, caminho: str, estado: str):
     nome_arquivo = os.path.basename(caminho)
     # e.g. caged_movimentacao_2025_Carmo_da_Mata.csv
     nome_municipio = normalizar_nome(
         nome_arquivo.replace("caged_movimentacao_2025_", "").replace(".csv", "")
     )
 
-    municipio = obter_ou_criar_municipio(db, nome_municipio)
+    municipio = obter_ou_criar_municipio(db, nome_municipio, estado)
 
     # Aggregation buckets
     mensal: dict[tuple, dict] = defaultdict(
@@ -172,10 +169,9 @@ def carregar_csv(db: Session, caminho: str):
             municipio_id=municipio.id,
             ano=ano,
             mes=mes,
-            **{"admissões": adm},
+            admissoes=adm,
             desligamentos=des,
             saldo=adm - des,
-            setor=None,
         ))
 
     # ----- Persist CagedPorSexo -----
@@ -264,6 +260,12 @@ def carregar_csv(db: Session, caminho: str):
 
 
 def main():
+    import argparse
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--estado", required=True, help="UF code, e.g. MG, MT")
+    args = parser.parse_args()
+    estado = args.estado.strip().upper()
+
     db = SessionLocal()
 
     try:
@@ -271,7 +273,7 @@ def main():
             if arquivo.endswith(".csv"):
                 caminho = os.path.join(BASE_PATH, arquivo)
                 print(f"Processando {arquivo}...")
-                carregar_csv(db, caminho)
+                carregar_csv(db, caminho, estado)
 
         print("✅ Carga CAGED finalizada com sucesso.")
     finally:

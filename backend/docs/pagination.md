@@ -1,27 +1,26 @@
-# 📄 Paginação
+# Paginação
 
-O backend utiliza paginação padrão enterprise.
-
----
-
-## 🔢 Query Params
-
-```
-?skip=0&limit=20
-```
-
-- `skip` → Quantidade de registros ignorados
-- `limit` → Quantidade máxima retornada
+A maioria dos endpoints retorna listas completas (sem paginação) pois os datasets são filtrados por município. A paginação enterprise é usada apenas em `/usuarios`.
 
 ---
 
-## 📦 Estrutura de Resposta
+## Endpoint paginado: /usuarios
 
 ```
+GET /api/v1/usuarios?skip=0&limit=20
+```
+
+| Param | Padrão | Descrição |
+|-------|--------|-----------|
+| `skip` | 0 | Registros a pular |
+| `limit` | 20 | Máximo de registros retornados |
+
+Resposta:
+
+```json
 {
-  "success": true,
   "items": [...],
-  "total": 250,
+  "total": 45,
   "skip": 0,
   "limit": 20
 }
@@ -29,17 +28,15 @@ O backend utiliza paginação padrão enterprise.
 
 ---
 
-## ✅ Vantagens
+## Endpoints sem paginação
 
-- Escalabilidade
-- Performance
-- Suporte a tabelas grandes
-- Integração facilitada com frontend
+Todos os endpoints de datasets (arrecadação, PIB, CAGED, RAIS, etc.) retornam a série completa do município. O volume por município é manejável sem paginação.
 
 ---
 
-## 🔮 Evolução Futura
+## Filtros disponíveis nos endpoints de série
 
-- Ordenação dinâmica
-- Filtros avançados
-- Paginação baseada em cursor
+| Param | Tipo | Exemplo | Endpoints |
+|-------|------|---------|-----------|
+| `ano` | int | `?ano=2024` | maioria dos endpoints |
+| `estado` | str | `?estado=MG` | todos os `/comparativo/*` |

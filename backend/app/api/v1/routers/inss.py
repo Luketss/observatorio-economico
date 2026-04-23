@@ -41,6 +41,7 @@ def resumo_inss(db: Session = Depends(get_db), current_user=Depends(get_current_
 @router.get("/comparativo")
 def comparativo_inss(
     ano: int | None = None,
+    estado: str | None = None,
     db: Session = Depends(get_db),
     current_user=Depends(get_current_user),
 ):
@@ -51,18 +52,21 @@ def comparativo_inss(
         db.query(
             Municipio.nome.label("municipio"),
             Municipio.id.label("municipio_id"),
+            Municipio.estado.label("estado"),
             func.sum(InssAnual.valor_anual).label("valor_total"),
         )
         .join(InssAnual, InssAnual.municipio_id == Municipio.id)
     )
     if ano:
         query = query.filter(InssAnual.ano == ano)
+    if estado:
+        query = query.filter(Municipio.estado == estado.upper())
     resultados = (
-        query.group_by(Municipio.nome, Municipio.id)
+        query.group_by(Municipio.nome, Municipio.id, Municipio.estado)
         .order_by(func.sum(InssAnual.valor_anual).desc())
         .all()
     )
     return [
-        {"municipio": r.municipio, "municipio_id": r.municipio_id, "valor_total": r.valor_total or 0}
+        {"municipio": r.municipio, "municipio_id": r.municipio_id, "estado": r.estado, "valor_total": r.valor_total or 0}
         for r in resultados
     ]

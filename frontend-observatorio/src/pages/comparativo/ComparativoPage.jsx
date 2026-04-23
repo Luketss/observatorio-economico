@@ -55,28 +55,41 @@ export default function BenchmarkPage() {
   const { user } = useAuth();
   const [activeKey, setActiveKey] = useState("arrecadacao");
   const [ano, setAno] = useState(CURRENT_YEAR - 1);
+  const [estadoFiltro, setEstadoFiltro] = useState("");
+  const [estados, setEstados] = useState([]);
   const [data, setData] = useState([]);
   const [loading, setLoading] = useState(false);
 
   const activeDataset = DATASETS.find((d) => d.key === activeKey);
+
+  // Fetch unique state list from /municipios on mount
+  useEffect(() => {
+    api.get("/municipios").then((res) => {
+      const ufs = [...new Set((res.data || []).map((m) => m.estado).filter(Boolean))].sort();
+      setEstados(ufs);
+    }).catch(() => {});
+  }, []);
 
   useEffect(() => {
     if (!activeDataset) return;
     setLoading(true);
     setData([]);
     const params = activeDataset.hasAno ? { ano } : {};
+    if (estadoFiltro) params.estado = estadoFiltro;
     api
       .get(activeDataset.endpoint, { params })
       .then((res) => setData(res.data || []))
       .catch(() => setData([]))
       .finally(() => setLoading(false));
-  }, [activeKey, ano]);
+  }, [activeKey, ano, estadoFiltro]);
 
   const chartData = useMemo(() => {
     if (!activeDataset || !data.length) return [];
     return data.map((row) => ({
-      municipio: row.municipio,
+      municipio: row.estado ? `${row.municipio} (${row.estado})` : row.municipio,
+      municipio_raw: row.municipio,
       municipio_id: row.municipio_id,
+      estado: row.estado,
       valor: row[activeDataset.metrica] ?? 0,
     }));
   }, [data, activeDataset]);
@@ -101,6 +114,42 @@ export default function BenchmarkPage() {
         </p>
       </div>
 
+      {/* Filters row */}
+      <div className="flex flex-wrap items-center gap-4">
+        {/* State filter */}
+        {estados.length > 1 && (
+          <div className="flex items-center gap-2">
+            <label className="text-sm font-medium text-slate-600 dark:text-slate-300">Estado:</label>
+            <select
+              value={estadoFiltro}
+              onChange={(e) => setEstadoFiltro(e.target.value)}
+              className="text-sm border border-slate-200 dark:border-slate-700 rounded-lg px-3 py-1.5 bg-white dark:bg-slate-800 text-slate-800 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+            >
+              <option value="">Todos</option>
+              {estados.map((uf) => (
+                <option key={uf} value={uf}>{uf}</option>
+              ))}
+            </select>
+          </div>
+        )}
+
+        {/* Year selector */}
+        {activeDataset?.hasAno && (
+          <div className="flex items-center gap-2">
+            <label className="text-sm font-medium text-slate-600 dark:text-slate-300">Ano:</label>
+            <select
+              value={ano}
+              onChange={(e) => setAno(+e.target.value)}
+              className="text-sm border border-slate-200 dark:border-slate-700 rounded-lg px-3 py-1.5 bg-white dark:bg-slate-800 text-slate-800 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+            >
+              {YEAR_OPTIONS.map((y) => (
+                <option key={y} value={y}>{y}</option>
+              ))}
+            </select>
+          </div>
+        )}
+      </div>
+
       {/* Dataset tabs */}
       <div className="flex flex-wrap gap-2">
         {DATASETS.map((ds) => (
@@ -117,24 +166,6 @@ export default function BenchmarkPage() {
           </button>
         ))}
       </div>
-
-      {/* Year selector */}
-      {activeDataset?.hasAno && (
-        <div className="flex items-center gap-3">
-          <label className="text-sm font-medium text-slate-600 dark:text-slate-300">
-            Ano:
-          </label>
-          <select
-            value={ano}
-            onChange={(e) => setAno(+e.target.value)}
-            className="text-sm border border-slate-200 dark:border-slate-700 rounded-lg px-3 py-1.5 bg-white dark:bg-slate-800 text-slate-800 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
-          >
-            {YEAR_OPTIONS.map((y) => (
-              <option key={y} value={y}>{y}</option>
-            ))}
-          </select>
-        </div>
-      )}
 
       {/* Chart */}
       <div className="bg-white dark:bg-slate-900 p-6 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-800">
@@ -172,7 +203,7 @@ export default function BenchmarkPage() {
                   dataKey="municipio"
                   tick={{ fontSize: 11 }}
                   stroke="#94a3b8"
-                  width={160}
+                  width={180}
                 />
                 <Tooltip formatter={tooltipFormatter} />
                 <Bar dataKey="valor" radius={[0, 4, 4, 0]}>
@@ -205,6 +236,9 @@ export default function BenchmarkPage() {
                 <th className="text-left px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider">
                   Município
                 </th>
+                <th className="text-left px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider w-16">
+                  UF
+                </th>
                 <th className="text-right px-6 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider">
                   {METRIC_LABELS[activeKey]}
                 </th>
@@ -222,12 +256,15 @@ export default function BenchmarkPage() {
                 >
                   <td className="px-6 py-3 text-slate-400 font-mono text-xs">{i + 1}</td>
                   <td className="px-4 py-3 font-medium text-slate-800 dark:text-white">
-                    {row.municipio}
+                    {row.municipio_raw}
                     {myId && row.municipio_id === myId && (
                       <span className="ml-2 text-xs text-amber-600 dark:text-amber-400 font-semibold">
                         (seu município)
                       </span>
                     )}
+                  </td>
+                  <td className="px-4 py-3 text-slate-500 dark:text-slate-400 font-mono text-xs">
+                    {row.estado || "—"}
                   </td>
                   <td className="px-6 py-3 text-right font-semibold text-slate-700 dark:text-slate-200">
                     {activeDataset?.fmt(row.valor)}

@@ -1,53 +1,45 @@
-# 🔐 Autenticação
+# Autenticação
 
-O sistema utiliza JWT com dois tipos de token:
-
-- Access Token
-- Refresh Token
+O sistema usa JWT com dois tokens: access (curta duração) e refresh (longa duração).
 
 ---
 
-## 🔑 Login
-
-Endpoint:
+## Login
 
 ```
-POST /auth/login
+POST /api/v1/auth/login
+Content-Type: application/x-www-form-urlencoded
+
+username=email@exemplo.com&password=senha
 ```
 
 Resposta:
 
-```
+```json
 {
-  "access_token": "...",
-  "refresh_token": "...",
+  "access_token": "eyJ...",
+  "refresh_token": "eyJ...",
   "token_type": "bearer"
 }
 ```
 
 ---
 
-## 🔄 Refresh Token
+## Refresh
 
 ```
-POST /auth/refresh
+POST /api/v1/auth/refresh
+
+{ "refresh_token": "eyJ..." }
 ```
 
-Body:
-
-```
-{
-  "refresh_token": "..."
-}
-```
-
-Retorna novo access_token.
+Retorna novo `access_token`.
 
 ---
 
-## 📌 Uso do Access Token
+## Uso do token
 
-Enviar no header:
+Enviar no header de todas as requisições protegidas:
 
 ```
 Authorization: Bearer {access_token}
@@ -55,16 +47,42 @@ Authorization: Bearer {access_token}
 
 ---
 
-## ⏳ Expiração
+## Roles (RBAC)
 
-- Access Token → curta duração
-- Refresh Token → longa duração
+| Role | Descrição |
+|------|-----------|
+| `ADMIN_GLOBAL` | Acesso total — todos os dados, todos os municípios, painel admin completo |
+| `ADMIN_MUNICIPIO` | Dados do próprio município + gerência de usuários locais |
+| `VISUALIZADOR` | Somente leitura dos dados do próprio município |
+
+Verificação de role nos endpoints:
+
+```python
+current_user = Depends(get_current_user)
+# dentro da função:
+if current_user.role.nome != "ADMIN_GLOBAL":
+    raise HTTPException(403, "Acesso restrito")
+```
 
 ---
 
-## 🔒 Segurança
+## Planos
 
-- Token validado via decode_token
-- Tipo validado (access / refresh)
-- Usuário validado como ativo
-- Permissões via require_role
+O acesso a módulos e componentes avançados é controlado pelo campo `plano` do `Municipio`:
+
+| Plano | Valor |
+|-------|-------|
+| Gratuito | `"free"` |
+| Pro | `"pro"` |
+| Premium | `"premium"` |
+
+A lista de módulos habilitados por plano é configurada na tabela `plano_config` (via `PlanoConfigAdminPage`). O frontend consome `GET /plano-config?plano={plano}` e usa o `PlanContext` + `PlanGate` para bloquear componentes não autorizados.
+
+---
+
+## Segurança
+
+- Senhas armazenadas com hash bcrypt
+- Access token com expiração configurável (`ACCESS_TOKEN_EXPIRE_MINUTES`)
+- Refresh token com expiração configurável (`REFRESH_TOKEN_EXPIRE_DAYS`)
+- `get_current_user` valida token, tipo e usuário ativo a cada request

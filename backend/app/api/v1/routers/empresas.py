@@ -221,6 +221,7 @@ def capital_por_porte(db: Session = Depends(get_db), current_user=Depends(get_cu
 
 @router.get("/comparativo")
 def comparativo_empresas(
+    estado: str | None = None,
     db: Session = Depends(get_db),
     current_user=Depends(get_current_user),
 ):
@@ -228,19 +229,24 @@ def comparativo_empresas(
     from app.models.empresa import Empresa
     from sqlalchemy import func
 
-    resultados = (
+    query = (
         db.query(
             Municipio.nome.label("municipio"),
             Municipio.id.label("municipio_id"),
+            Municipio.estado.label("estado"),
             func.count(Empresa.id).label("total_empresas"),
         )
         .join(Empresa, Empresa.municipio_id == Municipio.id)
         .filter(Empresa.situacao == "02")
-        .group_by(Municipio.nome, Municipio.id)
+    )
+    if estado:
+        query = query.filter(Municipio.estado == estado.upper())
+    resultados = (
+        query.group_by(Municipio.nome, Municipio.id, Municipio.estado)
         .order_by(func.count(Empresa.id).desc())
         .all()
     )
     return [
-        {"municipio": r.municipio, "municipio_id": r.municipio_id, "total_empresas": r.total_empresas or 0}
+        {"municipio": r.municipio, "municipio_id": r.municipio_id, "estado": r.estado, "total_empresas": r.total_empresas or 0}
         for r in resultados
     ]

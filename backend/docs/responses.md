@@ -1,61 +1,86 @@
-# 📦 Padrões de Resposta
+# Padrões de Resposta
 
-O backend utiliza um padrão consistente para todas as respostas.
+O backend retorna Pydantic models diretamente via `response_model` do FastAPI — sem envelope `SuccessResponse`. Os erros seguem o padrão HTTPException do FastAPI.
 
 ---
 
-## ✅ SuccessResponse
+## Resposta de dados simples
 
-Formato:
+Endpoint com `response_model=Schema`:
 
-```
+```json
 {
-  "success": true,
-  "data": { ... }
+  "ano": 2024,
+  "mes": 3,
+  "valor_total": 1250000.0
 }
 ```
 
-Usado para respostas simples.
+---
+
+## Resposta de lista
+
+Endpoint com `response_model=List[Schema]`:
+
+```json
+[
+  { "ano": 2024, "mes": 1, "valor_total": 980000.0 },
+  { "ano": 2024, "mes": 2, "valor_total": 1100000.0 }
+]
+```
 
 ---
 
-## 📄 PaginatedResponse
+## Paginação (apenas /usuarios)
 
-Formato:
-
-```
+```json
 {
-  "success": true,
-  "items": [...],
-  "total": 100,
+  "items": [ { "id": 1, "nome": "João", "email": "joao@..." } ],
+  "total": 42,
   "skip": 0,
   "limit": 20
 }
 ```
 
-Usado para listagens.
-
 ---
 
-## ❌ Erros
+## Erros
 
-Formato padrão:
+FastAPI retorna erros no formato:
 
-```
+```json
 {
-  "success": false,
-  "error": {
-    "code": "ERROR_CODE",
-    "message": "Mensagem descritiva"
-  }
+  "detail": "Mensagem de erro descritiva"
 }
 ```
 
+Erros comuns:
+
+| Status | Situação |
+|--------|---------|
+| 401 | Token inválido ou ausente |
+| 403 | Permissão insuficiente (role ou plano) |
+| 404 | Recurso não encontrado |
+| 422 | Dados de entrada inválidos (Pydantic) |
+| 500 | Erro interno — verifique logs |
+
+> **Nota sobre CORS:** Quando o backend retorna 500, o browser reporta erro de CORS porque as CORS headers não são incluídas em respostas de erro não tratadas. Sempre verifique os logs do servidor antes de diagnosticar como problema de CORS.
+
 ---
 
-## 📌 Benefícios
+## Endpoints de comparativo
 
-- Contrato previsível
-- Integração simples com frontend
-- Documentação clara
-- Evolução controlada
+Os endpoints `/comparativo/*` e `/pib/ranking` retornam listas com:
+
+```json
+[
+  {
+    "municipio_id": 3,
+    "municipio": "Divinópolis",
+    "estado": "MG",
+    "total": 15800000.0
+  }
+]
+```
+
+Suportam filtro opcional `?estado=MG`.

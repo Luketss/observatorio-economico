@@ -130,6 +130,7 @@ def comparativo_pib(
 @router.get("/ranking")
 def ranking_pib(
     ano: int | None = None,
+    estado: str | None = None,
     db: Session = Depends(get_db),
     current_user=Depends(get_current_user),
 ):
@@ -139,6 +140,7 @@ def ranking_pib(
         db.query(
             Municipio.nome.label("municipio"),
             Municipio.id.label("municipio_id"),
+            Municipio.estado.label("estado"),
             func.sum(PibAnual.pib_total).label("pib_total"),
         )
         .join(PibAnual, PibAnual.municipio_id == Municipio.id)
@@ -146,17 +148,18 @@ def ranking_pib(
     if ano:
         query = query.filter(PibAnual.ano == ano)
     else:
-        # Use latest available year
         latest = db.query(func.max(PibAnual.ano)).scalar()
         if latest:
             query = query.filter(PibAnual.ano == latest)
+    if estado:
+        query = query.filter(Municipio.estado == estado.upper())
 
     resultados = (
-        query.group_by(Municipio.nome, Municipio.id)
+        query.group_by(Municipio.nome, Municipio.id, Municipio.estado)
         .order_by(func.sum(PibAnual.pib_total).desc())
         .all()
     )
     return [
-        {"municipio": r.municipio, "municipio_id": r.municipio_id, "pib_total": r.pib_total or 0}
+        {"municipio": r.municipio, "municipio_id": r.municipio_id, "estado": r.estado, "pib_total": r.pib_total or 0}
         for r in resultados
     ]

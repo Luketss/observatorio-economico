@@ -81,6 +81,7 @@ def por_incentivo(db: Session = Depends(get_db), current_user=Depends(get_curren
 @router.get("/comparativo")
 def comparativo_pe_de_meia(
     ano: int | None = None,
+    estado: str | None = None,
     db: Session = Depends(get_db),
     current_user=Depends(get_current_user),
 ):
@@ -91,18 +92,21 @@ def comparativo_pe_de_meia(
         db.query(
             Municipio.nome.label("municipio"),
             Municipio.id.label("municipio_id"),
+            Municipio.estado.label("estado"),
             func.sum(PeDeMeiaResumoModel.total_estudantes).label("total_estudantes"),
         )
         .join(PeDeMeiaResumoModel, PeDeMeiaResumoModel.municipio_id == Municipio.id)
     )
     if ano:
         query = query.filter(PeDeMeiaResumoModel.ano == ano)
+    if estado:
+        query = query.filter(Municipio.estado == estado.upper())
     resultados = (
-        query.group_by(Municipio.nome, Municipio.id)
+        query.group_by(Municipio.nome, Municipio.id, Municipio.estado)
         .order_by(func.sum(PeDeMeiaResumoModel.total_estudantes).desc())
         .all()
     )
     return [
-        {"municipio": r.municipio, "municipio_id": r.municipio_id, "total_estudantes": r.total_estudantes or 0}
+        {"municipio": r.municipio, "municipio_id": r.municipio_id, "estado": r.estado, "total_estudantes": r.total_estudantes or 0}
         for r in resultados
     ]

@@ -114,6 +114,7 @@ def por_pais(
 @router.get("/comparativo")
 def comparativo_comex(
     ano: int | None = None,
+    estado: str | None = None,
     db: Session = Depends(get_db),
     current_user=Depends(get_current_user),
 ):
@@ -124,6 +125,7 @@ def comparativo_comex(
         db.query(
             Municipio.nome.label("municipio"),
             Municipio.id.label("municipio_id"),
+            Municipio.estado.label("estado"),
             func.sum(ComexMensal.valor_usd).label("exportacoes"),
         )
         .join(ComexMensal, ComexMensal.municipio_id == Municipio.id)
@@ -131,12 +133,14 @@ def comparativo_comex(
     )
     if ano:
         query = query.filter(ComexMensal.ano == ano)
+    if estado:
+        query = query.filter(Municipio.estado == estado.upper())
     resultados = (
-        query.group_by(Municipio.nome, Municipio.id)
+        query.group_by(Municipio.nome, Municipio.id, Municipio.estado)
         .order_by(func.sum(ComexMensal.valor_usd).desc())
         .all()
     )
     return [
-        {"municipio": r.municipio, "municipio_id": r.municipio_id, "exportacoes": r.exportacoes or 0}
+        {"municipio": r.municipio, "municipio_id": r.municipio_id, "estado": r.estado, "exportacoes": r.exportacoes or 0}
         for r in resultados
     ]
