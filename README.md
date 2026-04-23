@@ -46,7 +46,62 @@ Multi-tenant economic dashboard SaaS for Brazilian municipalities. Centralizes a
 
 ---
 
-## Quick Start (Docker)
+## Quick Start — Dev Container (recommended)
+
+The dev container provides Python 3.11 + Node 20 + PostgreSQL 16 in an isolated environment. No local installs needed beyond Docker and VS Code.
+
+**Prerequisites:** [Docker Desktop](https://www.docker.com/products/docker-desktop/) + [VS Code](https://code.visualstudio.com/) with the [Dev Containers](https://marketplace.visualstudio.com/items?itemName=ms-vscode-remote.remote-containers) extension.
+
+**1. Open in container**
+
+```
+Ctrl+Shift+P → "Dev Containers: Reopen in Container"
+```
+
+First run takes ~3–5 min: builds the image, starts PostgreSQL, installs Python + Node deps, and runs `alembic upgrade head` automatically.
+
+**2. Start the servers**
+
+Press `Ctrl+Shift+B` (default build task) to start backend + frontend in parallel, or manually:
+
+```bash
+# Terminal 1 — Backend
+cd backend && uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
+
+# Terminal 2 — Frontend
+cd frontend-observatorio && npm run dev -- --host
+```
+
+**3. Open the app**
+
+VS Code auto-forwards ports and shows a notification. Click "Open in Browser" or go to:
+
+| Service | URL |
+|---------|-----|
+| Frontend | http://localhost:5173 |
+| API | http://localhost:8000 |
+| Swagger UI | http://localhost:8000/docs |
+
+No `.env` file needed — the frontend defaults to `http://localhost:8000/api/v1` and the backend reads DB credentials from the container environment.
+
+**Dev DB credentials (local only):**
+
+```
+Host: localhost:5432  Database: observatorio_dev
+User: observatorio    Password: observatorio
+```
+
+**Other available tasks** (`Ctrl+Shift+P → Run Task`):
+
+| Task | Action |
+|------|--------|
+| Start All Dev Servers | Backend + frontend in parallel |
+| Backend: Run Migrations | `alembic upgrade head` |
+| Ingestão: Carregar Tudo (MG) | Load all datasets for MG |
+
+---
+
+## Quick Start (Docker Compose — production-like)
 
 ```bash
 # 1. Copy and fill in the environment file
@@ -122,12 +177,22 @@ PYTHONPATH=backend alembic -c backend/alembic.ini upgrade head
 
 | Migration | Description |
 |-----------|-------------|
-| `0001_initial_schema_and_roles` | Users, roles, municipalities, seed data |
-| `0002_caged_rais_tables` | CAGED and RAIS base tables |
-| `0003_new_datasets` | Bolsa Família, Pé-de-Meia, INSS, Estban, Comex, Empresas |
-| `0004_detail_tables` | Pé-de-Meia by stage, Estban by institution, Comex by product/country |
-| `0005_caged_rais_detail_insights` | CAGED breakdown tables (sexo, raça, salário, CNAE), RAIS breakdowns, `insights_ia` table |
-| `0006_marcos_mandato` | Timeline do Mandato milestones table |
+| `0001` | Users, roles, municipalities, seed data |
+| `0002` | CAGED and RAIS base tables |
+| `0003` | Bolsa Família, Pé-de-Meia, INSS, Estban, Comex, Empresas |
+| `0004` | Detail tables (by institution, product, country, stage) |
+| `0005` | CAGED/RAIS breakdowns, `insights_ia` table |
+| `0006` | Timeline do Mandato milestones table |
+| `0007` | Plano, brasão, custom cards |
+| `0008–0011` | Insight visibility, dataset info, RAIS extras, PIX, Estban fields |
+| `0012` | Rename `paid` → `pro`, add `premium` plan |
+| `0013` | Notificações + NotificacaoLida tables |
+| `0014` | Drop always-NULL `setor` column from CAGED |
+| `0015` | Add `qt_pes_recebedor_pf` to PIX |
+| `0016` | Drop always-NULL `setor` column from RAIS |
+| `0017` | Rename `admissões` → `admissoes` in CAGED (remove accent) |
+| `0018` | `projeto_eixos` + `projetos` tables |
+| `0019` | `indicadores_internos` + `plano_gov_acoes` + `eventos_municipio` tables |
 
 ---
 
@@ -145,30 +210,27 @@ pip install -r ingestao/requirements.txt
 
 ### Load data
 
-Edit `ingestao/carregar_tudo.py` to select cities:
+```bash
+# All municipalities of a state
+python -m ingestao.carregar_tudo --estado MG
 
-```python
-# Load specific cities
-CIDADES = ["Nova Serrana", "Claudio", "Para de Minas"]
+# Specific cities only
+python -m ingestao.carregar_tudo --estado MG --cidades Divinopolis "Para de Minas" Oliveira
 
-# Load all available cities
-CIDADES = []
+# Another state
+python -m ingestao.carregar_tudo --estado MT --cidades Cuiaba
 ```
 
-Then run:
+Or load a single dataset (each loader also accepts `--estado`):
 
 ```bash
-python -m ingestao.carregar_tudo
-```
-
-Or load a single dataset:
-
-```bash
-python -m ingestao.carregar_caged
-python -m ingestao.carregar_rais
-python -m ingestao.carregar_arrecadacao
+python -m ingestao.carregar_caged --estado MG
+python -m ingestao.carregar_rais --estado MG
+python -m ingestao.carregar_arrecadacao --estado MG
 # ... etc
 ```
+
+PIX files must be placed in `dados/PIX/` before running.
 
 ### Load to Railway (remote DB)
 
@@ -240,9 +302,9 @@ Administrators can register milestones for their municipality:
 - **Política Pública** — policy launches
 - **Evento** — other notable events
 
-Milestones appear as a scrollable horizontal timeline on the main Dashboard.
+Milestones appear on the dedicated **Timeline** page (`/app/timeline`) accessible from the sidebar.
 
-**Access:** sidebar → Admin → Timeline (available to `ADMIN_GLOBAL` and `ADMIN_MUNICIPIO`)
+**Manage:** sidebar → Admin → Timeline do Mandato (available to `ADMIN_GLOBAL` and `ADMIN_MUNICIPIO`)
 
 ---
 
@@ -288,31 +350,37 @@ VITE_API_BASE_URL=http://localhost:8000/api/v1
 
 ```
 dashboard_prefeituras/
+├── .devcontainer/            # Dev container (Dockerfile + docker-compose + devcontainer.json)
+├── .vscode/tasks.json        # Start servers, run migrations, run ingestion
 ├── backend/
 │   ├── app/
-│   │   ├── api/v1/routers/   # One router per dataset + auth, insights, marcos
+│   │   ├── api/v1/routers/   # One router per dataset + auth, insights, marcos, projetos, dados_internos
 │   │   ├── core/             # Config, security, logging
-│   │   ├── db/               # Session, base
+│   │   ├── db/               # Session, base, repositories
 │   │   ├── models/           # SQLAlchemy models
-│   │   ├── schemas/          # Pydantic schemas
-│   │   └── services/         # Auth service, AI insights service
-│   ├── alembic/versions/     # Migration files (0001–0006)
+│   │   ├── schemas/          # Pydantic v2
+│   │   └── services/         # Auth service, AI insights service, user service
+│   ├── alembic/versions/     # Migration chain 0001 → 0019
+│   ├── docs/                 # Technical documentation
 │   ├── Dockerfile
 │   └── requirements.txt
 ├── frontend-observatorio/
 │   └── src/
-│       ├── app/              # Router, DashboardLayout
-│       ├── components/       # InsightsPanel, MandatoTimeline (reusable)
-│       ├── context/          # AuthContext
+│       ├── app/              # Router, DashboardLayout, AdminLayout
+│       ├── components/       # KpiCard, ChartInfoIcon, NotificationBell, PlanGate, …
+│       ├── context/          # AuthContext, PlanContext, ToastContext
+│       ├── hooks/            # useEscapeKey
 │       ├── pages/            # One folder per feature
-│       └── services/         # Axios instance
-├── ingestao/                 # CSV → DB scripts
+│       │   ├── admin/        # Admin pages (usuarios, municipios, projetos-eixos, …)
+│       │   ├── dados-internos/  # Indicadores, Plano de Governo, Calendário
+│       │   ├── projetos/     # Projetos page
+│       │   ├── timeline/     # Timeline do Mandato page
+│       │   └── …             # Dataset pages (caged, rais, pib, …)
+│       └── services/         # Axios instance with JWT interceptors
+├── ingestao/                 # CSV → DB scripts (all accept --estado)
 ├── dados/                    # Raw CSV files (not committed)
-├── IDEAS.md                  # Product improvement backlog
-├── PROJECT_GUIDE.md          # Full developer reference
-├── AGENTS.md                 # AI agent operational context
-├── docker-compose.yml
-└── .env
+├── docker-compose.yml        # Production-like compose (gunicorn + nginx)
+└── .env                      # Environment variables (never commit secrets)
 ```
 
 For the full developer guide including troubleshooting, Alembic commands reference, Docker commands, and the dataset developer checklist, see [PROJECT_GUIDE.md](PROJECT_GUIDE.md).

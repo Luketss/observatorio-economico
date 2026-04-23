@@ -71,9 +71,9 @@ const NAV_STRUCTURE = [
     label: "Dados Internos",
     icon: CircleStackIcon,
     children: [
-      { to: "/app/dados-internos/indicadores", label: "Indicadores", icon: ChartPieIcon, modulo: "dados_internos" },
-      { to: "/app/dados-internos/plano-gov", label: "Plano de Governo", icon: ClipboardDocumentListIcon, modulo: "dados_internos" },
-      { to: "/app/dados-internos/calendario", label: "Calendário", icon: CalendarIcon, modulo: "dados_internos" },
+      { to: "/app/dados-internos/indicadores", label: "Indicadores", icon: ChartPieIcon, modulo: null },
+      { to: "/app/dados-internos/plano-gov", label: "Plano de Governo", icon: ClipboardDocumentListIcon, modulo: null },
+      { to: "/app/dados-internos/calendario", label: "Calendário", icon: CalendarIcon, modulo: null },
     ],
   },
   {

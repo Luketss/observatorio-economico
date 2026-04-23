@@ -17,6 +17,10 @@ const MODULOS = [
   { key: "pix", label: "PIX — Transações Instantâneas" },
   { key: "insights_ia", label: "Insights IA" },
   { key: "timeline_mandato", label: "Timeline do Mandato" },
+  { key: "projetos", label: "Projetos Municipais" },
+  { key: "dados_internos.indicadores", label: "Dados Internos — Indicadores" },
+  { key: "dados_internos.plano_gov", label: "Dados Internos — Plano de Governo" },
+  { key: "dados_internos.calendario", label: "Dados Internos — Calendário" },
 ];
 
 const COMPONENTES = [
