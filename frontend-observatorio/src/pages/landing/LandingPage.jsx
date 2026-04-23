@@ -11,7 +11,6 @@ import {
   FolderOpenIcon,
   CircleStackIcon,
   ArrowRightIcon,
-  CheckIcon,
 } from "@heroicons/react/24/outline";
 import uaiziLogo from "../../assets/logo_uaizi.png";
 import nidLogo from "../../assets/nid_fundo_transparente.png";
@@ -214,15 +213,6 @@ const FEATURES = [
   },
 ];
 
-const PLAN_HIGHLIGHTS = [
-  "Acesso a todos os datasets federais",
-  "Benchmark entre municípios",
-  "Insights gerados por IA",
-  "Gestão de projetos e eixos",
-  "Dados internos e plano de governo",
-  "Releases e comunicados",
-];
-
 // ─── Landing page ──────────────────────────────────────────────────────────────
 
 export default function LandingPage() {
@@ -254,7 +244,7 @@ export default function LandingPage() {
             animate={{ opacity: 1, x: 0 }}
             transition={{ duration: 0.6, ease: "easeOut" }}
           >
-            <img src={uaiziLogo} alt="UAIZI — Observatório Econômico" className="h-9 object-contain" />
+            <img src={uaiziLogo} alt="UAIZI — Observatório Econômico" className="h-14 object-contain" />
           </motion.div>
 
           <motion.div
@@ -417,44 +407,6 @@ export default function LandingPage() {
             })}
           </div>
         </section>
-
-        {/* ── Highlights strip ── */}
-        <motion.section
-          initial={{ opacity: 0, y: 16 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 1.5, duration: 0.5, ease: "easeOut" }}
-          className="px-6 md:px-14 pb-14"
-          aria-label="Destaques do plano"
-        >
-          <div className="max-w-3xl mx-auto rounded-2xl border border-white/[0.07] bg-white/[0.025] backdrop-blur-sm p-6">
-            <p className="text-center text-white/60 text-xs font-semibold uppercase tracking-widest mb-5">
-              Incluso em todos os planos
-            </p>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-              {PLAN_HIGHLIGHTS.map((item) => (
-                <div key={item} className="flex items-center gap-2.5">
-                  <div className="w-4 h-4 rounded-full bg-blue-500/20 flex items-center justify-center shrink-0">
-                    <CheckIcon className="w-2.5 h-2.5 text-blue-400" aria-hidden="true" />
-                  </div>
-                  <span className="text-slate-300 text-xs">{item}</span>
-                </div>
-              ))}
-            </div>
-            <div className="mt-6 flex justify-center">
-              <Link to="/login">
-                <motion.button
-                  whileHover={{ scale: 1.03 }}
-                  whileFocus={{ scale: 1.03 }}
-                  whileTap={{ scale: 0.98 }}
-                  className="inline-flex items-center gap-2 px-6 py-2.5 rounded-xl border border-white/15 text-white/80 text-sm font-medium hover:bg-white/8 hover:text-white hover:border-white/25 focus:outline-none focus:ring-2 focus:ring-white/20 transition-all backdrop-blur-sm cursor-pointer"
-                >
-                  Começar agora
-                  <ArrowRightIcon className="w-3.5 h-3.5" aria-hidden="true" />
-                </motion.button>
-              </Link>
-            </div>
-          </div>
-        </motion.section>
 
         {/* ── Footer ── */}
         <footer className="px-6 md:px-14 py-5 border-t border-white/[0.06] flex flex-col sm:flex-row items-center justify-between gap-2">
