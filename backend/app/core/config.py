@@ -18,6 +18,7 @@ class Settings(BaseSettings):
 
     # App
     ENVIRONMENT: str = "development"
+    CORS_ORIGINS: str = "http://localhost:5173,http://localhost:3000"
 
     # AI
     ANTHROPIC_API_KEY: str = ""
