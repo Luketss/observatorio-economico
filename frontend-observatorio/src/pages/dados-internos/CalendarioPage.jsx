@@ -11,6 +11,8 @@ import {
 } from "@heroicons/react/24/outline";
 import api from "../../services/api";
 import { useAuth } from "../../context/AuthContext";
+import { useToast } from "../../context/ToastContext";
+import { useEscapeKey } from "../../hooks/useEscapeKey";
 
 const TIPO_CONFIG = {
   cultural:       { label: "Cultural",        color: "bg-purple-500",   text: "text-purple-700 bg-purple-100" },
@@ -33,6 +35,7 @@ function pad(n) { return String(n).padStart(2, "0"); }
 
 export default function CalendarioPage() {
   const { user } = useAuth();
+  const { addToast } = useToast();
   const canEdit = user?.role === "ADMIN_GLOBAL" || user?.role === "ADMIN_MUNICIPIO";
 
   const today = new Date();
@@ -48,6 +51,12 @@ export default function CalendarioPage() {
   const [saving, setSaving] = useState(false);
   const [formError, setFormError] = useState(null);
   const [deleteConfirmId, setDeleteConfirmId] = useState(null);
+
+  useEscapeKey(useCallback(() => {
+    if (deleteConfirmId) { setDeleteConfirmId(null); return; }
+    if (showForm) { closeForm(); return; }
+    if (selectedDay) setSelectedDay(null);
+  }, [deleteConfirmId, showForm, selectedDay]));
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -130,8 +139,10 @@ export default function CalendarioPage() {
     try {
       if (editingId) {
         await api.put(`/dados_internos/eventos/${editingId}`, payload);
+        addToast("Evento atualizado", "success");
       } else {
         await api.post("/dados_internos/eventos", payload);
+        addToast("Evento criado com sucesso", "success");
       }
       closeForm();
       await load();
@@ -146,8 +157,11 @@ export default function CalendarioPage() {
     try {
       await api.delete(`/dados_internos/eventos/${id}`);
       setDeleteConfirmId(null);
+      addToast("Evento excluído", "success");
       await load();
-    } catch (err) { console.error(err); }
+    } catch (err) {
+      addToast("Erro ao excluir evento", "error");
+    }
   }
 
   const isToday = (day) => ano === today.getFullYear() && mes === today.getMonth() + 1 && day === today.getDate();
@@ -165,9 +179,9 @@ export default function CalendarioPage() {
         </div>
         <div className="flex items-center gap-2">
           <button onClick={goToday} className="px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-700 text-sm text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors">Hoje</button>
-          <button onClick={prevMonth} className="p-2 rounded-lg border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors text-slate-600 dark:text-slate-300"><ChevronLeftIcon className="w-4 h-4" /></button>
-          <span className="font-semibold text-slate-700 dark:text-slate-200 min-w-[160px] text-center text-sm">{MESES[mes - 1]} {ano}</span>
-          <button onClick={nextMonth} className="p-2 rounded-lg border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors text-slate-600 dark:text-slate-300"><ChevronRightIcon className="w-4 h-4" /></button>
+          <button onClick={prevMonth} aria-label="Mês anterior" className="p-2 rounded-lg border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors text-slate-600 dark:text-slate-300 cursor-pointer"><ChevronLeftIcon className="w-4 h-4" aria-hidden="true" /></button>
+          <span className="font-semibold text-slate-700 dark:text-slate-200 min-w-[160px] text-center text-sm" aria-live="polite">{MESES[mes - 1]} {ano}</span>
+          <button onClick={nextMonth} aria-label="Próximo mês" className="p-2 rounded-lg border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors text-slate-600 dark:text-slate-300 cursor-pointer"><ChevronRightIcon className="w-4 h-4" aria-hidden="true" /></button>
         </div>
       </div>
 

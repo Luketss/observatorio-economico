@@ -1,11 +1,14 @@
-import { useEffect, useState } from "react";
-import { motion } from "framer-motion";
+import { useEffect, useState, useCallback } from "react";
+import { motion, AnimatePresence } from "framer-motion";
 import { PlusIcon, XMarkIcon, PencilIcon, TrashIcon, FolderOpenIcon } from "@heroicons/react/24/outline";
 import api from "../../services/api";
+import { useToast } from "../../context/ToastContext";
+import { useEscapeKey } from "../../hooks/useEscapeKey";
 
 const defaultForm = { nome: "", descricao: "", ordem: 0 };
 
 export default function ProjetosEixosAdminPage() {
+  const { addToast } = useToast();
   const [eixos, setEixos] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
@@ -14,6 +17,11 @@ export default function ProjetosEixosAdminPage() {
   const [saving, setSaving] = useState(false);
   const [formError, setFormError] = useState(null);
   const [deleteConfirmId, setDeleteConfirmId] = useState(null);
+
+  useEscapeKey(useCallback(() => {
+    if (deleteConfirmId) { setDeleteConfirmId(null); return; }
+    if (showForm) closeForm();
+  }, [deleteConfirmId, showForm]));
 
   async function load() {
     try {
@@ -56,8 +64,10 @@ export default function ProjetosEixosAdminPage() {
     try {
       if (editingId) {
         await api.put(`/projetos/eixos/${editingId}`, form);
+        addToast("Eixo atualizado", "success");
       } else {
         await api.post("/projetos/eixos", form);
+        addToast("Eixo criado com sucesso", "success");
       }
       closeForm();
       await load();
@@ -72,9 +82,10 @@ export default function ProjetosEixosAdminPage() {
     try {
       await api.delete(`/projetos/eixos/${id}`);
       setDeleteConfirmId(null);
+      addToast("Eixo excluído", "success");
       await load();
     } catch (err) {
-      console.error(err);
+      addToast("Erro ao excluir eixo", "error");
     }
   }
 
@@ -181,11 +192,11 @@ export default function ProjetosEixosAdminPage() {
                       <td className="px-6 py-3 text-slate-400 max-w-xs truncate">{e.descricao || "—"}</td>
                       <td className="px-6 py-3">
                         <div className="flex items-center gap-2 justify-end">
-                          <button onClick={() => openEdit(e)} className="p-1.5 rounded-lg text-slate-400 hover:text-blue-600 hover:bg-blue-50 transition-colors">
-                            <PencilIcon className="w-4 h-4" />
+                          <button onClick={() => openEdit(e)} aria-label={`Editar eixo ${e.nome}`} className="p-1.5 rounded-lg text-slate-400 hover:text-blue-600 hover:bg-blue-50 transition-colors cursor-pointer">
+                            <PencilIcon className="w-4 h-4" aria-hidden="true" />
                           </button>
-                          <button onClick={() => setDeleteConfirmId(e.id)} className="p-1.5 rounded-lg text-slate-400 hover:text-red-600 hover:bg-red-50 transition-colors">
-                            <TrashIcon className="w-4 h-4" />
+                          <button onClick={() => setDeleteConfirmId(e.id)} aria-label={`Excluir eixo ${e.nome}`} className="p-1.5 rounded-lg text-slate-400 hover:text-red-600 hover:bg-red-50 transition-colors cursor-pointer">
+                            <TrashIcon className="w-4 h-4" aria-hidden="true" />
                           </button>
                         </div>
                       </td>

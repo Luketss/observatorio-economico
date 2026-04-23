@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useCallback } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import {
   InformationCircleIcon,
@@ -7,6 +7,7 @@ import {
   CheckIcon,
 } from "@heroicons/react/24/outline";
 import { useAuth } from "../context/AuthContext";
+import { useEscapeKey } from "../hooks/useEscapeKey";
 import api from "../services/api";
 
 /**
@@ -30,6 +31,11 @@ export default function ChartInfoIcon({ dataset, indicadorKey }) {
   const [form, setForm] = useState({ tooltip: "", descricao: "", fonte: "" });
   const [saving, setSaving] = useState(false);
   const iconRef = useRef(null);
+
+  useEscapeKey(useCallback(() => {
+    if (editing) { setEditing(false); return; }
+    setModalOpen(false);
+  }, [editing]), modalOpen);
 
   useEffect(() => {
     api
@@ -102,13 +108,15 @@ export default function ChartInfoIcon({ dataset, indicadorKey }) {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
+            transition={{ duration: 0.18, ease: "easeOut" }}
             className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4"
             onClick={(e) => { if (e.target === e.currentTarget) { setModalOpen(false); setEditing(false); } }}
           >
             <motion.div
-              initial={{ scale: 0.95, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              exit={{ scale: 0.95, opacity: 0 }}
+              initial={{ scale: 0.95, opacity: 0, y: 8 }}
+              animate={{ scale: 1, opacity: 1, y: 0 }}
+              exit={{ scale: 0.97, opacity: 0, y: 4 }}
+              transition={{ duration: 0.22, ease: "easeOut" }}
               className="bg-white dark:bg-slate-800 rounded-2xl shadow-xl w-full max-w-md p-6 space-y-4"
             >
               <div className="flex items-start justify-between gap-3">

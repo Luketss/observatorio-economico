@@ -1,4 +1,4 @@
-import { useEffect, useState, useMemo } from "react";
+import { useEffect, useState, useMemo, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   ChartPieIcon,
@@ -11,6 +11,8 @@ import {
 } from "@heroicons/react/24/outline";
 import api from "../../services/api";
 import { useAuth } from "../../context/AuthContext";
+import { useToast } from "../../context/ToastContext";
+import { useEscapeKey } from "../../hooks/useEscapeKey";
 
 const defaultForm = {
   area: "", nome_metrica: "", valor: "", unidade: "",
@@ -20,6 +22,7 @@ const defaultForm = {
 
 export default function IndicadoresInternosPage() {
   const { user } = useAuth();
+  const { addToast } = useToast();
   const canEdit = user?.role === "ADMIN_GLOBAL" || user?.role === "ADMIN_MUNICIPIO";
 
   const [indicadores, setIndicadores] = useState([]);
@@ -32,6 +35,11 @@ export default function IndicadoresInternosPage() {
   const [formError, setFormError] = useState(null);
   const [deleteConfirmId, setDeleteConfirmId] = useState(null);
   const [openAreas, setOpenAreas] = useState(new Set());
+
+  useEscapeKey(useCallback(() => {
+    if (deleteConfirmId) { setDeleteConfirmId(null); return; }
+    if (showForm) closeForm();
+  }, [deleteConfirmId, showForm]));
 
   async function load() {
     try {
@@ -101,8 +109,10 @@ export default function IndicadoresInternosPage() {
     try {
       if (editingId) {
         await api.put(`/dados_internos/indicadores/${editingId}`, payload);
+        addToast("Indicador atualizado", "success");
       } else {
         await api.post("/dados_internos/indicadores", payload);
+        addToast("Indicador criado", "success");
       }
       closeForm();
       await load();
@@ -117,9 +127,10 @@ export default function IndicadoresInternosPage() {
     try {
       await api.delete(`/dados_internos/indicadores/${id}`);
       setDeleteConfirmId(null);
+      addToast("Indicador excluído", "success");
       await load();
     } catch (err) {
-      console.error(err);
+      addToast("Erro ao excluir", "error");
     }
   }
 
@@ -218,8 +229,8 @@ export default function IndicadoresInternosPage() {
                             {canEdit && (
                               <td className="px-6 py-3">
                                 <div className="flex items-center gap-2 justify-end">
-                                  <button onClick={() => openEdit(ind)} className="p-1.5 rounded-lg text-slate-400 hover:text-blue-600 hover:bg-blue-50 transition-colors"><PencilIcon className="w-4 h-4" /></button>
-                                  <button onClick={() => setDeleteConfirmId(ind.id)} className="p-1.5 rounded-lg text-slate-400 hover:text-red-600 hover:bg-red-50 transition-colors"><TrashIcon className="w-4 h-4" /></button>
+                                  <button onClick={() => openEdit(ind)} aria-label={`Editar ${ind.nome_metrica}`} className="p-1.5 rounded-lg text-slate-400 hover:text-blue-600 hover:bg-blue-50 transition-colors cursor-pointer"><PencilIcon className="w-4 h-4" aria-hidden="true" /></button>
+                                  <button onClick={() => setDeleteConfirmId(ind.id)} aria-label={`Excluir ${ind.nome_metrica}`} className="p-1.5 rounded-lg text-slate-400 hover:text-red-600 hover:bg-red-50 transition-colors cursor-pointer"><TrashIcon className="w-4 h-4" aria-hidden="true" /></button>
                                 </div>
                               </td>
                             )}

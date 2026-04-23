@@ -1,4 +1,4 @@
-import { useEffect, useState, useMemo } from "react";
+import { useEffect, useState, useMemo, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   FolderOpenIcon,
@@ -11,6 +11,8 @@ import {
 } from "@heroicons/react/24/outline";
 import api from "../../services/api";
 import { useAuth } from "../../context/AuthContext";
+import { useToast } from "../../context/ToastContext";
+import { useEscapeKey } from "../../hooks/useEscapeKey";
 
 const STATUS_CONFIG = {
   nao_iniciado: { label: "Não iniciado", color: "bg-slate-100 text-slate-600" },
@@ -36,6 +38,7 @@ function fmtDate(d) {
 
 export default function ProjetosPage() {
   const { user } = useAuth();
+  const { addToast } = useToast();
   const canEdit = user?.role === "ADMIN_GLOBAL" || user?.role === "ADMIN_MUNICIPIO";
 
   const [eixos, setEixos] = useState([]);
@@ -51,6 +54,12 @@ export default function ProjetosPage() {
 
   const [viewingProjeto, setViewingProjeto] = useState(null);
   const [deleteConfirmId, setDeleteConfirmId] = useState(null);
+
+  useEscapeKey(useCallback(() => {
+    if (deleteConfirmId) { setDeleteConfirmId(null); return; }
+    if (viewingProjeto) { setViewingProjeto(null); return; }
+    if (showForm) closeForm();
+  }, [deleteConfirmId, viewingProjeto, showForm]));
 
   async function load() {
     try {
@@ -128,8 +137,10 @@ export default function ProjetosPage() {
     try {
       if (editingId) {
         await api.put(`/projetos/${editingId}`, payload);
+        addToast("Projeto atualizado", "success");
       } else {
         await api.post("/projetos", payload);
+        addToast("Projeto criado com sucesso", "success");
       }
       closeForm();
       await load();
@@ -144,9 +155,10 @@ export default function ProjetosPage() {
     try {
       await api.delete(`/projetos/${id}`);
       setDeleteConfirmId(null);
+      addToast("Projeto excluído", "success");
       await load();
     } catch (err) {
-      console.error(err);
+      addToast("Erro ao excluir projeto", "error");
     }
   }
 

@@ -5,7 +5,32 @@ Observatório Econômico — Backend
 
 ## CHANGELOG
 
-### v1.3 — Multi-Estado (atual)
+### v1.4 — Gestão, Projetos e Dados Internos (atual)
+
+**Backend:**
+- `PUT /usuarios/{id}` + `DELETE /usuarios/{id}` — editar e excluir usuários (ADMIN_GLOBAL)
+- `CagedMovimentacao.admissões` renomeado para `admissoes` (migração 0017)
+- `ProjetoEixo` + `Projeto` — eixos estratégicos e projetos municipais (migração 0018)
+- `IndicadorInterno` + `PlanoGovAcao` + `EventoMunicipio` — módulo Dados Internos (migração 0019)
+- Routers: `/projetos`, `/dados_internos`
+- Todos os loaders individuais agora aceitam `--estado` via argparse
+
+**Frontend:**
+- `ChartInfoIcon` — ícone ⓘ editável em cabeçalhos de gráficos (reusa IndicadorInfo)
+- `ToastContext` — sistema de notificações (sucesso/erro) global em todos os layouts
+- `useEscapeKey` — hook para fechar modais com ESC em todas as páginas
+- Página `/app/projetos` — eixo tabs + cards de projeto com status badge
+- Página `/app/timeline` — Timeline do Mandato como página dedicada (removida do Dashboard)
+- Páginas `/app/dados-internos/{indicadores,plano-gov,calendario}` — módulo CRM interno
+- Admin `/admin/projetos-eixos` — gestão de eixos (ADMIN_GLOBAL)
+- UX: aria-labels, password toggle, skeleton loading, animações com ease-out/in
+
+**Dev:**
+- `.devcontainer/` com Python 3.11 + Node 20 + PostgreSQL 16
+
+---
+
+### v1.3 — Multi-Estado
 
 **Ingestão:**
 - Todos os 11 loaders agora aceitam `estado` como parâmetro
