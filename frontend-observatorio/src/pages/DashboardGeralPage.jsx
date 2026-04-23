@@ -4,7 +4,6 @@ import { useAuth } from "../context/AuthContext";
 import { motion } from "framer-motion";
 import InsightsPanel from "../components/InsightsPanel";
 import ReleasesPanel from "../components/ReleasesPanel";
-import MandatoTimeline from "../components/MandatoTimeline";
 import KpiCard from "../components/KpiCard";
 import {
   CurrencyDollarIcon,
@@ -227,7 +226,6 @@ export default function DashboardGeralPage() {
           </div>
         )}
       </motion.div>
-      <MandatoTimeline />
       <ReleasesPanel dataset="geral" />
 
     </motion.div>

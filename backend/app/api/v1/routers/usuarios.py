@@ -4,7 +4,7 @@ from app.api.deps import get_current_user, get_db, require_role
 from app.api.pagination import PaginatedResponse
 from app.api.response import SuccessResponse
 from app.models.usuario import Usuario
-from app.schemas.usuario import UsuarioCreate, UsuarioOut
+from app.schemas.usuario import UsuarioCreate, UsuarioOut, UsuarioUpdate
 from app.services.usuario_service import UsuarioService
 from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
@@ -74,3 +74,37 @@ def criar_usuario(
     )
 
     return SuccessResponse(data=out)
+
+
+def _to_out(u: Usuario) -> UsuarioOut:
+    return UsuarioOut(
+        id=u.id,
+        nome=u.nome,
+        email=u.email,
+        municipio_id=u.municipio_id,
+        role=u.role.nome,
+        ativo=u.ativo,
+    )
+
+
+@router.put("/{user_id}", response_model=SuccessResponse[UsuarioOut])
+def atualizar_usuario(
+    user_id: int,
+    data: UsuarioUpdate,
+    db: Session = Depends(get_db),
+    current_user: Usuario = Depends(require_role("ADMIN_GLOBAL")),
+):
+    service = UsuarioService(db)
+    usuario = service.update(user_id, data)
+    return SuccessResponse(data=_to_out(usuario))
+
+
+@router.delete("/{user_id}")
+def deletar_usuario(
+    user_id: int,
+    db: Session = Depends(get_db),
+    current_user: Usuario = Depends(require_role("ADMIN_GLOBAL")),
+):
+    service = UsuarioService(db)
+    service.delete(user_id, current_user.id)
+    return {"ok": True}
