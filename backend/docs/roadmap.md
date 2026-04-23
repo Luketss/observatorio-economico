@@ -30,13 +30,23 @@
 - Benchmark com dropdown de UF
 - UsuariosAdminPage com filtro de estado
 
+### v1.4 — Gestão, Projetos e Dados Internos
+- **Usuários**: editar e excluir usuários (ADMIN_GLOBAL), password toggle, toasts de feedback
+- **Chart tooltips**: `ChartInfoIcon` reutiliza IndicadorInfo para descrições editáveis em todos os gráficos
+- **Projetos**: menu dedicado com eixos estratégicos (ADMIN_GLOBAL cria eixos, ADMIN_MUNICIPIO gerencia projetos) — migrations `0018`
+- **Timeline do Mandato**: movida para página própria (`/app/timeline`), removida do Dashboard
+- **Dados Internos**: módulo CRM com 3 sub-páginas — migrations `0019`
+  - `Indicadores Internos`: inserção de dados por área temática (energia, saúde, etc.)
+  - `Plano de Governo`: ações por secretaria com kanban (Não iniciado / Em andamento / Concluído)
+  - `Calendário`: grade mensal com eventos coloridos por tipo
+- **UX**: toast global (`ToastContext`), hook `useEscapeKey`, `aria-label` em todos os botões de ícone, skeleton loading, animações com ease-out/in
+- **Dev container**: `.devcontainer/` com Python 3.11 + Node 20 + PostgreSQL 16
+
 ---
 
-## Próximo (v1.4)
+## Próximo (v1.5)
 
 - **Exportação de dados**: CSV download por página/dataset
-- **Gestão de marcos**: marcos históricos do município na timeline
-- **Custom cards**: cards personalizáveis no DashboardGeral
 - **Busca textual**: filtro por nome em listagens admin
 - **Testes automatizados**: pytest para endpoints críticos
 

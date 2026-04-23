@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { NavLink, Outlet, useLocation } from "react-router-dom";
 import { PlanContext } from "../../context/PlanContext";
+import { ToastProvider } from "../../context/ToastContext";
 import { useAuth } from "../../context/AuthContext";
 import { useTheme } from "../../context/ThemeContext";
 import api from "../../services/api";
@@ -310,6 +311,7 @@ export default function DashboardLayout() {
   );
 
   return (
+    <ToastProvider>
     <div className="flex h-screen bg-slate-50 dark:bg-slate-950">
       {/* Mobile backdrop */}
       {sidebarOpen && (
@@ -394,5 +396,6 @@ export default function DashboardLayout() {
         </div>
       </main>
     </div>
+    </ToastProvider>
   );
 }

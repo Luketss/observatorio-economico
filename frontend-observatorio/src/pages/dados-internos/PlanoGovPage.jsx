@@ -1,4 +1,4 @@
-import { useEffect, useState, useMemo } from "react";
+import { useEffect, useState, useMemo, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   ClipboardDocumentListIcon,
@@ -11,6 +11,8 @@ import {
 } from "@heroicons/react/24/outline";
 import api from "../../services/api";
 import { useAuth } from "../../context/AuthContext";
+import { useToast } from "../../context/ToastContext";
+import { useEscapeKey } from "../../hooks/useEscapeKey";
 
 const STATUS_CONFIG = {
   nao_iniciado: { label: "Não iniciado", color: "bg-slate-100 text-slate-600", dot: "bg-slate-400" },
@@ -30,6 +32,7 @@ function fmtDate(d) {
 
 export default function PlanoGovPage() {
   const { user } = useAuth();
+  const { addToast } = useToast();
   const canEdit = user?.role === "ADMIN_GLOBAL" || user?.role === "ADMIN_MUNICIPIO";
 
   const [acoes, setAcoes] = useState([]);
@@ -44,6 +47,12 @@ export default function PlanoGovPage() {
   const [formError, setFormError] = useState(null);
   const [viewingAcao, setViewingAcao] = useState(null);
   const [deleteConfirmId, setDeleteConfirmId] = useState(null);
+
+  useEscapeKey(useCallback(() => {
+    if (deleteConfirmId) { setDeleteConfirmId(null); return; }
+    if (viewingAcao) { setViewingAcao(null); return; }
+    if (showForm) closeForm();
+  }, [deleteConfirmId, viewingAcao, showForm]));
 
   async function load() {
     try {
@@ -113,8 +122,10 @@ export default function PlanoGovPage() {
     try {
       if (editingId) {
         await api.put(`/dados_internos/plano_gov/${editingId}`, payload);
+        addToast("Ação atualizada", "success");
       } else {
         await api.post("/dados_internos/plano_gov", payload);
+        addToast("Ação criada com sucesso", "success");
       }
       closeForm();
       await load();
@@ -128,9 +139,10 @@ export default function PlanoGovPage() {
   async function handleStatusChange(id, newStatus) {
     try {
       await api.put(`/dados_internos/plano_gov/${id}`, { status: newStatus });
+      addToast("Status atualizado", "success");
       await load();
     } catch (err) {
-      console.error(err);
+      addToast("Erro ao atualizar status", "error");
     }
   }
 
@@ -138,9 +150,10 @@ export default function PlanoGovPage() {
     try {
       await api.delete(`/dados_internos/plano_gov/${id}`);
       setDeleteConfirmId(null);
+      addToast("Ação excluída", "success");
       await load();
     } catch (err) {
-      console.error(err);
+      addToast("Erro ao excluir", "error");
     }
   }
 
@@ -196,8 +209,8 @@ export default function PlanoGovPage() {
           </div>
         </div>
         <div className="flex items-center gap-2">
-          <button onClick={() => setViewMode("kanban")} className={`p-2 rounded-lg transition-colors ${viewMode === "kanban" ? "bg-blue-100 text-blue-600" : "text-slate-400 hover:bg-slate-100"}`}><ViewColumnsIcon className="w-5 h-5" /></button>
-          <button onClick={() => setViewMode("table")} className={`p-2 rounded-lg transition-colors ${viewMode === "table" ? "bg-blue-100 text-blue-600" : "text-slate-400 hover:bg-slate-100"}`}><TableCellsIcon className="w-5 h-5" /></button>
+          <button onClick={() => setViewMode("kanban")} aria-label="Visualização Kanban" aria-pressed={viewMode === "kanban"} className={`p-2 rounded-lg transition-colors cursor-pointer ${viewMode === "kanban" ? "bg-blue-100 text-blue-600" : "text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700"}`}><ViewColumnsIcon className="w-5 h-5" aria-hidden="true" /></button>
+          <button onClick={() => setViewMode("table")} aria-label="Visualização em tabela" aria-pressed={viewMode === "table"} className={`p-2 rounded-lg transition-colors cursor-pointer ${viewMode === "table" ? "bg-blue-100 text-blue-600" : "text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700"}`}><TableCellsIcon className="w-5 h-5" aria-hidden="true" /></button>
           {canEdit && (
             <button onClick={openCreate} className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2.5 rounded-xl text-sm font-medium transition-colors ml-2">
               <PlusIcon className="w-4 h-4" /> Nova Ação

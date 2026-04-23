@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { ToastProvider } from "../../context/ToastContext";
 import { NavLink, Outlet, useNavigate, useLocation } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext";
 import { useTheme } from "../../context/ThemeContext";
@@ -112,6 +113,7 @@ export default function AdminLayout() {
   );
 
   return (
+    <ToastProvider>
     <div className="flex h-screen bg-slate-50 dark:bg-slate-950">
       {/* Mobile backdrop */}
       {sidebarOpen && (
@@ -182,5 +184,6 @@ export default function AdminLayout() {
         </div>
       </main>
     </div>
+    </ToastProvider>
   );
 }

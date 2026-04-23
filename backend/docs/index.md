@@ -59,6 +59,20 @@ Módulos e componentes por plano são configuráveis via `PlanoConfig` pelo `ADM
 
 ---
 
+## Módulos adicionais (v1.4)
+
+| Módulo | Tabelas | Endpoints base |
+|--------|---------|----------------|
+| Projetos | `projeto_eixos`, `projetos` | `/projetos` |
+| Indicadores Internos | `indicadores_internos` | `/dados_internos/indicadores` |
+| Plano de Governo | `plano_gov_acoes` | `/dados_internos/plano_gov` |
+| Eventos do Município | `eventos_municipio` | `/dados_internos/eventos` |
+
+`/projetos/eixos` — ADMIN_GLOBAL somente (criar/editar/excluir eixos estratégicos).  
+`/dados_internos/*` — ADMIN_MUNICIPIO escreve, VISUALIZADOR lê; sempre scoped ao `municipio_id`.
+
+---
+
 ## Suporte multi-estado
 
 A plataforma suporta municípios de qualquer estado brasileiro. O campo `estado` (UF, 2 chars) é armazenado no modelo `Municipio`. A ingestão recebe `--estado` como argumento CLI. Os endpoints de comparativo aceitam `?estado=MG` para filtrar por UF.
