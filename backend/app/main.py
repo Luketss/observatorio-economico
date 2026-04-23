@@ -1,3 +1,5 @@
+import app.api.v1.routers.projetos as projetos
+import app.api.v1.routers.dados_internos as dados_internos
 import app.api.v1.routers.arrecadacao as arrecadacao
 import app.api.v1.routers.insights as insights
 import app.api.v1.routers.marcos as marcos
@@ -80,6 +82,8 @@ app.include_router(dataset_info.router, prefix=API_PREFIX)
 app.include_router(admin_explorer.router, prefix=API_PREFIX)
 app.include_router(indicadores.router, prefix=API_PREFIX)
 app.include_router(notificacoes.router, prefix=API_PREFIX)
+app.include_router(projetos.router, prefix=API_PREFIX)
+app.include_router(dados_internos.router, prefix=API_PREFIX)
 
 
 @app.get("/health")

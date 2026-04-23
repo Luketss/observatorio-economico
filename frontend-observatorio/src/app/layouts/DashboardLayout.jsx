@@ -27,6 +27,12 @@ import {
   Bars3Icon,
   XMarkIcon,
   ChartBarSquareIcon,
+  FolderOpenIcon,
+  CalendarDaysIcon,
+  CircleStackIcon,
+  ChartPieIcon,
+  ClipboardDocumentListIcon,
+  CalendarIcon,
 } from "@heroicons/react/24/outline";
 
 const NAV_STRUCTURE = [
@@ -44,6 +50,30 @@ const NAV_STRUCTURE = [
     label: "Benchmark",
     icon: ChartBarSquareIcon,
     modulo: null,
+  },
+  {
+    type: "link",
+    to: "/app/projetos",
+    label: "Projetos",
+    icon: FolderOpenIcon,
+    modulo: null,
+  },
+  {
+    type: "link",
+    to: "/app/timeline",
+    label: "Timeline",
+    icon: CalendarDaysIcon,
+    modulo: "timeline_mandato",
+  },
+  {
+    type: "group",
+    label: "Dados Internos",
+    icon: CircleStackIcon,
+    children: [
+      { to: "/app/dados-internos/indicadores", label: "Indicadores", icon: ChartPieIcon, modulo: "dados_internos" },
+      { to: "/app/dados-internos/plano-gov", label: "Plano de Governo", icon: ClipboardDocumentListIcon, modulo: "dados_internos" },
+      { to: "/app/dados-internos/calendario", label: "Calendário", icon: CalendarIcon, modulo: "dados_internos" },
+    ],
   },
   {
     type: "group",

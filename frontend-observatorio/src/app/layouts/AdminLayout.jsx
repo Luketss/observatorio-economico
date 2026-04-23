@@ -5,6 +5,7 @@ import { useTheme } from "../../context/ThemeContext";
 import {
   SparklesIcon,
   FlagIcon,
+  FolderOpenIcon,
   UsersIcon,
   PowerIcon,
   ArrowLeftIcon,
@@ -46,6 +47,7 @@ export default function AdminLayout() {
           { to: "/admin/usuarios", label: "Usuários", icon: UsersIcon },
           { to: "/admin/explorer", label: "Explorador de Dados", icon: CircleStackIcon },
           { to: "/admin/notificacoes", label: "Notificações", icon: BellIcon },
+          { to: "/admin/projetos-eixos", label: "Eixos de Projetos", icon: FolderOpenIcon },
         ]
       : []),
     { to: "/admin/mandato", label: "Timeline do Mandato", icon: FlagIcon },
