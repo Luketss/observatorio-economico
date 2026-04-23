@@ -1,0 +1,57 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "Backend: Start API",
+      "type": "shell",
+      "command": "cd backend && uvicorn app.main:app --reload --host 0.0.0.0 --port 8000",
+      "presentation": {
+        "reveal": "always",
+        "panel": "dedicated",
+        "group": "devservers"
+      },
+      "isBackground": true,
+      "problemMatcher": []
+    },
+    {
+      "label": "Frontend: Start Dev Server",
+      "type": "shell",
+      "command": "cd frontend-observatorio && npm run dev -- --host",
+      "presentation": {
+        "reveal": "always",
+        "panel": "dedicated",
+        "group": "devservers"
+      },
+      "isBackground": true,
+      "problemMatcher": []
+    },
+    {
+      "label": "Start All Dev Servers",
+      "dependsOn": ["Backend: Start API", "Frontend: Start Dev Server"],
+      "group": {
+        "kind": "build",
+        "isDefault": true
+      }
+    },
+    {
+      "label": "Backend: Run Migrations",
+      "type": "shell",
+      "command": "cd backend && alembic upgrade head",
+      "presentation": {
+        "reveal": "always",
+        "panel": "shared"
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "Ingestão: Carregar Tudo (MG)",
+      "type": "shell",
+      "command": "python -m ingestao.carregar_tudo --estado MG",
+      "presentation": {
+        "reveal": "always",
+        "panel": "shared"
+      },
+      "problemMatcher": []
+    }
+  ]
+}

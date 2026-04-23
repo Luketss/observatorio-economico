@@ -47,6 +47,7 @@ def resumo_bolsa_familia(db: Session = Depends(get_db), current_user=Depends(get
 @router.get("/comparativo")
 def comparativo_bolsa_familia(
     ano: int | None = None,
+    estado: str | None = None,
     db: Session = Depends(get_db),
     current_user=Depends(get_current_user),
 ):
@@ -57,18 +58,21 @@ def comparativo_bolsa_familia(
         db.query(
             Municipio.nome.label("municipio"),
             Municipio.id.label("municipio_id"),
+            Municipio.estado.label("estado"),
             func.sum(BFModel.valor_total).label("valor_total"),
         )
         .join(BFModel, BFModel.municipio_id == Municipio.id)
     )
     if ano:
         query = query.filter(BFModel.ano == ano)
+    if estado:
+        query = query.filter(Municipio.estado == estado.upper())
     resultados = (
-        query.group_by(Municipio.nome, Municipio.id)
+        query.group_by(Municipio.nome, Municipio.id, Municipio.estado)
         .order_by(func.sum(BFModel.valor_total).desc())
         .all()
     )
     return [
-        {"municipio": r.municipio, "municipio_id": r.municipio_id, "valor_total": r.valor_total or 0}
+        {"municipio": r.municipio, "municipio_id": r.municipio_id, "estado": r.estado, "valor_total": r.valor_total or 0}
         for r in resultados
     ]

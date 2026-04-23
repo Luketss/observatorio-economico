@@ -19,24 +19,21 @@ def normalizar_nome(nome: str) -> str:
     return nome.strip().replace("_", " ").upper()
 
 
-def obter_ou_criar_municipio(db: Session, nome: str) -> Municipio:
-    municipio = db.query(Municipio).filter(Municipio.nome == nome).first()
-
+def obter_ou_criar_municipio(db: Session, nome: str, estado: str, codigo_ibge: str | None = None) -> Municipio:
+    if codigo_ibge:
+        m = db.query(Municipio).filter(Municipio.codigo_ibge == codigo_ibge).first()
+        if m:
+            return m
+    municipio = db.query(Municipio).filter(Municipio.nome == nome, Municipio.estado == estado).first()
     if not municipio:
-        municipio = Municipio(
-            nome=nome,
-            estado="MG",
-            codigo_ibge=None,
-            ativo=True,
-        )
+        municipio = Municipio(nome=nome, estado=estado, codigo_ibge=codigo_ibge, ativo=True)
         db.add(municipio)
         db.commit()
         db.refresh(municipio)
-
     return municipio
 
 
-def carregar_csv(db: Session, caminho: str):
+def carregar_csv(db: Session, caminho: str, estado: str):
     # Aggregate per (municipio, year, month, tipo_operacao)
     agregado: dict[tuple[str, int, int, str], dict] = defaultdict(
         lambda: {"valor_usd": 0.0, "peso_kg": 0.0}
@@ -75,7 +72,7 @@ def carregar_csv(db: Session, caminho: str):
             agregado_pais[chave_pais]["valor_usd"] += valor_usd
 
     for (nome_municipio, ano, mes, tipo_operacao), totais in agregado.items():
-        municipio = obter_ou_criar_municipio(db, nome_municipio)
+        municipio = obter_ou_criar_municipio(db, nome_municipio, estado)
 
         existente = (
             db.query(ComexMensal)
@@ -103,7 +100,7 @@ def carregar_csv(db: Session, caminho: str):
         db.add(novo)
 
     for (nome_municipio, ano, tipo_operacao, produto), totais in agregado_produto.items():
-        municipio = obter_ou_criar_municipio(db, nome_municipio)
+        municipio = obter_ou_criar_municipio(db, nome_municipio, estado)
         existente = db.query(ComexPorProduto).filter(
             ComexPorProduto.municipio_id == municipio.id,
             ComexPorProduto.ano == ano,
@@ -114,7 +111,7 @@ def carregar_csv(db: Session, caminho: str):
             db.add(ComexPorProduto(municipio_id=municipio.id, ano=ano, tipo_operacao=tipo_operacao, produto=produto, **totais))
 
     for (nome_municipio, ano, tipo_operacao, pais), totais in agregado_pais.items():
-        municipio = obter_ou_criar_municipio(db, nome_municipio)
+        municipio = obter_ou_criar_municipio(db, nome_municipio, estado)
         existente = db.query(ComexPorPais).filter(
             ComexPorPais.municipio_id == municipio.id,
             ComexPorPais.ano == ano,
@@ -128,6 +125,12 @@ def carregar_csv(db: Session, caminho: str):
 
 
 def main():
+    import argparse
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--estado", required=True, help="UF code, e.g. MG, MT")
+    args = parser.parse_args()
+    estado = args.estado.strip().upper()
+
     db = SessionLocal()
 
     try:
@@ -135,7 +138,7 @@ def main():
             if arquivo.endswith(".csv"):
                 caminho = os.path.join(BASE_PATH, arquivo)
                 print(f"Processando {arquivo}...")
-                carregar_csv(db, caminho)
+                carregar_csv(db, caminho, estado)
 
         print("✅ Carga Comex finalizada com sucesso.")
     finally:

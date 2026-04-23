@@ -38,7 +38,7 @@ def resumo_caged(
     current_user=Depends(get_current_user),
 ):
     query = db.query(
-        func.sum(getattr(CagedMovimentacao, "admissões")).label("total_admissoes"),
+        func.sum(CagedMovimentacao.admissoes).label("total_admissoes"),
         func.sum(CagedMovimentacao.desligamentos).label("total_desligamentos"),
         func.sum(CagedMovimentacao.saldo).label("saldo_total"),
     )

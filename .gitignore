@@ -1,7 +1,9 @@
 .env
 .env.local
 *.csv
+
 # Arquivos compilados
+*.pyc
 __pycache__/
 *.py[cod]
 *$py.class

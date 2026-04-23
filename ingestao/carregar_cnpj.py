@@ -17,20 +17,17 @@ def normalizar_nome(nome: str) -> str:
     return nome.strip().replace("_", " ").upper()
 
 
-def obter_ou_criar_municipio(db: Session, nome: str) -> Municipio:
-    municipio = db.query(Municipio).filter(Municipio.nome == nome).first()
-
+def obter_ou_criar_municipio(db: Session, nome: str, estado: str, codigo_ibge: str | None = None) -> Municipio:
+    if codigo_ibge:
+        m = db.query(Municipio).filter(Municipio.codigo_ibge == codigo_ibge).first()
+        if m:
+            return m
+    municipio = db.query(Municipio).filter(Municipio.nome == nome, Municipio.estado == estado).first()
     if not municipio:
-        municipio = Municipio(
-            nome=nome,
-            estado="MG",
-            codigo_ibge=None,
-            ativo=True,
-        )
+        municipio = Municipio(nome=nome, estado=estado, codigo_ibge=codigo_ibge, ativo=True)
         db.add(municipio)
         db.commit()
         db.refresh(municipio)
-
     return municipio
 
 
@@ -62,7 +59,7 @@ def parse_bool(valor: str) -> bool:
 BATCH_SIZE = 500
 
 
-def carregar_csv(db: Session, caminho: str):
+def carregar_csv(db: Session, caminho: str, estado: str):
     # e.g. CNPJ_Completo_Carmo_da_Mata.csv — city name is inside CSV (Nome_Cidade column)
 
     # First pass: resolve unique municipalities in this file and preload existing CNPJs
@@ -74,7 +71,7 @@ def carregar_csv(db: Session, caminho: str):
         for row in reader:
             nome = normalizar_nome(row["Nome_Cidade"])
             if nome not in municipios_cache:
-                m = obter_ou_criar_municipio(db, nome)
+                m = obter_ou_criar_municipio(db, nome, estado)
                 municipios_cache[nome] = m
                 # Load all existing CNPJ basics for this municipality at once
                 existentes = db.query(Empresa.cnpj_basico).filter(
@@ -120,6 +117,12 @@ def carregar_csv(db: Session, caminho: str):
 
 
 def main():
+    import argparse
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--estado", required=True, help="UF code, e.g. MG, MT")
+    args = parser.parse_args()
+    estado = args.estado.strip().upper()
+
     db = SessionLocal()
 
     try:
@@ -127,7 +130,7 @@ def main():
             if arquivo.endswith(".csv"):
                 caminho = os.path.join(BASE_PATH, arquivo)
                 print(f"Processando {arquivo}...")
-                carregar_csv(db, caminho)
+                carregar_csv(db, caminho, estado)
 
         print("✅ Carga CNPJ finalizada com sucesso.")
     finally:

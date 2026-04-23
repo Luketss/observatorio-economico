@@ -1,231 +1,160 @@
-# 📚 Project Complementary Documentation
-Observatório Econômico – Backend
-
-Este documento complementa os demais guias e inclui:
-
-- 📜 CHANGELOG
-- 🗺️ ROADMAP Técnico
-- 🔐 Guia de Autenticação
-- 🌐 Guia para Consumo da API (Frontend)
-- 🚀 Guia de Deploy e Produção
+# Project Documentation
+Observatório Econômico — Backend
 
 ---
 
-# 📜 CHANGELOG
+## CHANGELOG
 
-## v1.0.0 – Base Enterprise Inicial
+### v1.3 — Multi-Estado (atual)
 
-### ✅ Implementado
-- Clean Architecture
-- Repository Pattern
-- Service Layer
-- Thin Controllers
-- JWT Access + Refresh Token
-- RBAC desacoplado
-- Logging estruturado
-- Middleware de auditoria
-- Correlation ID
-- SuccessResponse
-- PaginatedResponse
-- Filtros dinâmicos
-- Paginação real com total count
+**Ingestão:**
+- Todos os 11 loaders agora aceitam `estado` como parâmetro
+- `obter_ou_criar_municipio(db, nome, estado, codigo_ibge=None)` com dedup por IBGE + fallback `(nome, estado)`
+- `carregar_tudo.py` com argparse: `--estado` (obrigatório) + `--cidades` (opcional)
+- PIX loader reestruturado para usar `BASE_PATH = "dados/PIX"` (scan de CSVs)
+- PIX adicionado ao `LOADERS` de `carregar_tudo.py`
 
----
+**API:**
+- Todos os endpoints de comparativo retornam `municipio_id` + `estado`
+- Filtro opcional `?estado=MG` em todos os 11 endpoints comparativo/ranking
 
-## Próxima versão planejada (v1.1.0)
-
-- Busca textual avançada
-- Ordenação dinâmica
-- Cache estratégico
-- Melhorias em segurança
+**Frontend:**
+- Benchmark com dropdown de UF (só exibido quando há múltiplos estados)
+- Chart Y-axis mostra `"Município (UF)"`
+- Tabela do benchmark tem coluna UF
+- UsuariosAdminPage com seletor de estado filtrando o dropdown de municípios
 
 ---
 
-# 🗺️ ROADMAP TÉCNICO
+### v1.2 — Plataforma SaaS
 
-## 🔹 Curto Prazo (1–2 meses)
-
-- Implementar busca por nome/email
-- Implementar ordenação via query param
-- Adicionar rate limiting
-- Melhorar documentação Swagger
-
----
-
-## 🔹 Médio Prazo (3–6 meses)
-
-- Multi-tenant completo
-- Logs em JSON
-- Integração com ELK / Grafana
-- Cache com Redis
-- Testes automatizados completos
+- Três planos: `free` / `pro` / `premium`
+- `PlanoConfig` por plano, configurável via admin
+- `PlanGate` + `PlanContext` no frontend para blur/bloqueio por componente
+- `IndicadorInfo` — tooltips e descrições editáveis por KPI
+- Notificações: `Notificacao` + `NotificacaoLida`, bell icon no header
+- Benchmark Municipal: 11 datasets em tabs com ranking e highlight do município
+- Dashboard de Insights com alertas
+- Migrações: 0011 → 0016
 
 ---
 
-## 🔹 Longo Prazo
+### v1.1 — Datasets Completos
 
-- Observabilidade completa
-- Event-driven architecture
-- Filas (RabbitMQ / Kafka)
-- Microserviços (se necessário)
-
----
-
-# 🔐 GUIA DE AUTENTICAÇÃO
-
-## Login
-
-Endpoint:
-
-```
-POST /auth/login
-```
-
-Retorna:
-
-```
-{
-  "access_token": "...",
-  "refresh_token": "...",
-  "token_type": "bearer"
-}
-```
+- 11 datasets com ingestão CSV e endpoints completos
+- CAGED: 5 tabelas (movimentação, por sexo, por raça, por CNAE, salário)
+- RAIS: 9 tabelas (vínculos, por sexo, por raça, por CNAE, faixa etária, escolaridade, faixa salarial, tempo emprego, métricas anuais)
+- PIB com ranking entre municípios
+- Empresas com capital social por porte
+- ESTBAN com breakdown por instituição
+- Comex com peso físico e breakdown por produto/país
+- Dropped: colunas sempre-NULL `setor` de CAGED e RAIS
 
 ---
 
-## Refresh Token
+### v1.0 — Base
 
-```
-POST /auth/refresh
-```
-
-Envia:
-
-```
-{
-  "refresh_token": "..."
-}
-```
-
-Retorna novo access_token.
+- FastAPI + SQLAlchemy + Alembic + JWT
+- RBAC: ADMIN_GLOBAL, ADMIN_MUNICIPIO, VISUALIZADOR
+- Middleware de auditoria (correlation ID + logging)
+- Datasets iniciais: Arrecadação, PIB, CAGED, RAIS, Bolsa Família, INSS, PIX
+- Migração inicial: 0001_initial_schema_and_roles
 
 ---
 
-## Uso do Token
+## Variáveis de Ambiente
 
-Enviar no header:
-
-```
-Authorization: Bearer {access_token}
-```
-
----
-
-# 🌐 GUIA PARA FRONTEND
-
-## 📦 Padrão de Resposta
-
-### Sucesso simples:
-
-```
-{
-  "success": true,
-  "data": { ... }
-}
-```
-
-### Paginação:
-
-```
-{
-  "success": true,
-  "items": [...],
-  "total": 120,
-  "skip": 0,
-  "limit": 20
-}
-```
+| Variável | Obrigatória | Descrição |
+|----------|-------------|-----------|
+| `DATABASE_URL` | Sim | URL PostgreSQL completa |
+| `SECRET_KEY` | Sim | Chave JWT (mínimo 32 chars) |
+| `ALGORITHM` | Não (default: HS256) | Algoritmo JWT |
+| `ACCESS_TOKEN_EXPIRE_MINUTES` | Não (default: 30) | Expiração access token |
+| `REFRESH_TOKEN_EXPIRE_DAYS` | Não (default: 7) | Expiração refresh token |
+| `CORS_ORIGINS` | Sim | Origens permitidas, separadas por vírgula |
 
 ---
 
-## 🔎 Query Params padrão
+## Guia de Deploy
 
-```
-?skip=0&limit=20
-```
+### Desenvolvimento
 
-Futuros filtros:
-
-```
-?municipio_id=1&ativo=true
+```bash
+cd backend
+pip install -r requirements.txt
+uvicorn app.main:app --reload
 ```
 
----
+### Produção (Gunicorn + Uvicorn)
 
-# 🚀 GUIA DE DEPLOY
-
-## ✅ Checklist Pré-Produção
-
-- SECRET_KEY forte
-- DEBUG desativado
-- CORS configurado
-- Banco migrado via Alembic
-- Variáveis de ambiente configuradas
-- HTTPS ativo
-
----
-
-## 🔹 Variáveis de Ambiente Essenciais
-
-```
-DATABASE_URL=
-SECRET_KEY=
-ALGORITHM=
-ACCESS_TOKEN_EXPIRE_MINUTES=
-REFRESH_TOKEN_EXPIRE_DAYS=
+```bash
+gunicorn app.main:app -w 4 -k uvicorn.workers.UvicornWorker -b 0.0.0.0:8000
 ```
 
----
+### Docker
 
-## 🔹 Deploy com Docker
-
-```
+```bash
 docker-compose up --build
 ```
 
----
+### Nginx (reverse proxy)
 
-## 🔹 Deploy em Produção (Sugestão)
-
-- Servidor Linux
-- Gunicorn + Uvicorn Workers
-- Nginx como reverse proxy
-- HTTPS com Let's Encrypt
-- Banco gerenciado (PostgreSQL)
-
----
-
-# 🛡️ Segurança Recomendada
-
-- Rotação periódica de chaves
-- Blacklist de refresh tokens
-- Monitoramento de logs
-- Rate limiting
-- Backup automático do banco
+```nginx
+location /api/ {
+    proxy_pass http://127.0.0.1:8000;
+    proxy_set_header Host $host;
+    proxy_set_header X-Real-IP $remote_addr;
+}
+```
 
 ---
 
-# 📌 Considerações Finais
+## Guia de Ingestão
 
-O backend está estruturado para:
+```bash
+# Todos os municípios de MG
+python -m ingestao.carregar_tudo --estado MG
 
-- Escalar horizontalmente
-- Ser auditável
-- Facilitar manutenção
-- Permitir evolução contínua
+# Cidades específicas
+python -m ingestao.carregar_tudo --estado MG --cidades Divinopolis "Para de Minas" Oliveira
 
-Todos os documentos devem ser atualizados a cada nova versão relevante.
+# Outro estado
+python -m ingestao.carregar_tudo --estado MT --cidades Cuiaba
+
+# PIX: colocar CSVs em dados/PIX/ antes de executar
+```
+
+Loaders individuais (fallback para `estado="MG"`):
+```bash
+python -m ingestao.carregar_arrecadacao
+python -m ingestao.carregar_caged
+# ... etc
+```
 
 ---
 
-**Sistema pronto para evolução profissional e escalável.**
+## Autenticação
+
+```
+POST /api/v1/auth/login
+Content-Type: application/x-www-form-urlencoded
+username=email&password=senha
+→ { "access_token": "...", "refresh_token": "...", "token_type": "bearer" }
+
+POST /api/v1/auth/refresh
+{ "refresh_token": "..." }
+→ { "access_token": "..." }
+
+Authorization: Bearer {access_token}  ← em todas as requisições
+```
+
+---
+
+## Segurança Recomendada
+
+- Rotação periódica de `SECRET_KEY`
+- CORS restrito aos domínios de produção
+- HTTPS obrigatório em produção
+- Backup automático do banco PostgreSQL
+- Monitorar logs para erros 500 (indicam bugs, não CORS)
+- Rate limiting futuro para endpoints públicos

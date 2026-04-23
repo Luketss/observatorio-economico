@@ -1,29 +1,76 @@
-# 📘 Observatório Econômico – Backend
+# Observatório Econômico — Backend
 
-Bem-vindo à documentação oficial do backend.
-
-Este projeto segue princípios de arquitetura limpa e padrões enterprise para garantir:
-
-- Escalabilidade
-- Manutenção simples
-- Código previsível
-- Evolução estruturada
+Documentação oficial do backend da plataforma de inteligência econômica municipal.
 
 ---
 
-## 🚀 Stack
+## Stack
 
-- FastAPI
-- SQLAlchemy
-- Alembic
-- JWT (Access + Refresh)
-- Repository Pattern
-- Service Layer
-- RBAC desacoplado
-- Paginação enterprise
-- Logging estruturado
-- Middleware de auditoria
+| Camada | Tecnologia |
+|--------|-----------|
+| Framework | FastAPI |
+| ORM | SQLAlchemy (síncrono) |
+| Migrações | Alembic |
+| Autenticação | JWT (access + refresh token) |
+| Banco | PostgreSQL |
+| Validação | Pydantic v2 |
 
 ---
 
-Use o menu lateral para navegar pelas seções da documentação.
+## Datasets disponíveis
+
+| Dataset | Tabelas | Endpoints base |
+|---------|---------|----------------|
+| Arrecadação | `arrecadacao_mensal` | `/arrecadacao` |
+| PIB | `pib_anuais` | `/pib` |
+| CAGED | 5 tabelas | `/caged` |
+| RAIS | 9 tabelas | `/rais` |
+| Bolsa Família | `bolsa_familia_resumos` | `/bolsa_familia` |
+| Pé-de-Meia | 2 tabelas | `/pe_de_meia` |
+| INSS | `inss_anuais` | `/inss` |
+| ESTBAN | 2 tabelas | `/estban` |
+| Comex | 3 tabelas | `/comex` |
+| Empresas (CNPJ) | `empresas` | `/empresas` |
+| PIX | `pix_mensais` | `/pix` |
+
+Todos os endpoints de dados filtram automaticamente por `municipio_id` do usuário autenticado, exceto `ADMIN_GLOBAL` que recebe dados de todos os municípios.
+
+---
+
+## Roles
+
+| Role | Acesso |
+|------|--------|
+| `ADMIN_GLOBAL` | Todos os dados, todos os municípios, painel admin |
+| `ADMIN_MUNICIPIO` | Dados do próprio município + gerenciar usuários locais |
+| `VISUALIZADOR` | Leitura dos dados do próprio município |
+
+---
+
+## Planos
+
+| Plano | Descrição |
+|-------|-----------|
+| `free` | Acesso restrito a módulos básicos |
+| `pro` | Acesso ampliado |
+| `premium` | Acesso total incluindo componentes avançados |
+
+Módulos e componentes por plano são configuráveis via `PlanoConfig` pelo `ADMIN_GLOBAL`.
+
+---
+
+## Suporte multi-estado
+
+A plataforma suporta municípios de qualquer estado brasileiro. O campo `estado` (UF, 2 chars) é armazenado no modelo `Municipio`. A ingestão recebe `--estado` como argumento CLI. Os endpoints de comparativo aceitam `?estado=MG` para filtrar por UF.
+
+---
+
+## Navegação
+
+- [Arquitetura](architecture.md)
+- [Autenticação](authentication.md)
+- [Padrões de resposta](responses.md)
+- [Paginação](pagination.md)
+- [Manutenção](maintenance.md)
+- [Contribuição](contributing.md)
+- [Roadmap](roadmap.md)

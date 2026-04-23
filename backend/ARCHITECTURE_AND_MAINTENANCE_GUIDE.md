@@ -1,311 +1,167 @@
-# 📘 Backend – Architecture & Maintenance Guide  
-Observatório Econômico API  
+# Backend — Architecture & Maintenance Guide
+Observatório Econômico API
 
 ---
 
-# 1️⃣ Visão Geral do Sistema
+## Visão Geral
 
-Este backend foi projetado seguindo princípios de arquitetura limpa (Clean Architecture) e padrões utilizados em sistemas SaaS enterprise.
+Plataforma SaaS de inteligência econômica municipal com suporte multi-estado. O backend é uma API REST construída com FastAPI + SQLAlchemy + PostgreSQL, servindo dados de 11 fontes diferentes com controle de acesso por role e plano.
 
-Stack principal:
-
-- ✅ FastAPI
-- ✅ SQLAlchemy (ORM)
-- ✅ Alembic (migrações)
-- ✅ JWT (Access + Refresh Token)
-- ✅ Repository Pattern
-- ✅ Service Layer
-- ✅ Middleware de auditoria
-- ✅ Logging estruturado
-- ✅ Paginação enterprise
-- ✅ RBAC desacoplado
+**Stack:**
+- FastAPI (framework HTTP)
+- SQLAlchemy síncrono (ORM)
+- Alembic (migrações de banco)
+- Pydantic v2 (validação + serialização)
+- JWT (access + refresh token)
+- PostgreSQL
 
 ---
 
-# 2️⃣ Estrutura de Pastas
+## Estrutura de Pastas
 
 ```
 backend/
-│
 ├── app/
-│   ├── api/              # Camada HTTP (Controllers, Middleware, Response Models)
-│   ├── core/             # Config, segurança, logging, exceções
-│   ├── db/               # Base ORM, session, repositories
-│   ├── models/           # Entidades do banco
-│   ├── schemas/          # DTOs / Pydantic
-│   ├── services/         # Regras de negócio
-│   └── main.py           # Bootstrap da aplicação
-│
-├── alembic/              # Migrações de banco
-├── requirements.txt
-└── ARCHITECTURE_AND_MAINTENANCE_GUIDE.md
+│   ├── api/
+│   │   ├── deps.py                 # get_db, get_current_user, require_role
+│   │   ├── error_handlers.py       # handlers globais de exceção
+│   │   ├── middleware.py           # AuditMiddleware (correlation ID)
+│   │   └── v1/routers/             # um arquivo por dataset/funcionalidade
+│   ├── core/
+│   │   ├── config.py               # Settings (lê .env via pydantic-settings)
+│   │   ├── logging.py              # setup_logging()
+│   │   └── security.py             # JWT, bcrypt
+│   ├── db/
+│   │   ├── base.py                 # Base declarativa SQLAlchemy
+│   │   └── session.py              # engine + SessionLocal
+│   ├── models/                     # ORM models (um por domínio)
+│   ├── schemas/                    # Pydantic schemas (request/response)
+│   └── main.py                     # bootstrap: app + routers + middleware
+├── alembic/
+│   └── versions/                   # 0001 → 0016+ (cadeia sequencial)
+└── ingestao/                       # scripts CLI de ingestão CSV
 ```
 
 ---
 
-# 3️⃣ Arquitetura e Responsabilidades
+## Padrão dos Routers
 
-## 🔹 Controllers (api/v1/routers)
+Thin controllers com queries SQLAlchemy diretas. Sem camada de service ou repository separados.
 
-Responsáveis apenas por:
-
-- Receber requisição
-- Chamar service
-- Formatar resposta
-
-NÃO devem conter:
-- Regra de negócio
-- Query direta no banco
-- Lógica complexa
+```python
+@router.get("/serie", response_model=List[ItemSchema])
+def serie(db: Session = Depends(get_db), current_user = Depends(get_current_user)):
+    query = db.query(Model)
+    if current_user.role.nome != "ADMIN_GLOBAL":
+        query = query.filter(Model.municipio_id == current_user.municipio_id)
+    return query.order_by(Model.ano, Model.mes).all()
+```
 
 ---
 
-## 🔹 Service Layer (services/)
+## Controle de Acesso
 
-Responsável por:
+**Roles:**
+| Role | Acesso |
+|------|--------|
+| `ADMIN_GLOBAL` | Todos os dados, todos os municípios, painel admin |
+| `ADMIN_MUNICIPIO` | Dados do próprio município + usuários locais |
+| `VISUALIZADOR` | Somente leitura do próprio município |
 
-- Regras de negócio
-- Validações
-- Orquestração entre repositories
-- Aplicação de regras de domínio
-
----
-
-## 🔹 Repository Layer (db/repositories)
-
-Responsável por:
-
-- Acesso a dados
-- Queries
-- Filtros dinâmicos
-- Paginação
-
-Nenhuma regra de negócio deve existir aqui.
+**Planos:** `free` / `pro` / `premium` — configurados em `PlanoConfig`, aplicados no frontend via `PlanContext` + `PlanGate`.
 
 ---
 
-## 🔹 Core
+## Datasets
 
-Contém:
+| Dataset | Tabelas principais | Endpoints |
+|---------|-------------------|-----------|
+| Arrecadação | `arrecadacao_mensal` | `/arrecadacao` |
+| PIB | `pib_anuais` | `/pib` |
+| CAGED | 5 tabelas | `/caged` |
+| RAIS | 9 tabelas | `/rais` |
+| Bolsa Família | `bolsa_familia_resumos` | `/bolsa_familia` |
+| Pé-de-Meia | 2 tabelas | `/pe_de_meia` |
+| INSS | `inss_anuais` | `/inss` |
+| ESTBAN | 2 tabelas | `/estban` |
+| Comex | 3 tabelas | `/comex` |
+| Empresas | `empresas` | `/empresas` |
+| PIX | `pix_mensais` | `/pix` |
 
-- security.py → JWT + hash
-- exceptions.py → Exceções de domínio
-- logging.py → Logging estruturado
-- config.py → Variáveis de ambiente
-
----
-
-# 4️⃣ Padrões Implementados
-
-✅ Clean Architecture  
-✅ Repository Pattern  
-✅ Service Layer Pattern  
-✅ Thin Controllers  
-✅ SuccessResponse Envelope  
-✅ PaginatedResponse  
-✅ Filtros Dinâmicos  
-✅ Middleware de Auditoria  
-✅ Correlation ID  
-✅ RBAC desacoplado  
-✅ Access + Refresh Token  
+Todos têm endpoint `/comparativo` que aceita `?estado=MG` para filtro por UF.
 
 ---
 
-# 5️⃣ Como Executar o Backend
+## Multi-Estado
 
-## 📌 Localmente
+O campo `estado` (UF) é armazenado em `Municipio`. Municípios são deduplicados por código IBGE (primary key) ou `(nome, estado)` como fallback.
+
+Ingestão:
+```bash
+python -m ingestao.carregar_tudo --estado MG
+python -m ingestao.carregar_tudo --estado MT --cidades Cuiaba
+```
+
+---
+
+## Migrações
+
+Cadeia: `0001_initial` → ... → `0016_drop_rais_setor`
+
+```bash
+alembic upgrade head          # aplicar tudo
+alembic current               # ver versão atual
+alembic revision --autogenerate -m "descricao"  # nova migração
+```
+
+IDs: formato `NNNN_descricao`, máximo 32 chars.
+
+---
+
+## Variáveis de Ambiente
+
+```
+DATABASE_URL=postgresql://user:pass@host/db
+SECRET_KEY=chave-secreta-forte
+ALGORITHM=HS256
+ACCESS_TOKEN_EXPIRE_MINUTES=30
+REFRESH_TOKEN_EXPIRE_DAYS=7
+CORS_ORIGINS=http://localhost:5173,https://meudominio.com
+```
+
+> **CORS:** Nunca use `*` com `allow_credentials=True`. Use origens explícitas.
+
+---
+
+## Executar Localmente
 
 ```bash
 cd backend
 pip install -r requirements.txt
 uvicorn app.main:app --reload
-```
-
-Acesse:
-
-```
-http://localhost:8000/docs
+# Acesse: http://localhost:8000/docs
 ```
 
 ---
 
-## 📌 Usando Docker
+## Checklist de Produção
 
-```bash
-docker-compose up --build
-```
-
----
-
-# 6️⃣ Fluxo de Autenticação
-
-Login:
-
-```
-POST /auth/login
-```
-
-Retorna:
-
-- access_token
-- refresh_token
-
-Refresh:
-
-```
-POST /auth/refresh
-```
+- [ ] `SECRET_KEY` forte e única
+- [ ] `CORS_ORIGINS` com domínios reais
+- [ ] `DATABASE_URL` de produção
+- [ ] `alembic upgrade head` executado
+- [ ] HTTPS ativo (Nginx + Let's Encrypt)
+- [ ] Logs em nível `INFO`
+- [ ] Backup automático do banco configurado
 
 ---
 
-# 7️⃣ Decisões Arquiteturais
+## Como Adicionar Nova Feature
 
-### 🔹 Por que Repository Pattern?
-Separação clara entre domínio e acesso a dados.
-
-### 🔹 Por que Service Layer?
-Evita lógica de negócio no controller.
-
-### 🔹 Por que Envelope de Resposta?
-Contrato consistente com frontend.
-
-### 🔹 Por que Paginação Enterprise?
-Escalabilidade e performance.
-
-### 🔹 Por que Middleware de Auditoria?
-Observabilidade e rastreabilidade.
-
----
-
-# 8️⃣ Como Manter o Código
-
-## ✅ Sempre manter:
-
-- Controllers finos
-- Services com regra de negócio
-- Repository apenas com queries
-- Exceções centralizadas
-
-## ✅ Ao criar nova feature:
-
-1. Criar Model (se necessário)
-2. Criar Schema
-3. Criar Repository
-4. Criar Service
-5. Criar Router
-6. Registrar no main.py
-
----
-
-# 9️⃣ Boas Práticas
-
-- Nunca acessar banco diretamente no controller
-- Nunca usar HTTPException fora do handler global
-- Sempre usar SuccessResponse ou PaginatedResponse
-- Sempre validar permissões via require_role()
-
----
-
-# 🔟 Plano de Evolução
-
-## 🚀 Próximas Implementações
-
-### 1️⃣ Busca textual avançada
-- Filtro por nome/email com LIKE
-
-### 2️⃣ Ordenação dinâmica
-- order_by via query param
-
-### 3️⃣ Multi-Tenant
-- Isolamento por município
-
-### 4️⃣ Cache estratégico
-- Redis para endpoints pesados
-
-### 5️⃣ Testes Automatizados
-- Pytest
-- Testes de Service
-- Testes de integração
-
-### 6️⃣ Observabilidade avançada
-- Logs JSON
-- Integração ELK / Grafana
-
-### 7️⃣ Rate Limiting
-- Proteção contra abuso
-
----
-
-# 1️⃣1️⃣ Segurança
-
-Recomendações futuras:
-
-- HTTPS obrigatório
-- Rotação de SECRET_KEY
-- Blacklist de refresh tokens
-- Expiração curta para access tokens
-- CORS por ambiente
-
----
-
-# 1️⃣2️⃣ Versionamento Futuro
-
-Caso a API cresça:
-
-```
-/api/v1/
-/api/v2/
-```
-
-Separar routers por versão.
-
----
-
-# 1️⃣3️⃣ Checklist de Produção
-
-Antes de subir para produção:
-
-- [ ] Variáveis de ambiente configuradas
-- [ ] SECRET_KEY forte
-- [ ] DEBUG desativado
-- [ ] CORS configurado corretamente
-- [ ] Logging em nível INFO/WARNING
-- [ ] Banco migrado via Alembic
-
----
-
-# 1️⃣4️⃣ Filosofia do Projeto
-
-Este backend foi estruturado para:
-
-- Escalar
-- Ser auditável
-- Ser previsível
-- Facilitar manutenção
-- Permitir crescimento sem refatorações grandes
-
-Ele já está em padrão enterprise e preparado para evoluções estruturadas.
-
----
-
-# ✅ Conclusão
-
-O sistema está:
-
-- Modular
-- Organizado
-- Escalável
-- Auditável
-- Seguro
-- Preparado para crescer
-
-Este documento deve ser atualizado sempre que:
-
-- Nova camada for adicionada
-- Nova decisão arquitetural for tomada
-- Novo padrão for adotado
-
----
-
-**Manter simplicidade estrutural é prioridade.  
-Escalar sem perder organização é o objetivo.**
+1. Criar `app/models/{dataset}.py`
+2. Criar `app/schemas/{dataset}.py`
+3. Criar `app/api/v1/routers/{dataset}.py`
+4. Registrar em `main.py`
+5. `alembic revision --autogenerate -m "add_{dataset}"` → revisar → `alembic upgrade head`
+6. Criar `ingestao/carregar_{dataset}.py` com padrão `obter_ou_criar_municipio(db, nome, estado)` + `carregar_csv(db, caminho, estado)`
+7. Adicionar ao `LOADERS` em `ingestao/carregar_tudo.py`

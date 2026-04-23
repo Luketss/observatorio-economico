@@ -16,24 +16,21 @@ def normalizar_nome(nome: str) -> str:
     return nome.strip().replace("_", " ").upper()
 
 
-def obter_ou_criar_municipio(db: Session, nome: str) -> Municipio:
-    municipio = db.query(Municipio).filter(Municipio.nome == nome).first()
-
+def obter_ou_criar_municipio(db: Session, nome: str, estado: str, codigo_ibge: str | None = None) -> Municipio:
+    if codigo_ibge:
+        m = db.query(Municipio).filter(Municipio.codigo_ibge == codigo_ibge).first()
+        if m:
+            return m
+    municipio = db.query(Municipio).filter(Municipio.nome == nome, Municipio.estado == estado).first()
     if not municipio:
-        municipio = Municipio(
-            nome=nome,
-            estado="MG",
-            codigo_ibge=None,
-            ativo=True,
-        )
+        municipio = Municipio(nome=nome, estado=estado, codigo_ibge=codigo_ibge, ativo=True)
         db.add(municipio)
         db.commit()
         db.refresh(municipio)
-
     return municipio
 
 
-def carregar_csv(db: Session, caminho: str):
+def carregar_csv(db: Session, caminho: str, estado: str):
     # Group by (municipio, data_referencia) — one bank per row, aggregate totals
     agregado: dict[tuple[str, str], dict] = defaultdict(
         lambda: {
@@ -108,7 +105,7 @@ def carregar_csv(db: Session, caminho: str):
             agregado_inst[chave_inst]["outros_creditos"] += float(row.get("OUTROS_CREDITOS") or 0)
 
     for (nome_municipio, data_ref_str), totais in agregado.items():
-        municipio = obter_ou_criar_municipio(db, nome_municipio)
+        municipio = obter_ou_criar_municipio(db, nome_municipio, estado)
         data_referencia = datetime.strptime(data_ref_str, "%Y-%m-%d").date()
 
         existente = (
@@ -134,7 +131,7 @@ def carregar_csv(db: Session, caminho: str):
     db.commit()
 
     for (nome_municipio, nome_instituicao, data_ref_str), totais in agregado_inst.items():
-        municipio = obter_ou_criar_municipio(db, nome_municipio)
+        municipio = obter_ou_criar_municipio(db, nome_municipio, estado)
         data_referencia = datetime.strptime(data_ref_str, "%Y-%m-%d").date()
         existente = (
             db.query(EstbanPorInstituicao)
@@ -158,6 +155,12 @@ def carregar_csv(db: Session, caminho: str):
 
 
 def main():
+    import argparse
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--estado", required=True, help="UF code, e.g. MG, MT")
+    args = parser.parse_args()
+    estado = args.estado.strip().upper()
+
     db = SessionLocal()
 
     try:
@@ -165,7 +168,7 @@ def main():
             if arquivo.endswith(".csv"):
                 caminho = os.path.join(BASE_PATH, arquivo)
                 print(f"Processando {arquivo}...")
-                carregar_csv(db, caminho)
+                carregar_csv(db, caminho, estado)
 
         print("✅ Carga Estban finalizada com sucesso.")
     finally:

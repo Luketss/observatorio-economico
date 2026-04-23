@@ -17,6 +17,7 @@ export default function UsuariosAdminPage() {
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [form, setForm] = useState(defaultForm);
+  const [estadoFiltro, setEstadoFiltro] = useState("");
   const [saving, setSaving] = useState(false);
   const [formError, setFormError] = useState(null);
 
@@ -145,20 +146,45 @@ export default function UsuariosAdminPage() {
               />
             </div>
 
-            <div className="flex flex-col gap-1">
-              <label className="text-xs font-medium text-slate-500 uppercase tracking-wider">Município</label>
-              <select
-                name="municipio_id"
-                value={form.municipio_id}
-                onChange={handleChange}
-                className="px-3 py-2 rounded-lg border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-              >
-                <option value="">— Sem município —</option>
-                {municipios.map((m) => (
-                  <option key={m.id} value={m.id}>{m.nome}</option>
-                ))}
-              </select>
-            </div>
+            {(() => {
+              const estados = [...new Set(municipios.map((m) => m.estado).filter(Boolean))].sort();
+              const municipiosFiltrados = estadoFiltro
+                ? municipios.filter((m) => m.estado === estadoFiltro)
+                : municipios;
+              return (
+                <>
+                  {estados.length > 1 && (
+                    <div className="flex flex-col gap-1">
+                      <label className="text-xs font-medium text-slate-500 uppercase tracking-wider">Estado</label>
+                      <select
+                        value={estadoFiltro}
+                        onChange={(e) => { setEstadoFiltro(e.target.value); setForm((prev) => ({ ...prev, municipio_id: "" })); }}
+                        className="px-3 py-2 rounded-lg border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      >
+                        <option value="">Todos os estados</option>
+                        {estados.map((uf) => (
+                          <option key={uf} value={uf}>{uf}</option>
+                        ))}
+                      </select>
+                    </div>
+                  )}
+                  <div className="flex flex-col gap-1">
+                    <label className="text-xs font-medium text-slate-500 uppercase tracking-wider">Município</label>
+                    <select
+                      name="municipio_id"
+                      value={form.municipio_id}
+                      onChange={handleChange}
+                      className="px-3 py-2 rounded-lg border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    >
+                      <option value="">— Sem município —</option>
+                      {municipiosFiltrados.map((m) => (
+                        <option key={m.id} value={m.id}>{m.nome}{m.estado ? ` (${m.estado})` : ""}</option>
+                      ))}
+                    </select>
+                  </div>
+                </>
+              );
+            })()}
 
             <div className="flex flex-col gap-1">
               <label className="text-xs font-medium text-slate-500 uppercase tracking-wider">Perfil</label>

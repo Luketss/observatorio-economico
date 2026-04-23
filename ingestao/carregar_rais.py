@@ -164,10 +164,14 @@ def normalizar_nome(nome: str) -> str:
     return nome.strip().replace("_", " ").upper()
 
 
-def obter_ou_criar_municipio(db: Session, nome: str) -> Municipio:
-    municipio = db.query(Municipio).filter(Municipio.nome == nome).first()
+def obter_ou_criar_municipio(db: Session, nome: str, estado: str, codigo_ibge: str | None = None) -> Municipio:
+    if codigo_ibge:
+        m = db.query(Municipio).filter(Municipio.codigo_ibge == codigo_ibge).first()
+        if m:
+            return m
+    municipio = db.query(Municipio).filter(Municipio.nome == nome, Municipio.estado == estado).first()
     if not municipio:
-        municipio = Municipio(nome=nome, estado="MG", codigo_ibge=None, ativo=True)
+        municipio = Municipio(nome=nome, estado=estado, codigo_ibge=codigo_ibge, ativo=True)
         db.add(municipio)
         db.commit()
         db.refresh(municipio)
@@ -179,12 +183,12 @@ def _count_rows(caminho: str) -> int:
         return sum(1 for _ in f) - 1  # subtract header
 
 
-def carregar_csv(db: Session, caminho: str):
+def carregar_csv(db: Session, caminho: str, estado: str):
     nome_arquivo = os.path.basename(caminho)
     nome_municipio = normalizar_nome(
         nome_arquivo.replace("rais_vinculos_2021_2024_", "").replace(".csv", "")
     )
-    municipio = obter_ou_criar_municipio(db, nome_municipio)
+    municipio = obter_ou_criar_municipio(db, nome_municipio, estado)
 
     # Aggregation buckets
     contagem_por_ano: dict[int, int] = defaultdict(int)
@@ -374,12 +378,18 @@ def carregar_csv(db: Session, caminho: str):
 
 
 def main():
+    import argparse
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--estado", required=True, help="UF code, e.g. MG, MT")
+    args = parser.parse_args()
+    estado = args.estado.strip().upper()
+
     db = SessionLocal()
     try:
         arquivos = [f for f in os.listdir(BASE_PATH) if f.endswith(".csv")]
         for arquivo in tqdm(arquivos, desc="RAIS", unit="cidade"):
             caminho = os.path.join(BASE_PATH, arquivo)
-            carregar_csv(db, caminho)
+            carregar_csv(db, caminho, estado)
         print("✅ Carga RAIS finalizada com sucesso.")
     finally:
         db.close()

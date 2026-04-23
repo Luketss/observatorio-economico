@@ -14,24 +14,21 @@ def normalizar_nome(nome: str) -> str:
     return nome.strip().replace("_", " ").upper()
 
 
-def obter_ou_criar_municipio(db: Session, nome: str) -> Municipio:
-    municipio = db.query(Municipio).filter(Municipio.nome == nome).first()
-
+def obter_ou_criar_municipio(db: Session, nome: str, estado: str, codigo_ibge: str | None = None) -> Municipio:
+    if codigo_ibge:
+        m = db.query(Municipio).filter(Municipio.codigo_ibge == codigo_ibge).first()
+        if m:
+            return m
+    municipio = db.query(Municipio).filter(Municipio.nome == nome, Municipio.estado == estado).first()
     if not municipio:
-        municipio = Municipio(
-            nome=nome,
-            estado="MG",
-            codigo_ibge=None,
-            ativo=True,
-        )
+        municipio = Municipio(nome=nome, estado=estado, codigo_ibge=codigo_ibge, ativo=True)
         db.add(municipio)
         db.commit()
         db.refresh(municipio)
-
     return municipio
 
 
-def carregar_csv(db: Session, caminho: str):
+def carregar_csv(db: Session, caminho: str, estado: str):
     with open(caminho, newline="", encoding="utf-8-sig") as csvfile:
         reader = csv.DictReader(csvfile, delimiter=";")
 
@@ -48,7 +45,7 @@ def carregar_csv(db: Session, caminho: str):
             va_ind = float(row["VA_Industria"] or 0) if row["VA_Industria"] else None
             va_serv = float(row["VA_Servicos"] or 0) if row["VA_Servicos"] else None
 
-            municipio = obter_ou_criar_municipio(db, nome_municipio)
+            municipio = obter_ou_criar_municipio(db, nome_municipio, estado)
 
             existente = (
                 db.query(PibAnual)
@@ -79,6 +76,12 @@ def carregar_csv(db: Session, caminho: str):
 
 
 def main():
+    import argparse
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--estado", required=True, help="UF code, e.g. MG, MT")
+    args = parser.parse_args()
+    estado = args.estado.strip().upper()
+
     db = SessionLocal()
 
     try:
@@ -86,7 +89,7 @@ def main():
             if arquivo.endswith(".csv"):
                 caminho = os.path.join(BASE_PATH, arquivo)
                 print(f"Processando {arquivo}...")
-                carregar_csv(db, caminho)
+                carregar_csv(db, caminho, estado)
 
         print("✅ Carga PIB finalizada com sucesso.")
     finally:

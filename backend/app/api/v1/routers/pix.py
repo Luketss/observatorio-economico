@@ -67,6 +67,7 @@ def resumo_pix(
 @router.get("/comparativo")
 def comparativo_pix(
     ano: int | None = None,
+    estado: str | None = None,
     db: Session = Depends(get_db),
     current_user=Depends(get_current_user),
 ):
@@ -77,6 +78,7 @@ def comparativo_pix(
         db.query(
             Municipio.nome.label("municipio"),
             Municipio.id.label("municipio_id"),
+            Municipio.estado.label("estado"),
             (
                 func.coalesce(func.sum(PixMensal.vl_pagador_pf), 0)
                 + func.coalesce(func.sum(PixMensal.vl_pagador_pj), 0)
@@ -86,8 +88,10 @@ def comparativo_pix(
     )
     if ano:
         query = query.filter(PixMensal.ano == ano)
+    if estado:
+        query = query.filter(Municipio.estado == estado.upper())
     resultados = (
-        query.group_by(Municipio.nome, Municipio.id)
+        query.group_by(Municipio.nome, Municipio.id, Municipio.estado)
         .order_by(
             (
                 func.coalesce(func.sum(PixMensal.vl_pagador_pf), 0)
@@ -97,6 +101,6 @@ def comparativo_pix(
         .all()
     )
     return [
-        {"municipio": r.municipio, "municipio_id": r.municipio_id, "volume_total": r.volume_total or 0}
+        {"municipio": r.municipio, "municipio_id": r.municipio_id, "estado": r.estado, "volume_total": r.volume_total or 0}
         for r in resultados
     ]

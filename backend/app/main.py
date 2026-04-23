@@ -38,9 +38,11 @@ app = FastAPI(title="Observatório Econômico API", version="1.0.0")
 # Register global exception handlers
 register_exception_handlers(app)
 
+_origins = [o.strip() for o in settings.CORS_ORIGINS.split(",") if o.strip()]
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # trocar por domínio específico depois
+    allow_origins=_origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
