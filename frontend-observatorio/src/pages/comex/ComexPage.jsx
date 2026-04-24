@@ -1,5 +1,6 @@
-import { useEffect, useState, useMemo } from "react";
+﻿import { useEffect, useState, useMemo } from "react";
 import api from "../../services/api";
+import { useChartTheme } from "../../hooks/useChartTheme";
 import { motion } from "framer-motion";
 import InsightsPanel from "../../components/InsightsPanel";
 import ReleasesPanel from "../../components/ReleasesPanel";
@@ -36,6 +37,7 @@ const fmtUSD = (v) =>
     : "—";
 
 export default function ComexPage() {
+  const ct = useChartTheme();
   const [serie, setSerie] = useState([]);
   const [resumo, setResumo] = useState(null);
   const [porProduto, setPorProduto] = useState([]);
@@ -215,23 +217,23 @@ export default function ComexPage() {
           <div className="h-48 md:h-72">
             <ResponsiveContainer width="100%" height="100%">
               <LineChart data={chartSerie}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
+                <CartesianGrid strokeDasharray="3 3" stroke={ct.grid} />
                 <XAxis
                   dataKey="periodo"
-                  tick={{ fontSize: 10 }}
-                  stroke="#94a3b8"
+                  tick={{ fontSize: 10, fill: ct.tick }}
+                  stroke={ct.axis}
                   interval="preserveStartEnd"
                 />
                 <YAxis
-                  tick={{ fontSize: 11 }}
-                  stroke="#94a3b8"
+                  tick={{ fontSize: 11, fill: ct.tick }}
+                  stroke={ct.axis}
                   tickFormatter={(v) =>
                     `US$ ${(v / 1_000_000).toLocaleString("pt-BR", {
                       maximumFractionDigits: 1,
                     })}M`
                   }
                 />
-                <Tooltip formatter={(v) => [fmtUSD(v)]} />
+                <Tooltip contentStyle={ct.tooltipStyle} formatter={(v) => [fmtUSD(v)]} />
                 <Legend />
                 <Line
                   type="monotone"
@@ -264,16 +266,16 @@ export default function ComexPage() {
           <div className="h-60">
             <ResponsiveContainer width="100%" height="100%">
               <LineChart data={chartSerie}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
-                <XAxis dataKey="periodo" tick={{ fontSize: 10 }} stroke="#94a3b8" interval="preserveStartEnd" />
+                <CartesianGrid strokeDasharray="3 3" stroke={ct.grid} />
+                <XAxis dataKey="periodo" tick={{ fontSize: 10, fill: ct.tick }} stroke={ct.axis} interval="preserveStartEnd" />
                 <YAxis
-                  tick={{ fontSize: 11 }}
-                  stroke="#94a3b8"
+                  tick={{ fontSize: 11, fill: ct.tick }}
+                  stroke={ct.axis}
                   tickFormatter={(v) =>
                     `US$ ${(v / 1_000_000).toLocaleString("pt-BR", { maximumFractionDigits: 1 })}M`
                   }
                 />
-                <Tooltip formatter={(v) => [fmtUSD(v), "Saldo"]} />
+                <Tooltip contentStyle={ct.tooltipStyle} formatter={(v) => [fmtUSD(v), "Saldo"]} />
                 <Line
                   type="monotone"
                   dataKey="saldo"
@@ -297,18 +299,18 @@ export default function ComexPage() {
           <div className="h-48 md:h-64">
             <ResponsiveContainer width="100%" height="100%">
               <LineChart data={chartSerie}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
-                <XAxis dataKey="periodo" tick={{ fontSize: 10 }} stroke="#94a3b8" interval="preserveStartEnd" />
+                <CartesianGrid strokeDasharray="3 3" stroke={ct.grid} />
+                <XAxis dataKey="periodo" tick={{ fontSize: 10, fill: ct.tick }} stroke={ct.axis} interval="preserveStartEnd" />
                 <YAxis
-                  tick={{ fontSize: 11 }}
-                  stroke="#94a3b8"
+                  tick={{ fontSize: 11, fill: ct.tick }}
+                  stroke={ct.axis}
                   tickFormatter={(v) => {
                     if (v >= 1_000_000) return `${(v / 1_000_000).toFixed(1)}M kg`;
                     if (v >= 1_000) return `${(v / 1_000).toFixed(0)}t`;
                     return `${v} kg`;
                   }}
                 />
-                <Tooltip formatter={(v) => [`${Number(v).toLocaleString("pt-BR")} kg`]} />
+                <Tooltip contentStyle={ct.tooltipStyle} formatter={(v) => [`${Number(v).toLocaleString("pt-BR")} kg`]} />
                 <Legend />
                 <Line type="monotone" dataKey="peso_export" name="Peso Exportado" stroke="#10b981" strokeWidth={2.5} dot={false} />
                 <Line type="monotone" dataKey="peso_import" name="Peso Importado" stroke="#f97316" strokeWidth={2.5} dot={false} />
@@ -342,13 +344,13 @@ export default function ComexPage() {
                 >
                   <CartesianGrid
                     strokeDasharray="3 3"
-                    stroke="#f1f5f9"
+                    stroke={ct.grid}
                     horizontal={false}
                   />
                   <XAxis
                     type="number"
-                    tick={{ fontSize: 11 }}
-                    stroke="#94a3b8"
+                    tick={{ fontSize: 11, fill: ct.tick }}
+                    stroke={ct.axis}
                     tickFormatter={(v) =>
                       `US$ ${(v / 1_000).toLocaleString("pt-BR", {
                         maximumFractionDigits: 0,
@@ -358,11 +360,11 @@ export default function ComexPage() {
                   <YAxis
                     type="category"
                     dataKey="produto"
-                    tick={{ fontSize: 9 }}
-                    stroke="#94a3b8"
+                    tick={{ fontSize: 9, fill: ct.tick }}
+                    stroke={ct.axis}
                     width={130}
                   />
-                  <Tooltip formatter={(v) => [fmtUSD(v), "Valor USD"]} />
+                  <Tooltip contentStyle={ct.tooltipStyle} formatter={(v) => [fmtUSD(v), "Valor USD"]} />
                   <Bar dataKey="valor_usd" name="Valor USD" radius={[0, 4, 4, 0]}>
                     {porProduto.map((_, i) => (
                       <Cell key={i} fill={COLORS[i % COLORS.length]} />
@@ -386,15 +388,15 @@ export default function ComexPage() {
                   layout="vertical"
                   margin={{ left: 10, right: 20 }}
                 >
-                  <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" horizontal={false} />
+                  <CartesianGrid strokeDasharray="3 3" stroke={ct.grid} horizontal={false} />
                   <XAxis
                     type="number"
-                    tick={{ fontSize: 11 }}
-                    stroke="#94a3b8"
+                    tick={{ fontSize: 11, fill: ct.tick }}
+                    stroke={ct.axis}
                     tickFormatter={(v) => v >= 1_000_000 ? `${(v / 1_000_000).toFixed(1)}M kg` : `${(v / 1_000).toFixed(0)}t`}
                   />
-                  <YAxis type="category" dataKey="produto" tick={{ fontSize: 9 }} stroke="#94a3b8" width={130} />
-                  <Tooltip formatter={(v) => [`${Number(v).toLocaleString("pt-BR")} kg`, "Peso"]} />
+                  <YAxis type="category" dataKey="produto" tick={{ fontSize: 9, fill: ct.tick }} stroke={ct.axis} width={130} />
+                  <Tooltip contentStyle={ct.tooltipStyle} formatter={(v) => [`${Number(v).toLocaleString("pt-BR")} kg`, "Peso"]} />
                   <Bar dataKey="peso_kg" name="Peso (kg)" radius={[0, 4, 4, 0]}>
                     {porProduto.map((_, i) => <Cell key={i} fill={COLORS[i % COLORS.length]} />)}
                   </Bar>
@@ -428,13 +430,13 @@ export default function ComexPage() {
                 >
                   <CartesianGrid
                     strokeDasharray="3 3"
-                    stroke="#f1f5f9"
+                    stroke={ct.grid}
                     horizontal={false}
                   />
                   <XAxis
                     type="number"
-                    tick={{ fontSize: 11 }}
-                    stroke="#94a3b8"
+                    tick={{ fontSize: 11, fill: ct.tick }}
+                    stroke={ct.axis}
                     tickFormatter={(v) =>
                       `US$ ${(v / 1_000).toLocaleString("pt-BR", {
                         maximumFractionDigits: 0,
@@ -444,11 +446,11 @@ export default function ComexPage() {
                   <YAxis
                     type="category"
                     dataKey="pais"
-                    tick={{ fontSize: 9 }}
-                    stroke="#94a3b8"
+                    tick={{ fontSize: 9, fill: ct.tick }}
+                    stroke={ct.axis}
                     width={110}
                   />
-                  <Tooltip formatter={(v) => [fmtUSD(v), "Valor USD"]} />
+                  <Tooltip contentStyle={ct.tooltipStyle} formatter={(v) => [fmtUSD(v), "Valor USD"]} />
                   <Bar dataKey="valor_usd" name="Valor USD" radius={[0, 4, 4, 0]}>
                     {porPais.map((_, i) => (
                       <Cell key={i} fill={COLORS[i % COLORS.length]} />
@@ -466,3 +468,5 @@ export default function ComexPage() {
     </motion.div>
   );
 }
+
+

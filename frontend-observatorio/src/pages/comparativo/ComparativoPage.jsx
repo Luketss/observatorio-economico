@@ -1,5 +1,6 @@
-import { useEffect, useState, useMemo } from "react";
+﻿import { useEffect, useState, useMemo } from "react";
 import api from "../../services/api";
+import { useChartTheme } from "../../hooks/useChartTheme";
 import { useAuth } from "../../context/AuthContext";
 import { motion } from "framer-motion";
 import {
@@ -52,6 +53,7 @@ const CURRENT_YEAR = new Date().getFullYear();
 const YEAR_OPTIONS = Array.from({ length: 8 }, (_, i) => CURRENT_YEAR - i);
 
 export default function BenchmarkPage() {
+  const ct = useChartTheme();
   const { user } = useAuth();
   const [activeKey, setActiveKey] = useState("arrecadacao");
   const [ano, setAno] = useState(CURRENT_YEAR - 1);
@@ -189,8 +191,8 @@ export default function BenchmarkPage() {
               >
                 <XAxis
                   type="number"
-                  tick={{ fontSize: 10 }}
-                  stroke="#94a3b8"
+                  tick={{ fontSize: 10, fill: ct.tick }}
+                  stroke={ct.axis}
                   tickFormatter={(v) => {
                     if (v >= 1_000_000_000) return `${(v / 1e9).toFixed(1)}B`;
                     if (v >= 1_000_000) return `${(v / 1e6).toFixed(1)}M`;
@@ -201,11 +203,11 @@ export default function BenchmarkPage() {
                 <YAxis
                   type="category"
                   dataKey="municipio"
-                  tick={{ fontSize: 11 }}
-                  stroke="#94a3b8"
+                  tick={{ fontSize: 11, fill: ct.tick }}
+                  stroke={ct.axis}
                   width={180}
                 />
-                <Tooltip formatter={tooltipFormatter} />
+                <Tooltip contentStyle={ct.tooltipStyle} formatter={tooltipFormatter} />
                 <Bar dataKey="valor" radius={[0, 4, 4, 0]}>
                   {chartData.map((row, i) => (
                     <Cell
@@ -278,3 +280,5 @@ export default function BenchmarkPage() {
     </motion.div>
   );
 }
+
+

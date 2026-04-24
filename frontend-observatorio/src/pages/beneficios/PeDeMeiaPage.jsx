@@ -1,5 +1,6 @@
-import { useEffect, useMemo, useState } from "react";
+﻿import { useEffect, useMemo, useState } from "react";
 import api from "../../services/api";
+import { useChartTheme } from "../../hooks/useChartTheme";
 import { motion } from "framer-motion";
 import InsightsPanel from "../../components/InsightsPanel";
 import ReleasesPanel from "../../components/ReleasesPanel";
@@ -39,6 +40,7 @@ const fmtBRL = (v) =>
 const fmtNum = (v) => (v != null ? Number(v).toLocaleString("pt-BR") : "—");
 
 export default function PeDeMeiaPage() {
+  const ct = useChartTheme();
   const [rawSerie, setRawSerie] = useState([]);
   const [resumo, setResumo] = useState(null);
   const [porEtapa, setPorEtapa] = useState([]);
@@ -177,14 +179,14 @@ export default function PeDeMeiaPage() {
                     <stop offset="95%" stopColor="#10b981" stopOpacity={0} />
                   </linearGradient>
                 </defs>
-                <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
+                <CartesianGrid strokeDasharray="3 3" stroke={ct.grid} />
                 <XAxis
                   dataKey="periodo"
-                  tick={{ fontSize: 10 }}
-                  stroke="#94a3b8"
+                  tick={{ fontSize: 10, fill: ct.tick }}
+                  stroke={ct.axis}
                   interval="preserveStartEnd"
                 />
-                <YAxis tick={{ fontSize: 11 }} stroke="#94a3b8" />
+                <YAxis tick={{ fontSize: 11, fill: ct.tick }} stroke={ct.axis} />
                 <Tooltip
                   formatter={(v) => [
                     Number(v).toLocaleString("pt-BR"),
@@ -228,15 +230,15 @@ export default function PeDeMeiaPage() {
                 >
                   <CartesianGrid
                     strokeDasharray="3 3"
-                    stroke="#f1f5f9"
+                    stroke={ct.grid}
                     horizontal={false}
                   />
-                  <XAxis type="number" tick={{ fontSize: 11 }} stroke="#94a3b8" />
+                  <XAxis type="number" tick={{ fontSize: 11, fill: ct.tick }} stroke={ct.axis} />
                   <YAxis
                     type="category"
                     dataKey="etapa_ensino"
-                    tick={{ fontSize: 10 }}
-                    stroke="#94a3b8"
+                    tick={{ fontSize: 10, fill: ct.tick }}
+                    stroke={ct.axis}
                     width={110}
                   />
                   <Tooltip
@@ -315,3 +317,5 @@ export default function PeDeMeiaPage() {
     </motion.div>
   );
 }
+
+

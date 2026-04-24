@@ -15,9 +15,9 @@ import { useToast } from "../../context/ToastContext";
 import { useEscapeKey } from "../../hooks/useEscapeKey";
 
 const STATUS_CONFIG = {
-  nao_iniciado: { label: "Não iniciado", color: "bg-slate-100 text-slate-600" },
-  em_andamento: { label: "Em andamento", color: "bg-amber-100 text-amber-700" },
-  concluido: { label: "Concluído", color: "bg-green-100 text-green-700" },
+  nao_iniciado: { label: "Não iniciado", color: "bg-slate-100 text-slate-600 dark:bg-slate-700 dark:text-slate-300" },
+  em_andamento: { label: "Em andamento", color: "bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-400" },
+  concluido: { label: "Concluído", color: "bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-400" },
 };
 
 const defaultForm = {
@@ -224,7 +224,7 @@ export default function ProjetosPage() {
               <button
                 key={e.id}
                 onClick={() => setActiveEixo(e.id)}
-                className={`px-4 py-2 rounded-t-lg text-sm font-medium transition-colors ${
+                className={`px-4 py-2 rounded-t-lg text-sm font-medium transition-colors cursor-pointer ${
                   activeEixo === e.id
                     ? "bg-blue-600 text-white"
                     : "text-slate-500 hover:text-slate-700 hover:bg-slate-100 dark:hover:bg-slate-700"

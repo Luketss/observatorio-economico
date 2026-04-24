@@ -1,5 +1,6 @@
-import { useEffect, useState } from "react";
+﻿import { useEffect, useState } from "react";
 import api from "../../services/api";
+import { useChartTheme } from "../../hooks/useChartTheme";
 import { motion } from "framer-motion";
 import InsightsPanel from "../../components/InsightsPanel";
 import ReleasesPanel from "../../components/ReleasesPanel";
@@ -51,6 +52,7 @@ const fmtPct = (num, total) => {
 };
 
 export default function EmpresasPage() {
+  const ct = useChartTheme();
   const [resumo, setResumo] = useState(null);
   const [porPorte, setPorPorte] = useState([]);
   const [porSituacao, setPorSituacao] = useState([]);
@@ -193,7 +195,7 @@ export default function EmpresasPage() {
                       <Cell key={i} fill={COLORS[i % COLORS.length]} />
                     ))}
                   </Pie>
-                  <Tooltip formatter={(v) => [fmtNum(v), "Empresas"]} />
+                  <Tooltip contentStyle={ct.tooltipStyle} formatter={(v) => [fmtNum(v), "Empresas"]} />
                 </PieChart>
               </ResponsiveContainer>
             </div>
@@ -221,16 +223,16 @@ export default function EmpresasPage() {
                   layout="vertical"
                   margin={{ left: 10, right: 20 }}
                 >
-                  <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" horizontal={false} />
-                  <XAxis type="number" tick={{ fontSize: 11 }} stroke="#94a3b8" />
+                  <CartesianGrid strokeDasharray="3 3" stroke={ct.grid} horizontal={false} />
+                  <XAxis type="number" tick={{ fontSize: 11, fill: ct.tick }} stroke={ct.axis} />
                   <YAxis
                     type="category"
                     dataKey="label"
-                    tick={{ fontSize: 10 }}
-                    stroke="#94a3b8"
+                    tick={{ fontSize: 10, fill: ct.tick }}
+                    stroke={ct.axis}
                     width={120}
                   />
-                  <Tooltip formatter={(v) => [fmtNum(v), "Empresas"]} />
+                  <Tooltip contentStyle={ct.tooltipStyle} formatter={(v) => [fmtNum(v), "Empresas"]} />
                   <Bar dataKey="total" name="Empresas" radius={[0, 4, 4, 0]}>
                     {porSituacao.map((d, i) => (
                       <Cell
@@ -261,10 +263,10 @@ export default function EmpresasPage() {
           <div className="h-48 md:h-72">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={situacaoPorPorte} margin={{ left: 10, right: 10 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
-                <XAxis dataKey="porte" tick={{ fontSize: 11 }} stroke="#94a3b8" />
-                <YAxis tick={{ fontSize: 11 }} stroke="#94a3b8" />
-                <Tooltip formatter={(v) => fmtNum(v)} />
+                <CartesianGrid strokeDasharray="3 3" stroke={ct.grid} />
+                <XAxis dataKey="porte" tick={{ fontSize: 11, fill: ct.tick }} stroke={ct.axis} />
+                <YAxis tick={{ fontSize: 11, fill: ct.tick }} stroke={ct.axis} />
+                <Tooltip contentStyle={ct.tooltipStyle} formatter={(v) => fmtNum(v)} />
                 <Legend />
                 <Bar dataKey="ativas" name="Ativas" fill="#10b981" radius={[4, 4, 0, 0]} />
                 <Bar dataKey="fechadas" name="Fechadas/Baixadas" fill="#ef4444" radius={[4, 4, 0, 0]} />
@@ -294,16 +296,16 @@ export default function EmpresasPage() {
                 layout="vertical"
                 margin={{ left: 20, right: 20 }}
               >
-                <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" horizontal={false} />
-                <XAxis type="number" tick={{ fontSize: 11 }} stroke="#94a3b8" />
+                <CartesianGrid strokeDasharray="3 3" stroke={ct.grid} horizontal={false} />
+                <XAxis type="number" tick={{ fontSize: 11, fill: ct.tick }} stroke={ct.axis} />
                 <YAxis
                   type="category"
                   dataKey="descricao"
-                  tick={{ fontSize: 9 }}
-                  stroke="#94a3b8"
+                  tick={{ fontSize: 9, fill: ct.tick }}
+                  stroke={ct.axis}
                   width={220}
                 />
-                <Tooltip formatter={(v) => [fmtNum(v), "Empresas"]} />
+                <Tooltip contentStyle={ct.tooltipStyle} formatter={(v) => [fmtNum(v), "Empresas"]} />
                 <Bar dataKey="total_vinculos" name="Empresas" radius={[0, 4, 4, 0]}>
                   {porCnaeSecao.map((_, i) => (
                     <Cell key={i} fill={COLORS[i % COLORS.length]} />
@@ -351,18 +353,18 @@ export default function EmpresasPage() {
           <div className="h-48 md:h-72">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={capitalPorPorte} margin={{ left: 10, right: 20 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
-                <XAxis dataKey="porte" tick={{ fontSize: 11 }} stroke="#94a3b8" />
+                <CartesianGrid strokeDasharray="3 3" stroke={ct.grid} />
+                <XAxis dataKey="porte" tick={{ fontSize: 11, fill: ct.tick }} stroke={ct.axis} />
                 <YAxis
-                  tick={{ fontSize: 11 }}
-                  stroke="#94a3b8"
+                  tick={{ fontSize: 11, fill: ct.tick }}
+                  stroke={ct.axis}
                   tickFormatter={(v) => {
                     if (v >= 1_000_000) return `R$ ${(v / 1_000_000).toFixed(1)}M`;
                     if (v >= 1_000) return `R$ ${(v / 1_000).toFixed(0)}k`;
                     return `R$ ${v}`;
                   }}
                 />
-                <Tooltip formatter={(v) => [fmtBRL(v)]} />
+                <Tooltip contentStyle={ct.tooltipStyle} formatter={(v) => [fmtBRL(v)]} />
                 <Legend />
                 <Bar dataKey="capital_medio" name="Capital Médio" fill="#3b82f6" radius={[4, 4, 0, 0]}>
                   {capitalPorPorte.map((_, i) => (
@@ -380,3 +382,5 @@ export default function EmpresasPage() {
     </motion.div>
   );
 }
+
+

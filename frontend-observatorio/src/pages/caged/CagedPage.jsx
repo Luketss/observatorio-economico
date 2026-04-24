@@ -1,5 +1,6 @@
-import { useEffect, useMemo, useState } from "react";
+﻿import { useEffect, useMemo, useState } from "react";
 import api from "../../services/api";
+import { useChartTheme } from "../../hooks/useChartTheme";
 import { motion } from "framer-motion";
 import InsightsPanel from "../../components/InsightsPanel";
 import ReleasesPanel from "../../components/ReleasesPanel";
@@ -77,6 +78,7 @@ function aggregateByCnaeTotal(data) {
 }
 
 export default function CagedPage() {
+  const ct = useChartTheme();
   const [rawSerie, setRawSerie] = useState([]);
   const [rawSexo, setRawSexo] = useState([]);
   const [rawRaca, setRawRaca] = useState([]);
@@ -222,10 +224,10 @@ export default function CagedPage() {
         <div className="h-48 md:h-72">
           <ResponsiveContainer width="100%" height="100%">
             <ComposedChart data={serie}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
-              <XAxis dataKey="periodo" tick={{ fontSize: 10 }} stroke="#94a3b8" interval="preserveStartEnd" />
-              <YAxis tick={{ fontSize: 11 }} stroke="#94a3b8" />
-              <Tooltip formatter={(v, name) => [Number(v).toLocaleString("pt-BR"), name]} />
+              <CartesianGrid strokeDasharray="3 3" stroke={ct.grid} />
+              <XAxis dataKey="periodo" tick={{ fontSize: 10, fill: ct.tick }} stroke={ct.axis} interval="preserveStartEnd" />
+              <YAxis tick={{ fontSize: 11, fill: ct.tick }} stroke={ct.axis} />
+              <Tooltip contentStyle={ct.tooltipStyle} formatter={(v, name) => [Number(v).toLocaleString("pt-BR"), name]} />
               <Legend />
               <Bar dataKey="admissoes" name="Admissões" fill="#3b82f6" opacity={0.8} radius={[2, 2, 0, 0]} />
               <Bar dataKey="desligamentos" name="Desligamentos" fill="#f97316" opacity={0.8} radius={[2, 2, 0, 0]} />
@@ -241,10 +243,10 @@ export default function CagedPage() {
         <div className="h-44 md:h-64">
           <ResponsiveContainer width="100%" height="100%">
             <LineChart data={salarioData}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
-              <XAxis dataKey="periodo" tick={{ fontSize: 10 }} stroke="#94a3b8" interval="preserveStartEnd" />
-              <YAxis tick={{ fontSize: 11 }} stroke="#94a3b8" tickFormatter={(v) => `R$${(v / 1000).toFixed(1)}k`} />
-              <Tooltip formatter={(v) => [fmtCurrency(v)]} />
+              <CartesianGrid strokeDasharray="3 3" stroke={ct.grid} />
+              <XAxis dataKey="periodo" tick={{ fontSize: 10, fill: ct.tick }} stroke={ct.axis} interval="preserveStartEnd" />
+              <YAxis tick={{ fontSize: 11, fill: ct.tick }} stroke={ct.axis} tickFormatter={(v) => `R$${(v / 1000).toFixed(1)}k`} />
+              <Tooltip contentStyle={ct.tooltipStyle} formatter={(v) => [fmtCurrency(v)]} />
               <Legend />
               <Line type="monotone" dataKey="adm" name="Admitidos" stroke="#3b82f6" strokeWidth={2} dot={false} />
               <Line type="monotone" dataKey="des" name="Desligados" stroke="#f97316" strokeWidth={2} dot={false} strokeDasharray="4 2" />
@@ -261,10 +263,10 @@ export default function CagedPage() {
             <div className="h-40 md:h-56">
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={sexoTotais} layout="vertical">
-                  <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" horizontal={false} />
-                  <XAxis type="number" tick={{ fontSize: 10 }} stroke="#94a3b8" tickFormatter={(v) => v.toLocaleString("pt-BR")} />
-                  <YAxis type="category" dataKey="sexo" tick={{ fontSize: 12 }} stroke="#94a3b8" width={80} />
-                  <Tooltip formatter={(v) => [Number(v).toLocaleString("pt-BR")]} />
+                  <CartesianGrid strokeDasharray="3 3" stroke={ct.grid} horizontal={false} />
+                  <XAxis type="number" tick={{ fontSize: 10, fill: ct.tick }} stroke={ct.axis} tickFormatter={(v) => v.toLocaleString("pt-BR")} />
+                  <YAxis type="category" dataKey="sexo" tick={{ fontSize: 12, fill: ct.tick }} stroke={ct.axis} width={80} />
+                  <Tooltip contentStyle={ct.tooltipStyle} formatter={(v) => [Number(v).toLocaleString("pt-BR")]} />
                   <Legend />
                   <Bar dataKey="admissoes" name="Admissões" fill="#3b82f6" radius={[0, 3, 3, 0]} />
                   <Bar dataKey="desligamentos" name="Desligamentos" fill="#f97316" radius={[0, 3, 3, 0]} />
@@ -279,10 +281,10 @@ export default function CagedPage() {
             <div className="h-40 md:h-56">
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={racaTotais} layout="vertical">
-                  <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" horizontal={false} />
-                  <XAxis type="number" tick={{ fontSize: 10 }} stroke="#94a3b8" tickFormatter={(v) => v.toLocaleString("pt-BR")} />
-                  <YAxis type="category" dataKey="raca" tick={{ fontSize: 11 }} stroke="#94a3b8" width={90} />
-                  <Tooltip formatter={(v) => [Number(v).toLocaleString("pt-BR")]} />
+                  <CartesianGrid strokeDasharray="3 3" stroke={ct.grid} horizontal={false} />
+                  <XAxis type="number" tick={{ fontSize: 10, fill: ct.tick }} stroke={ct.axis} tickFormatter={(v) => v.toLocaleString("pt-BR")} />
+                  <YAxis type="category" dataKey="raca" tick={{ fontSize: 11, fill: ct.tick }} stroke={ct.axis} width={90} />
+                  <Tooltip contentStyle={ct.tooltipStyle} formatter={(v) => [Number(v).toLocaleString("pt-BR")]} />
                   <Legend />
                   <Bar dataKey="admissoes" name="Admissões" fill="#8b5cf6" radius={[0, 3, 3, 0]} />
                   <Bar dataKey="desligamentos" name="Desligamentos" fill="#ec4899" radius={[0, 3, 3, 0]} />
@@ -299,10 +301,10 @@ export default function CagedPage() {
           <div className="h-52 md:h-80">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={cnaeTotais} layout="vertical">
-                <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" horizontal={false} />
-                <XAxis type="number" tick={{ fontSize: 10 }} stroke="#94a3b8" tickFormatter={(v) => v.toLocaleString("pt-BR")} />
-                <YAxis type="category" dataKey="nome" tick={{ fontSize: 10 }} stroke="#94a3b8" width={200} />
-                <Tooltip formatter={(v) => [Number(v).toLocaleString("pt-BR")]} />
+                <CartesianGrid strokeDasharray="3 3" stroke={ct.grid} horizontal={false} />
+                <XAxis type="number" tick={{ fontSize: 10, fill: ct.tick }} stroke={ct.axis} tickFormatter={(v) => v.toLocaleString("pt-BR")} />
+                <YAxis type="category" dataKey="nome" tick={{ fontSize: 10, fill: ct.tick }} stroke={ct.axis} width={200} />
+                <Tooltip contentStyle={ct.tooltipStyle} formatter={(v) => [Number(v).toLocaleString("pt-BR")]} />
                 <Legend />
                 <Bar dataKey="admissoes" name="Admissões" radius={[0, 3, 3, 0]}>
                   {cnaeTotais.map((_, idx) => (
@@ -320,3 +322,5 @@ export default function CagedPage() {
     </motion.div>
   );
 }
+
+

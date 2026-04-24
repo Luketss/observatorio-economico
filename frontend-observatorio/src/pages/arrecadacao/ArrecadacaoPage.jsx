@@ -1,5 +1,6 @@
-import { useEffect, useMemo, useState } from "react";
+﻿import { useEffect, useMemo, useState } from "react";
 import api from "../../services/api";
+import { useChartTheme } from "../../hooks/useChartTheme";
 import { motion } from "framer-motion";
 import InsightsPanel from "../../components/InsightsPanel";
 import ReleasesPanel from "../../components/ReleasesPanel";
@@ -23,6 +24,7 @@ const fmtBRL = (v) =>
   `R$ ${Number(v).toLocaleString("pt-BR", { maximumFractionDigits: 0 })}`;
 
 export default function ArrecadacaoPage() {
+  const ct = useChartTheme();
   const [rawSerie, setRawSerie] = useState([]);
   const [resumo, setResumo] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -142,9 +144,9 @@ export default function ArrecadacaoPage() {
                     <stop offset="95%" stopColor="#6366f1" stopOpacity={0} />
                   </linearGradient>
                 </defs>
-                <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
-                <XAxis dataKey="periodo" tick={{ fontSize: 11 }} stroke="#94a3b8" />
-                <YAxis tick={{ fontSize: 11 }} stroke="#94a3b8" width={70}
+                <CartesianGrid strokeDasharray="3 3" stroke={ct.grid} />
+                <XAxis dataKey="periodo" tick={{ fontSize: 11, fill: ct.tick }} stroke={ct.axis} />
+                <YAxis tick={{ fontSize: 11, fill: ct.tick }} stroke={ct.axis} width={70}
                   tickFormatter={(v) =>
                     `${(v / 1_000_000).toFixed(0)}M`
                   }
@@ -175,15 +177,15 @@ export default function ArrecadacaoPage() {
           <div className="h-48 md:h-72">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={serie.slice(-24)} margin={{ left: 10, right: 10 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
-                <XAxis dataKey="periodo" tick={{ fontSize: 10 }} stroke="#94a3b8" />
+                <CartesianGrid strokeDasharray="3 3" stroke={ct.grid} vertical={false} />
+                <XAxis dataKey="periodo" tick={{ fontSize: 10, fill: ct.tick }} stroke={ct.axis} />
                 <YAxis
-                  tick={{ fontSize: 11 }}
-                  stroke="#94a3b8"
+                  tick={{ fontSize: 11, fill: ct.tick }}
+                  stroke={ct.axis}
                   width={70}
                   tickFormatter={(v) => `${(v / 1_000_000).toFixed(0)}M`}
                 />
-                <Tooltip formatter={(v) => [fmtBRL(v)]} />
+                <Tooltip contentStyle={ct.tooltipStyle} formatter={(v) => [fmtBRL(v)]} />
                 <Legend />
                 <Bar dataKey="icms" name="ICMS" stackId="a" fill="#6366f1" />
                 <Bar dataKey="ipva" name="IPVA" stackId="a" fill="#10b981" />
@@ -231,3 +233,5 @@ export default function ArrecadacaoPage() {
     </motion.div>
   );
 }
+
+

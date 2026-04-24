@@ -1,5 +1,6 @@
-import { useEffect, useMemo, useState } from "react";
+﻿import { useEffect, useMemo, useState } from "react";
 import api from "../../services/api";
+import { useChartTheme } from "../../hooks/useChartTheme";
 import { motion } from "framer-motion";
 import InsightsPanel from "../../components/InsightsPanel";
 import ReleasesPanel from "../../components/ReleasesPanel";
@@ -90,6 +91,7 @@ function remByYearBySexo(data) {
 }
 
 export default function RaisPage() {
+  const ct = useChartTheme();
   const [rawSerie, setRawSerie] = useState([]);
   const [resumo, setResumo] = useState(null);
   const [rawSexo, setRawSexo] = useState([]);
@@ -271,10 +273,10 @@ export default function RaisPage() {
                   <stop offset="95%" stopColor="#8b5cf6" stopOpacity={0} />
                 </linearGradient>
               </defs>
-              <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
-              <XAxis dataKey="ano" tick={{ fontSize: 12 }} stroke="#94a3b8" />
-              <YAxis tick={{ fontSize: 11 }} stroke="#94a3b8" width={65} tickFormatter={(v) => v.toLocaleString("pt-BR")} />
-              <Tooltip formatter={(v) => [Number(v).toLocaleString("pt-BR"), "Vínculos"]} />
+              <CartesianGrid strokeDasharray="3 3" stroke={ct.grid} />
+              <XAxis dataKey="ano" tick={{ fontSize: 12, fill: ct.tick }} stroke={ct.axis} />
+              <YAxis tick={{ fontSize: 11, fill: ct.tick }} stroke={ct.axis} width={65} tickFormatter={(v) => v.toLocaleString("pt-BR")} />
+              <Tooltip contentStyle={ct.tooltipStyle} formatter={(v) => [Number(v).toLocaleString("pt-BR"), "Vínculos"]} />
               <Area type="monotone" dataKey="total_vinculos" stroke="#8b5cf6" strokeWidth={2.5} fill="url(#gradRais)" />
             </AreaChart>
           </ResponsiveContainer>
@@ -288,10 +290,10 @@ export default function RaisPage() {
             <div className="h-52">
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={sexoTotais} layout="vertical">
-                  <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" horizontal={false} />
-                  <XAxis type="number" tick={{ fontSize: 10 }} stroke="#94a3b8" tickFormatter={(v) => v.toLocaleString("pt-BR")} />
-                  <YAxis type="category" dataKey="sexo" tick={{ fontSize: 12 }} stroke="#94a3b8" width={90} />
-                  <Tooltip formatter={(v) => [Number(v).toLocaleString("pt-BR"), "Vínculos"]} />
+                  <CartesianGrid strokeDasharray="3 3" stroke={ct.grid} horizontal={false} />
+                  <XAxis type="number" tick={{ fontSize: 10, fill: ct.tick }} stroke={ct.axis} tickFormatter={(v) => v.toLocaleString("pt-BR")} />
+                  <YAxis type="category" dataKey="sexo" tick={{ fontSize: 12, fill: ct.tick }} stroke={ct.axis} width={90} />
+                  <Tooltip contentStyle={ct.tooltipStyle} formatter={(v) => [Number(v).toLocaleString("pt-BR"), "Vínculos"]} />
                   <Bar dataKey="total" name="Vínculos" radius={[0, 4, 4, 0]}>
                     {sexoTotais.map((_, idx) => (
                       <Cell key={idx} fill={COLORS[idx % COLORS.length]} />
@@ -308,10 +310,10 @@ export default function RaisPage() {
             <div className="h-52">
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={racaTotais} layout="vertical">
-                  <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" horizontal={false} />
-                  <XAxis type="number" tick={{ fontSize: 10 }} stroke="#94a3b8" tickFormatter={(v) => v.toLocaleString("pt-BR")} />
-                  <YAxis type="category" dataKey="raca" tick={{ fontSize: 11 }} stroke="#94a3b8" width={100} />
-                  <Tooltip formatter={(v) => [Number(v).toLocaleString("pt-BR"), "Vínculos"]} />
+                  <CartesianGrid strokeDasharray="3 3" stroke={ct.grid} horizontal={false} />
+                  <XAxis type="number" tick={{ fontSize: 10, fill: ct.tick }} stroke={ct.axis} tickFormatter={(v) => v.toLocaleString("pt-BR")} />
+                  <YAxis type="category" dataKey="raca" tick={{ fontSize: 11, fill: ct.tick }} stroke={ct.axis} width={100} />
+                  <Tooltip contentStyle={ct.tooltipStyle} formatter={(v) => [Number(v).toLocaleString("pt-BR"), "Vínculos"]} />
                   <Bar dataKey="total" name="Vínculos" radius={[0, 4, 4, 0]}>
                     {racaTotais.map((_, idx) => (
                       <Cell key={idx} fill={COLORS[(idx + 3) % COLORS.length]} />
@@ -331,10 +333,10 @@ export default function RaisPage() {
             <div className="h-60">
               <ResponsiveContainer width="100%" height="100%">
                 <LineChart data={remSexoAnual}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
-                  <XAxis dataKey="ano" tick={{ fontSize: 12 }} stroke="#94a3b8" />
-                  <YAxis tick={{ fontSize: 11 }} stroke="#94a3b8" tickFormatter={(v) => `R$${(v / 1000).toFixed(1)}k`} />
-                  <Tooltip formatter={(v) => [fmtCurrency(v)]} />
+                  <CartesianGrid strokeDasharray="3 3" stroke={ct.grid} />
+                  <XAxis dataKey="ano" tick={{ fontSize: 12, fill: ct.tick }} stroke={ct.axis} />
+                  <YAxis tick={{ fontSize: 11, fill: ct.tick }} stroke={ct.axis} tickFormatter={(v) => `R$${(v / 1000).toFixed(1)}k`} />
+                  <Tooltip contentStyle={ct.tooltipStyle} formatter={(v) => [fmtCurrency(v)]} />
                   <Legend />
                   {sexoLabels.map((s, i) => (
                     <Line key={s} type="monotone" dataKey={s} name={s} stroke={COLORS[i % COLORS.length]} strokeWidth={2} dot />
@@ -352,10 +354,10 @@ export default function RaisPage() {
           <div className="h-52 md:h-80">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={cnaeTotais} layout="vertical">
-                <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" horizontal={false} />
-                <XAxis type="number" tick={{ fontSize: 10 }} stroke="#94a3b8" tickFormatter={(v) => v.toLocaleString("pt-BR")} />
-                <YAxis type="category" dataKey="nome" tick={{ fontSize: 10 }} stroke="#94a3b8" width={200} />
-                <Tooltip formatter={(v) => [Number(v).toLocaleString("pt-BR")]} />
+                <CartesianGrid strokeDasharray="3 3" stroke={ct.grid} horizontal={false} />
+                <XAxis type="number" tick={{ fontSize: 10, fill: ct.tick }} stroke={ct.axis} tickFormatter={(v) => v.toLocaleString("pt-BR")} />
+                <YAxis type="category" dataKey="nome" tick={{ fontSize: 10, fill: ct.tick }} stroke={ct.axis} width={200} />
+                <Tooltip contentStyle={ct.tooltipStyle} formatter={(v) => [Number(v).toLocaleString("pt-BR")]} />
                 <Bar dataKey="total" name="Vínculos" radius={[0, 4, 4, 0]}>
                   {cnaeTotais.map((_, idx) => (
                     <Cell key={idx} fill={COLORS[idx % COLORS.length]} />
@@ -374,10 +376,10 @@ export default function RaisPage() {
             <div className="h-44 md:h-64">
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={faixaEtariaTotais} layout="vertical">
-                  <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" horizontal={false} />
-                  <XAxis type="number" tick={{ fontSize: 10 }} stroke="#94a3b8" tickFormatter={(v) => v.toLocaleString("pt-BR")} />
-                  <YAxis type="category" dataKey="faixa" tick={{ fontSize: 10 }} stroke="#94a3b8" width={100} />
-                  <Tooltip formatter={(v) => [Number(v).toLocaleString("pt-BR"), "Vínculos"]} />
+                  <CartesianGrid strokeDasharray="3 3" stroke={ct.grid} horizontal={false} />
+                  <XAxis type="number" tick={{ fontSize: 10, fill: ct.tick }} stroke={ct.axis} tickFormatter={(v) => v.toLocaleString("pt-BR")} />
+                  <YAxis type="category" dataKey="faixa" tick={{ fontSize: 10, fill: ct.tick }} stroke={ct.axis} width={100} />
+                  <Tooltip contentStyle={ct.tooltipStyle} formatter={(v) => [Number(v).toLocaleString("pt-BR"), "Vínculos"]} />
                   <Bar dataKey="total" name="Vínculos" radius={[0, 4, 4, 0]}>
                     {faixaEtariaTotais.map((_, i) => (
                       <Cell key={i} fill={COLORS[i % COLORS.length]} />
@@ -394,10 +396,10 @@ export default function RaisPage() {
             <div className="h-44 md:h-64">
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={escolaridadeTotais} layout="vertical">
-                  <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" horizontal={false} />
-                  <XAxis type="number" tick={{ fontSize: 10 }} stroke="#94a3b8" tickFormatter={(v) => v.toLocaleString("pt-BR")} />
-                  <YAxis type="category" dataKey="grau" tick={{ fontSize: 9 }} stroke="#94a3b8" width={140} />
-                  <Tooltip formatter={(v) => [Number(v).toLocaleString("pt-BR"), "Vínculos"]} />
+                  <CartesianGrid strokeDasharray="3 3" stroke={ct.grid} horizontal={false} />
+                  <XAxis type="number" tick={{ fontSize: 10, fill: ct.tick }} stroke={ct.axis} tickFormatter={(v) => v.toLocaleString("pt-BR")} />
+                  <YAxis type="category" dataKey="grau" tick={{ fontSize: 9, fill: ct.tick }} stroke={ct.axis} width={140} />
+                  <Tooltip contentStyle={ct.tooltipStyle} formatter={(v) => [Number(v).toLocaleString("pt-BR"), "Vínculos"]} />
                   <Bar dataKey="total" name="Vínculos" radius={[0, 4, 4, 0]}>
                     {escolaridadeTotais.map((_, i) => (
                       <Cell key={i} fill={COLORS[(i + 2) % COLORS.length]} />
@@ -417,10 +419,10 @@ export default function RaisPage() {
             <div className="h-44 md:h-64">
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={faixaRemTotais} layout="vertical">
-                  <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" horizontal={false} />
-                  <XAxis type="number" tick={{ fontSize: 10 }} stroke="#94a3b8" tickFormatter={(v) => v.toLocaleString("pt-BR")} />
-                  <YAxis type="category" dataKey="faixa" tick={{ fontSize: 10 }} stroke="#94a3b8" width={110} />
-                  <Tooltip formatter={(v) => [Number(v).toLocaleString("pt-BR"), "Vínculos"]} />
+                  <CartesianGrid strokeDasharray="3 3" stroke={ct.grid} horizontal={false} />
+                  <XAxis type="number" tick={{ fontSize: 10, fill: ct.tick }} stroke={ct.axis} tickFormatter={(v) => v.toLocaleString("pt-BR")} />
+                  <YAxis type="category" dataKey="faixa" tick={{ fontSize: 10, fill: ct.tick }} stroke={ct.axis} width={110} />
+                  <Tooltip contentStyle={ct.tooltipStyle} formatter={(v) => [Number(v).toLocaleString("pt-BR"), "Vínculos"]} />
                   <Bar dataKey="total" name="Vínculos" radius={[0, 4, 4, 0]}>
                     {faixaRemTotais.map((_, i) => (
                       <Cell key={i} fill={COLORS[(i + 1) % COLORS.length]} />
@@ -436,10 +438,10 @@ export default function RaisPage() {
           <div className="h-44 md:h-64">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={tempoEmpregoTotais} layout="vertical">
-                <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" horizontal={false} />
-                <XAxis type="number" tick={{ fontSize: 10 }} stroke="#94a3b8" tickFormatter={(v) => v.toLocaleString("pt-BR")} />
-                <YAxis type="category" dataKey="faixa" tick={{ fontSize: 10 }} stroke="#94a3b8" width={110} />
-                <Tooltip formatter={(v) => [Number(v).toLocaleString("pt-BR"), "Vínculos"]} />
+                <CartesianGrid strokeDasharray="3 3" stroke={ct.grid} horizontal={false} />
+                <XAxis type="number" tick={{ fontSize: 10, fill: ct.tick }} stroke={ct.axis} tickFormatter={(v) => v.toLocaleString("pt-BR")} />
+                <YAxis type="category" dataKey="faixa" tick={{ fontSize: 10, fill: ct.tick }} stroke={ct.axis} width={110} />
+                <Tooltip contentStyle={ct.tooltipStyle} formatter={(v) => [Number(v).toLocaleString("pt-BR"), "Vínculos"]} />
                 <Bar dataKey="total" name="Vínculos" radius={[0, 4, 4, 0]}>
                   {tempoEmpregoTotais.map((_, i) => (
                     <Cell key={i} fill={COLORS[(i + 4) % COLORS.length]} />
@@ -459,10 +461,10 @@ export default function RaisPage() {
               <div className="h-60">
                 <ResponsiveContainer width="100%" height="100%">
                   <BarChart data={metricasAnuais} barCategoryGap="35%">
-                    <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
-                    <XAxis dataKey="ano" tick={{ fontSize: 12 }} stroke="#94a3b8" />
-                    <YAxis tick={{ fontSize: 11 }} stroke="#94a3b8" tickFormatter={(v) => v.toLocaleString("pt-BR")} />
-                    <Tooltip formatter={(v) => [Number(v).toLocaleString("pt-BR")]} />
+                    <CartesianGrid strokeDasharray="3 3" stroke={ct.grid} vertical={false} />
+                    <XAxis dataKey="ano" tick={{ fontSize: 12, fill: ct.tick }} stroke={ct.axis} />
+                    <YAxis tick={{ fontSize: 11, fill: ct.tick }} stroke={ct.axis} tickFormatter={(v) => v.toLocaleString("pt-BR")} />
+                    <Tooltip contentStyle={ct.tooltipStyle} formatter={(v) => [Number(v).toLocaleString("pt-BR")]} />
                     <Legend />
                     <Bar dataKey="total_pcd" name="PCD" fill="#8b5cf6" radius={[4, 4, 0, 0]} />
                     <Bar dataKey="total_outro_municipio" name="Outro Município" fill="#06b6d4" radius={[4, 4, 0, 0]} />
@@ -475,10 +477,10 @@ export default function RaisPage() {
               <div className="h-52">
                 <ResponsiveContainer width="100%" height="100%">
                   <LineChart data={metricasAnuais}>
-                    <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
-                    <XAxis dataKey="ano" tick={{ fontSize: 12 }} stroke="#94a3b8" />
-                    <YAxis tick={{ fontSize: 11 }} stroke="#94a3b8" tickFormatter={(v) => `${v.toFixed(1)} dias`} />
-                    <Tooltip formatter={(v) => [`${Number(v).toFixed(1)} dias`, "Média de Afastamento"]} />
+                    <CartesianGrid strokeDasharray="3 3" stroke={ct.grid} />
+                    <XAxis dataKey="ano" tick={{ fontSize: 12, fill: ct.tick }} stroke={ct.axis} />
+                    <YAxis tick={{ fontSize: 11, fill: ct.tick }} stroke={ct.axis} tickFormatter={(v) => `${v.toFixed(1)} dias`} />
+                    <Tooltip contentStyle={ct.tooltipStyle} formatter={(v) => [`${Number(v).toFixed(1)} dias`, "Média de Afastamento"]} />
                     <Line type="monotone" dataKey="media_dias_afastamento" name="Média Afastamento" stroke="#f97316" strokeWidth={2.5} dot />
                   </LineChart>
                 </ResponsiveContainer>
@@ -492,3 +494,5 @@ export default function RaisPage() {
     </motion.div>
   );
 }
+
+

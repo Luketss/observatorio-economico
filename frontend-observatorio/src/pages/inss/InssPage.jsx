@@ -1,5 +1,6 @@
-import { useEffect, useMemo, useState } from "react";
+﻿import { useEffect, useMemo, useState } from "react";
 import api from "../../services/api";
+import { useChartTheme } from "../../hooks/useChartTheme";
 import { motion } from "framer-motion";
 import InsightsPanel from "../../components/InsightsPanel";
 import ReleasesPanel from "../../components/ReleasesPanel";
@@ -37,6 +38,7 @@ const fmtBRL = (v) =>
 const fmtNum = (v) => (v != null ? Number(v).toLocaleString("pt-BR") : "—");
 
 export default function InssPage() {
+  const ct = useChartTheme();
   const [rawSerie, setRawSerie] = useState([]);
   const [resumo, setResumo] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -172,15 +174,15 @@ export default function InssPage() {
                 >
                   <CartesianGrid
                     strokeDasharray="3 3"
-                    stroke="#f1f5f9"
+                    stroke={ct.grid}
                     horizontal={false}
                   />
-                  <XAxis type="number" tick={{ fontSize: 11 }} stroke="#94a3b8" />
+                  <XAxis type="number" tick={{ fontSize: 11, fill: ct.tick }} stroke={ct.axis} />
                   <YAxis
                     type="category"
                     dataKey="categoria"
-                    tick={{ fontSize: 9 }}
-                    stroke="#94a3b8"
+                    tick={{ fontSize: 9, fill: ct.tick }}
+                    stroke={ct.axis}
                     width={130}
                   />
                   <Tooltip
@@ -219,13 +221,13 @@ export default function InssPage() {
             <div className="h-52 md:h-80">
               <ResponsiveContainer width="100%" height="100%">
                 <LineChart data={evolucaoAnual}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
+                  <CartesianGrid strokeDasharray="3 3" stroke={ct.grid} />
                   <XAxis
                     dataKey="ano"
-                    tick={{ fontSize: 11 }}
-                    stroke="#94a3b8"
+                    tick={{ fontSize: 11, fill: ct.tick }}
+                    stroke={ct.axis}
                   />
-                  <YAxis tick={{ fontSize: 11 }} stroke="#94a3b8" />
+                  <YAxis tick={{ fontSize: 11, fill: ct.tick }} stroke={ct.axis} />
                   <Tooltip
                     formatter={(v) => [
                       Number(v).toLocaleString("pt-BR"),
@@ -306,3 +308,5 @@ export default function InssPage() {
     </motion.div>
   );
 }
+
+

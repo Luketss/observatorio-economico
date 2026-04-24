@@ -15,12 +15,12 @@ import { useToast } from "../../context/ToastContext";
 import { useEscapeKey } from "../../hooks/useEscapeKey";
 
 const TIPO_CONFIG = {
-  cultural:       { label: "Cultural",        color: "bg-purple-500",   text: "text-purple-700 bg-purple-100" },
-  administrativo: { label: "Administrativo",  color: "bg-blue-500",     text: "text-blue-700 bg-blue-100" },
-  politico:       { label: "Político",         color: "bg-slate-500",    text: "text-slate-700 bg-slate-100" },
-  saude:          { label: "Saúde",            color: "bg-green-500",    text: "text-green-700 bg-green-100" },
-  educacao:       { label: "Educação",         color: "bg-amber-500",    text: "text-amber-700 bg-amber-100" },
-  outro:          { label: "Outro",            color: "bg-slate-400",    text: "text-slate-600 bg-slate-100" },
+  cultural:       { label: "Cultural",        color: "bg-purple-500",   text: "text-purple-700 bg-purple-100 dark:text-purple-300 dark:bg-purple-900/40" },
+  administrativo: { label: "Administrativo",  color: "bg-blue-500",     text: "text-blue-700 bg-blue-100 dark:text-blue-300 dark:bg-blue-900/40" },
+  politico:       { label: "Político",         color: "bg-slate-500",    text: "text-slate-700 bg-slate-100 dark:text-slate-300 dark:bg-slate-700" },
+  saude:          { label: "Saúde",            color: "bg-green-500",    text: "text-green-700 bg-green-100 dark:text-green-300 dark:bg-green-900/40" },
+  educacao:       { label: "Educação",         color: "bg-amber-500",    text: "text-amber-700 bg-amber-100 dark:text-amber-300 dark:bg-amber-900/40" },
+  outro:          { label: "Outro",            color: "bg-slate-400",    text: "text-slate-600 bg-slate-100 dark:text-slate-300 dark:bg-slate-700" },
 };
 
 const MESES = ["Janeiro","Fevereiro","Março","Abril","Maio","Junho","Julho","Agosto","Setembro","Outubro","Novembro","Dezembro"];

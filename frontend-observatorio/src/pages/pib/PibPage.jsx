@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import api from "../../services/api";
+import { useChartTheme } from "../../hooks/useChartTheme";
 import { motion } from "framer-motion";
 import InsightsPanel from "../../components/InsightsPanel";
 import ReleasesPanel from "../../components/ReleasesPanel";
@@ -25,6 +26,7 @@ const fmtBRL = (v) =>
   `R$ ${Number(v).toLocaleString("pt-BR", { maximumFractionDigits: 0 })}`;
 
 export default function PibPage() {
+  const ct = useChartTheme();
   const [rawSerie, setRawSerie] = useState([]);
   const [resumo, setResumo] = useState(null);
   const [comparativo, setComparativo] = useState([]);
@@ -166,11 +168,11 @@ export default function PibPage() {
           <div className="h-44 md:h-64">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={serie} barCategoryGap="30%">
-                <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
-                <XAxis dataKey="ano" tick={{ fontSize: 12 }} stroke="#94a3b8" />
+                <CartesianGrid strokeDasharray="3 3" stroke={ct.grid} vertical={false} />
+                <XAxis dataKey="ano" tick={{ fontSize: 12, fill: ct.tick }} stroke={ct.axis} />
                 <YAxis
-                  tick={{ fontSize: 11 }}
-                  stroke="#94a3b8"
+                  tick={{ fontSize: 11, fill: ct.tick }}
+                  stroke={ct.axis}
                   width={75}
                   tickFormatter={(v) =>
                     `${(v / 1_000_000).toFixed(0)}M`
@@ -178,7 +180,7 @@ export default function PibPage() {
                 />
                 <Tooltip
                   formatter={(v) => [fmtBRL(v), "PIB Total"]}
-                  cursor={{ fill: "#f8fafc" }}
+                  cursor={{ fill: ct.grid }}
                 />
                 <Bar dataKey="pib_total" radius={[4, 4, 0, 0]}>
                   {serie.map((_, i) => (
@@ -204,15 +206,15 @@ export default function PibPage() {
             <div className="h-48 md:h-72">
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={vaData} margin={{ left: 10, right: 10 }}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
-                  <XAxis dataKey="ano" tick={{ fontSize: 12 }} stroke="#94a3b8" />
+                  <CartesianGrid strokeDasharray="3 3" stroke={ct.grid} vertical={false} />
+                  <XAxis dataKey="ano" tick={{ fontSize: 12, fill: ct.tick }} stroke={ct.axis} />
                   <YAxis
-                    tick={{ fontSize: 11 }}
-                    stroke="#94a3b8"
+                    tick={{ fontSize: 11, fill: ct.tick }}
+                    stroke={ct.axis}
                     width={75}
                     tickFormatter={(v) => `${(v / 1_000_000).toFixed(0)}M`}
                   />
-                  <Tooltip formatter={(v) => [fmtBRL(v)]} />
+                  <Tooltip contentStyle={ct.tooltipStyle} formatter={(v) => [fmtBRL(v)]} />
                   <Legend />
                   <Bar dataKey="va_agropecuaria" name="Agropecuária" stackId="va" fill="#10b981" />
                   <Bar dataKey="va_industria" name="Indústria" stackId="va" fill="#3b82f6" />
@@ -234,11 +236,11 @@ export default function PibPage() {
           <div className="h-48 md:h-72">
             <ResponsiveContainer width="100%" height="100%">
               <LineChart data={comparativoChart}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
-                <XAxis dataKey="ano" tick={{ fontSize: 12 }} stroke="#94a3b8" />
+                <CartesianGrid strokeDasharray="3 3" stroke={ct.grid} />
+                <XAxis dataKey="ano" tick={{ fontSize: 12, fill: ct.tick }} stroke={ct.axis} />
                 <YAxis
-                  tick={{ fontSize: 11 }}
-                  stroke="#94a3b8"
+                  tick={{ fontSize: 11, fill: ct.tick }}
+                  stroke={ct.axis}
                   width={75}
                   tickFormatter={(v) => `${(v / 1_000_000).toFixed(0)}M`}
                 />

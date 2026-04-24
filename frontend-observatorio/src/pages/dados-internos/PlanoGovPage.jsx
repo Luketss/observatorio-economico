@@ -15,9 +15,9 @@ import { useToast } from "../../context/ToastContext";
 import { useEscapeKey } from "../../hooks/useEscapeKey";
 
 const STATUS_CONFIG = {
-  nao_iniciado: { label: "Não iniciado", color: "bg-slate-100 text-slate-600", dot: "bg-slate-400" },
-  em_andamento: { label: "Em andamento", color: "bg-amber-100 text-amber-700", dot: "bg-amber-500" },
-  concluido:    { label: "Concluído",    color: "bg-green-100 text-green-700", dot: "bg-green-500" },
+  nao_iniciado: { label: "Não iniciado", color: "bg-slate-100 text-slate-600 dark:bg-slate-700 dark:text-slate-300", dot: "bg-slate-400" },
+  em_andamento: { label: "Em andamento", color: "bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-400", dot: "bg-amber-500" },
+  concluido:    { label: "Concluído",    color: "bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-400", dot: "bg-green-500" },
 };
 
 const defaultForm = {
@@ -170,8 +170,8 @@ export default function PlanoGovPage() {
           </h4>
           {canEdit && (
             <div className="flex gap-1 shrink-0">
-              <button onClick={() => openEdit(acao)} className="p-1 text-slate-400 hover:text-blue-600 transition-colors"><PencilIcon className="w-3.5 h-3.5" /></button>
-              <button onClick={() => setDeleteConfirmId(acao.id)} className="p-1 text-slate-400 hover:text-red-500 transition-colors"><TrashIcon className="w-3.5 h-3.5" /></button>
+              <button onClick={() => openEdit(acao)} aria-label="Editar ação" className="p-1.5 rounded-lg text-slate-400 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-950/40 transition-colors cursor-pointer"><PencilIcon className="w-3.5 h-3.5" /></button>
+              <button onClick={() => setDeleteConfirmId(acao.id)} aria-label="Excluir ação" className="p-1.5 rounded-lg text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-950/40 transition-colors cursor-pointer"><TrashIcon className="w-3.5 h-3.5" /></button>
             </div>
           )}
         </div>

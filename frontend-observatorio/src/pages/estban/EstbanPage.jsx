@@ -1,5 +1,6 @@
-import { useEffect, useMemo, useState } from "react";
+﻿import { useEffect, useMemo, useState } from "react";
 import api from "../../services/api";
+import { useChartTheme } from "../../hooks/useChartTheme";
 import { motion } from "framer-motion";
 import InsightsPanel from "../../components/InsightsPanel";
 import ReleasesPanel from "../../components/ReleasesPanel";
@@ -40,6 +41,7 @@ const fmtBRL = (v) =>
 const fmtNum = (v) => (v != null ? Number(v).toLocaleString("pt-BR") : "—");
 
 export default function EstbanPage() {
+  const ct = useChartTheme();
   const [rawSerie, setRawSerie] = useState([]);
   const [rawCaptacao, setRawCaptacao] = useState([]);
   const [rawComposicao, setRawComposicao] = useState([]);
@@ -177,23 +179,23 @@ export default function EstbanPage() {
           <div className="h-48 md:h-72">
             <ResponsiveContainer width="100%" height="100%">
               <LineChart data={serie}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
+                <CartesianGrid strokeDasharray="3 3" stroke={ct.grid} />
                 <XAxis
                   dataKey="data_referencia"
-                  tick={{ fontSize: 10 }}
-                  stroke="#94a3b8"
+                  tick={{ fontSize: 10, fill: ct.tick }}
+                  stroke={ct.axis}
                   interval="preserveStartEnd"
                 />
                 <YAxis
-                  tick={{ fontSize: 11 }}
-                  stroke="#94a3b8"
+                  tick={{ fontSize: 11, fill: ct.tick }}
+                  stroke={ct.axis}
                   tickFormatter={(v) =>
                     `R$ ${(v / 1_000_000).toLocaleString("pt-BR", {
                       maximumFractionDigits: 0,
                     })}M`
                   }
                 />
-                <Tooltip formatter={(v) => [fmtBRL(v), "Operações de Crédito"]} />
+                <Tooltip contentStyle={ct.tooltipStyle} formatter={(v) => [fmtBRL(v), "Operações de Crédito"]} />
                 <Legend />
                 <Line
                   type="monotone"
@@ -254,21 +256,21 @@ export default function EstbanPage() {
                     <stop offset="95%" stopColor="#f59e0b" stopOpacity={0.05} />
                   </linearGradient>
                 </defs>
-                <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
+                <CartesianGrid strokeDasharray="3 3" stroke={ct.grid} />
                 <XAxis
                   dataKey="data_referencia"
-                  tick={{ fontSize: 10 }}
-                  stroke="#94a3b8"
+                  tick={{ fontSize: 10, fill: ct.tick }}
+                  stroke={ct.axis}
                   interval="preserveStartEnd"
                 />
                 <YAxis
-                  tick={{ fontSize: 11 }}
-                  stroke="#94a3b8"
+                  tick={{ fontSize: 11, fill: ct.tick }}
+                  stroke={ct.axis}
                   tickFormatter={(v) =>
                     `R$ ${(v / 1_000_000).toLocaleString("pt-BR", { maximumFractionDigits: 0 })}M`
                   }
                 />
-                <Tooltip formatter={(v) => [fmtBRL(v)]} />
+                <Tooltip contentStyle={ct.tooltipStyle} formatter={(v) => [fmtBRL(v)]} />
                 <Legend />
                 <Area type="monotone" dataKey="depositos_vista" name="Depósitos à Vista" stroke="#3b82f6" fill="url(#gradVista)" strokeWidth={2} dot={false} />
                 <Area type="monotone" dataKey="poupanca" name="Poupança" stroke="#10b981" fill="url(#gradPoupanca)" strokeWidth={2} dot={false} />
@@ -294,16 +296,16 @@ export default function EstbanPage() {
           <div className="h-44 md:h-64">
             <ResponsiveContainer width="100%" height="100%">
               <LineChart data={captacao}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
-                <XAxis dataKey="data_referencia" tick={{ fontSize: 10 }} stroke="#94a3b8" interval="preserveStartEnd" />
+                <CartesianGrid strokeDasharray="3 3" stroke={ct.grid} />
+                <XAxis dataKey="data_referencia" tick={{ fontSize: 10, fill: ct.tick }} stroke={ct.axis} interval="preserveStartEnd" />
                 <YAxis
-                  tick={{ fontSize: 11 }}
-                  stroke="#94a3b8"
+                  tick={{ fontSize: 11, fill: ct.tick }}
+                  stroke={ct.axis}
                   tickFormatter={(v) =>
                     `R$ ${(v / 1_000_000).toLocaleString("pt-BR", { maximumFractionDigits: 0 })}M`
                   }
                 />
-                <Tooltip formatter={(v) => [fmtBRL(v)]} />
+                <Tooltip contentStyle={ct.tooltipStyle} formatter={(v) => [fmtBRL(v)]} />
                 <Legend />
                 <Line type="monotone" dataKey="operacoes_credito" name="Operações de Crédito" stroke="#3b82f6" strokeWidth={2.5} dot={false} />
                 <Line type="monotone" dataKey="total_captacao" name="Total Captação" stroke="#10b981" strokeWidth={2} dot={false} strokeDasharray="4 2" />
@@ -328,16 +330,16 @@ export default function EstbanPage() {
           <div className="h-48 md:h-72">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={composicao}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
-                <XAxis dataKey="data_referencia" tick={{ fontSize: 10 }} stroke="#94a3b8" interval="preserveStartEnd" />
+                <CartesianGrid strokeDasharray="3 3" stroke={ct.grid} />
+                <XAxis dataKey="data_referencia" tick={{ fontSize: 10, fill: ct.tick }} stroke={ct.axis} interval="preserveStartEnd" />
                 <YAxis
-                  tick={{ fontSize: 11 }}
-                  stroke="#94a3b8"
+                  tick={{ fontSize: 11, fill: ct.tick }}
+                  stroke={ct.axis}
                   tickFormatter={(v) =>
                     `R$ ${(v / 1_000_000).toLocaleString("pt-BR", { maximumFractionDigits: 0 })}M`
                   }
                 />
-                <Tooltip formatter={(v) => [fmtBRL(v)]} />
+                <Tooltip contentStyle={ct.tooltipStyle} formatter={(v) => [fmtBRL(v)]} />
                 <Legend />
                 <Bar dataKey="emprestimos_titulos_descontados" name="Empréstimos/Títulos Desc." stackId="a" fill="#3b82f6" />
                 <Bar dataKey="financiamentos_gerais" name="Financiamentos Gerais" stackId="a" fill="#10b981" />
@@ -374,13 +376,13 @@ export default function EstbanPage() {
               >
                 <CartesianGrid
                   strokeDasharray="3 3"
-                  stroke="#f1f5f9"
+                  stroke={ct.grid}
                   horizontal={false}
                 />
                 <XAxis
                   type="number"
-                  tick={{ fontSize: 11 }}
-                  stroke="#94a3b8"
+                  tick={{ fontSize: 11, fill: ct.tick }}
+                  stroke={ct.axis}
                   tickFormatter={(v) =>
                     `R$ ${(v / 1_000_000).toLocaleString("pt-BR", {
                       maximumFractionDigits: 0,
@@ -390,11 +392,11 @@ export default function EstbanPage() {
                 <YAxis
                   type="category"
                   dataKey="nome_instituicao"
-                  tick={{ fontSize: 9 }}
-                  stroke="#94a3b8"
+                  tick={{ fontSize: 9, fill: ct.tick }}
+                  stroke={ct.axis}
                   width={140}
                 />
-                <Tooltip formatter={(v) => [fmtBRL(v), "Operações de Crédito"]} />
+                <Tooltip contentStyle={ct.tooltipStyle} formatter={(v) => [fmtBRL(v), "Operações de Crédito"]} />
                 <Bar
                   dataKey="valor_operacoes_credito"
                   name="Operações de Crédito"
@@ -423,15 +425,15 @@ export default function EstbanPage() {
                 layout="vertical"
                 margin={{ left: 20, right: 20 }}
               >
-                <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" horizontal={false} />
+                <CartesianGrid strokeDasharray="3 3" stroke={ct.grid} horizontal={false} />
                 <XAxis
                   type="number"
-                  tick={{ fontSize: 11 }}
-                  stroke="#94a3b8"
+                  tick={{ fontSize: 11, fill: ct.tick }}
+                  stroke={ct.axis}
                   tickFormatter={(v) => `R$ ${(v / 1_000_000).toLocaleString("pt-BR", { maximumFractionDigits: 0 })}M`}
                 />
-                <YAxis type="category" dataKey="nome_instituicao" tick={{ fontSize: 9 }} stroke="#94a3b8" width={140} />
-                <Tooltip formatter={(v) => [fmtBRL(v)]} />
+                <YAxis type="category" dataKey="nome_instituicao" tick={{ fontSize: 9, fill: ct.tick }} stroke={ct.axis} width={140} />
+                <Tooltip contentStyle={ct.tooltipStyle} formatter={(v) => [fmtBRL(v)]} />
                 <Legend />
                 <Bar dataKey="emprestimos_titulos_descontados" name="Empréstimos/Títulos" stackId="a" fill="#3b82f6" />
                 <Bar dataKey="financiamentos_gerais" name="Financiamentos Gerais" stackId="a" fill="#10b981" />
@@ -519,3 +521,5 @@ export default function EstbanPage() {
     </motion.div>
   );
 }
+
+

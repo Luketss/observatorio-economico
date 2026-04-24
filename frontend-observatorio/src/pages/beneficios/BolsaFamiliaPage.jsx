@@ -1,5 +1,6 @@
-import { useEffect, useMemo, useState } from "react";
+﻿import { useEffect, useMemo, useState } from "react";
 import api from "../../services/api";
+import { useChartTheme } from "../../hooks/useChartTheme";
 import { motion } from "framer-motion";
 import InsightsPanel from "../../components/InsightsPanel";
 import ReleasesPanel from "../../components/ReleasesPanel";
@@ -29,6 +30,7 @@ const fmtBRL = (v) =>
 const fmtNum = (v) => (v != null ? Number(v).toLocaleString("pt-BR") : "—");
 
 export default function BolsaFamiliaPage() {
+  const ct = useChartTheme();
   const [rawSerie, setRawSerie] = useState([]);
   const [resumo, setResumo] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -153,14 +155,14 @@ export default function BolsaFamiliaPage() {
                     <stop offset="95%" stopColor="#3b82f6" stopOpacity={0} />
                   </linearGradient>
                 </defs>
-                <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
+                <CartesianGrid strokeDasharray="3 3" stroke={ct.grid} />
                 <XAxis
                   dataKey="periodo"
-                  tick={{ fontSize: 10 }}
-                  stroke="#94a3b8"
+                  tick={{ fontSize: 10, fill: ct.tick }}
+                  stroke={ct.axis}
                   interval="preserveStartEnd"
                 />
-                <YAxis tick={{ fontSize: 11 }} stroke="#94a3b8" />
+                <YAxis tick={{ fontSize: 11, fill: ct.tick }} stroke={ct.axis} />
                 <Tooltip
                   formatter={(v) => [
                     Number(v).toLocaleString("pt-BR"),
@@ -197,15 +199,15 @@ export default function BolsaFamiliaPage() {
           <div className="h-48 md:h-72">
             <ResponsiveContainer width="100%" height="100%">
               <LineChart data={serie}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
+                <CartesianGrid strokeDasharray="3 3" stroke={ct.grid} />
                 <XAxis
                   dataKey="periodo"
-                  tick={{ fontSize: 10 }}
-                  stroke="#94a3b8"
+                  tick={{ fontSize: 10, fill: ct.tick }}
+                  stroke={ct.axis}
                   interval="preserveStartEnd"
                 />
-                <YAxis tick={{ fontSize: 11 }} stroke="#94a3b8" tickFormatter={(v) => v.toLocaleString("pt-BR")} />
-                <Tooltip formatter={(v, name) => [fmtNum(v), name]} />
+                <YAxis tick={{ fontSize: 11, fill: ct.tick }} stroke={ct.axis} tickFormatter={(v) => v.toLocaleString("pt-BR")} />
+                <Tooltip contentStyle={ct.tooltipStyle} formatter={(v, name) => [fmtNum(v), name]} />
                 <Legend />
                 <Line
                   type="monotone"
@@ -244,16 +246,16 @@ export default function BolsaFamiliaPage() {
           <div className="h-48 md:h-72">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={serie}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
+                <CartesianGrid strokeDasharray="3 3" stroke={ct.grid} />
                 <XAxis
                   dataKey="periodo"
-                  tick={{ fontSize: 10 }}
-                  stroke="#94a3b8"
+                  tick={{ fontSize: 10, fill: ct.tick }}
+                  stroke={ct.axis}
                   interval="preserveStartEnd"
                 />
                 <YAxis
-                  tick={{ fontSize: 11 }}
-                  stroke="#94a3b8"
+                  tick={{ fontSize: 11, fill: ct.tick }}
+                  stroke={ct.axis}
                   tickFormatter={(v) =>
                     `R$ ${(v / 1000).toLocaleString("pt-BR", {
                       maximumFractionDigits: 0,
@@ -288,3 +290,5 @@ export default function BolsaFamiliaPage() {
     </motion.div>
   );
 }
+
+
