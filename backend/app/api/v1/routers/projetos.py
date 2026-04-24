@@ -2,7 +2,7 @@ from typing import List, Optional
 
 from app.api.deps import get_current_user, get_db, require_role
 from app.core.exceptions import ForbiddenException, NotFoundException
-from app.models.projeto import Projeto, ProjetoEixo
+from app.models.projeto import Projeto, ProjetoEixo, ProjetoTemplate
 from app.models.usuario import Usuario
 from app.schemas.projeto import (
     EixoCreate,
@@ -10,6 +10,9 @@ from app.schemas.projeto import (
     EixoUpdate,
     ProjetoCreate,
     ProjetoOut,
+    ProjetoTemplateCreate,
+    ProjetoTemplateOut,
+    ProjetoTemplateUpdate,
     ProjetoUpdate,
 )
 from fastapi import APIRouter, Depends, Query
@@ -18,7 +21,7 @@ from sqlalchemy.orm import Session
 router = APIRouter(prefix="/projetos", tags=["Projetos"])
 
 
-# ── Eixos ────────────────────────────────────────────────────────────────────
+# ── Eixos ─────────────────────────────────────────────────────────────────────
 
 @router.get("/eixos", response_model=List[EixoOut])
 def listar_eixos(db: Session = Depends(get_db), _=Depends(get_current_user)):
@@ -69,7 +72,94 @@ def deletar_eixo(
     return {"ok": True}
 
 
-# ── Projetos ─────────────────────────────────────────────────────────────────
+# ── Acervo (templates) ────────────────────────────────────────────────────────
+
+@router.get("/acervo", response_model=List[ProjetoTemplateOut])
+def listar_acervo(
+    eixo_id: Optional[int] = Query(None),
+    db: Session = Depends(get_db),
+    _=Depends(get_current_user),
+):
+    query = db.query(ProjetoTemplate)
+    if eixo_id:
+        query = query.filter(ProjetoTemplate.eixo_id == eixo_id)
+    return query.order_by(ProjetoTemplate.criado_em.desc()).all()
+
+
+@router.post("/acervo", response_model=ProjetoTemplateOut)
+def criar_template(
+    data: ProjetoTemplateCreate,
+    db: Session = Depends(get_db),
+    current_user: Usuario = Depends(require_role("ADMIN_GLOBAL")),
+):
+    tmpl = ProjetoTemplate(**data.model_dump(), criado_por=current_user.id)
+    db.add(tmpl)
+    db.commit()
+    db.refresh(tmpl)
+    return tmpl
+
+
+@router.put("/acervo/{template_id}", response_model=ProjetoTemplateOut)
+def atualizar_template(
+    template_id: int,
+    data: ProjetoTemplateUpdate,
+    db: Session = Depends(get_db),
+    _: Usuario = Depends(require_role("ADMIN_GLOBAL")),
+):
+    tmpl = db.get(ProjetoTemplate, template_id)
+    if not tmpl:
+        raise NotFoundException("Template not found")
+    for field, value in data.model_dump(exclude_unset=True).items():
+        setattr(tmpl, field, value)
+    db.commit()
+    db.refresh(tmpl)
+    return tmpl
+
+
+@router.delete("/acervo/{template_id}")
+def deletar_template(
+    template_id: int,
+    db: Session = Depends(get_db),
+    _: Usuario = Depends(require_role("ADMIN_GLOBAL")),
+):
+    tmpl = db.get(ProjetoTemplate, template_id)
+    if not tmpl:
+        raise NotFoundException("Template not found")
+    db.delete(tmpl)
+    db.commit()
+    return {"ok": True}
+
+
+@router.post("/acervo/{template_id}/selecionar", response_model=ProjetoOut)
+def selecionar_template(
+    template_id: int,
+    db: Session = Depends(get_db),
+    current_user: Usuario = Depends(get_current_user),
+):
+    if current_user.role.nome == "ADMIN_GLOBAL":
+        raise ForbiddenException("ADMIN_GLOBAL não possui município associado")
+    tmpl = db.get(ProjetoTemplate, template_id)
+    if not tmpl:
+        raise NotFoundException("Template not found")
+    if not tmpl.eixo_id:
+        raise ForbiddenException("Este modelo não possui eixo associado e não pode ser selecionado")
+    projeto = Projeto(
+        eixo_id=tmpl.eixo_id,
+        municipio_id=current_user.municipio_id,
+        template_id=tmpl.id,
+        titulo=tmpl.titulo,
+        descricao=tmpl.descricao,
+        conteudo=tmpl.conteudo,
+        status="nao_iniciado",
+        criado_por=current_user.id,
+    )
+    db.add(projeto)
+    db.commit()
+    db.refresh(projeto)
+    return projeto
+
+
+# ── Projetos (Acompanhamento) ─────────────────────────────────────────────────
 
 @router.get("", response_model=List[ProjetoOut])
 def listar_projetos(
@@ -93,10 +183,11 @@ def criar_projeto(
 ):
     if current_user.role.nome == "VISUALIZADOR":
         raise ForbiddenException("Insufficient permissions")
-    municipio_id = current_user.municipio_id if current_user.role.nome != "ADMIN_GLOBAL" else current_user.municipio_id
+    if current_user.role.nome == "ADMIN_GLOBAL":
+        raise ForbiddenException("ADMIN_GLOBAL não possui município associado")
     projeto = Projeto(
         **data.model_dump(),
-        municipio_id=municipio_id,
+        municipio_id=current_user.municipio_id,
         criado_por=current_user.id,
     )
     db.add(projeto)

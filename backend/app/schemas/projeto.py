@@ -4,6 +4,8 @@ from typing import Optional
 from pydantic import BaseModel
 
 
+# ── Eixos ─────────────────────────────────────────────────────────────────────
+
 class EixoOut(BaseModel):
     id: int
     nome: str
@@ -26,16 +28,49 @@ class EixoUpdate(BaseModel):
     ordem: Optional[int] = None
 
 
+# ── Templates (Acervo) ────────────────────────────────────────────────────────
+
+class ProjetoTemplateOut(BaseModel):
+    id: int
+    eixo_id: Optional[int] = None
+    titulo: str
+    descricao: Optional[str] = None
+    conteudo: Optional[str] = None
+    criado_em: datetime
+    atualizado_em: datetime
+
+    class Config:
+        from_attributes = True
+
+
+class ProjetoTemplateCreate(BaseModel):
+    eixo_id: Optional[int] = None
+    titulo: str
+    descricao: Optional[str] = None
+    conteudo: Optional[str] = None
+
+
+class ProjetoTemplateUpdate(BaseModel):
+    eixo_id: Optional[int] = None
+    titulo: Optional[str] = None
+    descricao: Optional[str] = None
+    conteudo: Optional[str] = None
+
+
+# ── Projetos (Acompanhamento) ─────────────────────────────────────────────────
+
 class ProjetoOut(BaseModel):
     id: int
     eixo_id: int
     municipio_id: int
+    template_id: Optional[int] = None
     titulo: str
     descricao: Optional[str] = None
     status: str
     data_inicio: Optional[date] = None
     data_prazo: Optional[date] = None
     departamento: Optional[str] = None
+    responsavel: Optional[str] = None
     conteudo: Optional[str] = None
     criado_em: datetime
     atualizado_em: datetime
@@ -52,6 +87,7 @@ class ProjetoCreate(BaseModel):
     data_inicio: Optional[date] = None
     data_prazo: Optional[date] = None
     departamento: Optional[str] = None
+    responsavel: Optional[str] = None
     conteudo: Optional[str] = None
 
 
@@ -62,4 +98,5 @@ class ProjetoUpdate(BaseModel):
     data_inicio: Optional[date] = None
     data_prazo: Optional[date] = None
     departamento: Optional[str] = None
+    responsavel: Optional[str] = None
     conteudo: Optional[str] = None
