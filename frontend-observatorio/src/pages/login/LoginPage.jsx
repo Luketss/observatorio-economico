@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import { useAuth } from "../../context/AuthContext";
@@ -13,7 +13,7 @@ import nidLogo from "../../assets/nid_fundo_transparente.png";
 import logo from "../../assets/logo_uaizi.png";
 
 export default function LoginPage() {
-  const { login } = useAuth();
+  const { login, user, loading: authLoading } = useAuth();
   const navigate = useNavigate();
 
   const [email, setEmail] = useState("");
@@ -22,13 +22,21 @@ export default function LoginPage() {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
+  // Navigate only after React has committed the user state — avoids
+  // the ProtectedRoute seeing user===null and bouncing back to /login.
+  useEffect(() => {
+    if (!authLoading && user) {
+      navigate("/app", { replace: true });
+    }
+  }, [user, authLoading, navigate]);
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError("");
     setLoading(true);
     try {
       await login(email, senha);
-      navigate("/app");
+      // Navigation is handled by the useEffect above once user state is committed.
     } catch {
       setError("Email ou senha incorretos. Verifique suas credenciais e tente novamente.");
     } finally {
