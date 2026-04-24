@@ -93,7 +93,7 @@ def get_insight(
     is_global = current_user.role.nome == "ADMIN_GLOBAL"
     mid = municipio_id if (is_global and municipio_id) else current_user.municipio_id
     if not mid:
-        raise HTTPException(status_code=400, detail="municipio_id é obrigatório para ADMIN_GLOBAL.")
+        raise HTTPException(status_code=404, detail="Insight não encontrado.")
 
     q = db.query(InsightModel).filter(
         InsightModel.municipio_id == mid,
@@ -137,7 +137,7 @@ def listar_releases_municipio(
     """Returns active releases for the current user's municipality."""
     mid = current_user.municipio_id
     if not mid:
-        raise HTTPException(status_code=400, detail="municipio_id não encontrado para este usuário.")
+        return []
 
     rows = (
         db.query(InsightModel)

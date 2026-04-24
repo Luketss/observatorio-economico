@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import api from "../services/api";
-import { NewspaperIcon, ChevronDownIcon, ChevronUpIcon, XMarkIcon } from "@heroicons/react/24/outline";
+import { NewspaperIcon, ChevronDownIcon, ChevronUpIcon } from "@heroicons/react/24/outline";
 import { useAuth } from "../context/AuthContext";
 
 const DATASET_LABELS = {
@@ -32,9 +32,11 @@ export default function ReleasesPanel({ dataset }) {
   const [release, setRelease] = useState(null);
   const [loading, setLoading] = useState(true);
   const [expanded, setExpanded] = useState(false);
-  const [modal, setModal] = useState(false);
+
+  const isGlobal = user?.role === "ADMIN_GLOBAL";
 
   useEffect(() => {
+    if (isGlobal) { setLoading(false); return; }
     api
       .get("/insights/releases")
       .then((r) => {
@@ -43,7 +45,7 @@ export default function ReleasesPanel({ dataset }) {
       })
       .catch(() => setRelease(null))
       .finally(() => setLoading(false));
-  }, [dataset]);
+  }, [dataset, isGlobal]);
 
   const handlePrint = () => {
     const label = DATASET_LABELS[dataset] || dataset;

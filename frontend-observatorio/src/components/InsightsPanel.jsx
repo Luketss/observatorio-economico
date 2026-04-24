@@ -2,13 +2,18 @@ import { useEffect, useState } from "react";
 import api from "../services/api";
 import { motion, AnimatePresence } from "framer-motion";
 import { SparklesIcon } from "@heroicons/react/24/outline";
+import { useAuth } from "../context/AuthContext";
 
 export default function InsightsPanel({ dataset, municipioId }) {
+  const { user } = useAuth();
   const [insight, setInsight] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
+  const isGlobal = user?.role === "ADMIN_GLOBAL";
+
   useEffect(() => {
+    if (isGlobal && !municipioId) { setLoading(false); return; }
     setLoading(true);
     setError(null);
     const params = { dataset, periodo: "latest" };
@@ -17,14 +22,14 @@ export default function InsightsPanel({ dataset, municipioId }) {
       .get("/insights", { params })
       .then((res) => setInsight(res.data))
       .catch((err) => {
-        if (err.response?.status === 404) {
+        if (err.response?.status === 404 || err.response?.status === 400) {
           setInsight(null);
         } else {
           setError("Erro ao carregar insights.");
         }
       })
       .finally(() => setLoading(false));
-  }, [dataset, municipioId]);
+  }, [dataset, municipioId, isGlobal]);
 
   const formatDate = (dt) => {
     if (!dt) return "";
@@ -36,6 +41,8 @@ export default function InsightsPanel({ dataset, municipioId }) {
       minute: "2-digit",
     });
   };
+
+  if (!loading && !insight && !error && isGlobal && !municipioId) return null;
 
   return (
     <motion.div
