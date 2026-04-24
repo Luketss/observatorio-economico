@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { NavLink, Outlet, useLocation } from "react-router-dom";
+import logo from "../../assets/logo_uaizi.png";
 import { PlanContext } from "../../context/PlanContext";
 import { ToastProvider } from "../../context/ToastContext";
 import { useAuth } from "../../context/AuthContext";
@@ -53,30 +54,6 @@ const NAV_STRUCTURE = [
     modulo: null,
   },
   {
-    type: "link",
-    to: "/app/projetos",
-    label: "Projetos",
-    icon: FolderOpenIcon,
-    modulo: null,
-  },
-  {
-    type: "link",
-    to: "/app/timeline",
-    label: "Timeline",
-    icon: CalendarDaysIcon,
-    modulo: "timeline_mandato",
-  },
-  {
-    type: "group",
-    label: "Dados Internos",
-    icon: CircleStackIcon,
-    children: [
-      { to: "/app/dados-internos/indicadores", label: "Indicadores", icon: ChartPieIcon, modulo: null },
-      { to: "/app/dados-internos/plano-gov", label: "Plano de Governo", icon: ClipboardDocumentListIcon, modulo: null },
-      { to: "/app/dados-internos/calendario", label: "Calendário", icon: CalendarIcon, modulo: null },
-    ],
-  },
-  {
     type: "group",
     label: "Economia",
     icon: ChartBarIcon,
@@ -113,6 +90,30 @@ const NAV_STRUCTURE = [
       { to: "/app/comex", label: "Comércio Ext.", icon: GlobeAltIcon, modulo: "comex" },
       { to: "/app/empresas", label: "Empresas", icon: BuildingStorefrontIcon, modulo: "empresas" },
       { to: "/app/pix", label: "PIX", icon: BanknotesIcon, modulo: "pix" },
+    ],
+  },
+  {
+    type: "link",
+    to: "/app/projetos",
+    label: "Projetos",
+    icon: FolderOpenIcon,
+    modulo: null,
+  },
+  {
+    type: "link",
+    to: "/app/timeline",
+    label: "Timeline",
+    icon: CalendarDaysIcon,
+    modulo: "timeline_mandato",
+  },
+  {
+    type: "group",
+    label: "Dados Internos",
+    icon: CircleStackIcon,
+    children: [
+      { to: "/app/dados-internos/indicadores", label: "Indicadores", icon: ChartPieIcon, modulo: null },
+      { to: "/app/dados-internos/plano-gov", label: "Plano de Governo", icon: ClipboardDocumentListIcon, modulo: null },
+      { to: "/app/dados-internos/calendario", label: "Calendário", icon: CalendarIcon, modulo: null },
     ],
   },
   {
@@ -197,23 +198,27 @@ export default function DashboardLayout() {
   };
 
   const linkClass = (isActive) =>
-    `flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-all duration-150 ${
+    `flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-all duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400/50 ${
       isActive
-        ? "bg-blue-600 text-white shadow"
-        : "text-slate-300 hover:bg-slate-700 hover:text-white"
+        ? "bg-blue-500/20 text-blue-300 font-semibold"
+        : "text-slate-400 hover:bg-white/5 hover:text-slate-200"
     }`;
 
   const sidebarContent = (
     <>
       {/* Logo */}
-      <div className="px-6 py-7 border-b border-slate-700 relative">
-        <h1 className="text-xl font-extrabold tracking-tight leading-tight">UAIZI</h1>
-        <p className="text-xs text-slate-400 mt-1 uppercase tracking-widest">
-          NID — Núcleo de Inteligência de Dados
+      <div className="px-6 py-5 border-b border-slate-700 relative flex items-center gap-3">
+        <img
+          src={logo}
+          alt="UAIZI"
+          className="h-9 object-contain invert opacity-90"
+        />
+        <p className="text-[10px] text-slate-400 uppercase tracking-widest leading-tight">
+          NID — Núcleo de<br />Inteligência de Dados
         </p>
         <button
           onClick={() => setSidebarOpen(false)}
-          className="absolute top-4 right-4 md:hidden p-1 rounded-lg text-slate-400 hover:text-white hover:bg-slate-700 transition-colors"
+          className="absolute top-3 right-3 md:hidden p-1 rounded-lg text-slate-400 hover:text-white hover:bg-slate-700 transition-colors cursor-pointer"
         >
           <XMarkIcon className="w-5 h-5" />
         </button>
@@ -252,10 +257,10 @@ export default function DashboardLayout() {
               <div key={idx}>
                 <button
                   onClick={() => toggleGroup(idx)}
-                  className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-all duration-150 ${
+                  className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-all duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400/50 cursor-pointer ${
                     hasActive
-                      ? "text-white bg-slate-700/80"
-                      : "text-slate-300 hover:bg-slate-700 hover:text-white"
+                      ? "text-blue-300 bg-blue-500/10 font-semibold"
+                      : "text-slate-400 hover:bg-white/5 hover:text-slate-200"
                   }`}
                 >
                   <Icon className="w-4 h-4 flex-shrink-0" />
@@ -332,28 +337,39 @@ export default function DashboardLayout() {
         </div>
 
         {/* Footer */}
-        <div className="flex-shrink-0 p-4 border-t border-slate-700 space-y-3">
-          <div className="px-3 py-2 rounded-lg bg-slate-700/50">
-            <p className="text-xs text-slate-400">Logado como</p>
-            <p className="text-sm font-semibold text-white truncate">
-              {user?.nome || "Usuário"}
-            </p>
-            <p className="text-xs text-blue-400">{user?.role}</p>
+        <div className="flex-shrink-0 p-4 border-t border-slate-700/60 space-y-2">
+          {/* User card */}
+          <div className="flex items-center gap-3 px-3 py-2.5 rounded-lg bg-white/5">
+            <div className="w-8 h-8 rounded-full bg-blue-600 flex items-center justify-center flex-shrink-0 text-white text-xs font-bold select-none">
+              {(user?.nome || "U").charAt(0).toUpperCase()}
+            </div>
+            <div className="min-w-0 flex-1">
+              <p className="text-sm font-semibold text-white truncate leading-tight">
+                {user?.nome || "Usuário"}
+              </p>
+              <p className="text-[11px] text-blue-400 leading-tight mt-0.5">{user?.role}</p>
+            </div>
           </div>
-          <button
-            onClick={toggleTheme}
-            className="w-full flex items-center justify-center gap-2 bg-slate-700 hover:bg-slate-600 transition-colors px-4 py-2 rounded-lg text-sm text-slate-300 hover:text-white"
-          >
-            {theme === "dark" ? <SunIcon className="w-4 h-4" /> : <MoonIcon className="w-4 h-4" />}
-            {theme === "dark" ? "Modo Claro" : "Modo Escuro"}
-          </button>
-          <button
-            onClick={logout}
-            className="w-full flex items-center justify-center gap-2 bg-slate-700 hover:bg-red-600 transition-colors duration-150 px-4 py-2 rounded-lg text-sm text-slate-300 hover:text-white"
-          >
-            <PowerIcon className="w-4 h-4" />
-            Sair
-          </button>
+
+          {/* Actions row */}
+          <div className="flex gap-2">
+            <button
+              onClick={toggleTheme}
+              className="flex-1 flex items-center justify-center gap-1.5 bg-white/5 hover:bg-white/10 transition-colors px-3 py-2 rounded-lg text-xs text-slate-400 hover:text-slate-200 cursor-pointer"
+              title={theme === "dark" ? "Modo Claro" : "Modo Escuro"}
+            >
+              {theme === "dark" ? <SunIcon className="w-4 h-4" /> : <MoonIcon className="w-4 h-4" />}
+              <span className="hidden sm:inline">{theme === "dark" ? "Claro" : "Escuro"}</span>
+            </button>
+            <button
+              onClick={logout}
+              className="flex-1 flex items-center justify-center gap-1.5 hover:bg-red-950/50 transition-colors px-3 py-2 rounded-lg text-xs text-slate-400 hover:text-red-400 border border-transparent hover:border-red-900/40 cursor-pointer"
+              title="Sair"
+            >
+              <PowerIcon className="w-4 h-4" />
+              Sair
+            </button>
+          </div>
         </div>
       </aside>
 
@@ -363,7 +379,7 @@ export default function DashboardLayout() {
           {/* Hamburger */}
           <button
             onClick={() => setSidebarOpen(true)}
-            className="md:hidden p-2 rounded-lg text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+            className="md:hidden p-2 rounded-lg text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer"
           >
             <Bars3Icon className="w-6 h-6" />
           </button>

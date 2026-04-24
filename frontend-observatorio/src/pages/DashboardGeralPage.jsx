@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import api from "../services/api";
 import { useAuth } from "../context/AuthContext";
+import { useTheme } from "../context/ThemeContext";
 import { motion } from "framer-motion";
 import InsightsPanel from "../components/InsightsPanel";
 import ReleasesPanel from "../components/ReleasesPanel";
@@ -57,6 +58,7 @@ const CUSTOM_COLOR_MAP = {
 
 export default function DashboardGeralPage() {
   const { user } = useAuth();
+  const { theme } = useTheme();
   const [pibResumo, setPibResumo] = useState(null);
   const [arrecResumo, setArrecResumo] = useState(null);
   const [cagedResumo, setCagedResumo] = useState(null);
@@ -107,7 +109,7 @@ export default function DashboardGeralPage() {
       value: fmt(pibResumo?.pib_ultimo_ano),
       sub: pibResumo?.ultimo_ano ? `Ano ${pibResumo.ultimo_ano}` : null,
       icon: CurrencyDollarIcon,
-      color: { bg: "bg-green-50", text: "text-green-600" },
+      color: { bg: "bg-green-50 dark:bg-green-950/30", text: "text-green-600 dark:text-green-400" },
     },
     {
       label: "Arrecadação Total",
@@ -116,7 +118,7 @@ export default function DashboardGeralPage() {
         ? `${arrecResumo.crescimento_percentual > 0 ? "+" : ""}${arrecResumo.crescimento_percentual.toFixed(1)}% vs ano anterior`
         : null,
       icon: BanknotesIcon,
-      color: { bg: "bg-blue-50", text: "text-blue-600" },
+      color: { bg: "bg-blue-50 dark:bg-blue-950/30", text: "text-blue-600 dark:text-blue-400" },
     },
     {
       label: "Saldo CAGED",
@@ -129,7 +131,7 @@ export default function DashboardGeralPage() {
           ? `${Number(cagedResumo.total_admissoes).toLocaleString("pt-BR")} admissões`
           : null,
       icon: BriefcaseIcon,
-      color: { bg: "bg-purple-50", text: "text-purple-600" },
+      color: { bg: "bg-purple-50 dark:bg-purple-950/30", text: "text-purple-600 dark:text-purple-400" },
     },
     {
       label: "Crescimento PIB",
@@ -139,7 +141,7 @@ export default function DashboardGeralPage() {
           : "—",
       sub: "Variação último ano",
       icon: ArrowTrendingUpIcon,
-      color: { bg: "bg-orange-50", text: "text-orange-600" },
+      color: { bg: "bg-orange-50 dark:bg-orange-950/30", text: "text-orange-600 dark:text-orange-400" },
     },
   ];
 
@@ -192,9 +194,10 @@ export default function DashboardGeralPage() {
         transition={{ delay: 0.35 }}
         className="bg-white dark:bg-slate-900 p-6 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-800"
       >
-        <h3 className="text-base font-bold mb-5 text-slate-800 dark:text-white">
-          Evolução do PIB
-        </h3>
+        <div className="mb-5">
+          <h3 className="text-base font-bold text-slate-800 dark:text-white">Evolução do PIB</h3>
+          <p className="text-xs text-slate-400 dark:text-slate-500 mt-0.5">Série histórica anual</p>
+        </div>
         {pibSerie.length === 0 ? (
           <div className="h-64 flex items-center justify-center text-slate-400 dark:text-slate-500 text-sm">
             Sem dados disponíveis
@@ -203,23 +206,47 @@ export default function DashboardGeralPage() {
           <div className="h-44 md:h-64">
             <ResponsiveContainer width="100%" height="100%">
               <LineChart data={pibSerie}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
-                <XAxis dataKey="ano" tick={{ fontSize: 12 }} stroke="#94a3b8" />
-                <YAxis tick={{ fontSize: 12 }} stroke="#94a3b8" width={60} />
+                <CartesianGrid
+                  strokeDasharray="3 3"
+                  stroke={theme === "dark" ? "#1e293b" : "#f1f5f9"}
+                />
+                <XAxis
+                  dataKey="ano"
+                  tick={{ fontSize: 12, fill: theme === "dark" ? "#94a3b8" : "#64748b" }}
+                  stroke={theme === "dark" ? "#334155" : "#e2e8f0"}
+                />
+                <YAxis
+                  tick={{ fontSize: 11, fill: theme === "dark" ? "#94a3b8" : "#64748b" }}
+                  stroke={theme === "dark" ? "#334155" : "#e2e8f0"}
+                  width={72}
+                  tickFormatter={(v) => {
+                    if (v >= 1_000_000_000) return `R$ ${(v / 1_000_000_000).toFixed(1)}B`;
+                    if (v >= 1_000_000) return `R$ ${(v / 1_000_000).toFixed(1)}M`;
+                    if (v >= 1_000) return `R$ ${(v / 1_000).toFixed(0)}K`;
+                    return `R$ ${v}`;
+                  }}
+                />
                 <Tooltip
+                  contentStyle={{
+                    backgroundColor: theme === "dark" ? "#0f172a" : "#ffffff",
+                    border: `1px solid ${theme === "dark" ? "#1e293b" : "#e2e8f0"}`,
+                    borderRadius: "12px",
+                    fontSize: "13px",
+                    color: theme === "dark" ? "#f1f5f9" : "#1e293b",
+                  }}
                   formatter={(v) =>
                     `R$ ${Number(v).toLocaleString("pt-BR", { maximumFractionDigits: 0 })}`
                   }
                 />
-                <Legend />
+                <Legend wrapperStyle={{ fontSize: "12px" }} />
                 <Line
                   type="monotone"
                   dataKey="pib_total"
                   name="PIB Total"
                   stroke="#2563eb"
                   strokeWidth={2.5}
-                  dot={{ r: 3 }}
-                  activeDot={{ r: 5 }}
+                  dot={{ r: 3, fill: "#2563eb" }}
+                  activeDot={{ r: 5, fill: "#3b82f6" }}
                 />
               </LineChart>
             </ResponsiveContainer>
