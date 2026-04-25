@@ -1,8 +1,26 @@
 import { useEffect, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import api from "../../services/api";
-import { NewspaperIcon, XMarkIcon } from "@heroicons/react/24/outline";
+import { NewspaperIcon, XMarkIcon, PencilSquareIcon, SparklesIcon } from "@heroicons/react/24/outline";
 import { useAuth } from "../../context/AuthContext";
+
+function Badge({ modelo }) {
+  const isEspecialista = modelo === "especialista";
+  return (
+    <span
+      className={`inline-flex items-center gap-1 text-xs font-semibold px-2 py-0.5 rounded-full ${
+        isEspecialista
+          ? "bg-teal-50 dark:bg-teal-950/40 text-teal-700 dark:text-teal-400"
+          : "bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-400"
+      }`}
+    >
+      {isEspecialista
+        ? <PencilSquareIcon className="w-3 h-3" />
+        : <SparklesIcon className="w-3 h-3" />}
+      {isEspecialista ? "Especialista" : "IA"}
+    </span>
+  );
+}
 
 const DATASET_LABELS = {
   geral: "Visão Geral",
@@ -118,7 +136,7 @@ export default function ReleasesPage() {
           </h1>
         </div>
         <p className="text-sm text-slate-400 dark:text-slate-500 mt-1">
-          Comunicados gerados por inteligência artificial para divulgação institucional.
+          Comunicados para divulgação institucional, gerados por IA ou por especialista.
         </p>
       </div>
 
@@ -154,10 +172,13 @@ export default function ReleasesPage() {
                   <div className="w-10 h-10 rounded-xl bg-violet-100 dark:bg-violet-950/40 flex items-center justify-center flex-shrink-0">
                     <NewspaperIcon className="w-5 h-5 text-violet-600 dark:text-violet-400" />
                   </div>
-                  <div>
-                    <h3 className="font-bold text-slate-800 dark:text-white text-sm">{label}</h3>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <h3 className="font-bold text-slate-800 dark:text-white text-sm">{label}</h3>
+                      <Badge modelo={release.modelo} />
+                    </div>
                     <p className="text-xs text-slate-400 dark:text-slate-500 mt-0.5">
-                      Gerado em {fmtDate(release.gerado_em)}
+                      {fmtDate(release.gerado_em)}
                     </p>
                   </div>
                 </div>
@@ -206,14 +227,17 @@ export default function ReleasesPage() {
             >
               <div className="flex items-start justify-between p-6 border-b border-slate-100 dark:border-slate-800">
                 <div>
-                  <p className="text-xs uppercase tracking-wider text-slate-400 dark:text-slate-500 font-semibold mb-1">
-                    Release de Imprensa
-                  </p>
+                  <div className="flex items-center gap-2 mb-1">
+                    <p className="text-xs uppercase tracking-wider text-slate-400 dark:text-slate-500 font-semibold">
+                      Release de Imprensa
+                    </p>
+                    <Badge modelo={modal.modelo} />
+                  </div>
                   <h3 className="text-base font-bold text-slate-800 dark:text-white">
                     {getLabel(modal.dataset)}
                   </h3>
                   <p className="text-xs text-slate-400 dark:text-slate-500 mt-1">
-                    Gerado em {fmtDate(modal.gerado_em)}
+                    {fmtDate(modal.gerado_em)}
                   </p>
                 </div>
                 <button
