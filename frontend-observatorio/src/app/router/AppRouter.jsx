@@ -29,6 +29,7 @@ import PixPage from "../../pages/pix/PixPage";
 import ReleasesPage from "../../pages/releases/ReleasesPage";
 import TimelinePage from "../../pages/timeline/TimelinePage";
 import ProjetosPage from "../../pages/projetos/ProjetosPage";
+import DesenvolvimentoEconomicoPage from "../../pages/desenvolvimento-economico/DesenvolvimentoEconomicoPage";
 import ProjetosEixosAdminPage from "../../pages/admin/ProjetosEixosAdminPage";
 import IndicadoresInternosPage from "../../pages/dados-internos/IndicadoresInternosPage";
 import PlanoGovPage from "../../pages/dados-internos/PlanoGovPage";
@@ -91,6 +92,7 @@ export default function AppRouter() {
           <Route path="releases" element={<ReleasesPage />} />
           <Route path="timeline" element={<TimelinePage />} />
           <Route path="projetos" element={<ProjetosPage />} />
+          <Route path="desenvolvimento-economico" element={<DesenvolvimentoEconomicoPage />} />
           <Route path="dados-internos/indicadores" element={<IndicadoresInternosPage />} />
           <Route path="dados-internos/plano-gov" element={<PlanoGovPage />} />
           <Route path="dados-internos/calendario" element={<CalendarioPage />} />

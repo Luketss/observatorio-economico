@@ -32,6 +32,14 @@ from app.models.rais import (
 )
 from app.models.role import Role
 from app.models.usuario import Usuario
+from app.models.desenvolvimento_economico import (
+    InvestimentoFunil,
+    EmpresaRetencao,
+    VisitaRetencao,
+    CaptacaoRecurso,
+    EscritaProjeto,
+    Premiacao,
+)
 
 __all__ = [
     "Usuario",
@@ -67,4 +75,10 @@ __all__ = [
     "DatasetInfo",
     "Notificacao",
     "NotificacaoLida",
+    "InvestimentoFunil",
+    "EmpresaRetencao",
+    "VisitaRetencao",
+    "CaptacaoRecurso",
+    "EscritaProjeto",
+    "Premiacao",
 ]
