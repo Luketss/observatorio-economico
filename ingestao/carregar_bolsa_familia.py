@@ -15,6 +15,12 @@ def normalizar_nome(nome: str) -> str:
     return nome.strip().replace("_", " ").upper()
 
 
+def parse_float(value) -> float:
+    if not value:
+        return 0.0
+    return float(str(value).strip().replace(".", "").replace(",", "."))
+
+
 def obter_ou_criar_municipio(db: Session, nome: str, estado: str, codigo_ibge: str | None = None) -> Municipio:
     if codigo_ibge:
         m = db.query(Municipio).filter(Municipio.codigo_ibge == codigo_ibge).first()
@@ -52,15 +58,15 @@ def carregar_csv(db: Session, caminho: str, estado: str):
             ano = int(mes_comp[:4])
             mes = int(mes_comp[4:6])
 
-            valor_parcela = float(row["VALOR PARCELA"] or 0)
-            valor_bolsa = float(row["Valor Bolsa"] or 0)
+            valor_parcela = parse_float(row["VALOR PARCELA"])
+            valor_bolsa = parse_float(row["Valor Bolsa"])
 
             chave = (ano, mes)
             agregado[chave]["beneficiarios"] += 1
             agregado[chave]["valor_total"] += valor_parcela
             agregado[chave]["valor_bolsa"] += valor_bolsa
 
-            primeira_infancia = float(row.get("Primeira Infância") or 0)
+            primeira_infancia = parse_float(row.get("Primeira Infância"))
             agregado[chave]["valor_primeira_infancia"] += primeira_infancia
             if primeira_infancia > 0:
                 agregado[chave]["beneficiarios_primeira_infancia"] += 1
