@@ -35,6 +35,7 @@ import {
   ChartPieIcon,
   ClipboardDocumentListIcon,
   CalendarIcon,
+  TrophyIcon,
 } from "@heroicons/react/24/outline";
 
 const NAV_STRUCTURE = [
@@ -97,6 +98,13 @@ const NAV_STRUCTURE = [
     to: "/app/projetos",
     label: "Projetos",
     icon: FolderOpenIcon,
+    modulo: null,
+  },
+  {
+    type: "link",
+    to: "/app/desenvolvimento-economico",
+    label: "Desenv. Econômico",
+    icon: TrophyIcon,
     modulo: null,
   },
   {

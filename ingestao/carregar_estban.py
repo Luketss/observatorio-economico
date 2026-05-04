@@ -76,7 +76,7 @@ def carregar_csv(db: Session, caminho: str, estado: str):
             credito_col = "TOTAL_OPERACOES_CREDITO" if "TOTAL_OPERACOES_CREDITO" in row else "VALOR_OPERACOES_CREDITO"
 
             chave = (nome_municipio, data_ref_str)
-            agregado[chave]["qtd_agencias"] += int(row["QTD_AGENCIAS"] or 0)
+            agregado[chave]["qtd_agencias"] += int(float(row["QTD_AGENCIAS"] or 0))
             agregado[chave]["valor_operacoes_credito"] += float(row[credito_col] or 0)
             agregado[chave]["valor_depositos_vista"] += float(row["VALOR_DEPOSITOS_VISTA"] or 0)
             agregado[chave]["valor_poupanca"] += float(row["VALOR_POUPANCA"] or 0)
@@ -91,7 +91,7 @@ def carregar_csv(db: Session, caminho: str, estado: str):
 
             nome_instituicao = row["NOME_INSTITUICAO"].strip()
             chave_inst = (nome_municipio, nome_instituicao, data_ref_str)
-            agregado_inst[chave_inst]["qtd_agencias"] += int(row["QTD_AGENCIAS"] or 0)
+            agregado_inst[chave_inst]["qtd_agencias"] += int(float(row["QTD_AGENCIAS"] or 0))
             agregado_inst[chave_inst]["valor_operacoes_credito"] += float(row[credito_col] or 0)
             agregado_inst[chave_inst]["valor_depositos_vista"] += float(row["VALOR_DEPOSITOS_VISTA"] or 0)
             agregado_inst[chave_inst]["valor_poupanca"] += float(row["VALOR_POUPANCA"] or 0)

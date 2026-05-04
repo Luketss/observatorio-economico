@@ -1,4 +1,5 @@
 import app.api.v1.routers.projetos as projetos
+import app.api.v1.routers.desenvolvimento_economico as desenvolvimento_economico
 import app.api.v1.routers.dados_internos as dados_internos
 import app.api.v1.routers.arrecadacao as arrecadacao
 import app.api.v1.routers.insights as insights
@@ -84,6 +85,7 @@ app.include_router(indicadores.router, prefix=API_PREFIX)
 app.include_router(notificacoes.router, prefix=API_PREFIX)
 app.include_router(projetos.router, prefix=API_PREFIX)
 app.include_router(dados_internos.router, prefix=API_PREFIX)
+app.include_router(desenvolvimento_economico.router, prefix=API_PREFIX)
 
 
 @app.get("/health")
