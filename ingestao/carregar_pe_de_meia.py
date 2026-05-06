@@ -1,45 +1,20 @@
 import csv
-import os
 from collections import defaultdict
+from pathlib import Path
 
 from sqlalchemy.orm import Session
 
-from app.db.session import SessionLocal
-from app.models.municipio import Municipio
 from app.models.pe_de_meia import PeDeMeiaEtapa, PeDeMeiaResumo
-
-BASE_PATH = "dados/Pe_De_Meia_Cidades_Completo"
-
-
-def normalizar_nome(nome: str) -> str:
-    return nome.strip().replace("_", " ").upper()
+from ingestao.utils import obter_ou_criar_municipio
 
 
-def obter_ou_criar_municipio(db: Session, nome: str, estado: str, codigo_ibge: str | None = None) -> Municipio:
-    if codigo_ibge:
-        m = db.query(Municipio).filter(Municipio.codigo_ibge == codigo_ibge).first()
-        if m:
-            return m
-    municipio = db.query(Municipio).filter(Municipio.nome == nome, Municipio.estado == estado).first()
-    if not municipio:
-        municipio = Municipio(nome=nome, estado=estado, codigo_ibge=codigo_ibge, ativo=True)
-        db.add(municipio)
-        db.commit()
-        db.refresh(municipio)
-    return municipio
+def carregar(cidade_dir: Path, city_name: str, estado: str, db: Session) -> None:
+    caminho = cidade_dir / "pe_meia.csv"
+    if not caminho.exists():
+        print(f"  ⚠️  pe_meia.csv não encontrado em {cidade_dir} — pulando.")
+        return
+    municipio = obter_ou_criar_municipio(db, city_name, estado)
 
-
-def carregar_csv(db: Session, caminho: str, estado: str):
-    nome_arquivo = os.path.basename(caminho)
-    # e.g. Pe_Meia_CARMO_DA_MATA.csv
-    nome_municipio = normalizar_nome(
-        nome_arquivo.replace("Pe_Meia_", "").replace(".csv", "")
-    )
-
-    municipio = obter_ou_criar_municipio(db, nome_municipio, estado)
-
-    # Aggregate individual student records per (year, month)
-    # MÊS REFERÊNCIA format: YYYYMM (e.g. 202401)
     agregado: dict[tuple[int, int], dict] = defaultdict(
         lambda: {"estudantes": 0, "valor_total": 0.0}
     )
@@ -47,20 +22,16 @@ def carregar_csv(db: Session, caminho: str, estado: str):
         lambda: {"estudantes": 0, "valor_total": 0.0}
     )
 
-    with open(caminho, newline="", encoding="utf-8-sig") as csvfile:
-        reader = csv.DictReader(csvfile, delimiter=";")
-
+    with open(caminho, newline="", encoding="utf-8-sig") as f:
+        reader = csv.DictReader(f, delimiter=";")
         for row in reader:
             mes_ref = str(row["MÊS REFERÊNCIA"]).strip()
             ano = int(mes_ref[:4])
             mes = int(mes_ref[4:6])
-
             valor_parcela = float(row["VALOR PARCELA"] or 0)
-
             chave = (ano, mes)
             agregado[chave]["estudantes"] += 1
             agregado[chave]["valor_total"] += valor_parcela
-
             etapa_ensino = str(row["ETAPA ENSINO"]).strip()
             tipo_incentivo = str(row["TIPO INCENTIVO"]).strip()
             chave_etapa = (ano, mes, etapa_ensino, tipo_incentivo)
@@ -77,19 +48,15 @@ def carregar_csv(db: Session, caminho: str, estado: str):
             )
             .first()
         )
-
         if existente:
             continue
-
-        novo = PeDeMeiaResumo(
+        db.add(PeDeMeiaResumo(
             municipio_id=municipio.id,
             ano=ano,
             mes=mes,
             total_estudantes=totais["estudantes"],
             valor_total=totais["valor_total"],
-        )
-
-        db.add(novo)
+        ))
 
     db.commit()
 
@@ -107,7 +74,7 @@ def carregar_csv(db: Session, caminho: str, estado: str):
         )
         if existente:
             continue
-        novo = PeDeMeiaEtapa(
+        db.add(PeDeMeiaEtapa(
             municipio_id=municipio.id,
             ano=ano,
             mes=mes,
@@ -115,31 +82,6 @@ def carregar_csv(db: Session, caminho: str, estado: str):
             tipo_incentivo=tipo_incentivo,
             total_estudantes=totais["estudantes"],
             valor_total=totais["valor_total"],
-        )
-        db.add(novo)
+        ))
+
     db.commit()
-
-
-def main():
-    import argparse
-    parser = argparse.ArgumentParser()
-    parser.add_argument("--estado", required=True, help="UF code, e.g. MG, MT")
-    args = parser.parse_args()
-    estado = args.estado.strip().upper()
-
-    db = SessionLocal()
-
-    try:
-        for arquivo in os.listdir(BASE_PATH):
-            if arquivo.endswith(".csv"):
-                caminho = os.path.join(BASE_PATH, arquivo)
-                print(f"Processando {arquivo}...")
-                carregar_csv(db, caminho, estado)
-
-        print("✅ Carga Pé-de-Meia finalizada com sucesso.")
-    finally:
-        db.close()
-
-
-if __name__ == "__main__":
-    main()
