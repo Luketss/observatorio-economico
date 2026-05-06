@@ -21,6 +21,7 @@ from app.models.dashboard_card_custom import DashboardCardCustom
 from app.models.plano_config import PlanoConfig
 from app.models.dataset_info import DatasetInfo
 from app.models.inss import InssAnual
+from app.models.ips import IpsMunicipio
 from app.models.municipio import Municipio
 from app.models.pe_de_meia import PeDeMeiaResumo
 from app.models.pib import PibAnual
@@ -65,6 +66,7 @@ __all__ = [
     "BolsaFamiliaResumo",
     "PeDeMeiaResumo",
     "InssAnual",
+    "IpsMunicipio",
     "EstbanMensal",
     "ComexMensal",
     "Empresa",
