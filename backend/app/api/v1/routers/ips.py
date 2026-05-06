@@ -199,17 +199,18 @@ def destaques(
     if not city:
         raise HTTPException(status_code=404, detail="IPS data not found")
 
+    # Compute all 12 component averages in a single query
+    avg_cols = [
+        func.avg(getattr(IpsMunicipio, campo)).label(campo)
+        for campo, _ in COMPONENTS
+    ]
+    avg_row = db.query(*avg_cols).filter(IpsMunicipio.ano == ano).first()
+
     resultados = []
     for campo, label in COMPONENTS:
         valor = getattr(city, campo)
-        if valor is None:
-            continue
-        media = (
-            db.query(func.avg(getattr(IpsMunicipio, campo)))
-            .filter(IpsMunicipio.ano == ano, getattr(IpsMunicipio, campo).isnot(None))
-            .scalar()
-        )
-        if media is None:
+        media = getattr(avg_row, campo) if avg_row else None
+        if valor is None or media is None:
             continue
         resultados.append(
             IpsDestaque(
