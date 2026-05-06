@@ -2,13 +2,12 @@
 Master ingestion script — runs all dataset loaders in order.
 
 Usage (from project root):
-    python -m ingestao.carregar_tudo --estado MG
-    python -m ingestao.carregar_tudo --estado MG --cidades Divinopolis "Para de Minas"
-    python -m ingestao.carregar_tudo --estado MT --cidades Cuiaba
+    python -m ingestao.carregar_tudo --estado MG --cidades cabo_verde
+    python -m ingestao.carregar_tudo --estado MG --cidades cabo_verde nova_lima
+    python -m ingestao.carregar_tudo --estado SP --cidades city_sp
 """
-
 import argparse
-import os
+from pathlib import Path
 
 from tqdm import tqdm
 
@@ -25,81 +24,69 @@ import ingestao.carregar_pix as pix
 import ingestao.carregar_rais as rais
 
 
-LOADERS = [
-    ("Arrecadação", arrecadacao),
-    ("PIB", pib),
-    ("CAGED", caged),
-    ("RAIS", rais),
-    ("Bolsa Família", bolsa_familia),
-    ("Pé-de-Meia", pe_de_meia),
-    ("INSS", inss),
-    ("Estban", estban),
-    ("Comex", comex),
-    ("CNPJ", cnpj),
-    ("PIX", pix),
-]
+def normalizar_city_name(folder: str) -> str:
+    """Convert folder name to display name: 'cabo_verde' -> 'Cabo Verde'."""
+    return folder.replace("_", " ").title()
 
 
-def _matches_city(filename: str, cidades: list[str]) -> bool:
-    if not cidades:
-        return True
-    normalized = filename.upper().replace("_", " ").replace("-", " ")
-    return any(c.upper().replace("_", " ") in normalized for c in cidades)
-
-
-def run_loader(nome: str, module, db, cidades: list[str], estado: str):
-    base_path = module.BASE_PATH
-    if not os.path.isdir(base_path):
-        tqdm.write(f"  ⚠️  Pasta não encontrada: {base_path} — pulando.")
-        return
-
-    arquivos = sorted(f for f in os.listdir(base_path) if f.endswith(".csv"))
-    selecionados = [f for f in arquivos if _matches_city(f, cidades)]
-
-    if not selecionados:
-        tqdm.write(f"  ⚠️  Nenhum arquivo corresponde ao filtro de cidades.")
-        return
-
-    for arquivo in tqdm(selecionados, desc=f"  {nome}", unit="arquivo", leave=False):
-        caminho = os.path.join(base_path, arquivo)
-        module.carregar_csv(db, caminho, estado)
+def build_loader_list() -> list[tuple[str, object]]:
+    return [
+        ("Arrecadação", arrecadacao),
+        ("PIB", pib),
+        ("CAGED", caged),
+        ("RAIS", rais),
+        ("Bolsa Família", bolsa_familia),
+        ("Pé-de-Meia", pe_de_meia),
+        ("INSS", inss),
+        ("Estban", estban),
+        ("Comex", comex),
+        ("CNPJ", cnpj),
+        ("PIX", pix),
+    ]
 
 
 def main():
     parser = argparse.ArgumentParser(description="Carga de dados do Observatório Econômico")
-    parser.add_argument("--estado", required=True, help="UF do estado (ex: MG, MT)")
-    parser.add_argument("--cidades", nargs="*", default=[], help="Nomes das cidades a carregar (padrão: todas)")
+    parser.add_argument("--estado", required=True, help="UF do estado (ex: MG, SP)")
+    parser.add_argument("--cidades", nargs="+", required=True,
+                        help="Nomes das pastas das cidades (ex: cabo_verde nova_lima)")
     args = parser.parse_args()
 
     estado = args.estado.strip().upper()
-    cidades = args.cidades
+    loaders = build_loader_list()
 
-    print("=" * 60)
-    print(f"Iniciando carga de dados — Estado: {estado}")
-    if cidades:
-        print(f"Cidades selecionadas: {', '.join(cidades)}")
-    else:
-        print("Cidades: todas")
-    print("=" * 60)
-
-    from app.db.session import SessionLocal  # noqa: PLC0415
+    from app.db.session import SessionLocal
 
     erros = []
 
-    with tqdm(LOADERS, desc="Datasets", unit="dataset") as pbar:
-        for nome, module in pbar:
-            pbar.set_postfix_str(nome)
-            db = SessionLocal()
-            try:
-                run_loader(nome, module, db, cidades, estado)
-            except Exception as e:
-                db.rollback()
-                tqdm.write(f"  ❌ {nome}: {e}")
-                erros.append((nome, e))
-            finally:
-                db.close()
+    for city_folder in args.cidades:
+        city_name = normalizar_city_name(city_folder)
+        cidade_dir = Path("dados") / city_folder
 
-    print("\n" + "=" * 60)
+        print(f"\n{'='*60}")
+        print(f"Cidade: {city_name} ({estado})  —  pasta: {cidade_dir}")
+        print("=" * 60)
+
+        if not cidade_dir.is_dir():
+            print(f"  ❌ Pasta não encontrada: {cidade_dir} — pulando.")
+            erros.append((city_name, "pasta não encontrada"))
+            continue
+
+        with tqdm(loaders, desc=f"  Datasets", unit="dataset") as pbar:
+            for nome, module in pbar:
+                pbar.set_postfix_str(nome)
+                db = SessionLocal()
+                try:
+                    # Comment out any line below to skip that dataset:
+                    module.carregar(cidade_dir, city_name, estado, db)
+                except Exception as e:
+                    db.rollback()
+                    tqdm.write(f"  ❌ {nome}: {e}")
+                    erros.append((f"{city_name}/{nome}", e))
+                finally:
+                    db.close()
+
+    print(f"\n{'='*60}")
     if erros:
         print(f"⚠️  Carga finalizada com {len(erros)} erro(s):")
         for nome, e in erros:
