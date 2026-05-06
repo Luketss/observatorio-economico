@@ -62,12 +62,13 @@ def test_carregar_inserts_row(tmp_path):
     csv_path = make_csv(tmp_path)
     db = MagicMock()
     municipio = MagicMock(); municipio.id = 1
-    db.query.return_value.filter.return_value.first.return_value = None  # no existing
+    result = MagicMock(); result.rowcount = 1
+    db.execute.return_value = result
 
     with patch("ingestao.carregar_ips.obter_ou_criar_municipio", return_value=municipio):
         carregar(csv_path, 2024, db)
 
-    db.add.assert_called_once()
+    db.execute.assert_called_once()
     db.commit.assert_called()
 
 
@@ -75,12 +76,14 @@ def test_carregar_is_idempotent(tmp_path):
     csv_path = make_csv(tmp_path)
     db = MagicMock()
     municipio = MagicMock(); municipio.id = 1
-    existing = MagicMock()
-    db.query.return_value.filter.return_value.first.return_value = existing  # already exists
+    result = MagicMock(); result.rowcount = 0  # conflict: 0 rows inserted
+    db.execute.return_value = result
 
     with patch("ingestao.carregar_ips.obter_ou_criar_municipio", return_value=municipio):
         carregar(csv_path, 2024, db)
 
+    # execute is still called but rowcount==0 means it was a no-op (idempotent)
+    db.execute.assert_called_once()
     db.add.assert_not_called()
 
 
@@ -88,9 +91,11 @@ def test_carregar_filters_by_estado(tmp_path):
     csv_path = make_csv(tmp_path)
     db = MagicMock()
     municipio = MagicMock(); municipio.id = 1
-    db.query.return_value.filter.return_value.first.return_value = None
+    result = MagicMock(); result.rowcount = 1
+    db.execute.return_value = result
 
     with patch("ingestao.carregar_ips.obter_ou_criar_municipio", return_value=municipio):
         carregar(csv_path, 2024, db, estado="SP")  # row is MG, should be skipped
 
+    db.execute.assert_not_called()
     db.add.assert_not_called()

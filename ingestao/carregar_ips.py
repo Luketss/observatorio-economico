@@ -10,6 +10,7 @@ import argparse
 import csv
 from pathlib import Path
 
+from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.orm import Session
 
 from app.models.ips import IpsMunicipio
@@ -134,14 +135,6 @@ def carregar(caminho: Path, ano: int, db: Session, estado: str | None = None) ->
 
             municipio = obter_ou_criar_municipio(db, city_name, uf, codigo_ibge or None)
 
-            existing = db.query(IpsMunicipio).filter(
-                IpsMunicipio.municipio_id == municipio.id,
-                IpsMunicipio.ano == ano,
-            ).first()
-            if existing:
-                skipped += 1
-                continue
-
             kwargs = {"municipio_id": municipio.id, "ano": ano}
             kwargs["area_km2"] = _parse_float(row.get("Área (km²)", row.get("Area (km2)", "")))
             kwargs["populacao"] = _parse_int(row.get("População 2022", row.get("Populacao 2022", "")))
@@ -151,8 +144,14 @@ def carregar(caminho: Path, ano: int, db: Session, estado: str | None = None) ->
                 if csv_col in row and model_field not in kwargs:
                     kwargs[model_field] = _parse_float(row[csv_col])
 
-            db.add(IpsMunicipio(**kwargs))
-            inserted += 1
+            stmt = pg_insert(IpsMunicipio).values(**kwargs).on_conflict_do_nothing(
+                index_elements=["municipio_id", "ano"]
+            )
+            result = db.execute(stmt)
+            if result.rowcount:
+                inserted += 1
+            else:
+                skipped += 1
 
     db.commit()
     print(f"  IPS {ano}: {inserted} inseridas, {skipped} ignoradas.")
