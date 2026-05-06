@@ -1,38 +1,24 @@
 import csv
-import os
 from collections import defaultdict
 from datetime import datetime
+from pathlib import Path
 
 from sqlalchemy.orm import Session
 
-from app.db.session import SessionLocal
 from app.models.estban import EstbanMensal, EstbanPorInstituicao
-from app.models.municipio import Municipio
+from ingestao.utils import obter_ou_criar_municipio
 
-BASE_PATH = "dados/Estban_Cidades_Completo"
-
-
-def normalizar_nome(nome: str) -> str:
-    return nome.strip().replace("_", " ").upper()
+FILENAME = "estban.csv"
 
 
-def obter_ou_criar_municipio(db: Session, nome: str, estado: str, codigo_ibge: str | None = None) -> Municipio:
-    if codigo_ibge:
-        m = db.query(Municipio).filter(Municipio.codigo_ibge == codigo_ibge).first()
-        if m:
-            return m
-    municipio = db.query(Municipio).filter(Municipio.nome == nome, Municipio.estado == estado).first()
-    if not municipio:
-        municipio = Municipio(nome=nome, estado=estado, codigo_ibge=codigo_ibge, ativo=True)
-        db.add(municipio)
-        db.commit()
-        db.refresh(municipio)
-    return municipio
+def carregar(cidade_dir: Path, city_name: str, estado: str, db: Session) -> None:
+    caminho = cidade_dir / FILENAME
+    if not caminho.exists():
+        print(f"  [AVISO]  {FILENAME} não encontrado em {cidade_dir} — pulando.")
+        return
+    municipio = obter_ou_criar_municipio(db, city_name, estado)
 
-
-def carregar_csv(db: Session, caminho: str, estado: str):
-    # Group by (municipio, data_referencia) — one bank per row, aggregate totals
-    agregado: dict[tuple[str, str], dict] = defaultdict(
+    agregado: dict[str, dict] = defaultdict(
         lambda: {
             "qtd_agencias": 0,
             "valor_operacoes_credito": 0.0,
@@ -48,7 +34,7 @@ def carregar_csv(db: Session, caminho: str, estado: str):
             "outros_creditos": 0.0,
         }
     )
-    agregado_inst: dict[tuple[str, str, str], dict] = defaultdict(
+    agregado_inst: dict[tuple[str, str], dict] = defaultdict(
         lambda: {
             "qtd_agencias": 0,
             "valor_operacoes_credito": 0.0,
@@ -67,30 +53,25 @@ def carregar_csv(db: Session, caminho: str, estado: str):
 
     with open(caminho, newline="", encoding="utf-8-sig") as csvfile:
         reader = csv.DictReader(csvfile, delimiter=";")
-
         for row in reader:
-            nome_municipio = normalizar_nome(row["MUNICIPIO"])
             data_ref_str = row["DATA_REFERENCIA"].strip()
-
-            # Support both old (VALOR_OPERACOES_CREDITO) and new (TOTAL_OPERACOES_CREDITO) headers
             credito_col = "TOTAL_OPERACOES_CREDITO" if "TOTAL_OPERACOES_CREDITO" in row else "VALOR_OPERACOES_CREDITO"
 
-            chave = (nome_municipio, data_ref_str)
-            agregado[chave]["qtd_agencias"] += int(float(row["QTD_AGENCIAS"] or 0))
-            agregado[chave]["valor_operacoes_credito"] += float(row[credito_col] or 0)
-            agregado[chave]["valor_depositos_vista"] += float(row["VALOR_DEPOSITOS_VISTA"] or 0)
-            agregado[chave]["valor_poupanca"] += float(row["VALOR_POUPANCA"] or 0)
-            agregado[chave]["valor_depositos_prazo"] += float(row["VALOR_DEPOSITOS_PRAZO"] or 0)
-            agregado[chave]["emprestimos_titulos_descontados"] += float(row.get("EMPRESTIMOS_E_TITULOS_DESCONTADOS") or 0)
-            agregado[chave]["financiamentos_gerais"] += float(row.get("FINANCIAMENTOS_GERAIS") or 0)
-            agregado[chave]["financiamento_agropecuario"] += float(row.get("FINANCIAMENTO_AGROPECUARIO") or 0)
-            agregado[chave]["financiamentos_imobiliarios"] += float(row.get("FINANCIAMENTOS_IMOBILIARIOS") or 0)
-            agregado[chave]["arrendamento_mercantil"] += float(row.get("ARRENDAMENTO_MERCANTIL") or 0)
-            agregado[chave]["emprestimos_setor_publico"] += float(row.get("EMPRESTIMOS_SETOR_PUBLICO") or 0)
-            agregado[chave]["outros_creditos"] += float(row.get("OUTROS_CREDITOS") or 0)
+            agregado[data_ref_str]["qtd_agencias"] += int(float(row["QTD_AGENCIAS"] or 0))
+            agregado[data_ref_str]["valor_operacoes_credito"] += float(row[credito_col] or 0)
+            agregado[data_ref_str]["valor_depositos_vista"] += float(row["VALOR_DEPOSITOS_VISTA"] or 0)
+            agregado[data_ref_str]["valor_poupanca"] += float(row["VALOR_POUPANCA"] or 0)
+            agregado[data_ref_str]["valor_depositos_prazo"] += float(row["VALOR_DEPOSITOS_PRAZO"] or 0)
+            agregado[data_ref_str]["emprestimos_titulos_descontados"] += float(row.get("EMPRESTIMOS_E_TITULOS_DESCONTADOS") or 0)
+            agregado[data_ref_str]["financiamentos_gerais"] += float(row.get("FINANCIAMENTOS_GERAIS") or 0)
+            agregado[data_ref_str]["financiamento_agropecuario"] += float(row.get("FINANCIAMENTO_AGROPECUARIO") or 0)
+            agregado[data_ref_str]["financiamentos_imobiliarios"] += float(row.get("FINANCIAMENTOS_IMOBILIARIOS") or 0)
+            agregado[data_ref_str]["arrendamento_mercantil"] += float(row.get("ARRENDAMENTO_MERCANTIL") or 0)
+            agregado[data_ref_str]["emprestimos_setor_publico"] += float(row.get("EMPRESTIMOS_SETOR_PUBLICO") or 0)
+            agregado[data_ref_str]["outros_creditos"] += float(row.get("OUTROS_CREDITOS") or 0)
 
             nome_instituicao = row["NOME_INSTITUICAO"].strip()
-            chave_inst = (nome_municipio, nome_instituicao, data_ref_str)
+            chave_inst = (data_ref_str, nome_instituicao)
             agregado_inst[chave_inst]["qtd_agencias"] += int(float(row["QTD_AGENCIAS"] or 0))
             agregado_inst[chave_inst]["valor_operacoes_credito"] += float(row[credito_col] or 0)
             agregado_inst[chave_inst]["valor_depositos_vista"] += float(row["VALOR_DEPOSITOS_VISTA"] or 0)
@@ -104,10 +85,8 @@ def carregar_csv(db: Session, caminho: str, estado: str):
             agregado_inst[chave_inst]["emprestimos_setor_publico"] += float(row.get("EMPRESTIMOS_SETOR_PUBLICO") or 0)
             agregado_inst[chave_inst]["outros_creditos"] += float(row.get("OUTROS_CREDITOS") or 0)
 
-    for (nome_municipio, data_ref_str), totais in agregado.items():
-        municipio = obter_ou_criar_municipio(db, nome_municipio, estado)
+    for data_ref_str, totais in agregado.items():
         data_referencia = datetime.strptime(data_ref_str, "%Y-%m-%d").date()
-
         existente = (
             db.query(EstbanMensal)
             .filter(
@@ -116,22 +95,17 @@ def carregar_csv(db: Session, caminho: str, estado: str):
             )
             .first()
         )
-
         if existente:
             continue
-
-        novo = EstbanMensal(
+        db.add(EstbanMensal(
             municipio_id=municipio.id,
             data_referencia=data_referencia,
             **totais,
-        )
-
-        db.add(novo)
+        ))
 
     db.commit()
 
-    for (nome_municipio, nome_instituicao, data_ref_str), totais in agregado_inst.items():
-        municipio = obter_ou_criar_municipio(db, nome_municipio, estado)
+    for (data_ref_str, nome_instituicao), totais in agregado_inst.items():
         data_referencia = datetime.strptime(data_ref_str, "%Y-%m-%d").date()
         existente = (
             db.query(EstbanPorInstituicao)
@@ -144,36 +118,11 @@ def carregar_csv(db: Session, caminho: str, estado: str):
         )
         if existente:
             continue
-        novo = EstbanPorInstituicao(
+        db.add(EstbanPorInstituicao(
             municipio_id=municipio.id,
             data_referencia=data_referencia,
             nome_instituicao=nome_instituicao,
-            **totais
-        )
-        db.add(novo)
+            **totais,
+        ))
+
     db.commit()
-
-
-def main():
-    import argparse
-    parser = argparse.ArgumentParser()
-    parser.add_argument("--estado", required=True, help="UF code, e.g. MG, MT")
-    args = parser.parse_args()
-    estado = args.estado.strip().upper()
-
-    db = SessionLocal()
-
-    try:
-        for arquivo in os.listdir(BASE_PATH):
-            if arquivo.endswith(".csv"):
-                caminho = os.path.join(BASE_PATH, arquivo)
-                print(f"Processando {arquivo}...")
-                carregar_csv(db, caminho, estado)
-
-        print("✅ Carga Estban finalizada com sucesso.")
-    finally:
-        db.close()
-
-
-if __name__ == "__main__":
-    main()

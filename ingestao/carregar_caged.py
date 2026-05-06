@@ -1,14 +1,11 @@
 import csv
-import os
 from collections import defaultdict
+from pathlib import Path
 
 from sqlalchemy.orm import Session
 
-from app.db.session import SessionLocal
 from app.models.caged import CagedMovimentacao, CagedPorCnae, CagedPorRaca, CagedPorSexo, CagedSalario
-from app.models.municipio import Municipio
-
-BASE_PATH = "dados/Pacote_Trabalho_Multicidades/CAGED"
+from ingestao.utils import obter_ou_criar_municipio
 
 SEXO_MAP = {
     "1": "Masculino",
@@ -52,34 +49,13 @@ CNAE_SECAO_DESC = {
 }
 
 
-def normalizar_nome(nome: str) -> str:
-    return nome.strip().replace("_", " ").upper()
+def carregar(cidade_dir: Path, city_name: str, estado: str, db: Session) -> None:
+    caminho = cidade_dir / "caged.csv"
+    if not caminho.exists():
+        print(f"  [AVISO]  caged.csv não encontrado em {cidade_dir} — pulando.")
+        return
+    municipio = obter_ou_criar_municipio(db, city_name, estado)
 
-
-def obter_ou_criar_municipio(db: Session, nome: str, estado: str, codigo_ibge: str | None = None) -> Municipio:
-    if codigo_ibge:
-        m = db.query(Municipio).filter(Municipio.codigo_ibge == codigo_ibge).first()
-        if m:
-            return m
-    municipio = db.query(Municipio).filter(Municipio.nome == nome, Municipio.estado == estado).first()
-    if not municipio:
-        municipio = Municipio(nome=nome, estado=estado, codigo_ibge=codigo_ibge, ativo=True)
-        db.add(municipio)
-        db.commit()
-        db.refresh(municipio)
-    return municipio
-
-
-def carregar_csv(db: Session, caminho: str, estado: str):
-    nome_arquivo = os.path.basename(caminho)
-    # e.g. caged_movimentacao_2025_Carmo_da_Mata.csv
-    nome_municipio = normalizar_nome(
-        nome_arquivo.replace("caged_movimentacao_2025_", "").replace(".csv", "")
-    )
-
-    municipio = obter_ou_criar_municipio(db, nome_municipio, estado)
-
-    # Aggregation buckets
     mensal: dict[tuple, dict] = defaultdict(
         lambda: {"admissoes": 0, "desligamentos": 0}
     )
@@ -89,7 +65,6 @@ def carregar_csv(db: Session, caminho: str, estado: str):
     por_raca: dict[tuple, dict] = defaultdict(
         lambda: {"admissoes": 0, "desligamentos": 0}
     )
-    # For salary: store (sum_salario_admissoes, count_admissoes, sum_salario_deslig, count_deslig)
     salario_agg: dict[tuple, dict] = defaultdict(
         lambda: {"sum_adm": 0.0, "cnt_adm": 0, "sum_des": 0.0, "cnt_des": 0}
     )
@@ -99,22 +74,18 @@ def carregar_csv(db: Session, caminho: str, estado: str):
 
     with open(caminho, newline="", encoding="utf-8-sig") as csvfile:
         reader = csv.DictReader(csvfile, delimiter=";")
-
         for row in reader:
             ano = int(row["ano"])
             mes = int(row["mes"])
             saldo = int(row["saldo_movimentacao"])
             is_admission = saldo > 0
-
             chave_mes = (ano, mes)
 
-            # Monthly totals
             if is_admission:
                 mensal[chave_mes]["admissoes"] += saldo
             else:
                 mensal[chave_mes]["desligamentos"] += abs(saldo)
 
-            # Per sexo
             sexo_raw = str(row.get("sexo", "")).strip()
             sexo_label = SEXO_MAP.get(sexo_raw, "Não informado")
             chave_sexo = (ano, mes, sexo_label)
@@ -123,7 +94,6 @@ def carregar_csv(db: Session, caminho: str, estado: str):
             else:
                 por_sexo[chave_sexo]["desligamentos"] += abs(saldo)
 
-            # Per raca_cor
             raca_raw = str(row.get("raca_cor", "")).strip()
             raca_label = RACA_COR_MAP.get(raca_raw, "Não informada")
             chave_raca = (ano, mes, raca_label)
@@ -132,7 +102,6 @@ def carregar_csv(db: Session, caminho: str, estado: str):
             else:
                 por_raca[chave_raca]["desligamentos"] += abs(saldo)
 
-            # Salary
             try:
                 sal = float(row.get("salario_mensal", "") or 0)
             except (ValueError, TypeError):
@@ -145,7 +114,6 @@ def carregar_csv(db: Session, caminho: str, estado: str):
                     salario_agg[chave_mes]["sum_des"] += sal * abs(saldo)
                     salario_agg[chave_mes]["cnt_des"] += abs(saldo)
 
-            # Per CNAE section
             secao = str(row.get("cnae_2_secao", "")).strip().upper()
             if secao:
                 desc = CNAE_SECAO_DESC.get(secao, secao)
@@ -155,7 +123,6 @@ def carregar_csv(db: Session, caminho: str, estado: str):
                 else:
                     por_cnae[chave_cnae]["desligamentos"] += abs(saldo)
 
-    # ----- Persist CagedMovimentacao (monthly totals) -----
     for (ano, mes), totais in mensal.items():
         adm = totais["admissoes"]
         des = totais["desligamentos"]
@@ -166,15 +133,10 @@ def carregar_csv(db: Session, caminho: str, estado: str):
         ).first():
             continue
         db.add(CagedMovimentacao(
-            municipio_id=municipio.id,
-            ano=ano,
-            mes=mes,
-            admissoes=adm,
-            desligamentos=des,
-            saldo=adm - des,
+            municipio_id=municipio.id, ano=ano, mes=mes,
+            admissoes=adm, desligamentos=des, saldo=adm - des,
         ))
 
-    # ----- Persist CagedPorSexo -----
     for (ano, mes, sexo_label), totais in por_sexo.items():
         adm = totais["admissoes"]
         des = totais["desligamentos"]
@@ -186,16 +148,10 @@ def carregar_csv(db: Session, caminho: str, estado: str):
         ).first():
             continue
         db.add(CagedPorSexo(
-            municipio_id=municipio.id,
-            ano=ano,
-            mes=mes,
-            sexo=sexo_label,
-            admissoes=adm,
-            desligamentos=des,
-            saldo=adm - des,
+            municipio_id=municipio.id, ano=ano, mes=mes,
+            sexo=sexo_label, admissoes=adm, desligamentos=des, saldo=adm - des,
         ))
 
-    # ----- Persist CagedPorRaca -----
     for (ano, mes, raca_label), totais in por_raca.items():
         adm = totais["admissoes"]
         des = totais["desligamentos"]
@@ -207,16 +163,10 @@ def carregar_csv(db: Session, caminho: str, estado: str):
         ).first():
             continue
         db.add(CagedPorRaca(
-            municipio_id=municipio.id,
-            ano=ano,
-            mes=mes,
-            raca_cor=raca_label,
-            admissoes=adm,
-            desligamentos=des,
-            saldo=adm - des,
+            municipio_id=municipio.id, ano=ano, mes=mes,
+            raca_cor=raca_label, admissoes=adm, desligamentos=des, saldo=adm - des,
         ))
 
-    # ----- Persist CagedSalario -----
     for (ano, mes), agg in salario_agg.items():
         sal_adm = agg["sum_adm"] / agg["cnt_adm"] if agg["cnt_adm"] > 0 else None
         sal_des = agg["sum_des"] / agg["cnt_des"] if agg["cnt_des"] > 0 else None
@@ -227,14 +177,10 @@ def carregar_csv(db: Session, caminho: str, estado: str):
         ).first():
             continue
         db.add(CagedSalario(
-            municipio_id=municipio.id,
-            ano=ano,
-            mes=mes,
-            salario_medio_admissoes=sal_adm,
-            salario_medio_desligamentos=sal_des,
+            municipio_id=municipio.id, ano=ano, mes=mes,
+            salario_medio_admissoes=sal_adm, salario_medio_desligamentos=sal_des,
         ))
 
-    # ----- Persist CagedPorCnae -----
     for (ano, mes, secao, desc), totais in por_cnae.items():
         adm = totais["admissoes"]
         des = totais["desligamentos"]
@@ -246,39 +192,9 @@ def carregar_csv(db: Session, caminho: str, estado: str):
         ).first():
             continue
         db.add(CagedPorCnae(
-            municipio_id=municipio.id,
-            ano=ano,
-            mes=mes,
-            secao=secao,
-            descricao_secao=desc,
-            admissoes=adm,
-            desligamentos=des,
-            saldo=adm - des,
+            municipio_id=municipio.id, ano=ano, mes=mes,
+            secao=secao, descricao_secao=desc,
+            admissoes=adm, desligamentos=des, saldo=adm - des,
         ))
 
     db.commit()
-
-
-def main():
-    import argparse
-    parser = argparse.ArgumentParser()
-    parser.add_argument("--estado", required=True, help="UF code, e.g. MG, MT")
-    args = parser.parse_args()
-    estado = args.estado.strip().upper()
-
-    db = SessionLocal()
-
-    try:
-        for arquivo in os.listdir(BASE_PATH):
-            if arquivo.endswith(".csv"):
-                caminho = os.path.join(BASE_PATH, arquivo)
-                print(f"Processando {arquivo}...")
-                carregar_csv(db, caminho, estado)
-
-        print("✅ Carga CAGED finalizada com sucesso.")
-    finally:
-        db.close()
-
-
-if __name__ == "__main__":
-    main()

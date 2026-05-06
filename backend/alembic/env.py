@@ -6,6 +6,7 @@ from app.core.config import settings
 from app.db.base import Base
 from app.models import (  # noqa
     dados_internos,
+    ips,
     projeto,
     arrecadacao,
     bolsa_familia,

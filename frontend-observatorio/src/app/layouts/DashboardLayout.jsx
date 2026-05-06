@@ -36,6 +36,7 @@ import {
   ClipboardDocumentListIcon,
   CalendarIcon,
   TrophyIcon,
+  PresentationChartBarIcon,
 } from "@heroicons/react/24/outline";
 
 const NAV_STRUCTURE = [
@@ -52,6 +53,13 @@ const NAV_STRUCTURE = [
     to: "/app/benchmark",
     label: "Benchmark",
     icon: ChartBarSquareIcon,
+    modulo: null,
+  },
+  {
+    type: "link",
+    to: "/app/ips",
+    label: "IPS",
+    icon: PresentationChartBarIcon,
     modulo: null,
   },
   {

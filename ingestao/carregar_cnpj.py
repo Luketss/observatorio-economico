@@ -1,37 +1,15 @@
 import csv
-import os
 from datetime import datetime
-
+from pathlib import Path
 from tqdm import tqdm
-
 from sqlalchemy.orm import Session
-
-from app.db.session import SessionLocal
 from app.models.empresa import Empresa
-from app.models.municipio import Municipio
+from ingestao.utils import obter_ou_criar_municipio
 
-BASE_PATH = "dados/Pacote_CNPJ_Completo_Corrigido"
-
-
-def normalizar_nome(nome: str) -> str:
-    return nome.strip().replace("_", " ").upper()
+BATCH_SIZE = 500
 
 
-def obter_ou_criar_municipio(db: Session, nome: str, estado: str, codigo_ibge: str | None = None) -> Municipio:
-    if codigo_ibge:
-        m = db.query(Municipio).filter(Municipio.codigo_ibge == codigo_ibge).first()
-        if m:
-            return m
-    municipio = db.query(Municipio).filter(Municipio.nome == nome, Municipio.estado == estado).first()
-    if not municipio:
-        municipio = Municipio(nome=nome, estado=estado, codigo_ibge=codigo_ibge, ativo=True)
-        db.add(municipio)
-        db.commit()
-        db.refresh(municipio)
-    return municipio
-
-
-def parse_data(valor: str) -> "datetime.date | None":
+def _parse_data(valor: str) -> "datetime.date | None":
     valor = valor.strip()
     if not valor:
         return None
@@ -41,70 +19,72 @@ def parse_data(valor: str) -> "datetime.date | None":
         return None
 
 
-def parse_capital(valor: str) -> "float | None":
+def _parse_capital(valor: str) -> "float | None":
     valor = valor.strip()
     if not valor:
         return None
     try:
-        # Capital social uses comma as decimal separator: "1.234,56"
         return float(valor.replace(".", "").replace(",", "."))
     except ValueError:
         return None
 
 
-def parse_bool(valor: str) -> bool:
+def _parse_bool(valor: str) -> bool:
     return valor.strip().upper() in ("S", "SIM", "1", "TRUE")
 
 
-BATCH_SIZE = 500
+def _read_csv_keyed(path: Path) -> dict[str, dict]:
+    """Read a CSV keyed by cnpj_basico, keeping first row on duplicates."""
+    result: dict[str, dict] = {}
+    with open(path, newline="", encoding="utf-8-sig") as f:
+        for row in csv.DictReader(f, delimiter=";"):
+            key = row.get("cnpj_basico", "").strip()
+            if key and key not in result:
+                result[key] = row
+    return result
 
 
-def carregar_csv(db: Session, caminho: str, estado: str):
-    # e.g. CNPJ_Completo_Carmo_da_Mata.csv — city name is inside CSV (Nome_Cidade column)
+def carregar(cidade_dir: Path, city_name: str, estado: str, db: Session) -> None:
+    estab_path = cidade_dir / "estabelecimentos.csv"
+    if not estab_path.exists():
+        print(f"  [AVISO]  estabelecimentos.csv não encontrado em {cidade_dir} — pulando CNPJ.")
+        return
 
-    # First pass: resolve unique municipalities in this file and preload existing CNPJs
-    municipios_cache: dict[str, Municipio] = {}
-    existentes_cache: dict[int, set[str]] = {}  # municipio_id → set of cnpj_basico
+    municipio = obter_ou_criar_municipio(db, city_name, estado)
 
-    with open(caminho, newline="", encoding="utf-8-sig") as csvfile:
-        reader = csv.DictReader(csvfile, delimiter=";")
-        for row in reader:
-            nome = normalizar_nome(row["Nome_Cidade"])
-            if nome not in municipios_cache:
-                m = obter_ou_criar_municipio(db, nome, estado)
-                municipios_cache[nome] = m
-                # Load all existing CNPJ basics for this municipality at once
-                existentes = db.query(Empresa.cnpj_basico).filter(
-                    Empresa.municipio_id == m.id
-                ).all()
-                existentes_cache[m.id] = {r[0] for r in existentes}
+    # Load existing CNPJs for this municipality to avoid duplicates
+    existentes: set[str] = {
+        r[0] for r in db.query(Empresa.cnpj_basico).filter(Empresa.municipio_id == municipio.id).all()
+    }
 
-    # Second pass: insert new rows in batches
+    # Read lookup tables from the other two files
+    empresas = _read_csv_keyed(cidade_dir / "empresas.csv") if (cidade_dir / "empresas.csv").exists() else {}
+    simples = _read_csv_keyed(cidade_dir / "simples.csv") if (cidade_dir / "simples.csv").exists() else {}
+
     pendente = 0
-    with open(caminho, newline="", encoding="utf-8-sig") as csvfile:
-        reader = csv.DictReader(csvfile, delimiter=";")
+    with open(estab_path, newline="", encoding="utf-8-sig") as f:
+        reader = csv.DictReader(f, delimiter=";")
         for row in tqdm(reader, desc="    Empresas", unit="reg", leave=False):
-            nome = normalizar_nome(row["Nome_Cidade"])
-            municipio = municipios_cache[nome]
-            cnpj_basico = row["cnpj_basico"].strip()
-
-            if cnpj_basico in existentes_cache[municipio.id]:
+            cnpj_basico = row.get("cnpj_basico", "").strip()
+            if not cnpj_basico or cnpj_basico in existentes:
                 continue
 
-            existentes_cache[municipio.id].add(cnpj_basico)
+            existentes.add(cnpj_basico)
+            emp = empresas.get(cnpj_basico, {})
+            simp = simples.get(cnpj_basico, {})
 
             db.add(Empresa(
                 municipio_id=municipio.id,
                 cnpj_basico=cnpj_basico,
-                razao_social=row["razao_social"].strip(),
-                nome_fantasia=row["nome_fantasia"].strip() or None,
-                situacao=row["situacao"].strip() or None,
-                data_inicio=parse_data(row["data_inicio"]),
-                cnae_fiscal=row["cnae_fiscal"].strip() or None,
-                porte=row["porte"].strip() or None,
-                capital_social=parse_capital(row["capital_social"]),
-                opcao_simples=parse_bool(row["opcao_simples"]),
-                opcao_mei=parse_bool(row["opcao_mei"]),
+                razao_social=emp.get("razao_social", "").strip() or None,
+                nome_fantasia=row.get("nome_fantasia", "").strip() or None,
+                situacao=row.get("situacao", "").strip() or None,
+                data_inicio=_parse_data(row.get("data_inicio", "")),
+                cnae_fiscal=row.get("cnae_fiscal", "").strip() or None,
+                porte=emp.get("porte", "").strip() or None,
+                capital_social=_parse_capital(emp.get("capital_social", "")),
+                opcao_simples=_parse_bool(simp.get("opcao_simples", "")),
+                opcao_mei=_parse_bool(simp.get("opcao_mei", "")),
             ))
             pendente += 1
 
@@ -114,28 +94,3 @@ def carregar_csv(db: Session, caminho: str, estado: str):
 
     if pendente:
         db.commit()
-
-
-def main():
-    import argparse
-    parser = argparse.ArgumentParser()
-    parser.add_argument("--estado", required=True, help="UF code, e.g. MG, MT")
-    args = parser.parse_args()
-    estado = args.estado.strip().upper()
-
-    db = SessionLocal()
-
-    try:
-        for arquivo in os.listdir(BASE_PATH):
-            if arquivo.endswith(".csv"):
-                caminho = os.path.join(BASE_PATH, arquivo)
-                print(f"Processando {arquivo}...")
-                carregar_csv(db, caminho, estado)
-
-        print("✅ Carga CNPJ finalizada com sucesso.")
-    finally:
-        db.close()
-
-
-if __name__ == "__main__":
-    main()
