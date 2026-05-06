@@ -30,6 +30,7 @@ import ReleasesPage from "../../pages/releases/ReleasesPage";
 import TimelinePage from "../../pages/timeline/TimelinePage";
 import ProjetosPage from "../../pages/projetos/ProjetosPage";
 import DesenvolvimentoEconomicoPage from "../../pages/desenvolvimento-economico/DesenvolvimentoEconomicoPage";
+import IpsPage from "../../pages/ips/IpsPage";
 import ProjetosEixosAdminPage from "../../pages/admin/ProjetosEixosAdminPage";
 import IndicadoresInternosPage from "../../pages/dados-internos/IndicadoresInternosPage";
 import PlanoGovPage from "../../pages/dados-internos/PlanoGovPage";
@@ -81,6 +82,7 @@ export default function AppRouter() {
           <Route path="caged" element={<CagedPage />} />
           <Route path="rais" element={<RaisPage />} />
           <Route path="benchmark" element={<BenchmarkPage />} />
+          <Route path="ips" element={<IpsPage />} />
           <Route path="comparativo" element={<Navigate to="/app/benchmark" replace />} />
           <Route path="bolsa-familia" element={<BolsaFamiliaPage />} />
           <Route path="pe-de-meia" element={<PeDeMeiaPage />} />
