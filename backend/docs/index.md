@@ -32,8 +32,11 @@ Documentação oficial do backend da plataforma de inteligência econômica muni
 | Comex | 3 tabelas | `/comex` |
 | Empresas (CNPJ) | `empresas` | `/empresas` |
 | PIX | `pix_mensais` | `/pix` |
+| IPS | `ips_municipio` | `/ips` |
 
 Todos os endpoints de dados filtram automaticamente por `municipio_id` do usuário autenticado, exceto `ADMIN_GLOBAL` que recebe dados de todos os municípios.
+
+IPS endpoints não filtram por `municipio_id` — todos os utilizadores autenticados têm acesso a todos os municípios (dados de benchmarking público).
 
 ---
 

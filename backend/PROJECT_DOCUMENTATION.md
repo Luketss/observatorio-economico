@@ -5,7 +5,25 @@ Observatório Econômico — Backend
 
 ## CHANGELOG
 
-### v1.4 — Gestão, Projetos e Dados Internos (atual)
+### v1.5 — IPS e Estrutura de Ingestão (atual)
+
+**Backend:**
+- `IpsMunicipio` — tabela `ips_municipio` com 79 colunas de métricas, unicidade `(municipio_id, ano)` (migração `68bbe475...`)
+- 7 endpoints `/ips/*`: `municipios`, `scorecard`, `evolucao`, `ranking`, `comparativo`, `destaques`, `sugestoes`
+- IPS não filtra por `municipio_id` — dados públicos de benchmarking acessíveis a todos os usuários autenticados
+- `carregar_ips.py` — ingestão de CSV nacional `dados/ips/ips_brasil_municipios_{ano}.csv`, suporta `--ano` e `--estado`
+
+**Frontend:**
+- Página `/app/ips` — seletor estado→cidade, scorecard com 79 métricas, ranking nacional e estadual, radar chart por dimensão, drill-down de componentes, evolução ano a ano, comparativo com pares similares (por PIB per capita)
+- Entrada IPS adicionada ao sidebar como link standalone (após Benchmark)
+
+**Ingestão:**
+- Refactor para estrutura por município: `dados/{city}/` com scripts padronizados
+- Argumento `--ibge` para código IBGE na ingestão
+
+---
+
+### v1.4 — Gestão, Projetos e Dados Internos
 
 **Backend:**
 - `PUT /usuarios/{id}` + `DELETE /usuarios/{id}` — editar e excluir usuários (ADMIN_GLOBAL)

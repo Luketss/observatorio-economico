@@ -22,6 +22,7 @@ Multi-tenant economic dashboard SaaS for Brazilian municipalities. Centralizes a
 | Comércio Exterior | Exports/imports by product and country | MDIC |
 | Empresas | Active companies by size and CNAE sector | Receita Federal |
 | Comparativo | Side-by-side ranking across municipalities | Aggregated |
+| IPS | Social progress index (79 metrics, 3 dimensions, 12 components) | IPS Brasil |
 
 ### Core Features
 
@@ -29,7 +30,7 @@ Multi-tenant economic dashboard SaaS for Brazilian municipalities. Centralizes a
 - **AI Insights** — Claude-powered analysis per dataset, generated on demand and cached in the database
 - **Timeline do Mandato** — Admins register milestones (term starts, public works, policies, events) shown as a scrollable timeline on the dashboard
 - **JWT Authentication** — OAuth2 Password flow with access + refresh tokens
-- **City filter on ingestion** — Choose which municipalities to load in `carregar_tudo.py`
+- **City filter on ingestion** — Choose which municipalities to load in `carregar_tudo.py`; IPS loads separately via `carregar_ips.py`
 
 ---
 
@@ -193,6 +194,7 @@ PYTHONPATH=backend alembic -c backend/alembic.ini upgrade head
 | `0017` | Rename `admissões` → `admissoes` in CAGED (remove accent) |
 | `0018` | `projeto_eixos` + `projetos` tables |
 | `0019` | `indicadores_internos` + `plano_gov_acoes` + `eventos_municipio` tables |
+| `0020` (68bbe475...) | Add `ips_municipio` table with unique constraint on (municipio_id, ano) |
 
 ---
 
@@ -231,6 +233,12 @@ python -m ingestao.carregar_arrecadacao --estado MG
 ```
 
 PIX files must be placed in `dados/PIX/` before running.
+
+```bash
+# IPS (Índice de Progresso Social) — separate script, national CSV
+python -m ingestao.carregar_ips --ano 2024 2025
+python -m ingestao.carregar_ips --ano 2024 --estado MG   # filter by state
+```
 
 ### Load to Railway (remote DB)
 
@@ -431,13 +439,13 @@ The table below maps each requested chart/view to its implementation status.
 | Comércio Local | RAIS | ✅ Implemented | CNAE section G (Commerce) |
 | **Café e Agricultura** | Comex | ⚠️ Parcial | Filtrar por produto no COMEX — requer limpeza dos códigos NCM |
 | **Vínculos Ativos por Ocupação (CBO)** | RAIS | ⚠️ Reingest | Raw CSV has `cbo_2002` — run `carregar_rais.py` after migration 0010 |
-| **Painel IPS** | — | ❌ Sem dados | Índice de Progresso Social não disponível nas fontes atuais |
-| **Índice de Progresso Social** | — | ❌ Sem dados | Requer dados do IPS Brasil (não disponível localmente) |
-| **Acesso à Cultura, Lazer e Esporte** | — | ❌ Sem dados | Componente do IPS — sem fonte disponível |
-| **Acesso a Direitos Humanos** | — | ❌ Sem dados | Componente do IPS — sem fonte disponível |
-| **Acesso ao Conhecimento Básico** | — | ❌ Sem dados | Componente do IPS — sem fonte disponível |
-| **Acesso à Informação e Comunicação** | — | ❌ Sem dados | Componente do IPS — sem fonte disponível |
-| **Acesso à Educação Superior** | — | ❌ Sem dados | Componente do IPS — sem fonte disponível |
+| **Painel IPS** | IPS | ✅ Implementado | Página /app/ips com scorecard, ranking, comparativo e evolução |
+| **Índice de Progresso Social** | IPS | ✅ Implementado | 79 métricas por município em `ips_municipio` |
+| **Acesso à Cultura, Lazer e Esporte** | IPS | ✅ Implementado | Componente IPS — campo `acesso_cultura_lazer_esporte` |
+| **Acesso a Direitos Humanos** | IPS | ✅ Implementado | Componente IPS — campo `acesso_prog_direitos_humanos` |
+| **Acesso ao Conhecimento Básico** | IPS | ✅ Implementado | Componente IPS — campo `acesso_conhecimento_basico` |
+| **Acesso à Informação e Comunicação** | IPS | ✅ Implementado | Componente IPS — campo `acesso_informacao_comunicacao` |
+| **Acesso à Educação Superior** | IPS | ✅ Implementado | Componente IPS — campo `acesso_educacao_superior` |
 | **Faixa Permanência Bolsa Família** | — | ❌ Sem dados | Campo não presente no CSV do MDS usado na ingestão |
 | **Localização / Conexões Logísticas** | — | ❌ Sem dados | Requer dados geoespaciais (shapefiles, OpenStreetMap) não disponíveis |
 
@@ -479,4 +487,11 @@ Interactive docs at `/docs` (Swagger UI) when the API is running.
 | POST | `/api/v1/marcos` | Create milestone (admin) |
 | PUT | `/api/v1/marcos/{id}` | Update milestone (admin) |
 | DELETE | `/api/v1/marcos/{id}` | Delete milestone (admin) |
+| GET | `/api/v1/ips/municipios` | City list with IPS data (filter by ano, estado) |
+| GET | `/api/v1/ips/scorecard` | All 79 IPS metrics for a municipality/year |
+| GET | `/api/v1/ips/evolucao` | Year-over-year IPS trend |
+| GET | `/api/v1/ips/ranking` | National + state rank |
+| GET | `/api/v1/ips/comparativo` | Side-by-side comparison of multiple cities |
+| GET | `/api/v1/ips/destaques` | Top 3 best + 3 worst components vs national avg |
+| GET | `/api/v1/ips/sugestoes` | Similar cities by GDP per capita |
 | GET | `/api/v1/comparativo/arrecadacao` | Revenue ranking (ADMIN_GLOBAL) |

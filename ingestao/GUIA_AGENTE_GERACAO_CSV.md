@@ -646,3 +646,49 @@ Ao revisar um script gerador de CSV, verifique:
 - [ ] Para Comex: `Tipo_Operacao` é exatamente `"export"` ou `"import"` em minúsculas?
 - [ ] Para PIX: `AnoMes` tem exatamente 6 dígitos? `Nome_Cidade` está em minúsculas?
 - [ ] Para CNPJ: `capital_social` usa ponto como milhar e vírgula como decimal?
+
+---
+
+## IPS — Índice de Progresso Social
+
+**Fonte**: IPS Brasil (https://ipsbrasil.org.br)
+**Frequência de atualização**: Anual
+**Arquivo**: `dados/ips/ips_brasil_municipios_{ano}.csv`
+**Script**: `python -m ingestao.carregar_ips --ano 2024 2025`
+
+### Diferenças em relação aos outros datasets
+
+O IPS é um arquivo **nacional** (não por cidade): um único CSV contém dados de todos os 5.570 municípios brasileiros. Não entra na pasta `dados/{municipio}/` e não é executado pelo `carregar_tudo.py`.
+
+### Estrutura do CSV
+
+Delimitador: `;` | Separador decimal: `,` | Encoding: UTF-8 com BOM
+
+| Coluna CSV | Campo no modelo | Tipo |
+|---|---|---|
+| Código IBGE | (usado para match — não salvo separadamente) | identificação |
+| Município | city_name (para criar/encontrar municipio) | identificação |
+| UF | estado | identificação |
+| Área (km²) | area_km2 | Float |
+| População 2022 | populacao | Integer |
+| PIB per capita 2021 | pib_per_capita | Float |
+| Índice de Progresso Social | ips_geral | Float |
+| Necessidades Humanas Básicas | necessidades_humanas_basicas | Float |
+| Fundamentos do Bem-estar | fundamentos_bem_estar | Float |
+| Oportunidades | oportunidades | Float |
+| (12 componentes) | nutricao_cuidados_medicos … acesso_educacao_superior | Float |
+| (~60 sub-indicadores) | cobertura_vacinal_poliomielite … nota_mediana_enem | Float |
+
+### Como carregar
+
+```bash
+# Todos os municípios do Brasil
+python -m ingestao.carregar_ips --ano 2024 2025
+
+# Apenas um estado (útil para testes)
+python -m ingestao.carregar_ips --ano 2024 --estado MG
+```
+
+### Idempotência
+
+O script usa `INSERT ON CONFLICT DO NOTHING` na constraint `(municipio_id, ano)`. Re-executar não duplica dados.
