@@ -1,65 +1,35 @@
 import csv
-import os
+from pathlib import Path
 
 from sqlalchemy.orm import Session
 
-from app.db.session import SessionLocal
-from app.models.municipio import Municipio
 from app.models.pib import PibAnual
-
-BASE_PATH = "dados/PIB_Cidades_Completo"
-
-
-def normalizar_nome(nome: str) -> str:
-    return nome.strip().replace("_", " ").upper()
+from ingestao.utils import obter_ou_criar_municipio
 
 
-def obter_ou_criar_municipio(db: Session, nome: str, estado: str, codigo_ibge: str | None = None) -> Municipio:
-    if codigo_ibge:
-        m = db.query(Municipio).filter(Municipio.codigo_ibge == codigo_ibge).first()
-        if m:
-            return m
-    municipio = db.query(Municipio).filter(Municipio.nome == nome, Municipio.estado == estado).first()
-    if not municipio:
-        municipio = Municipio(nome=nome, estado=estado, codigo_ibge=codigo_ibge, ativo=True)
-        db.add(municipio)
-        db.commit()
-        db.refresh(municipio)
-    return municipio
-
-
-def carregar_csv(db: Session, caminho: str, estado: str):
-    with open(caminho, newline="", encoding="utf-8-sig") as csvfile:
-        reader = csv.DictReader(csvfile, delimiter=";")
-
+def carregar(cidade_dir: Path, city_name: str, estado: str, db: Session) -> None:
+    caminho = cidade_dir / "pib.csv"
+    if not caminho.exists():
+        print(f"  ⚠️  pib.csv não encontrado em {cidade_dir} — pulando.")
+        return
+    municipio = obter_ou_criar_municipio(db, city_name, estado)
+    with open(caminho, newline="", encoding="utf-8-sig") as f:
+        reader = csv.DictReader(f, delimiter=";")
         for row in reader:
             ano = int(row["Ano"])
-            nome_municipio = normalizar_nome(row["Cidade"])
             tipo = row["Tipo_Dado"].upper()
-
+            if db.query(PibAnual).filter(
+                PibAnual.municipio_id == municipio.id,
+                PibAnual.ano == ano,
+                PibAnual.tipo_dado == tipo,
+            ).first():
+                continue
             pib_total = float(row["PIB_Total"] or 0)
-            va_agro = (
-                float(row["VA_Agropecuaria"] or 0) if row["VA_Agropecuaria"] else None
-            )
+            va_agro = float(row["VA_Agropecuaria"] or 0) if row["VA_Agropecuaria"] else None
             va_gov = float(row["VA_Governo"] or 0) if row["VA_Governo"] else None
             va_ind = float(row["VA_Industria"] or 0) if row["VA_Industria"] else None
             va_serv = float(row["VA_Servicos"] or 0) if row["VA_Servicos"] else None
-
-            municipio = obter_ou_criar_municipio(db, nome_municipio, estado)
-
-            existente = (
-                db.query(PibAnual)
-                .filter(
-                    PibAnual.municipio_id == municipio.id,
-                    PibAnual.ano == ano,
-                )
-                .first()
-            )
-
-            if existente:
-                continue
-
-            novo = PibAnual(
+            db.add(PibAnual(
                 municipio_id=municipio.id,
                 ano=ano,
                 tipo_dado=tipo,
@@ -68,33 +38,5 @@ def carregar_csv(db: Session, caminho: str, estado: str):
                 va_governo=va_gov,
                 va_industria=va_ind,
                 va_servicos=va_serv,
-            )
-
-            db.add(novo)
-
-        db.commit()
-
-
-def main():
-    import argparse
-    parser = argparse.ArgumentParser()
-    parser.add_argument("--estado", required=True, help="UF code, e.g. MG, MT")
-    args = parser.parse_args()
-    estado = args.estado.strip().upper()
-
-    db = SessionLocal()
-
-    try:
-        for arquivo in os.listdir(BASE_PATH):
-            if arquivo.endswith(".csv"):
-                caminho = os.path.join(BASE_PATH, arquivo)
-                print(f"Processando {arquivo}...")
-                carregar_csv(db, caminho, estado)
-
-        print("✅ Carga PIB finalizada com sucesso.")
-    finally:
-        db.close()
-
-
-if __name__ == "__main__":
-    main()
+            ))
+    db.commit()
