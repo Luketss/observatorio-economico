@@ -16,7 +16,7 @@ AI Agent Operational Context — UAIZI NID (Núcleo de Inteligência de Dados)
 - `/app` — Protected dashboard (requires auth)
 - `/admin` — Admin panel (ADMIN_MUNICIPIO or ADMIN_GLOBAL)
 
-## Active Datasets (12)
+## Active Datasets (13)
 
 | Key | Source | Description |
 |-----|--------|-------------|
@@ -32,6 +32,7 @@ AI Agent Operational Context — UAIZI NID (Núcleo de Inteligência de Dados)
 | `comex` | MDIC | Exports and imports |
 | `empresas` | CNPJ | Company registry snapshot |
 | `pix` | BCB | Instant payment transactions |
+| `ips` | IPS Brasil | Social progress index — 79 metrics, national coverage, all cities |
 
 ## Target Users
 
@@ -50,7 +51,7 @@ Login (/login) → JWT → /app (Dashboard)
                            ↓
                     DashboardLayout (sidebar)
                            ↓
-               12 dataset pages + Comparativo + Releases
+               13 dataset pages + Comparativo + Releases
                            ↓
                     FastAPI backend
                            ↓
@@ -97,6 +98,7 @@ dashboard_prefeituras/
 │       │   ├── empresas/
 │       │   ├── pix/
 │       │   ├── comparativo/
+│       │   ├── ips/
 │       │   ├── releases/                 # Municipality press releases view
 │       │   └── admin/                    # All admin pages
 │       └── services/api.js
@@ -194,6 +196,8 @@ Route guards in `AppRouter.jsx`:
 | Social | Bolsa Família, Pé-de-Meia, INSS |
 | Comércio | Bancos, Comércio Ext., Empresas, PIX |
 | (standalone) | Releases |
+| (standalone) | Benchmark |
+| (standalone) | IPS |
 
 On `< md` breakpoint: sidebar is a fixed overlay drawer triggered by hamburger. On `md+`: always visible.
 

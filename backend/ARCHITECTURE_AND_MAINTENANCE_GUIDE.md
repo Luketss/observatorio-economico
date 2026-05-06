@@ -87,8 +87,11 @@ def serie(db: Session = Depends(get_db), current_user = Depends(get_current_user
 | Comex | 3 tabelas | `/comex` |
 | Empresas | `empresas` | `/empresas` |
 | PIX | `pix_mensais` | `/pix` |
+| IPS | `ips_municipio` | `/ips` |
 
 Todos têm endpoint `/comparativo` que aceita `?estado=MG` para filtro por UF.
+
+IPS não filtra por `municipio_id` — todos os usuários autenticados têm acesso a todos os municípios (dados de benchmarking público).
 
 ---
 
@@ -100,6 +103,10 @@ Ingestão:
 ```bash
 python -m ingestao.carregar_tudo --estado MG
 python -m ingestao.carregar_tudo --estado MT --cidades Cuiaba
+
+# IPS (arquivo nacional — não entra no carregar_tudo)
+python -m ingestao.carregar_ips --ano 2024 2025
+python -m ingestao.carregar_ips --ano 2024 --estado MG   # filter by state
 ```
 
 ---

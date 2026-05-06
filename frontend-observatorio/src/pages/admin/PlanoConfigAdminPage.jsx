@@ -15,6 +15,7 @@ const MODULOS = [
   { key: "comex", label: "Comércio Exterior" },
   { key: "empresas", label: "Empresas — CNPJ" },
   { key: "pix", label: "PIX — Transações Instantâneas" },
+  { key: "ips", label: "IPS — Índice de Progresso Social" },
   { key: "insights_ia", label: "Insights IA" },
   { key: "timeline_mandato", label: "Timeline do Mandato" },
   { key: "projetos", label: "Projetos Municipais" },

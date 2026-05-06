@@ -42,9 +42,17 @@
 - **UX**: toast global (`ToastContext`), hook `useEscapeKey`, `aria-label` em todos os botões de ícone, skeleton loading, animações com ease-out/in
 - **Dev container**: `.devcontainer/` com Python 3.11 + Node 20 + PostgreSQL 16
 
+### v1.5 — IPS e Estrutura de Ingestão
+- **IPS (Índice de Progresso Social)**: 79 métricas por município, cobertura nacional (5.570 cidades), anos 2024 e 2025
+  - Tabela `ips_municipio` com unicidade `(municipio_id, ano)`
+  - Script `carregar_ips.py` com filtro por estado e upsert idempotente
+  - 7 endpoints: scorecard, ranking, evolução, comparativo, destaques, sugestões, lista de municípios
+  - Frontend `/app/ips`: seletor estado→cidade, scorecard, radar chart, drill-down, evolução, comparativo com pares similares
+- **Refactor de ingestão**: estrutura por município (`dados/{city}/`) com scripts padronizados; `--ibge` para código IBGE na ingestão
+
 ---
 
-## Próximo (v1.5)
+## Próximo (v1.6)
 
 - **Exportação de dados**: CSV download por página/dataset
 - **Busca textual**: filtro por nome em listagens admin
