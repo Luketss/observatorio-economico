@@ -64,11 +64,11 @@ def main():
         cidade_dir = Path("dados") / city_folder
 
         print(f"\n{'='*60}")
-        print(f"Cidade: {city_name} ({estado})  —  pasta: {cidade_dir}")
+        print(f"Cidade: {city_name} ({estado}) | pasta: {cidade_dir}")
         print("=" * 60)
 
         if not cidade_dir.is_dir():
-            print(f"  ❌ Pasta não encontrada: {cidade_dir} — pulando.")
+            print(f"  [ERRO] Pasta nao encontrada: {cidade_dir} -- pulando.")
             erros.append((city_name, "pasta não encontrada"))
             continue
 
@@ -81,18 +81,18 @@ def main():
                     module.carregar(cidade_dir, city_name, estado, db)
                 except Exception as e:
                     db.rollback()
-                    tqdm.write(f"  ❌ {nome}: {e}")
+                    tqdm.write(f"  [ERRO] {nome}: {e}")
                     erros.append((f"{city_name}/{nome}", e))
                 finally:
                     db.close()
 
     print(f"\n{'='*60}")
     if erros:
-        print(f"⚠️  Carga finalizada com {len(erros)} erro(s):")
+        print(f"[AVISO] Carga finalizada com {len(erros)} erro(s):")
         for nome, e in erros:
             print(f"   - {nome}: {e}")
     else:
-        print("✅ Carga finalizada com sucesso.")
+        print("[OK] Carga finalizada com sucesso.")
     print("=" * 60)
 
 

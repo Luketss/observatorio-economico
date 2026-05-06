@@ -47,7 +47,7 @@ def _read_csv_keyed(path: Path) -> dict[str, dict]:
 def carregar(cidade_dir: Path, city_name: str, estado: str, db: Session) -> None:
     estab_path = cidade_dir / "estabelecimentos.csv"
     if not estab_path.exists():
-        print(f"  ⚠️  estabelecimentos.csv não encontrado em {cidade_dir} — pulando CNPJ.")
+        print(f"  [AVISO]  estabelecimentos.csv não encontrado em {cidade_dir} — pulando CNPJ.")
         return
 
     municipio = obter_ou_criar_municipio(db, city_name, estado)

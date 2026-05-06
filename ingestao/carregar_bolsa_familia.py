@@ -17,7 +17,7 @@ def _parse_float(value) -> float:
 def carregar(cidade_dir: Path, city_name: str, estado: str, db: Session) -> None:
     caminho = cidade_dir / "bolsa_familia.csv"
     if not caminho.exists():
-        print(f"  ⚠️  bolsa_familia.csv não encontrado em {cidade_dir} — pulando.")
+        print(f"  [AVISO]  bolsa_familia.csv não encontrado em {cidade_dir} — pulando.")
         return
     municipio = obter_ou_criar_municipio(db, city_name, estado)
 

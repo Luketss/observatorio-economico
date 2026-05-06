@@ -28,7 +28,7 @@ def _int(val: str) -> int | None:
 def carregar(cidade_dir: Path, city_name: str, estado: str, db: Session) -> None:
     caminho = cidade_dir / "pix.csv"
     if not caminho.exists():
-        print(f"  ⚠️  pix.csv não encontrado em {cidade_dir} — pulando.")
+        print(f"  [AVISO]  pix.csv não encontrado em {cidade_dir} — pulando.")
         return
     municipio = obter_ou_criar_municipio(db, city_name, estado)
 

@@ -52,7 +52,7 @@ CNAE_SECAO_DESC = {
 def carregar(cidade_dir: Path, city_name: str, estado: str, db: Session) -> None:
     caminho = cidade_dir / "caged.csv"
     if not caminho.exists():
-        print(f"  ⚠️  caged.csv não encontrado em {cidade_dir} — pulando.")
+        print(f"  [AVISO]  caged.csv não encontrado em {cidade_dir} — pulando.")
         return
     municipio = obter_ou_criar_municipio(db, city_name, estado)
 

@@ -160,7 +160,7 @@ def get_secao_from_subclasse(subclasse: str) -> tuple[str, str] | None:
 def carregar(cidade_dir: Path, city_name: str, estado: str, db: Session) -> None:
     caminho = cidade_dir / "rais_vinculos.csv"
     if not caminho.exists():
-        print(f"  ⚠️  rais_vinculos.csv não encontrado em {cidade_dir} — pulando.")
+        print(f"  [AVISO]  rais_vinculos.csv não encontrado em {cidade_dir} — pulando.")
         return
     municipio = obter_ou_criar_municipio(db, city_name, estado)
 

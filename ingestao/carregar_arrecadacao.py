@@ -11,7 +11,7 @@ from ingestao.utils import obter_ou_criar_municipio
 def carregar(cidade_dir: Path, city_name: str, estado: str, db: Session) -> None:
     caminho = cidade_dir / "arrecadacao.csv"
     if not caminho.exists():
-        print(f"  ⚠️  arrecadacao.csv não encontrado em {cidade_dir} — pulando.")
+        print(f"  [AVISO]  arrecadacao.csv não encontrado em {cidade_dir} — pulando.")
         return
     municipio = obter_ou_criar_municipio(db, city_name, estado)
     with open(caminho, newline="", encoding="utf-8-sig") as f:
