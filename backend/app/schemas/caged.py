@@ -48,3 +48,30 @@ class CagedCnaeItem(BaseModel):
     admissoes: int
     desligamentos: int
     saldo: int
+
+
+class CagedEscolaridadeItem(BaseModel):
+    ano: int
+    mes: int
+    grau_instrucao: str
+    admissoes: int
+    desligamentos: int
+    saldo: int
+
+
+class CagedFaixaEtariaItem(BaseModel):
+    ano: int
+    mes: int
+    faixa_etaria: str
+    admissoes: int
+    desligamentos: int
+    saldo: int
+
+
+class CagedTipoMovimentacaoItem(BaseModel):
+    ano: int
+    mes: int
+    tipo_movimentacao: str
+    admissoes: int
+    desligamentos: int
+    saldo: int
