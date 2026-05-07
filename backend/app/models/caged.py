@@ -82,3 +82,48 @@ class CagedPorCnae(Base):
     saldo: Mapped[int] = mapped_column(Integer)
 
     municipio = relationship("Municipio")
+
+
+class CagedPorEscolaridade(Base):
+    __tablename__ = "caged_por_escolaridade"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+    municipio_id: Mapped[int] = mapped_column(Integer, ForeignKey("municipios.id"), nullable=False, index=True)
+    ano: Mapped[int] = mapped_column(Integer, index=True)
+    mes: Mapped[int] = mapped_column(Integer, index=True)
+    grau_instrucao: Mapped[str] = mapped_column(String(80), nullable=False)
+    admissoes: Mapped[int] = mapped_column(Integer)
+    desligamentos: Mapped[int] = mapped_column(Integer)
+    saldo: Mapped[int] = mapped_column(Integer)
+
+    municipio = relationship("Municipio")
+
+
+class CagedPorFaixaEtaria(Base):
+    __tablename__ = "caged_por_faixa_etaria"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+    municipio_id: Mapped[int] = mapped_column(Integer, ForeignKey("municipios.id"), nullable=False, index=True)
+    ano: Mapped[int] = mapped_column(Integer, index=True)
+    mes: Mapped[int] = mapped_column(Integer, index=True)
+    faixa_etaria: Mapped[str] = mapped_column(String(30), nullable=False)
+    admissoes: Mapped[int] = mapped_column(Integer)
+    desligamentos: Mapped[int] = mapped_column(Integer)
+    saldo: Mapped[int] = mapped_column(Integer)
+
+    municipio = relationship("Municipio")
+
+
+class CagedPorTipoMovimentacao(Base):
+    __tablename__ = "caged_por_tipo_movimentacao"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+    municipio_id: Mapped[int] = mapped_column(Integer, ForeignKey("municipios.id"), nullable=False, index=True)
+    ano: Mapped[int] = mapped_column(Integer, index=True)
+    mes: Mapped[int] = mapped_column(Integer, index=True)
+    tipo_movimentacao: Mapped[str] = mapped_column(String(80), nullable=False)
+    admissoes: Mapped[int] = mapped_column(Integer)
+    desligamentos: Mapped[int] = mapped_column(Integer)
+    saldo: Mapped[int] = mapped_column(Integer)
+
+    municipio = relationship("Municipio")

@@ -1,14 +1,17 @@
 from typing import List
 
 from app.api.deps import get_current_user, get_db
-from app.models.caged import CagedMovimentacao, CagedPorCnae, CagedPorRaca, CagedPorSexo, CagedSalario
+from app.models.caged import CagedMovimentacao, CagedPorCnae, CagedPorEscolaridade, CagedPorFaixaEtaria, CagedPorRaca, CagedPorSexo, CagedPorTipoMovimentacao, CagedSalario
 from app.schemas.caged import (
     CagedCnaeItem,
+    CagedEscolaridadeItem,
+    CagedFaixaEtariaItem,
     CagedItem,
     CagedRacaItem,
     CagedResumo,
     CagedSalarioItem,
     CagedSexoItem,
+    CagedTipoMovimentacaoItem,
 )
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy import func
@@ -138,6 +141,75 @@ def por_cnae(
             mes=r.mes,
             secao=r.secao,
             descricao_secao=r.descricao_secao,
+            admissoes=r.admissoes,
+            desligamentos=r.desligamentos,
+            saldo=r.saldo,
+        )
+        for r in registros
+    ]
+
+
+@router.get("/por_escolaridade", response_model=List[CagedEscolaridadeItem])
+def por_escolaridade(
+    ano: int = Query(None),
+    db: Session = Depends(get_db),
+    current_user=Depends(get_current_user),
+):
+    query = _municipio_filter(db.query(CagedPorEscolaridade), CagedPorEscolaridade, current_user)
+    if ano:
+        query = query.filter(CagedPorEscolaridade.ano == ano)
+    registros = query.order_by(CagedPorEscolaridade.ano, CagedPorEscolaridade.mes, CagedPorEscolaridade.grau_instrucao).all()
+    return [
+        CagedEscolaridadeItem(
+            ano=r.ano,
+            mes=r.mes,
+            grau_instrucao=r.grau_instrucao,
+            admissoes=r.admissoes,
+            desligamentos=r.desligamentos,
+            saldo=r.saldo,
+        )
+        for r in registros
+    ]
+
+
+@router.get("/por_faixa_etaria", response_model=List[CagedFaixaEtariaItem])
+def por_faixa_etaria(
+    ano: int = Query(None),
+    db: Session = Depends(get_db),
+    current_user=Depends(get_current_user),
+):
+    query = _municipio_filter(db.query(CagedPorFaixaEtaria), CagedPorFaixaEtaria, current_user)
+    if ano:
+        query = query.filter(CagedPorFaixaEtaria.ano == ano)
+    registros = query.order_by(CagedPorFaixaEtaria.ano, CagedPorFaixaEtaria.mes, CagedPorFaixaEtaria.faixa_etaria).all()
+    return [
+        CagedFaixaEtariaItem(
+            ano=r.ano,
+            mes=r.mes,
+            faixa_etaria=r.faixa_etaria,
+            admissoes=r.admissoes,
+            desligamentos=r.desligamentos,
+            saldo=r.saldo,
+        )
+        for r in registros
+    ]
+
+
+@router.get("/por_tipo_movimentacao", response_model=List[CagedTipoMovimentacaoItem])
+def por_tipo_movimentacao(
+    ano: int = Query(None),
+    db: Session = Depends(get_db),
+    current_user=Depends(get_current_user),
+):
+    query = _municipio_filter(db.query(CagedPorTipoMovimentacao), CagedPorTipoMovimentacao, current_user)
+    if ano:
+        query = query.filter(CagedPorTipoMovimentacao.ano == ano)
+    registros = query.order_by(CagedPorTipoMovimentacao.ano, CagedPorTipoMovimentacao.mes, CagedPorTipoMovimentacao.tipo_movimentacao).all()
+    return [
+        CagedTipoMovimentacaoItem(
+            ano=r.ano,
+            mes=r.mes,
+            tipo_movimentacao=r.tipo_movimentacao,
             admissoes=r.admissoes,
             desligamentos=r.desligamentos,
             saldo=r.saldo,

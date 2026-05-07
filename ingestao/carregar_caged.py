@@ -4,7 +4,7 @@ from pathlib import Path
 
 from sqlalchemy.orm import Session
 
-from app.models.caged import CagedMovimentacao, CagedPorCnae, CagedPorRaca, CagedPorSexo, CagedSalario
+from app.models.caged import CagedMovimentacao, CagedPorCnae, CagedPorEscolaridade, CagedPorFaixaEtaria, CagedPorRaca, CagedPorSexo, CagedPorTipoMovimentacao, CagedSalario
 from ingestao.utils import obter_ou_criar_municipio
 
 SEXO_MAP = {
@@ -23,6 +23,49 @@ RACA_COR_MAP = {
     "6": "Não informada",
     "9": "Não informada",
 }
+
+GRAU_INSTRUCAO_MAP = {
+    "1": "Analfabeto",
+    "2": "Até 5ª incompleto",
+    "3": "5ª completo fundamental",
+    "4": "6ª a 9ª fundamental",
+    "5": "Fund. completo",
+    "6": "Médio incompleto",
+    "7": "Médio completo",
+    "8": "Superior incompleto",
+    "9": "Superior completo",
+    "10": "Mestrado",
+    "11": "Doutorado",
+}
+
+TIPO_MOV_MAP = {
+    "10": "Admissão — Primeiro Emprego",
+    "20": "Admissão — Reemprego",
+    "25": "Admissão — Transferência",
+    "31": "Desligamento — A Pedido",
+    "32": "Desligamento — Sem Justa Causa",
+    "33": "Desligamento — Por Justa Causa",
+    "40": "Desligamento — Transferência",
+    "50": "Desligamento — Término de Contrato",
+    "60": "Desligamento — Falecimento",
+}
+
+
+def _faixa_etaria(idade: int) -> str:
+    if idade < 18:
+        return "Até 17 anos"
+    if idade < 25:
+        return "18 a 24 anos"
+    if idade < 30:
+        return "25 a 29 anos"
+    if idade < 40:
+        return "30 a 39 anos"
+    if idade < 50:
+        return "40 a 49 anos"
+    if idade < 65:
+        return "50 a 64 anos"
+    return "65 anos ou mais"
+
 
 CNAE_SECAO_DESC = {
     "A": "Agricultura, Pecuária e Silvicultura",
@@ -69,6 +112,15 @@ def carregar(cidade_dir: Path, city_name: str, estado: str, db: Session) -> None
         lambda: {"sum_adm": 0.0, "cnt_adm": 0, "sum_des": 0.0, "cnt_des": 0}
     )
     por_cnae: dict[tuple, dict] = defaultdict(
+        lambda: {"admissoes": 0, "desligamentos": 0}
+    )
+    por_escolaridade: dict[tuple, dict] = defaultdict(
+        lambda: {"admissoes": 0, "desligamentos": 0}
+    )
+    por_faixa_etaria: dict[tuple, dict] = defaultdict(
+        lambda: {"admissoes": 0, "desligamentos": 0}
+    )
+    por_tipo_mov: dict[tuple, dict] = defaultdict(
         lambda: {"admissoes": 0, "desligamentos": 0}
     )
 
@@ -122,6 +174,33 @@ def carregar(cidade_dir: Path, city_name: str, estado: str, db: Session) -> None
                     por_cnae[chave_cnae]["admissoes"] += saldo
                 else:
                     por_cnae[chave_cnae]["desligamentos"] += abs(saldo)
+
+            grau_raw = str(row.get("grau_instrucao", "")).strip()
+            grau_label = GRAU_INSTRUCAO_MAP.get(grau_raw, "Não informado")
+            chave_grau = (ano, mes, grau_label)
+            if is_admission:
+                por_escolaridade[chave_grau]["admissoes"] += saldo
+            else:
+                por_escolaridade[chave_grau]["desligamentos"] += abs(saldo)
+
+            try:
+                idade_val = int(row.get("idade", 0) or 0)
+            except (ValueError, TypeError):
+                idade_val = 0
+            faixa = _faixa_etaria(idade_val)
+            chave_faixa = (ano, mes, faixa)
+            if is_admission:
+                por_faixa_etaria[chave_faixa]["admissoes"] += saldo
+            else:
+                por_faixa_etaria[chave_faixa]["desligamentos"] += abs(saldo)
+
+            tipo_raw = str(row.get("tipo_movimentacao", "")).strip()
+            tipo_label = TIPO_MOV_MAP.get(tipo_raw, f"Código {tipo_raw}" if tipo_raw else "Não informado")
+            chave_tipo = (ano, mes, tipo_label)
+            if is_admission:
+                por_tipo_mov[chave_tipo]["admissoes"] += saldo
+            else:
+                por_tipo_mov[chave_tipo]["desligamentos"] += abs(saldo)
 
     for (ano, mes), totais in mensal.items():
         adm = totais["admissoes"]
@@ -195,6 +274,51 @@ def carregar(cidade_dir: Path, city_name: str, estado: str, db: Session) -> None
             municipio_id=municipio.id, ano=ano, mes=mes,
             secao=secao, descricao_secao=desc,
             admissoes=adm, desligamentos=des, saldo=adm - des,
+        ))
+
+    for (ano, mes, grau), totais in por_escolaridade.items():
+        adm = totais["admissoes"]
+        des = totais["desligamentos"]
+        if db.query(CagedPorEscolaridade).filter(
+            CagedPorEscolaridade.municipio_id == municipio.id,
+            CagedPorEscolaridade.ano == ano,
+            CagedPorEscolaridade.mes == mes,
+            CagedPorEscolaridade.grau_instrucao == grau,
+        ).first():
+            continue
+        db.add(CagedPorEscolaridade(
+            municipio_id=municipio.id, ano=ano, mes=mes,
+            grau_instrucao=grau, admissoes=adm, desligamentos=des, saldo=adm - des,
+        ))
+
+    for (ano, mes, faixa), totais in por_faixa_etaria.items():
+        adm = totais["admissoes"]
+        des = totais["desligamentos"]
+        if db.query(CagedPorFaixaEtaria).filter(
+            CagedPorFaixaEtaria.municipio_id == municipio.id,
+            CagedPorFaixaEtaria.ano == ano,
+            CagedPorFaixaEtaria.mes == mes,
+            CagedPorFaixaEtaria.faixa_etaria == faixa,
+        ).first():
+            continue
+        db.add(CagedPorFaixaEtaria(
+            municipio_id=municipio.id, ano=ano, mes=mes,
+            faixa_etaria=faixa, admissoes=adm, desligamentos=des, saldo=adm - des,
+        ))
+
+    for (ano, mes, tipo), totais in por_tipo_mov.items():
+        adm = totais["admissoes"]
+        des = totais["desligamentos"]
+        if db.query(CagedPorTipoMovimentacao).filter(
+            CagedPorTipoMovimentacao.municipio_id == municipio.id,
+            CagedPorTipoMovimentacao.ano == ano,
+            CagedPorTipoMovimentacao.mes == mes,
+            CagedPorTipoMovimentacao.tipo_movimentacao == tipo,
+        ).first():
+            continue
+        db.add(CagedPorTipoMovimentacao(
+            municipio_id=municipio.id, ano=ano, mes=mes,
+            tipo_movimentacao=tipo, admissoes=adm, desligamentos=des, saldo=adm - des,
         ))
 
     db.commit()
