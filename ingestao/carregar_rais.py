@@ -9,6 +9,8 @@ from app.models.rais import (
     RaisVinculo, RaisPorCnae, RaisPorRaca, RaisPorSexo,
     RaisPorFaixaEtaria, RaisPorEscolaridade, RaisPorFaixaRemuneracao,
     RaisPorFaixaTempoEmprego, RaisMetricasAnuais,
+    RaisPorMotivoDesligamento, RaisPorTipoAdmissao, RaisPorCbo,
+    RaisPorTamanhoEstabelecimento, RaisPorNaturezaJuridica, RaisTurnoverMensal,
 )
 from ingestao.utils import obter_ou_criar_municipio
 
@@ -78,6 +80,83 @@ FAIXA_TEMPO_EMPREGO_MAP = {
     "7": "5 a 10 anos",
     "8": "10 anos ou mais",
     "9": "Não identificado",
+}
+
+# RAIS code 0 = ainda empregado em 31/12; >0 = desligado por este motivo.
+MOTIVO_DESLIGAMENTO_MAP = {
+    "10": "Rescisão sem justa causa pelo empregador",
+    "11": "Rescisão com justa causa pelo empregador",
+    "12": "Término do contrato",
+    "20": "Rescisão por iniciativa do empregado",
+    "21": "Rescisão antecipada do contrato",
+    "22": "Rescisão por culpa recíproca",
+    "30": "Aposentadoria",
+    "31": "Falecimento",
+    "32": "Falecimento decorrente de acidente do trabalho",
+    "33": "Falecimento natural fora do trabalho",
+    "40": "Reforma ou transferência",
+    "41": "Mudança de regime trabalhista",
+    "42": "Reintegração / readmissão",
+    "43": "Acordo entre as partes (Lei 13.467/17)",
+    "50": "Outros / Não identificado",
+}
+
+# Categorized hire types (RAIS tipo_admissao codes)
+TIPO_ADMISSAO_MAP = {
+    "0": "Não admitido no ano",
+    "1": "Primeiro emprego",
+    "2": "Reemprego",
+    "3": "Transferência com ônus",
+    "4": "Transferência sem ônus",
+    "5": "Reintegração",
+    "6": "Mudança de regime jurídico",
+    "7": "Reativação",
+    "8": "Outros",
+}
+
+# tamanho_estabelecimento codes
+TAMANHO_ESTAB_MAP = {
+    "1": "Até 4 vínculos",
+    "2": "5 a 9",
+    "3": "10 a 19",
+    "4": "20 a 49",
+    "5": "50 a 99",
+    "6": "100 a 249",
+    "7": "250 a 499",
+    "8": "500 a 999",
+    "9": "1000 ou mais",
+    "0": "Zero / não classificado",
+}
+
+# natureza_juridica is a 4-digit code; first digit identifies the macro group.
+NATUREZA_JURIDICA_GRUPO_MAP = {
+    "1": "Administração Pública",
+    "2": "Entidades Empresariais",
+    "3": "Entidades sem Fins Lucrativos",
+    "4": "Pessoas Físicas",
+    "5": "Organizações Internacionais",
+    "8": "Outras",
+}
+
+# Top 50 most common CBO 2002 family-code descriptions seen in CSV samples.
+# (Loader uses these where available; otherwise stores the bare code.)
+CBO_FAMILIA_DESC = {
+    "5211": "Vendedores e demonstradores em lojas",
+    "7825": "Motoristas de veículos de cargas em geral",
+    "5141": "Trabalhadores nos serviços de manutenção de edificações",
+    "9152": "Mecânicos de manutenção de máquinas industriais",
+    "5174": "Vigilantes e guardas de segurança",
+    "4110": "Escriturários em geral, agentes, assistentes e auxiliares administrativos",
+    "5132": "Cozinheiros",
+    "5134": "Garçons, barmen, copeiros e sommeliers",
+    "5143": "Trabalhadores nos serviços de limpeza e conservação",
+    "6210": "Trabalhadores agrícolas na cultura de plantas",
+    "6225": "Tratoristas agrícolas",
+    "6410": "Trabalhadores na exploração agropecuária",
+    "7152": "Pedreiros",
+    "7155": "Serventes e ajudantes de obras",
+    "7841": "Operadores de máquinas para fabricação",
+    "8485": "Trabalhadores na fabricação de alimentos",
 }
 
 # CNAE 2.0: first 2 digits of subclasse → section letter
@@ -176,7 +255,15 @@ def carregar(cidade_dir: Path, city_name: str, estado: str, db: Session) -> None
     metricas: dict[int, dict] = defaultdict(lambda: {
         "total": 0, "pcd": 0, "outro_municipio": 0,
         "afastamento_soma": 0.0, "afastamento_cnt": 0,
+        "ativo_dezembro": 0, "parcial": 0, "intermitente": 0,
+        "simples": 0, "aprendiz_estimado": 0,
     })
+    por_motivo: dict[tuple, int] = defaultdict(int)
+    por_tipo_admissao: dict[tuple, int] = defaultdict(int)
+    por_cbo: dict[tuple, dict] = defaultdict(lambda: {"vinculos": 0, "soma_rem": 0.0, "cnt_rem": 0})
+    por_tamanho: dict[tuple, dict] = defaultdict(lambda: {"vinculos": 0, "soma_rem": 0.0, "cnt_rem": 0})
+    por_natureza: dict[tuple, int] = defaultdict(int)
+    turnover: dict[tuple, dict] = defaultdict(lambda: {"adm": 0, "des": 0})  # (ano, mes) -> counts
 
     with open(caminho, newline="", encoding="utf-8-sig") as csvfile:
         reader = csv.DictReader(csvfile, delimiter=";")
@@ -258,6 +345,74 @@ def carregar(cidade_dir: Path, city_name: str, estado: str, db: Session) -> None
             except (ValueError, TypeError):
                 pass
 
+            # ── New aggregations (2026-05) ──
+
+            # Active on Dec 31
+            if str(row.get("vinculo_ativo_3112", "")).strip() == "1":
+                metricas[ano]["ativo_dezembro"] += 1
+
+            # Contract type indicators
+            if str(row.get("indicador_trabalho_parcial", "")).strip() in ("1", "S", "SIM"):
+                metricas[ano]["parcial"] += 1
+            if str(row.get("indicador_trabalho_intermitente", "")).strip() in ("1", "S", "SIM"):
+                metricas[ano]["intermitente"] += 1
+            if str(row.get("indicador_simples", "")).strip() in ("1", "S", "SIM"):
+                metricas[ano]["simples"] += 1
+            # Apprenticeship is not in RAIS schema; approximate via tipo_vinculo == "55" (menor aprendiz)
+            if str(row.get("tipo_vinculo", "")).strip() == "55":
+                metricas[ano]["aprendiz_estimado"] += 1
+
+            # Hire / fire reason — only count rows where the event actually happened this year
+            mes_adm_raw = str(row.get("mes_admissao", "") or "").strip()
+            mes_des_raw = str(row.get("mes_desligamento", "") or "").strip()
+            try:
+                mes_adm = int(mes_adm_raw) if mes_adm_raw else 0
+            except ValueError:
+                mes_adm = 0
+            try:
+                mes_des = int(mes_des_raw) if mes_des_raw else 0
+            except ValueError:
+                mes_des = 0
+
+            if mes_adm > 0:
+                tipo_raw = str(row.get("tipo_admissao", "") or "").strip()
+                tipo_label = TIPO_ADMISSAO_MAP.get(tipo_raw, "Outros")
+                if tipo_label != "Não admitido no ano":
+                    por_tipo_admissao[(ano, tipo_label)] += 1
+                turnover[(ano, mes_adm)]["adm"] += 1
+
+            if mes_des > 0:
+                motivo_raw = str(row.get("motivo_desligamento", "") or "").strip()
+                motivo_label = MOTIVO_DESLIGAMENTO_MAP.get(motivo_raw, "Outros / Não identificado")
+                por_motivo[(ano, motivo_label)] += 1
+                turnover[(ano, mes_des)]["des"] += 1
+
+            # CBO 2002 family code (first 4 digits of 6-digit code)
+            cbo_raw = str(row.get("cbo_2002", "") or "").strip()
+            if cbo_raw and cbo_raw.isdigit() and len(cbo_raw) >= 4:
+                fam = cbo_raw[:4]
+                chave_cbo = (ano, fam)
+                por_cbo[chave_cbo]["vinculos"] += 1
+                if rem > 0:
+                    por_cbo[chave_cbo]["soma_rem"] += rem
+                    por_cbo[chave_cbo]["cnt_rem"] += 1
+
+            # Establishment size band
+            tam_raw = str(row.get("tamanho_estabelecimento", "") or "").strip()
+            tam_label = TAMANHO_ESTAB_MAP.get(tam_raw)
+            if tam_label:
+                chave_tam = (ano, tam_label)
+                por_tamanho[chave_tam]["vinculos"] += 1
+                if rem > 0:
+                    por_tamanho[chave_tam]["soma_rem"] += rem
+                    por_tamanho[chave_tam]["cnt_rem"] += 1
+
+            # Natureza jurídica — bucket by first digit
+            nat_raw = str(row.get("natureza_juridica", "") or "").strip()
+            if nat_raw and nat_raw[0] in NATUREZA_JURIDICA_GRUPO_MAP:
+                grupo = NATUREZA_JURIDICA_GRUPO_MAP[nat_raw[0]]
+                por_natureza[(ano, grupo)] += 1
+
     def _exists(model, **kwargs):
         return db.query(model).filter_by(**kwargs).first() is not None
 
@@ -318,6 +473,59 @@ def carregar(cidade_dir: Path, city_name: str, estado: str, db: Session) -> None
             total_pcd=m["pcd"],
             total_outro_municipio=m["outro_municipio"],
             media_dias_afastamento=media_af,
+            total_ativo_dezembro=m["ativo_dezembro"],
+            total_parcial=m["parcial"],
+            total_intermitente=m["intermitente"],
+            total_simples=m["simples"],
+            total_aprendiz_estimado=m["aprendiz_estimado"],
+        ))
+
+    for (ano, motivo), cnt in por_motivo.items():
+        if _exists(RaisPorMotivoDesligamento, municipio_id=municipio.id, ano=ano, motivo=motivo):
+            continue
+        db.add(RaisPorMotivoDesligamento(
+            municipio_id=municipio.id, ano=ano, motivo=motivo, total_desligamentos=cnt,
+        ))
+
+    for (ano, tipo), cnt in por_tipo_admissao.items():
+        if _exists(RaisPorTipoAdmissao, municipio_id=municipio.id, ano=ano, tipo=tipo):
+            continue
+        db.add(RaisPorTipoAdmissao(
+            municipio_id=municipio.id, ano=ano, tipo=tipo, total_admissoes=cnt,
+        ))
+
+    for (ano, fam), agg in por_cbo.items():
+        if _exists(RaisPorCbo, municipio_id=municipio.id, ano=ano, cbo_familia=fam):
+            continue
+        rem_media = agg["soma_rem"] / agg["cnt_rem"] if agg["cnt_rem"] else None
+        db.add(RaisPorCbo(
+            municipio_id=municipio.id, ano=ano,
+            cbo_familia=fam, descricao=CBO_FAMILIA_DESC.get(fam),
+            total_vinculos=agg["vinculos"], remuneracao_media=rem_media,
+        ))
+
+    for (ano, label), agg in por_tamanho.items():
+        if _exists(RaisPorTamanhoEstabelecimento, municipio_id=municipio.id, ano=ano, tamanho=label):
+            continue
+        rem_media = agg["soma_rem"] / agg["cnt_rem"] if agg["cnt_rem"] else None
+        db.add(RaisPorTamanhoEstabelecimento(
+            municipio_id=municipio.id, ano=ano, tamanho=label,
+            total_vinculos=agg["vinculos"], remuneracao_media=rem_media,
+        ))
+
+    for (ano, grupo), cnt in por_natureza.items():
+        if _exists(RaisPorNaturezaJuridica, municipio_id=municipio.id, ano=ano, grupo=grupo):
+            continue
+        db.add(RaisPorNaturezaJuridica(
+            municipio_id=municipio.id, ano=ano, grupo=grupo, total_vinculos=cnt,
+        ))
+
+    for (ano, mes), counts in turnover.items():
+        if _exists(RaisTurnoverMensal, municipio_id=municipio.id, ano=ano, mes=mes):
+            continue
+        db.add(RaisTurnoverMensal(
+            municipio_id=municipio.id, ano=ano, mes=mes,
+            total_admissoes=counts["adm"], total_desligamentos=counts["des"],
         ))
 
     db.commit()
