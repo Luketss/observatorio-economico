@@ -88,24 +88,24 @@ export default function KpiCard({
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay }}
-        className="bg-white dark:bg-slate-900 p-6 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-800 hover:shadow-md transition-shadow duration-200 relative"
+        className="nid-kpi"
       >
-        <div className="flex items-start justify-between">
+        <div className="flex items-start justify-between gap-2">
           {/* Main content */}
           <div className="flex-1 min-w-0">
-            <p className="text-xs uppercase tracking-wider text-slate-400 dark:text-slate-500 font-medium">
-              {label}
-            </p>
-            <p className={`text-2xl font-bold mt-2 ${accent || "text-slate-800 dark:text-white"}`}>
+            <p className="nid-kpi-label">{label}</p>
+            <p className={`nid-kpi-value ${accent || ""}`}>
               {value}
             </p>
             {sub && (
-              <p className="text-xs text-slate-400 dark:text-slate-500 mt-1">{sub}</p>
+              <p className="nid-kpi-foot">
+                <span className="foot-text">{sub}</span>
+              </p>
             )}
           </div>
 
           {/* Right side: icon (if any) + info button */}
-          <div className="flex items-start gap-1.5 ml-2 flex-shrink-0">
+          <div className="flex items-start gap-1.5 flex-shrink-0">
             {Icon && color && (
               <div className={`p-2 rounded-xl ${color.bg}`}>
                 <Icon className={`w-5 h-5 ${color.text}`} />
@@ -119,11 +119,10 @@ export default function KpiCard({
                   onMouseEnter={() => hasContent && setTooltipVisible(true)}
                   onMouseLeave={() => setTooltipVisible(false)}
                   onClick={() => { setModalOpen(true); setEditing(false); }}
-                  className={`p-1 rounded-lg transition-colors ${
-                    hasContent
-                      ? "text-teal-500 hover:bg-teal-50 dark:hover:bg-teal-950/40"
-                      : "text-slate-300 dark:text-slate-600 hover:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800"
-                  }`}
+                  className="p-1 rounded-lg transition-colors"
+                  style={{
+                    color: hasContent ? "var(--accent-1)" : "var(--text-mute)",
+                  }}
                   title={hasContent ? "Ver descrição" : "Adicionar descrição (admin)"}
                 >
                   <InformationCircleIcon className="w-4 h-4" />
