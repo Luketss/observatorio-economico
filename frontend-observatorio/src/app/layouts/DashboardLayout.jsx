@@ -429,6 +429,8 @@ export default function DashboardLayout() {
               background: "var(--panel)",
               borderBottom: "1px solid var(--border)",
               backdropFilter: "blur(10px)",
+              position: "relative",
+              zIndex: 50,
             }}
           >
             {/* Hamburger */}

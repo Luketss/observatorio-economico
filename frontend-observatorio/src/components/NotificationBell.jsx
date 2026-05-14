@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import api from "../services/api";
 
 const KIND_CLASS = {
@@ -34,7 +35,18 @@ function timeAgo(iso) {
 export default function NotificationBell() {
   const [notifs, setNotifs] = useState([]);
   const [open, setOpen] = useState(false);
+  const [panelPos, setPanelPos] = useState({ top: 0, right: 0 });
   const ref = useRef(null);
+  const btnRef = useRef(null);
+
+  const updatePanelPos = () => {
+    if (!btnRef.current) return;
+    const rect = btnRef.current.getBoundingClientRect();
+    setPanelPos({
+      top: rect.bottom + 10,
+      right: window.innerWidth - rect.right,
+    });
+  };
 
   const fetchNotifs = async () => {
     try {
@@ -54,10 +66,23 @@ export default function NotificationBell() {
   useEffect(() => {
     if (!open) return;
     const handle = (e) => {
-      if (ref.current && !ref.current.contains(e.target)) setOpen(false);
+      if (ref.current && ref.current.contains(e.target)) return;
+      if (e.target.closest && e.target.closest("[data-bell-panel]")) return;
+      setOpen(false);
     };
     document.addEventListener("mousedown", handle);
     return () => document.removeEventListener("mousedown", handle);
+  }, [open]);
+
+  useEffect(() => {
+    if (!open) return;
+    updatePanelPos();
+    window.addEventListener("resize", updatePanelPos);
+    window.addEventListener("scroll", updatePanelPos, true);
+    return () => {
+      window.removeEventListener("resize", updatePanelPos);
+      window.removeEventListener("scroll", updatePanelPos, true);
+    };
   }, [open]);
 
   const unread = notifs.filter((n) => !n.lida).length;
@@ -84,6 +109,7 @@ export default function NotificationBell() {
   return (
     <div className="relative" ref={ref}>
       <button
+        ref={btnRef}
         type="button"
         onClick={() => setOpen((v) => !v)}
         className="nid-bell"
@@ -98,8 +124,12 @@ export default function NotificationBell() {
         )}
       </button>
 
-      {open && (
-        <div className="nid-bell-panel">
+      {open && createPortal(
+        <div
+          className="nid-bell-panel"
+          data-bell-panel=""
+          style={{ top: panelPos.top, right: panelPos.right }}
+        >
           <div className="nid-bell-head">
             <div>
               <div className="nid-bell-title">Notificações</div>
@@ -158,7 +188,8 @@ export default function NotificationBell() {
           <div className="nid-bell-foot">
             <button className="nid-bell-link">Ver todas as notificações →</button>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
     </div>
   );
