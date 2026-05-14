@@ -5,11 +5,15 @@ from app.models.rais import (
     RaisVinculo, RaisPorCnae, RaisPorRaca, RaisPorSexo,
     RaisPorFaixaEtaria, RaisPorEscolaridade, RaisPorFaixaRemuneracao,
     RaisPorFaixaTempoEmprego, RaisMetricasAnuais,
+    RaisPorMotivoDesligamento, RaisPorTipoAdmissao, RaisPorCbo,
+    RaisPorTamanhoEstabelecimento, RaisPorNaturezaJuridica, RaisTurnoverMensal,
 )
 from app.schemas.rais import (
     RaisCnaeItem, RaisItem, RaisRacaItem, RaisResumo, RaisSexoItem,
     RaisFaixaEtariaItem, RaisEscolaridadeItem, RaisFaixaRemuneracaoItem,
     RaisFaixaTempoEmpregoItem, RaisMetricasAnuaisItem,
+    RaisMotivoDesligamentoItem, RaisTipoAdmissaoItem, RaisCboItem,
+    RaisTamanhoEstabelecimentoItem, RaisNaturezaJuridicaItem, RaisTurnoverMensalItem,
 )
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy.orm import Session
@@ -213,6 +217,133 @@ def metricas_anuais(
             total_pcd=r.total_pcd,
             total_outro_municipio=r.total_outro_municipio,
             media_dias_afastamento=r.media_dias_afastamento,
+            total_ativo_dezembro=r.total_ativo_dezembro,
+            total_parcial=r.total_parcial,
+            total_intermitente=r.total_intermitente,
+            total_simples=r.total_simples,
+            total_aprendiz_estimado=r.total_aprendiz_estimado,
+        )
+        for r in registros
+    ]
+
+
+# ──────────────────────────────────────────────────────────────────
+# New endpoints (added 2026-05) — surface previously-dropped CSV columns
+# ──────────────────────────────────────────────────────────────────
+
+@router.get("/por_motivo_desligamento", response_model=List[RaisMotivoDesligamentoItem])
+def por_motivo_desligamento(
+    ano: int = Query(None),
+    db: Session = Depends(get_db),
+    current_user=Depends(get_current_user),
+):
+    """Why people leave — counts only rows where mes_desligamento > 0 in the year."""
+    query = _municipio_filter(db.query(RaisPorMotivoDesligamento), RaisPorMotivoDesligamento, current_user)
+    if ano:
+        query = query.filter(RaisPorMotivoDesligamento.ano == ano)
+    registros = query.order_by(
+        RaisPorMotivoDesligamento.ano,
+        RaisPorMotivoDesligamento.total_desligamentos.desc(),
+    ).all()
+    return [
+        RaisMotivoDesligamentoItem(ano=r.ano, motivo=r.motivo, total_desligamentos=r.total_desligamentos)
+        for r in registros
+    ]
+
+
+@router.get("/por_tipo_admissao", response_model=List[RaisTipoAdmissaoItem])
+def por_tipo_admissao(
+    ano: int = Query(None),
+    db: Session = Depends(get_db),
+    current_user=Depends(get_current_user),
+):
+    """How people are hired (primeiro emprego, reemprego, transferência, etc.)."""
+    query = _municipio_filter(db.query(RaisPorTipoAdmissao), RaisPorTipoAdmissao, current_user)
+    if ano:
+        query = query.filter(RaisPorTipoAdmissao.ano == ano)
+    registros = query.order_by(
+        RaisPorTipoAdmissao.ano,
+        RaisPorTipoAdmissao.total_admissoes.desc(),
+    ).all()
+    return [
+        RaisTipoAdmissaoItem(ano=r.ano, tipo=r.tipo, total_admissoes=r.total_admissoes)
+        for r in registros
+    ]
+
+
+@router.get("/por_cbo", response_model=List[RaisCboItem])
+def por_cbo(
+    ano: int = Query(None),
+    limite: int = Query(20, ge=1, le=100),
+    db: Session = Depends(get_db),
+    current_user=Depends(get_current_user),
+):
+    """Top occupations by CBO 2002 family code."""
+    query = _municipio_filter(db.query(RaisPorCbo), RaisPorCbo, current_user)
+    if ano:
+        query = query.filter(RaisPorCbo.ano == ano)
+    registros = query.order_by(RaisPorCbo.ano, RaisPorCbo.total_vinculos.desc()).limit(limite).all()
+    return [
+        RaisCboItem(
+            ano=r.ano, cbo_familia=r.cbo_familia, descricao=r.descricao,
+            total_vinculos=r.total_vinculos, remuneracao_media=r.remuneracao_media,
+        )
+        for r in registros
+    ]
+
+
+@router.get("/por_tamanho_estabelecimento", response_model=List[RaisTamanhoEstabelecimentoItem])
+def por_tamanho_estabelecimento(
+    ano: int = Query(None),
+    db: Session = Depends(get_db),
+    current_user=Depends(get_current_user),
+):
+    """Workforce share by establishment size band."""
+    query = _municipio_filter(db.query(RaisPorTamanhoEstabelecimento), RaisPorTamanhoEstabelecimento, current_user)
+    if ano:
+        query = query.filter(RaisPorTamanhoEstabelecimento.ano == ano)
+    registros = query.order_by(RaisPorTamanhoEstabelecimento.ano, RaisPorTamanhoEstabelecimento.tamanho).all()
+    return [
+        RaisTamanhoEstabelecimentoItem(
+            ano=r.ano, tamanho=r.tamanho,
+            total_vinculos=r.total_vinculos, remuneracao_media=r.remuneracao_media,
+        )
+        for r in registros
+    ]
+
+
+@router.get("/por_natureza_juridica", response_model=List[RaisNaturezaJuridicaItem])
+def por_natureza_juridica(
+    ano: int = Query(None),
+    db: Session = Depends(get_db),
+    current_user=Depends(get_current_user),
+):
+    """Public / private / nonprofit composition of the formal workforce."""
+    query = _municipio_filter(db.query(RaisPorNaturezaJuridica), RaisPorNaturezaJuridica, current_user)
+    if ano:
+        query = query.filter(RaisPorNaturezaJuridica.ano == ano)
+    registros = query.order_by(RaisPorNaturezaJuridica.ano, RaisPorNaturezaJuridica.total_vinculos.desc()).all()
+    return [
+        RaisNaturezaJuridicaItem(ano=r.ano, grupo=r.grupo, total_vinculos=r.total_vinculos)
+        for r in registros
+    ]
+
+
+@router.get("/turnover_mensal", response_model=List[RaisTurnoverMensalItem])
+def turnover_mensal(
+    ano: int = Query(None),
+    db: Session = Depends(get_db),
+    current_user=Depends(get_current_user),
+):
+    """Monthly admissions vs desligamentos derived from mes_admissao / mes_desligamento."""
+    query = _municipio_filter(db.query(RaisTurnoverMensal), RaisTurnoverMensal, current_user)
+    if ano:
+        query = query.filter(RaisTurnoverMensal.ano == ano)
+    registros = query.order_by(RaisTurnoverMensal.ano, RaisTurnoverMensal.mes).all()
+    return [
+        RaisTurnoverMensalItem(
+            ano=r.ano, mes=r.mes,
+            total_admissoes=r.total_admissoes, total_desligamentos=r.total_desligamentos,
         )
         for r in registros
     ]

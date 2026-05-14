@@ -75,3 +75,49 @@ class CagedTipoMovimentacaoItem(BaseModel):
     admissoes: int
     desligamentos: int
     saldo: int
+
+
+class CagedTipoDeficienciaItem(BaseModel):
+    ano: int
+    mes: int
+    tipo_deficiencia: str
+    admissoes: int
+    desligamentos: int
+    saldo: int
+
+
+class CagedTamanhoEstabelecimentoItem(BaseModel):
+    ano: int
+    mes: int
+    tamanho: str
+    admissoes: int
+    desligamentos: int
+    saldo: int
+
+
+class CagedTipoEmpregadorItem(BaseModel):
+    ano: int
+    mes: int
+    tipo_empregador: str
+    admissoes: int
+    desligamentos: int
+    saldo: int
+
+
+class CagedTipoEstabelecimentoItem(BaseModel):
+    ano: int
+    mes: int
+    tipo_estabelecimento: str
+    admissoes: int
+    desligamentos: int
+    saldo: int
+
+
+class CagedIndicadoresContratoItem(BaseModel):
+    ano: int
+    total_movimentacoes: int
+    total_parcial: int
+    total_intermitente: int
+    total_aprendiz: int
+    total_pcd: int
+    total_fora_prazo: int

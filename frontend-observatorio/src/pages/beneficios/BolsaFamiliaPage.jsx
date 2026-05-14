@@ -4,6 +4,7 @@ import { useChartTheme } from "../../hooks/useChartTheme";
 import { motion } from "framer-motion";
 import InsightsPanel from "../../components/InsightsPanel";
 import ReleasesPanel from "../../components/ReleasesPanel";
+import NidComparativoPanel from "../../components/nid/ComparativoPanel";
 import InfoTooltip from "../../components/InfoTooltip";
 import FilterBar from "../../components/FilterBar";
 import KpiCard from "../../components/KpiCard";
@@ -285,6 +286,15 @@ export default function BolsaFamiliaPage() {
           </div>
         )}
       </div>
+      <NidComparativoPanel
+        title="Comparativo Municipal"
+        sub="Ranking por valor total pago em Bolsa Família"
+        endpoint="/bolsa_familia/comparativo"
+        metric="valor_total"
+        fmt={(v) => `R$ ${Number(v).toLocaleString("pt-BR", { maximumFractionDigits: 0 })}`}
+        color="var(--accent-1)"
+      />
+
       <ReleasesPanel dataset="bolsa_familia" />
 
     </motion.div>
