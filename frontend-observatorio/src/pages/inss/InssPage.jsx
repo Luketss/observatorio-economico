@@ -4,6 +4,7 @@ import { useChartTheme } from "../../hooks/useChartTheme";
 import { motion } from "framer-motion";
 import InsightsPanel from "../../components/InsightsPanel";
 import ReleasesPanel from "../../components/ReleasesPanel";
+import NidComparativoPanel from "../../components/nid/ComparativoPanel";
 import InfoTooltip from "../../components/InfoTooltip";
 import FilterBar from "../../components/FilterBar";
 import KpiCard from "../../components/KpiCard";
@@ -303,6 +304,15 @@ export default function InssPage() {
           </div>
         )}
       </div>
+      <NidComparativoPanel
+        title="Comparativo Municipal · INSS"
+        sub="Ranking por valor anual de benefícios injetados"
+        endpoint="/inss/comparativo"
+        metric="valor_total"
+        fmt={(v) => `R$ ${Number(v).toLocaleString("pt-BR", { maximumFractionDigits: 0 })}`}
+        color="var(--accent-5)"
+      />
+
       <ReleasesPanel dataset="inss" />
 
     </motion.div>

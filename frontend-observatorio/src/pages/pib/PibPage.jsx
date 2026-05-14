@@ -4,6 +4,7 @@ import { useChartTheme } from "../../hooks/useChartTheme";
 import { motion } from "framer-motion";
 import InsightsPanel from "../../components/InsightsPanel";
 import ReleasesPanel from "../../components/ReleasesPanel";
+import NidComparativoPanel from "../../components/nid/ComparativoPanel";
 import InfoTooltip from "../../components/InfoTooltip";
 import FilterBar from "../../components/FilterBar";
 import KpiCard from "../../components/KpiCard";
@@ -292,6 +293,20 @@ export default function PibPage() {
           </div>
         </div>
       )}
+      <NidComparativoPanel
+        title="Ranking de PIB Municipal"
+        sub="Posição do município no ranking nacional/estadual (último ano disponível)"
+        endpoint="/pib/ranking"
+        metric="pib_total"
+        fmt={(v) => {
+          const n = Number(v);
+          if (n >= 1e9) return `R$ ${(n / 1e9).toLocaleString("pt-BR", { maximumFractionDigits: 1 })} Bi`;
+          if (n >= 1e6) return `R$ ${(n / 1e6).toLocaleString("pt-BR", { maximumFractionDigits: 1 })} Mi`;
+          return `R$ ${n.toLocaleString("pt-BR", { maximumFractionDigits: 0 })}`;
+        }}
+        color="var(--accent-4)"
+      />
+
       <ReleasesPanel dataset="pib" />
 
     </motion.div>
