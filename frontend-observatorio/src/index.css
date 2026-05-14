@@ -1,3 +1,6 @@
+@import url("https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap");
+@import "./styles/themes.css";
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -5,7 +8,12 @@
 /* Custom base styling */
 
 body {
-  @apply bg-background text-primary font-sans antialiased;
+  @apply font-sans antialiased;
+}
+
+/* When no theme- class is present, fall back to legacy behavior */
+body:not([class*="theme-"]) {
+  @apply bg-background text-primary;
 }
 
 h1 {
