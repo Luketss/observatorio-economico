@@ -1,449 +1,611 @@
 import { useEffect, useMemo, useState } from "react";
-import api from "../../services/api";
-import { useChartTheme } from "../../hooks/useChartTheme";
 import { motion } from "framer-motion";
+import api from "../../services/api";
 import InsightsPanel from "../../components/InsightsPanel";
 import ReleasesPanel from "../../components/ReleasesPanel";
-import InfoTooltip from "../../components/InfoTooltip";
-import FilterBar from "../../components/FilterBar";
-import KpiCard from "../../components/KpiCard";
-import PlanGate from "../../components/PlanGate";
 import {
-  ResponsiveContainer,
-  ComposedChart,
-  BarChart,
-  Bar,
-  Line,
-  CartesianGrid,
-  XAxis,
-  YAxis,
-  Tooltip,
-  Legend,
-  Cell,
-  LineChart,
-} from "recharts";
+  NidPageHeader, NidPanel, NidLegend, NidInsight, NidKpiHero,
+} from "../../components/nid/Panel";
+import {
+  AreaLineChart, TwinBarChart, DonutChart, HBarChart, StackedBarChart,
+  fmtNumber, fmtNumberShort,
+} from "../../components/nid/charts";
 
-const COLORS = [
-  "#3b82f6", "#f97316", "#10b981", "#8b5cf6", "#f59e0b",
-  "#ec4899", "#06b6d4", "#84cc16", "#ef4444", "#6366f1",
-];
+const A1 = "var(--accent-1)";
+const A2 = "var(--accent-2)";
+const A3 = "var(--accent-3)";
+const A4 = "var(--accent-4)";
+const A5 = "var(--accent-5)";
 
-const FAIXA_ORDER = [
-  "Até 17 anos", "18 a 24 anos", "25 a 29 anos", "30 a 39 anos",
-  "40 a 49 anos", "50 a 64 anos", "65 anos ou mais",
-];
-
-function ChartSkeleton({ height = "h-60" }) {
-  return (
-    <div className={`${height} animate-pulse bg-slate-100 dark:bg-slate-800 rounded-xl`} />
-  );
-}
-
-function ChartCard({ title, children, empty, loading, skeletonHeight }) {
-  return (
-    <div className="bg-white dark:bg-slate-900 p-6 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-800">
-      <h3 className="text-base font-bold mb-5 text-slate-800 dark:text-white">{title}</h3>
-      {loading ? (
-        <ChartSkeleton height={skeletonHeight} />
-      ) : empty ? (
-        <div className="h-60 flex items-center justify-center text-slate-400 dark:text-slate-500 text-sm">
-          Sem dados disponíveis
-        </div>
-      ) : (
-        children
-      )}
-    </div>
-  );
-}
-
-function aggregateBySexoTotal(data) {
-  const acc = {};
-  data.forEach((d) => {
-    if (!acc[d.sexo]) acc[d.sexo] = { sexo: d.sexo, admissoes: 0, desligamentos: 0, saldo: 0 };
-    acc[d.sexo].admissoes += d.admissoes ?? 0;
-    acc[d.sexo].desligamentos += d.desligamentos ?? 0;
-    acc[d.sexo].saldo += d.saldo ?? 0;
-  });
-  return Object.values(acc).sort((a, b) => b.admissoes - a.admissoes);
-}
-
-function aggregateByRacaTotal(data) {
-  const acc = {};
-  data.forEach((d) => {
-    if (!acc[d.raca_cor]) acc[d.raca_cor] = { raca: d.raca_cor, admissoes: 0, desligamentos: 0, saldo: 0 };
-    acc[d.raca_cor].admissoes += d.admissoes ?? 0;
-    acc[d.raca_cor].desligamentos += d.desligamentos ?? 0;
-    acc[d.raca_cor].saldo += d.saldo ?? 0;
-  });
-  return Object.values(acc).sort((a, b) => b.admissoes - a.admissoes);
-}
-
-function aggregateByCnaeTotal(data) {
-  const acc = {};
-  data.forEach((d) => {
-    const key = d.descricao_secao;
-    if (!acc[key]) acc[key] = { secao: d.secao, nome: key, admissoes: 0, desligamentos: 0, saldo: 0 };
-    acc[key].admissoes += d.admissoes ?? 0;
-    acc[key].desligamentos += d.desligamentos ?? 0;
-    acc[key].saldo += d.saldo ?? 0;
-  });
-  return Object.values(acc).sort((a, b) => b.admissoes - a.admissoes).slice(0, 10);
-}
-
-function aggregateByEscolaridadeTotal(data) {
-  const acc = {};
-  data.forEach((d) => {
-    const key = d.grau_instrucao;
-    if (!acc[key]) acc[key] = { grau: key, admissoes: 0, desligamentos: 0, saldo: 0 };
-    acc[key].admissoes += d.admissoes ?? 0;
-    acc[key].desligamentos += d.desligamentos ?? 0;
-    acc[key].saldo += d.saldo ?? 0;
-  });
-  return Object.values(acc).sort((a, b) => b.saldo - a.saldo);
-}
-
-function aggregateByFaixaEtariaTotal(data) {
-  const acc = {};
-  data.forEach((d) => {
-    const key = d.faixa_etaria;
-    if (!acc[key]) acc[key] = { faixa: key, admissoes: 0, desligamentos: 0, saldo: 0 };
-    acc[key].admissoes += d.admissoes ?? 0;
-    acc[key].desligamentos += d.desligamentos ?? 0;
-    acc[key].saldo += d.saldo ?? 0;
-  });
-  return FAIXA_ORDER
-    .filter((f) => acc[f])
-    .map((f) => acc[f]);
-}
-
-function aggregateByTipoMovTotal(data) {
-  const acc = {};
-  data.forEach((d) => {
-    const key = d.tipo_movimentacao;
-    if (!acc[key]) acc[key] = { tipo: key, admissoes: 0, desligamentos: 0, saldo: 0 };
-    acc[key].admissoes += d.admissoes ?? 0;
-    acc[key].desligamentos += d.desligamentos ?? 0;
-    acc[key].saldo += d.saldo ?? 0;
-  });
-  return Object.values(acc).sort((a, b) => (b.admissoes + b.desligamentos) - (a.admissoes + a.desligamentos));
-}
+const MES_LABEL = ["Jan", "Fev", "Mar", "Abr", "Mai", "Jun", "Jul", "Ago", "Set", "Out", "Nov", "Dez"];
+const fmtBR = (v) => v != null ? Number(v).toLocaleString("pt-BR") : "—";
+const fmtCurrency = (v) => v != null
+  ? Number(v).toLocaleString("pt-BR", { style: "currency", currency: "BRL", maximumFractionDigits: 0 })
+  : "—";
+const pct = (n, d) => d > 0 ? `${((n / d) * 100).toFixed(1)}%` : "—";
 
 export default function CagedPage() {
-  const ct = useChartTheme();
-  const [rawSerie, setRawSerie] = useState([]);
-  const [rawSexo, setRawSexo] = useState([]);
-  const [rawRaca, setRawRaca] = useState([]);
-  const [rawSalario, setRawSalario] = useState([]);
-  const [rawCnae, setRawCnae] = useState([]);
-  const [rawEscolaridade, setRawEscolaridade] = useState([]);
-  const [rawFaixaEtaria, setRawFaixaEtaria] = useState([]);
-  const [rawTipoMov, setRawTipoMov] = useState([]);
+  const [serie, setSerie] = useState([]);
   const [resumo, setResumo] = useState(null);
+  const [porSexo, setPorSexo] = useState([]);
+  const [porRaca, setPorRaca] = useState([]);
+  const [salario, setSalario] = useState([]);
+  const [porCnae, setPorCnae] = useState([]);
+  const [porEscolaridade, setPorEscolaridade] = useState([]);
+  const [porFaixaEtaria, setPorFaixaEtaria] = useState([]);
+  const [porTipoMov, setPorTipoMov] = useState([]);
+  // New endpoints
+  const [porTipoDef, setPorTipoDef] = useState([]);
+  const [porTamanho, setPorTamanho] = useState([]);
+  const [porTipoEmp, setPorTipoEmp] = useState([]);
+  const [porTipoEstab, setPorTipoEstab] = useState([]);
+  const [indicadores, setIndicadores] = useState([]);
+
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(false);
-  const [filters, setFilters] = useState({ yearFrom: "", yearTo: "", monthFrom: "", monthTo: "" });
 
   useEffect(() => {
+    let alive = true;
+    const safe = (url) => api.get(url).then((r) => r.data).catch(() => []);
     Promise.all([
-      api.get("/caged/serie"),
-      api.get("/caged/resumo"),
-      api.get("/caged/por_sexo"),
-      api.get("/caged/por_raca"),
-      api.get("/caged/salario"),
-      api.get("/caged/por_cnae"),
-      api.get("/caged/por_escolaridade"),
-      api.get("/caged/por_faixa_etaria"),
-      api.get("/caged/por_tipo_movimentacao"),
-    ])
-      .then(([serieRes, resumoRes, sexoRes, racaRes, salRes, cnaeRes, escRes, faixaRes, tipoRes]) => {
-        setRawSerie(serieRes.data || []);
-        setResumo(resumoRes.data);
-        setRawSexo(sexoRes.data || []);
-        setRawRaca(racaRes.data || []);
-        setRawSalario(salRes.data || []);
-        setRawCnae(cnaeRes.data || []);
-        setRawEscolaridade(escRes.data || []);
-        setRawFaixaEtaria(faixaRes.data || []);
-        setRawTipoMov(tipoRes.data || []);
-      })
-      .catch((err) => {
-        console.error("Erro ao carregar CAGED:", err);
-        setError(true);
-      })
-      .finally(() => setLoading(false));
+      safe("/caged/serie"),
+      api.get("/caged/resumo").then((r) => r.data).catch(() => null),
+      safe("/caged/por_sexo"),
+      safe("/caged/por_raca"),
+      safe("/caged/salario"),
+      safe("/caged/por_cnae"),
+      safe("/caged/por_escolaridade"),
+      safe("/caged/por_faixa_etaria"),
+      safe("/caged/por_tipo_movimentacao"),
+      safe("/caged/por_tipo_deficiencia"),
+      safe("/caged/por_tamanho_estabelecimento"),
+      safe("/caged/por_tipo_empregador"),
+      safe("/caged/por_tipo_estabelecimento"),
+      safe("/caged/indicadores_contrato"),
+    ]).then(([
+      serieRes, resumoRes, sexoRes, racaRes, salRes, cnaeRes,
+      escRes, feRes, tipoMovRes,
+      defRes, tamRes, empRes, estabRes, indRes,
+    ]) => {
+      if (!alive) return;
+      setSerie(serieRes); setResumo(resumoRes);
+      setPorSexo(sexoRes); setPorRaca(racaRes); setSalario(salRes);
+      setPorCnae(cnaeRes); setPorEscolaridade(escRes);
+      setPorFaixaEtaria(feRes); setPorTipoMov(tipoMovRes);
+      setPorTipoDef(defRes); setPorTamanho(tamRes);
+      setPorTipoEmp(empRes); setPorTipoEstab(estabRes); setIndicadores(indRes);
+      setLoading(false);
+    });
+    return () => { alive = false; };
   }, []);
 
-  const years = useMemo(() => [...new Set(rawSerie.map((d) => d.ano))].sort(), [rawSerie]);
+  const years = useMemo(
+    () => [...new Set(serie.map((d) => d.ano))].sort((a, b) => a - b),
+    [serie]
+  );
+  const ultimoAno = years[years.length - 1];
+  const [anoFiltro, setAnoFiltro] = useState(null);
+  const anoAtivo = anoFiltro || ultimoAno;
 
-  const applyFilter = (d) => {
-    const { yearFrom, yearTo, monthFrom, monthTo } = filters;
-    const val = d.ano * 100 + d.mes;
-    const from = yearFrom ? Number(yearFrom) * 100 + (Number(monthFrom) || 1) : 0;
-    const to = yearTo ? Number(yearTo) * 100 + (Number(monthTo) || 12) : 999999;
-    return val >= from && val <= to;
-  };
-
-  const serie = useMemo(() => {
-    const filtered = rawSerie.filter(applyFilter);
-    const grouped = {};
-    filtered.forEach((item) => {
-      const key = `${item.ano}-${String(item.mes).padStart(2, "0")}`;
-      if (!grouped[key]) grouped[key] = { periodo: key, admissoes: 0, desligamentos: 0, saldo: 0 };
-      grouped[key].admissoes += item.admissoes ?? 0;
-      grouped[key].desligamentos += item.desligamentos ?? 0;
-      grouped[key].saldo += item.saldo ?? 0;
+  // Monthly twin-bars for the current year
+  const turnoverMes = useMemo(() => {
+    const filtered = serie.filter((d) => d.ano === anoAtivo);
+    return MES_LABEL.map((label, i) => {
+      const row = filtered.find((d) => d.mes === i + 1);
+      return {
+        label,
+        admissoes: row?.admissoes || 0,
+        desligamentos: row?.desligamentos || 0,
+      };
     });
-    return Object.values(grouped).sort((a, b) => a.periodo.localeCompare(b.periodo));
-  }, [rawSerie, filters]);
+  }, [serie, anoAtivo]);
 
-  const porSexo = useMemo(() => rawSexo.filter(applyFilter), [rawSexo, filters]);
-  const porRaca = useMemo(() => rawRaca.filter(applyFilter), [rawRaca, filters]);
-  const porCnae = useMemo(() => rawCnae.filter(applyFilter), [rawCnae, filters]);
-  const porEscolaridade = useMemo(() => rawEscolaridade.filter(applyFilter), [rawEscolaridade, filters]);
-  const porFaixaEtaria = useMemo(() => rawFaixaEtaria.filter(applyFilter), [rawFaixaEtaria, filters]);
-  const porTipoMov = useMemo(() => rawTipoMov.filter(applyFilter), [rawTipoMov, filters]);
-  const salario = useMemo(() => rawSalario.filter(applyFilter), [rawSalario, filters]);
+  // Annual saldo over time
+  const saldoAnual = useMemo(() => {
+    const acc = new Map();
+    serie.forEach((d) => acc.set(d.ano, (acc.get(d.ano) || 0) + (d.saldo || 0)));
+    return Array.from(acc.entries())
+      .sort(([a], [b]) => a - b)
+      .map(([ano, v]) => ({ label: String(ano), value: v }));
+  }, [serie]);
 
-  const fmt = (v) => (v != null ? Number(v).toLocaleString("pt-BR") : "—");
-  const fmtCurrency = (v) =>
-    v != null
-      ? Number(v).toLocaleString("pt-BR", { style: "currency", currency: "BRL", maximumFractionDigits: 0 })
-      : "—";
+  // Spark series
+  const admissoesSpark = useMemo(() => {
+    const acc = new Map();
+    serie.forEach((d) => acc.set(d.ano, (acc.get(d.ano) || 0) + (d.admissoes || 0)));
+    return Array.from(acc.entries()).sort(([a], [b]) => a - b).map(([, v]) => v);
+  }, [serie]);
+  const desligamentosSpark = useMemo(() => {
+    const acc = new Map();
+    serie.forEach((d) => acc.set(d.ano, (acc.get(d.ano) || 0) + (d.desligamentos || 0)));
+    return Array.from(acc.entries()).sort(([a], [b]) => a - b).map(([, v]) => v);
+  }, [serie]);
+  const salarioSpark = useMemo(() => salario.map((d) => d.salario_medio_admissoes || 0), [salario]);
 
-  const saldoColor =
-    resumo?.saldo_total > 0
-      ? "text-green-600"
-      : resumo?.saldo_total < 0
-      ? "text-red-600"
-      : "text-slate-800";
+  const indAtual = indicadores.find((i) => i.ano === anoAtivo) || indicadores.slice(-1)[0] || null;
 
-  const sexoTotais = aggregateBySexoTotal(porSexo);
-  const racaTotais = aggregateByRacaTotal(porRaca);
-  const cnaeTotais = aggregateByCnaeTotal(porCnae);
-  const escolaridadeTotais = aggregateByEscolaridadeTotal(porEscolaridade);
-  const faixaEtariaTotais = aggregateByFaixaEtariaTotal(porFaixaEtaria);
-  const tipoMovTotais = aggregateByTipoMovTotal(porTipoMov);
-
-  const salarioChart = {};
-  salario.forEach((d) => {
-    const key = `${d.ano}-${String(d.mes).padStart(2, "0")}`;
-    salarioChart[key] = {
-      periodo: key,
-      adm: d.salario_medio_admissoes != null ? Math.round(d.salario_medio_admissoes) : null,
-      des: d.salario_medio_desligamentos != null ? Math.round(d.salario_medio_desligamentos) : null,
+  // Year totals
+  const totaisAno = useMemo(() => {
+    const filtered = serie.filter((d) => d.ano === anoAtivo);
+    return {
+      admissoes: filtered.reduce((s, d) => s + (d.admissoes || 0), 0),
+      desligamentos: filtered.reduce((s, d) => s + (d.desligamentos || 0), 0),
+      saldo: filtered.reduce((s, d) => s + (d.saldo || 0), 0),
     };
-  });
-  const salarioData = Object.values(salarioChart).sort((a, b) => a.periodo.localeCompare(b.periodo));
+  }, [serie, anoAtivo]);
 
-  const cards = [
-    { label: "Total Admissões", value: fmt(resumo?.total_admissoes), sub: "No período", accent: "text-blue-600", dataset: "caged", indicadorKey: "admissoes" },
-    { label: "Total Desligamentos", value: fmt(resumo?.total_desligamentos), sub: "No período", accent: "text-orange-500", dataset: "caged", indicadorKey: "desligamentos" },
-    {
-      label: "Saldo Líquido",
-      value: resumo?.saldo_total != null
-        ? `${resumo.saldo_total > 0 ? "+" : ""}${fmt(resumo.saldo_total)}`
-        : "—",
-      sub: "Admissões − Desligamentos",
-      accent: saldoColor,
-      dataset: "caged",
-      indicadorKey: "saldo_liquido",
-    },
-  ];
+  const ultimoSalario = salario.slice(-1)[0]?.salario_medio_admissoes;
+
+  // CNAE saldo for the year (donut)
+  const cnaeSaldoAno = useMemo(() => {
+    const acc = new Map();
+    porCnae.filter((d) => d.ano === anoAtivo).forEach((d) => {
+      acc.set(d.descricao_secao, (acc.get(d.descricao_secao) || 0) + (d.admissoes || 0));
+    });
+    return Array.from(acc.entries())
+      .map(([name, value]) => ({ name, value }))
+      .sort((a, b) => b.value - a.value)
+      .slice(0, 6);
+  }, [porCnae, anoAtivo]);
+
+  // CNAE saldo bars (admissões − desligamentos by sector)
+  const cnaeRanking = useMemo(() => {
+    const acc = new Map();
+    porCnae.filter((d) => d.ano === anoAtivo).forEach((d) => {
+      acc.set(d.descricao_secao, (acc.get(d.descricao_secao) || 0) + (d.saldo || 0));
+    });
+    return Array.from(acc.entries())
+      .map(([label, value]) => ({ label, value }))
+      .sort((a, b) => b.value - a.value);
+  }, [porCnae, anoAtivo]);
+
+  // Demographic donuts
+  const sexoAno = useMemo(() => {
+    const acc = new Map();
+    porSexo.filter((d) => d.ano === anoAtivo).forEach((d) => {
+      acc.set(d.sexo, (acc.get(d.sexo) || 0) + (d.admissoes || 0));
+    });
+    return Array.from(acc.entries()).map(([name, value]) => ({ name, value }));
+  }, [porSexo, anoAtivo]);
+
+  const racaAno = useMemo(() => {
+    const acc = new Map();
+    porRaca.filter((d) => d.ano === anoAtivo).forEach((d) => {
+      acc.set(d.raca_cor, (acc.get(d.raca_cor) || 0) + (d.admissoes || 0));
+    });
+    return Array.from(acc.entries())
+      .map(([name, value]) => ({ name, value }))
+      .sort((a, b) => b.value - a.value);
+  }, [porRaca, anoAtivo]);
+
+  const faixaEtariaAno = useMemo(() => {
+    const ORDER = ["Até 17 anos", "18 a 24 anos", "25 a 29 anos", "30 a 39 anos", "40 a 49 anos", "50 a 64 anos", "65 anos ou mais"];
+    const acc = new Map();
+    porFaixaEtaria.filter((d) => d.ano === anoAtivo).forEach((d) => {
+      acc.set(d.faixa_etaria, (acc.get(d.faixa_etaria) || 0) + (d.admissoes || 0));
+    });
+    return Array.from(acc.entries())
+      .map(([label, value]) => ({ label, value }))
+      .sort((a, b) => {
+        const ai = ORDER.indexOf(a.label), bi = ORDER.indexOf(b.label);
+        if (ai === -1 && bi === -1) return 0;
+        if (ai === -1) return 1;
+        if (bi === -1) return -1;
+        return ai - bi;
+      });
+  }, [porFaixaEtaria, anoAtivo]);
+
+  const escolaridadeAno = useMemo(() => {
+    const acc = new Map();
+    porEscolaridade.filter((d) => d.ano === anoAtivo).forEach((d) => {
+      acc.set(d.grau_instrucao, (acc.get(d.grau_instrucao) || 0) + (d.admissoes || 0));
+    });
+    return Array.from(acc.entries())
+      .map(([label, value]) => ({ label, value }))
+      .sort((a, b) => b.value - a.value)
+      .slice(0, 8);
+  }, [porEscolaridade, anoAtivo]);
+
+  const tipoMovAno = useMemo(() => {
+    const acc = new Map();
+    porTipoMov.filter((d) => d.ano === anoAtivo).forEach((d) => {
+      acc.set(d.tipo_movimentacao, (acc.get(d.tipo_movimentacao) || 0) + (d.admissoes || 0) + (d.desligamentos || 0));
+    });
+    return Array.from(acc.entries())
+      .map(([label, value]) => ({ label, value }))
+      .sort((a, b) => b.value - a.value)
+      .slice(0, 8);
+  }, [porTipoMov, anoAtivo]);
+
+  // ── New: PCD por tipo (saldo)
+  const tipoDefAno = useMemo(() => {
+    const acc = new Map();
+    porTipoDef.filter((d) => d.ano === anoAtivo).forEach((d) => {
+      acc.set(d.tipo_deficiencia, (acc.get(d.tipo_deficiencia) || 0) + (d.admissoes || 0) - (d.desligamentos || 0));
+    });
+    return Array.from(acc.entries())
+      .map(([label, value]) => ({ label, value }))
+      .sort((a, b) => b.value - a.value);
+  }, [porTipoDef, anoAtivo]);
+
+  // ── New: Tamanho estab (saldo)
+  const tamanhoAno = useMemo(() => {
+    const ORDER = ["Até 4 vínculos", "5 a 9", "10 a 19", "20 a 49", "50 a 99", "100 a 249", "250 a 499", "500 a 999", "1000 ou mais", "Zero / não classificado"];
+    const acc = new Map();
+    porTamanho.filter((d) => d.ano === anoAtivo).forEach((d) => {
+      acc.set(d.tamanho, (acc.get(d.tamanho) || 0) + (d.saldo || 0));
+    });
+    return ORDER.filter((n) => acc.has(n)).map((label) => ({ label, value: acc.get(label) }));
+  }, [porTamanho, anoAtivo]);
+
+  // ── New: Tipo empregador (admissoes share)
+  const tipoEmpAno = useMemo(() => {
+    const acc = new Map();
+    porTipoEmp.filter((d) => d.ano === anoAtivo).forEach((d) => {
+      acc.set(d.tipo_empregador, (acc.get(d.tipo_empregador) || 0) + (d.admissoes || 0));
+    });
+    return Array.from(acc.entries())
+      .map(([name, value]) => ({ name, value }))
+      .sort((a, b) => b.value - a.value);
+  }, [porTipoEmp, anoAtivo]);
+
+  // ── New: Tipo estabelecimento (admissoes share)
+  const tipoEstabAno = useMemo(() => {
+    const acc = new Map();
+    porTipoEstab.filter((d) => d.ano === anoAtivo).forEach((d) => {
+      acc.set(d.tipo_estabelecimento, (acc.get(d.tipo_estabelecimento) || 0) + (d.admissoes || 0));
+    });
+    return Array.from(acc.entries())
+      .map(([name, value]) => ({ name, value }))
+      .sort((a, b) => b.value - a.value);
+  }, [porTipoEstab, anoAtivo]);
+
+  // CNAE stacked over years (top 5)
+  const cnaeStacked = useMemo(() => {
+    const totals = new Map();
+    porCnae.forEach((d) => totals.set(d.descricao_secao, (totals.get(d.descricao_secao) || 0) + (d.admissoes || 0) + (d.desligamentos || 0)));
+    const top5 = [...totals.entries()].sort((a, b) => b[1] - a[1]).slice(0, 5).map(([k]) => k);
+    const yearsSet = [...new Set(porCnae.map((d) => d.ano))].sort();
+    const data = yearsSet.map((ano) => {
+      const row = { label: String(ano) };
+      top5.forEach((sec) => { row[sec] = 0; });
+      porCnae.filter((d) => d.ano === ano && top5.includes(d.descricao_secao))
+        .forEach((d) => { row[d.descricao_secao] += (d.admissoes || 0) + (d.desligamentos || 0); });
+      return row;
+    });
+    return { data, keys: top5 };
+  }, [porCnae]);
+
+  const palette = [A1, A3, A2, A4, A5, "#8b5cf6", "#06b6d4"];
 
   return (
     <motion.div
       initial={{ opacity: 0, y: 15 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.3 }}
-      className="space-y-8"
     >
-      <div>
-        <div className="flex items-center gap-2">
-          <h1 className="text-2xl font-extrabold tracking-tight text-slate-800 dark:text-white">
-            CAGED — Movimentação de Empregos
-          </h1>
-          <InfoTooltip dataset="caged" />
-        </div>
-        <p className="text-sm text-slate-400 dark:text-slate-500 mt-1">
-          Admissões, desligamentos e saldo líquido de empregos formais.
-        </p>
-      </div>
+      <NidPageHeader
+        title="CAGED — Movimentações de Emprego Formal"
+        sub="Admissões e desligamentos mensais · Ministério do Trabalho"
+        badge={anoAtivo ? `Foco · ${anoAtivo}` : null}
+      />
 
-      {error && (
-        <div className="bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-800 rounded-xl px-5 py-4 text-sm text-red-700 dark:text-red-400">
-          Erro ao carregar dados do CAGED. Verifique sua conexão e tente novamente.
+      {years.length > 0 && (
+        <div style={{ display: "flex", gap: 6, marginBottom: 18, flexWrap: "wrap" }}>
+          {years.map((y) => (
+            <button
+              key={y}
+              onClick={() => setAnoFiltro(y)}
+              className={`nid-tab ${y === anoAtivo ? "active" : ""}`}
+            >
+              {y}
+            </button>
+          ))}
         </div>
       )}
 
-      <InsightsPanel dataset="caged" />
-
-      <FilterBar years={years} showMonths value={filters} onChange={setFilters} />
-
+      {/* Hero KPIs */}
       {loading ? (
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          {[...Array(3)].map((_, i) => (
-            <div key={i} className="bg-white dark:bg-slate-900 p-6 rounded-2xl border border-slate-100 dark:border-slate-800 animate-pulse h-28" />
+        <div className="nid-kpis">
+          {[...Array(4)].map((_, i) => (
+            <div key={i} className="nid-kpi" style={{ minHeight: 150, opacity: 0.4 }} />
           ))}
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          {cards.map((c) => (
-            <KpiCard key={c.label} {...c} />
-          ))}
+        <div className="nid-kpis">
+          <NidKpiHero
+            label="Saldo · Acumulado"
+            badge="histórico"
+            value={fmtBR(resumo?.saldo_total)}
+            unit="vagas"
+            delta={resumo ? {
+              v: pct(Math.abs(resumo.saldo_total), resumo.total_admissoes + resumo.total_desligamentos),
+              up: resumo.saldo_total >= 0,
+            } : null}
+            foot="empregos formais líquidos"
+            color={(resumo?.saldo_total ?? 0) >= 0 ? A5 : A2}
+          />
+          <NidKpiHero
+            label="Admissões"
+            badge={ultimoAno ? String(ultimoAno) : null}
+            value={fmtBR(totaisAno.admissoes)}
+            unit=""
+            foot={`${fmtBR(resumo?.total_admissoes)} no histórico`}
+            color={A5}
+            sparkData={admissoesSpark}
+          />
+          <NidKpiHero
+            label="Desligamentos"
+            badge={ultimoAno ? String(ultimoAno) : null}
+            value={fmtBR(totaisAno.desligamentos)}
+            unit=""
+            foot={`${fmtBR(resumo?.total_desligamentos)} no histórico`}
+            color={A2}
+            sparkData={desligamentosSpark}
+          />
+          <NidKpiHero
+            label="Salário Médio · Admissão"
+            badge="último mês"
+            value={fmtCurrency(ultimoSalario)}
+            unit=""
+            foot="média ponderada do período"
+            color={A3}
+            sparkData={salarioSpark}
+          />
         </div>
       )}
 
-      {/* Monthly series */}
-      <ChartCard title="Admissões vs Desligamentos (Mensal)" empty={!loading && serie.length === 0} loading={loading} skeletonHeight="h-72">
-        <div className="h-48 md:h-72">
-          <ResponsiveContainer width="100%" height="100%">
-            <ComposedChart data={serie}>
-              <CartesianGrid strokeDasharray="3 3" stroke={ct.grid} />
-              <XAxis dataKey="periodo" tick={{ fontSize: 10, fill: ct.tick }} stroke={ct.axis} interval="preserveStartEnd" />
-              <YAxis tick={{ fontSize: 11, fill: ct.tick }} stroke={ct.axis} />
-              <Tooltip contentStyle={ct.tooltipStyle} formatter={(v, name) => [Number(v).toLocaleString("pt-BR"), name]} />
-              <Legend />
-              <Bar dataKey="admissoes" name="Admissões" fill="#3b82f6" opacity={0.8} radius={[2, 2, 0, 0]} />
-              <Bar dataKey="desligamentos" name="Desligamentos" fill="#f97316" opacity={0.8} radius={[2, 2, 0, 0]} />
-              <Line type="monotone" dataKey="saldo" name="Saldo" stroke="#10b981" strokeWidth={2.5} dot={false} />
-            </ComposedChart>
-          </ResponsiveContainer>
+      {/* Insight strip */}
+      {!loading && resumo && (
+        <div className="nid-insights">
+          <NidInsight kind={totaisAno.saldo >= 0 ? "up" : "down"}>
+            <b>Saldo {anoAtivo}:</b> {totaisAno.saldo > 0 ? "+" : ""}{fmtBR(totaisAno.saldo)} vagas formais.
+          </NidInsight>
+          {indAtual?.total_aprendiz > 0 && (
+            <NidInsight kind="info">
+              <b>{fmtBR(indAtual.total_aprendiz)}</b> movimentações de aprendizes em {indAtual.ano}
+              {" "}({pct(indAtual.total_aprendiz, indAtual.total_movimentacoes)} do total).
+            </NidInsight>
+          )}
+          {indAtual?.total_intermitente > 0 && (
+            <NidInsight kind="info">
+              <b>{fmtBR(indAtual.total_intermitente)}</b> trabalhos intermitentes
+              {" "}({pct(indAtual.total_intermitente, indAtual.total_movimentacoes)} das movimentações).
+            </NidInsight>
+          )}
         </div>
-      </ChartCard>
+      )}
 
-      {/* Salary evolution */}
-      <PlanGate planKey="caged.salario">
-        <ChartCard title="Salário Médio — Admitidos vs Desligados" empty={!loading && salarioData.length === 0} loading={loading} skeletonHeight="h-64">
-          <div className="h-44 md:h-64">
-            <ResponsiveContainer width="100%" height="100%">
-              <LineChart data={salarioData}>
-                <CartesianGrid strokeDasharray="3 3" stroke={ct.grid} />
-                <XAxis dataKey="periodo" tick={{ fontSize: 10, fill: ct.tick }} stroke={ct.axis} interval="preserveStartEnd" />
-                <YAxis tick={{ fontSize: 11, fill: ct.tick }} stroke={ct.axis} tickFormatter={(v) => `R$${(v / 1000).toFixed(1)}k`} />
-                <Tooltip contentStyle={ct.tooltipStyle} formatter={(v) => [fmtCurrency(v)]} />
-                <Legend />
-                <Line type="monotone" dataKey="adm" name="Admitidos" stroke="#3b82f6" strokeWidth={2} dot={false} />
-                <Line type="monotone" dataKey="des" name="Desligados" stroke="#f97316" strokeWidth={2} dot={false} strokeDasharray="4 2" />
-              </LineChart>
-            </ResponsiveContainer>
-          </div>
-        </ChartCard>
-      </PlanGate>
-
-      {/* Two-column: sexo + raca */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <PlanGate planKey="caged.por_sexo">
-          <ChartCard title="Saldo por Sexo" empty={!loading && sexoTotais.length === 0} loading={loading} skeletonHeight="h-56">
-            <div className="h-40 md:h-56">
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={sexoTotais} layout="vertical">
-                  <CartesianGrid strokeDasharray="3 3" stroke={ct.grid} horizontal={false} />
-                  <XAxis type="number" tick={{ fontSize: 10, fill: ct.tick }} stroke={ct.axis} tickFormatter={(v) => v.toLocaleString("pt-BR")} />
-                  <YAxis type="category" dataKey="sexo" tick={{ fontSize: 12, fill: ct.tick }} stroke={ct.axis} width={80} />
-                  <Tooltip contentStyle={ct.tooltipStyle} formatter={(v) => [Number(v).toLocaleString("pt-BR")]} />
-                  <Legend />
-                  <Bar dataKey="admissoes" name="Admissões" fill="#3b82f6" radius={[0, 3, 3, 0]} />
-                  <Bar dataKey="desligamentos" name="Desligamentos" fill="#f97316" radius={[0, 3, 3, 0]} />
-                </BarChart>
-              </ResponsiveContainer>
-            </div>
-          </ChartCard>
-        </PlanGate>
-
-        <PlanGate planKey="caged.por_raca">
-          <ChartCard title="Saldo por Raça/Cor" empty={!loading && racaTotais.length === 0} loading={loading} skeletonHeight="h-56">
-            <div className="h-40 md:h-56">
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={racaTotais} layout="vertical">
-                  <CartesianGrid strokeDasharray="3 3" stroke={ct.grid} horizontal={false} />
-                  <XAxis type="number" tick={{ fontSize: 10, fill: ct.tick }} stroke={ct.axis} tickFormatter={(v) => v.toLocaleString("pt-BR")} />
-                  <YAxis type="category" dataKey="raca" tick={{ fontSize: 11, fill: ct.tick }} stroke={ct.axis} width={90} />
-                  <Tooltip contentStyle={ct.tooltipStyle} formatter={(v) => [Number(v).toLocaleString("pt-BR")]} />
-                  <Legend />
-                  <Bar dataKey="admissoes" name="Admissões" fill="#8b5cf6" radius={[0, 3, 3, 0]} />
-                  <Bar dataKey="desligamentos" name="Desligamentos" fill="#ec4899" radius={[0, 3, 3, 0]} />
-                </BarChart>
-              </ResponsiveContainer>
-            </div>
-          </ChartCard>
-        </PlanGate>
+      <div style={{ marginBottom: 22 }}>
+        <InsightsPanel dataset="caged" />
       </div>
 
-      {/* CNAE top sectors */}
-      <PlanGate planKey="caged.por_cnae">
-        <ChartCard title="Saldo por Setor (CNAE) — Top 10" empty={!loading && cnaeTotais.length === 0} loading={loading} skeletonHeight="h-80">
-          <div className="h-52 md:h-80">
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={cnaeTotais} layout="vertical">
-                <CartesianGrid strokeDasharray="3 3" stroke={ct.grid} horizontal={false} />
-                <XAxis type="number" tick={{ fontSize: 10, fill: ct.tick }} stroke={ct.axis} tickFormatter={(v) => v.toLocaleString("pt-BR")} />
-                <YAxis type="category" dataKey="nome" tick={{ fontSize: 10, fill: ct.tick }} stroke={ct.axis} width={200} />
-                <Tooltip contentStyle={ct.tooltipStyle} formatter={(v) => [Number(v).toLocaleString("pt-BR")]} />
-                <Legend />
-                <Bar dataKey="admissoes" name="Admissões" radius={[0, 3, 3, 0]}>
-                  {cnaeTotais.map((_, idx) => (
-                    <Cell key={idx} fill={COLORS[idx % COLORS.length]} />
-                  ))}
-                </Bar>
-                <Bar dataKey="saldo" name="Saldo" fill="#10b981" opacity={0.7} radius={[0, 3, 3, 0]} />
-              </BarChart>
-            </ResponsiveContainer>
-          </div>
-        </ChartCard>
-      </PlanGate>
+      {/* Saldo histórico + Turnover mensal */}
+      <div className="nid-grid-2">
+        <NidPanel title="Saldo Anual" sub="Empregos formais líquidos por ano">
+          <AreaLineChart
+            data={saldoAnual}
+            color={A5}
+            glow
+            height={280}
+            label="Saldo"
+            yFmt={fmtNumberShort}
+            tipFmt={fmtNumber}
+          />
+          <NidLegend items={[{ name: "Saldo (admissões − desligamentos)", color: A5 }]} />
+        </NidPanel>
 
-      {/* Education level */}
-      <ChartCard title="Admissões e Desligamentos por Nível de Escolaridade" empty={!loading && escolaridadeTotais.length === 0} loading={loading} skeletonHeight="h-80">
-        <div className="h-52 md:h-80">
-          <ResponsiveContainer width="100%" height="100%">
-            <BarChart data={escolaridadeTotais} layout="vertical">
-              <CartesianGrid strokeDasharray="3 3" stroke={ct.grid} horizontal={false} />
-              <XAxis type="number" tick={{ fontSize: 10, fill: ct.tick }} stroke={ct.axis} tickFormatter={(v) => v.toLocaleString("pt-BR")} />
-              <YAxis type="category" dataKey="grau" tick={{ fontSize: 10, fill: ct.tick }} stroke={ct.axis} width={160} />
-              <Tooltip contentStyle={ct.tooltipStyle} formatter={(v) => [Number(v).toLocaleString("pt-BR")]} />
-              <Legend />
-              <Bar dataKey="admissoes" name="Admissões" fill="#3b82f6" opacity={0.85} radius={[0, 3, 3, 0]} />
-              <Bar dataKey="desligamentos" name="Desligamentos" fill="#f97316" opacity={0.85} radius={[0, 3, 3, 0]} />
-            </BarChart>
-          </ResponsiveContainer>
+        <NidPanel title="Turnover Mensal" sub={`Admissões vs Desligamentos · ${anoAtivo || ""}`}>
+          <TwinBarChart data={turnoverMes} glow colorUp={A5} colorDown={A2} height={260} />
+          <NidLegend items={[
+            { name: "Admissões", color: A5 },
+            { name: "Desligamentos", color: A2 },
+          ]} />
+        </NidPanel>
+      </div>
+
+      {/* CNAE saldo + composition */}
+      <div className="nid-grid-1-1">
+        <NidPanel title="Setores · Saldo do Ano" sub={`${anoAtivo || ""} · admissões − desligamentos`}>
+          {cnaeRanking.length > 0 ? (
+            <HBarChart
+              data={cnaeRanking.slice(0, 8).map((d) => ({ label: d.label, value: d.value }))}
+              color={A1}
+              glow
+              height={260}
+              fmt={(v) => `${v > 0 ? "+" : ""}${fmtBR(v)}`}
+            />
+          ) : <EmptyMsg height={260} />}
+        </NidPanel>
+
+        <NidPanel title="Composição Setorial" sub={`Admissões por setor · ${anoAtivo || ""}`}>
+          {cnaeSaldoAno.length > 0 ? (
+            <DonutChart
+              data={cnaeSaldoAno}
+              colors={palette}
+              glow
+              height={210}
+              centerLabel={fmtNumberShort(totaisAno.admissoes)}
+              centerSub="ADMISSÕES"
+            />
+          ) : <EmptyMsg height={210} />}
+          <NidLegend items={cnaeSaldoAno.map((s, i) => ({
+            name: s.name, color: palette[i % palette.length],
+          }))} />
+        </NidPanel>
+      </div>
+
+      {/* NEW: Tamanho estab + PCD tipo deficiência */}
+      <div className="nid-grid-1-1">
+        <NidPanel title="Por Tamanho de Estabelecimento" sub={`Saldo · ${anoAtivo || ""}`}>
+          {tamanhoAno.length > 0 ? (
+            <HBarChart
+              data={tamanhoAno}
+              color={A3}
+              glow
+              height={260}
+              fmt={(v) => `${v > 0 ? "+" : ""}${fmtBR(v)}`}
+            />
+          ) : <EmptyMsg height={260} />}
+        </NidPanel>
+
+        <NidPanel title="PCD por Tipo de Deficiência" sub={`Saldo · ${anoAtivo || ""}`}>
+          {tipoDefAno.length > 0 ? (
+            <HBarChart
+              data={tipoDefAno}
+              color={A4}
+              glow
+              height={260}
+              fmt={(v) => `${v > 0 ? "+" : ""}${fmtBR(v)}`}
+            />
+          ) : <EmptyMsg height={260} />}
+        </NidPanel>
+      </div>
+
+      {/* NEW: Tipo empregador + Tipo estabelecimento */}
+      <div className="nid-grid-1-1">
+        <NidPanel title="Tipo de Empregador" sub={`Admissões · ${anoAtivo || ""}`}>
+          {tipoEmpAno.length > 0 ? (
+            <DonutChart
+              data={tipoEmpAno}
+              colors={palette}
+              glow
+              height={210}
+              centerLabel={fmtNumberShort(tipoEmpAno.reduce((s, d) => s + d.value, 0))}
+              centerSub="ADMISSÕES"
+            />
+          ) : <EmptyMsg height={210} />}
+          <NidLegend items={tipoEmpAno.map((d, i) => ({ name: d.name, color: palette[i % palette.length] }))} />
+        </NidPanel>
+
+        <NidPanel title="Tipo de Estabelecimento" sub={`Admissões · ${anoAtivo || ""}`}>
+          {tipoEstabAno.length > 0 ? (
+            <DonutChart
+              data={tipoEstabAno}
+              colors={palette}
+              glow
+              height={210}
+              centerLabel={fmtNumberShort(tipoEstabAno.reduce((s, d) => s + d.value, 0))}
+              centerSub="ADMISSÕES"
+            />
+          ) : <EmptyMsg height={210} />}
+          <NidLegend items={tipoEstabAno.map((d, i) => ({ name: d.name, color: palette[i % palette.length] }))} />
+        </NidPanel>
+      </div>
+
+      {/* CNAE stacked over time */}
+      {cnaeStacked.data.length > 0 && cnaeStacked.keys.length > 0 && (
+        <div style={{ marginBottom: 22 }}>
+          <NidPanel title="Movimentações por Setor · Histórico" sub="Top 5 setores · admissões + desligamentos por ano">
+            <StackedBarChart
+              data={cnaeStacked.data}
+              keys={cnaeStacked.keys}
+              colors={palette}
+              glow
+              height={280}
+              yFmt={fmtNumberShort}
+              tipFmt={fmtNumber}
+            />
+            <NidLegend items={cnaeStacked.keys.map((k, i) => ({ name: k, color: palette[i % palette.length] }))} />
+          </NidPanel>
         </div>
-      </ChartCard>
+      )}
 
-      {/* Age group */}
-      <ChartCard title="Admissões e Desligamentos por Faixa Etária" empty={!loading && faixaEtariaTotais.length === 0} loading={loading} skeletonHeight="h-72">
-        <div className="h-48 md:h-72">
-          <ResponsiveContainer width="100%" height="100%">
-            <BarChart data={faixaEtariaTotais} layout="vertical">
-              <CartesianGrid strokeDasharray="3 3" stroke={ct.grid} horizontal={false} />
-              <XAxis type="number" tick={{ fontSize: 10, fill: ct.tick }} stroke={ct.axis} tickFormatter={(v) => v.toLocaleString("pt-BR")} />
-              <YAxis type="category" dataKey="faixa" tick={{ fontSize: 11, fill: ct.tick }} stroke={ct.axis} width={110} />
-              <Tooltip contentStyle={ct.tooltipStyle} formatter={(v) => [Number(v).toLocaleString("pt-BR")]} />
-              <Legend />
-              <Bar dataKey="admissoes" name="Admissões" fill="#10b981" opacity={0.85} radius={[0, 3, 3, 0]} />
-              <Bar dataKey="desligamentos" name="Desligamentos" fill="#f59e0b" opacity={0.85} radius={[0, 3, 3, 0]} />
-            </BarChart>
-          </ResponsiveContainer>
+      {/* Sexo + Raça */}
+      <div className="nid-grid-1-1">
+        <NidPanel title="Admissões por Sexo" sub={`Distribuição · ${anoAtivo || ""}`}>
+          {sexoAno.length > 0 ? (
+            <DonutChart data={sexoAno} colors={[A1, A2, A3]} glow height={210}
+              centerLabel={fmtNumberShort(sexoAno.reduce((s, d) => s + d.value, 0))}
+              centerSub="ADMISSÕES" />
+          ) : <EmptyMsg height={210} />}
+          <NidLegend items={sexoAno.map((d, i) => ({ name: d.name, color: [A1, A2, A3][i % 3] }))} />
+        </NidPanel>
+
+        <NidPanel title="Admissões por Raça/Cor" sub={`Distribuição · ${anoAtivo || ""}`}>
+          {racaAno.length > 0 ? (
+            <DonutChart data={racaAno} colors={palette} glow height={210}
+              centerLabel={fmtNumberShort(racaAno.reduce((s, d) => s + d.value, 0))}
+              centerSub="ADMISSÕES" />
+          ) : <EmptyMsg height={210} />}
+          <NidLegend items={racaAno.map((d, i) => ({ name: d.name, color: palette[i % palette.length] }))} />
+        </NidPanel>
+      </div>
+
+      {/* Faixa etária + Escolaridade */}
+      <div className="nid-grid-1-1">
+        <NidPanel title="Admissões por Faixa Etária" sub={`${anoAtivo || ""}`}>
+          {faixaEtariaAno.length > 0 ? (
+            <HBarChart data={faixaEtariaAno} color={A3} glow height={260} fmt={fmtNumber} />
+          ) : <EmptyMsg height={260} />}
+        </NidPanel>
+
+        <NidPanel title="Admissões por Escolaridade" sub={`${anoAtivo || ""}`}>
+          {escolaridadeAno.length > 0 ? (
+            <HBarChart data={escolaridadeAno} color={A4} glow height={260} fmt={fmtNumber} />
+          ) : <EmptyMsg height={260} />}
+        </NidPanel>
+      </div>
+
+      <div style={{ marginBottom: 22 }}>
+        <NidPanel title="Tipo de Movimentação" sub={`Detalhamento · ${anoAtivo || ""}`}>
+          {tipoMovAno.length > 0 ? (
+            <HBarChart data={tipoMovAno} color={A1} glow height={260} fmt={fmtNumber} />
+          ) : <EmptyMsg height={260} />}
+        </NidPanel>
+      </div>
+
+      {/* NEW: contract-quality KPI strip */}
+      {indAtual && (
+        <div className="nid-kpis" style={{ marginBottom: 22 }}>
+          <NidKpiHero
+            label="Trabalho Parcial"
+            badge={String(indAtual.ano)}
+            value={fmtBR(indAtual.total_parcial)}
+            unit="mov."
+            foot={pct(indAtual.total_parcial, indAtual.total_movimentacoes)}
+            color={A3}
+          />
+          <NidKpiHero
+            label="Intermitente"
+            badge={String(indAtual.ano)}
+            value={fmtBR(indAtual.total_intermitente)}
+            unit="mov."
+            foot={pct(indAtual.total_intermitente, indAtual.total_movimentacoes)}
+            color={A2}
+          />
+          <NidKpiHero
+            label="Aprendizes"
+            badge={String(indAtual.ano)}
+            value={fmtBR(indAtual.total_aprendiz)}
+            unit="mov."
+            foot={pct(indAtual.total_aprendiz, indAtual.total_movimentacoes)}
+            color={A5}
+          />
+          <NidKpiHero
+            label="PCD"
+            badge={String(indAtual.ano)}
+            value={fmtBR(indAtual.total_pcd)}
+            unit="mov."
+            foot={pct(indAtual.total_pcd, indAtual.total_movimentacoes)}
+            color={A4}
+          />
         </div>
-      </ChartCard>
+      )}
 
-      {/* Movement type */}
-      <ChartCard title="Motivo das Movimentações (Tipo de Admissão / Desligamento)" empty={!loading && tipoMovTotais.length === 0} loading={loading} skeletonHeight="h-80">
-        <div className="h-56 md:h-80">
-          <ResponsiveContainer width="100%" height="100%">
-            <BarChart data={tipoMovTotais} layout="vertical">
-              <CartesianGrid strokeDasharray="3 3" stroke={ct.grid} horizontal={false} />
-              <XAxis type="number" tick={{ fontSize: 10, fill: ct.tick }} stroke={ct.axis} tickFormatter={(v) => v.toLocaleString("pt-BR")} />
-              <YAxis type="category" dataKey="tipo" tick={{ fontSize: 10, fill: ct.tick }} stroke={ct.axis} width={220} />
-              <Tooltip contentStyle={ct.tooltipStyle} formatter={(v) => [Number(v).toLocaleString("pt-BR")]} />
-              <Legend />
-              <Bar dataKey="admissoes" name="Admissões" fill="#3b82f6" opacity={0.85} radius={[0, 3, 3, 0]} />
-              <Bar dataKey="desligamentos" name="Desligamentos" fill="#ef4444" opacity={0.85} radius={[0, 3, 3, 0]} />
-            </BarChart>
-          </ResponsiveContainer>
-        </div>
-      </ChartCard>
-
-      <ReleasesPanel dataset="caged" />
+      <div style={{ marginTop: 8 }}>
+        <ReleasesPanel dataset="caged" />
+      </div>
     </motion.div>
+  );
+}
+
+function EmptyMsg({ height = 200 }) {
+  return (
+    <div style={{
+      height, display: "grid", placeItems: "center",
+      color: "var(--text-mute)", fontSize: 13, fontFamily: "var(--font-mono)",
+    }}>
+      Sem dados disponíveis
+    </div>
   );
 }

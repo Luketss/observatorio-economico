@@ -1,7 +1,12 @@
 from typing import List
 
 from app.api.deps import get_current_user, get_db
-from app.models.caged import CagedMovimentacao, CagedPorCnae, CagedPorEscolaridade, CagedPorFaixaEtaria, CagedPorRaca, CagedPorSexo, CagedPorTipoMovimentacao, CagedSalario
+from app.models.caged import (
+    CagedMovimentacao, CagedPorCnae, CagedPorEscolaridade, CagedPorFaixaEtaria,
+    CagedPorRaca, CagedPorSexo, CagedPorTipoMovimentacao, CagedSalario,
+    CagedPorTipoDeficiencia, CagedPorTamanhoEstabelecimento,
+    CagedPorTipoEmpregador, CagedPorTipoEstabelecimento, CagedIndicadoresContrato,
+)
 from app.schemas.caged import (
     CagedCnaeItem,
     CagedEscolaridadeItem,
@@ -12,6 +17,9 @@ from app.schemas.caged import (
     CagedSalarioItem,
     CagedSexoItem,
     CagedTipoMovimentacaoItem,
+    CagedTipoDeficienciaItem, CagedTamanhoEstabelecimentoItem,
+    CagedTipoEmpregadorItem, CagedTipoEstabelecimentoItem,
+    CagedIndicadoresContratoItem,
 )
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy import func
@@ -213,6 +221,120 @@ def por_tipo_movimentacao(
             admissoes=r.admissoes,
             desligamentos=r.desligamentos,
             saldo=r.saldo,
+        )
+        for r in registros
+    ]
+
+
+# ──────────────────────────────────────────────────────────────────
+# New endpoints (added 2026-05) — surface previously-dropped CSV columns
+# ──────────────────────────────────────────────────────────────────
+
+@router.get("/por_tipo_deficiencia", response_model=List[CagedTipoDeficienciaItem])
+def por_tipo_deficiencia(
+    ano: int = Query(None),
+    db: Session = Depends(get_db),
+    current_user=Depends(get_current_user),
+):
+    """Movimentações de PCD por tipo de deficiência."""
+    query = _municipio_filter(db.query(CagedPorTipoDeficiencia), CagedPorTipoDeficiencia, current_user)
+    if ano:
+        query = query.filter(CagedPorTipoDeficiencia.ano == ano)
+    registros = query.order_by(
+        CagedPorTipoDeficiencia.ano, CagedPorTipoDeficiencia.mes, CagedPorTipoDeficiencia.tipo_deficiencia,
+    ).all()
+    return [
+        CagedTipoDeficienciaItem(
+            ano=r.ano, mes=r.mes, tipo_deficiencia=r.tipo_deficiencia,
+            admissoes=r.admissoes, desligamentos=r.desligamentos, saldo=r.saldo,
+        )
+        for r in registros
+    ]
+
+
+@router.get("/por_tamanho_estabelecimento", response_model=List[CagedTamanhoEstabelecimentoItem])
+def por_tamanho_estabelecimento(
+    ano: int = Query(None),
+    db: Session = Depends(get_db),
+    current_user=Depends(get_current_user),
+):
+    """Movimentações por tamanho do estabelecimento (em janeiro)."""
+    query = _municipio_filter(db.query(CagedPorTamanhoEstabelecimento), CagedPorTamanhoEstabelecimento, current_user)
+    if ano:
+        query = query.filter(CagedPorTamanhoEstabelecimento.ano == ano)
+    registros = query.order_by(
+        CagedPorTamanhoEstabelecimento.ano, CagedPorTamanhoEstabelecimento.mes,
+    ).all()
+    return [
+        CagedTamanhoEstabelecimentoItem(
+            ano=r.ano, mes=r.mes, tamanho=r.tamanho,
+            admissoes=r.admissoes, desligamentos=r.desligamentos, saldo=r.saldo,
+        )
+        for r in registros
+    ]
+
+
+@router.get("/por_tipo_empregador", response_model=List[CagedTipoEmpregadorItem])
+def por_tipo_empregador(
+    ano: int = Query(None),
+    db: Session = Depends(get_db),
+    current_user=Depends(get_current_user),
+):
+    """Movimentações por tipo de empregador (CNPJ, CPF, particular, rural CEI...)."""
+    query = _municipio_filter(db.query(CagedPorTipoEmpregador), CagedPorTipoEmpregador, current_user)
+    if ano:
+        query = query.filter(CagedPorTipoEmpregador.ano == ano)
+    registros = query.order_by(
+        CagedPorTipoEmpregador.ano, CagedPorTipoEmpregador.mes,
+    ).all()
+    return [
+        CagedTipoEmpregadorItem(
+            ano=r.ano, mes=r.mes, tipo_empregador=r.tipo_empregador,
+            admissoes=r.admissoes, desligamentos=r.desligamentos, saldo=r.saldo,
+        )
+        for r in registros
+    ]
+
+
+@router.get("/por_tipo_estabelecimento", response_model=List[CagedTipoEstabelecimentoItem])
+def por_tipo_estabelecimento(
+    ano: int = Query(None),
+    db: Session = Depends(get_db),
+    current_user=Depends(get_current_user),
+):
+    """Movimentações por tipo de estabelecimento (privado, público, doméstico...)."""
+    query = _municipio_filter(db.query(CagedPorTipoEstabelecimento), CagedPorTipoEstabelecimento, current_user)
+    if ano:
+        query = query.filter(CagedPorTipoEstabelecimento.ano == ano)
+    registros = query.order_by(
+        CagedPorTipoEstabelecimento.ano, CagedPorTipoEstabelecimento.mes,
+    ).all()
+    return [
+        CagedTipoEstabelecimentoItem(
+            ano=r.ano, mes=r.mes, tipo_estabelecimento=r.tipo_estabelecimento,
+            admissoes=r.admissoes, desligamentos=r.desligamentos, saldo=r.saldo,
+        )
+        for r in registros
+    ]
+
+
+@router.get("/indicadores_contrato", response_model=List[CagedIndicadoresContratoItem])
+def indicadores_contrato(
+    db: Session = Depends(get_db),
+    current_user=Depends(get_current_user),
+):
+    """Annual contract-quality counts: parcial, intermitente, aprendiz, PCD, fora-do-prazo."""
+    query = _municipio_filter(db.query(CagedIndicadoresContrato), CagedIndicadoresContrato, current_user)
+    registros = query.order_by(CagedIndicadoresContrato.ano).all()
+    return [
+        CagedIndicadoresContratoItem(
+            ano=r.ano,
+            total_movimentacoes=r.total_movimentacoes,
+            total_parcial=r.total_parcial,
+            total_intermitente=r.total_intermitente,
+            total_aprendiz=r.total_aprendiz,
+            total_pcd=r.total_pcd,
+            total_fora_prazo=r.total_fora_prazo,
         )
         for r in registros
     ]

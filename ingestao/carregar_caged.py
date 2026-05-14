@@ -4,7 +4,12 @@ from pathlib import Path
 
 from sqlalchemy.orm import Session
 
-from app.models.caged import CagedMovimentacao, CagedPorCnae, CagedPorEscolaridade, CagedPorFaixaEtaria, CagedPorRaca, CagedPorSexo, CagedPorTipoMovimentacao, CagedSalario
+from app.models.caged import (
+    CagedMovimentacao, CagedPorCnae, CagedPorEscolaridade, CagedPorFaixaEtaria,
+    CagedPorRaca, CagedPorSexo, CagedPorTipoMovimentacao, CagedSalario,
+    CagedPorTipoDeficiencia, CagedPorTamanhoEstabelecimento,
+    CagedPorTipoEmpregador, CagedPorTipoEstabelecimento, CagedIndicadoresContrato,
+)
 from ingestao.utils import obter_ou_criar_municipio
 
 SEXO_MAP = {
@@ -48,6 +53,43 @@ TIPO_MOV_MAP = {
     "40": "Desligamento — Transferência",
     "50": "Desligamento — Término de Contrato",
     "60": "Desligamento — Falecimento",
+}
+
+TIPO_DEFICIENCIA_MAP = {
+    "1": "Física",
+    "2": "Auditiva",
+    "3": "Visual",
+    "4": "Mental / Intelectual",
+    "5": "Múltipla",
+    "6": "Reabilitado",
+}
+
+TAMANHO_ESTAB_MAP = {
+    "1": "Até 4 vínculos",
+    "2": "5 a 9",
+    "3": "10 a 19",
+    "4": "20 a 49",
+    "5": "50 a 99",
+    "6": "100 a 249",
+    "7": "250 a 499",
+    "8": "500 a 999",
+    "9": "1000 ou mais",
+    "0": "Zero / não classificado",
+}
+
+TIPO_EMPREGADOR_MAP = {
+    "0": "CNPJ",
+    "1": "CPF",
+    "2": "Particular",
+    "3": "Empregador rural CEI / CNO",
+}
+
+TIPO_ESTABELECIMENTO_MAP = {
+    "1": "Privado / não-doméstico",
+    "2": "Público",
+    "3": "Doméstico",
+    "4": "Empresa pública / sociedade de economia mista",
+    "5": "Outro",
 }
 
 
@@ -123,6 +165,22 @@ def carregar(cidade_dir: Path, city_name: str, estado: str, db: Session) -> None
     por_tipo_mov: dict[tuple, dict] = defaultdict(
         lambda: {"admissoes": 0, "desligamentos": 0}
     )
+    por_tipo_def: dict[tuple, dict] = defaultdict(
+        lambda: {"admissoes": 0, "desligamentos": 0}
+    )
+    por_tamanho: dict[tuple, dict] = defaultdict(
+        lambda: {"admissoes": 0, "desligamentos": 0}
+    )
+    por_tipo_emp: dict[tuple, dict] = defaultdict(
+        lambda: {"admissoes": 0, "desligamentos": 0}
+    )
+    por_tipo_estab: dict[tuple, dict] = defaultdict(
+        lambda: {"admissoes": 0, "desligamentos": 0}
+    )
+    indicadores: dict[int, dict] = defaultdict(lambda: {
+        "total": 0, "parcial": 0, "intermitente": 0,
+        "aprendiz": 0, "pcd": 0, "fora_prazo": 0,
+    })
 
     with open(caminho, newline="", encoding="utf-8-sig") as csvfile:
         reader = csv.DictReader(csvfile, delimiter=";")
@@ -201,6 +259,61 @@ def carregar(cidade_dir: Path, city_name: str, estado: str, db: Session) -> None
                 por_tipo_mov[chave_tipo]["admissoes"] += saldo
             else:
                 por_tipo_mov[chave_tipo]["desligamentos"] += abs(saldo)
+
+            # ── New aggregations (2026-05) ──
+
+            # Tipo deficiência (somente PCD: tipo_deficiencia > 0)
+            def_raw = str(row.get("tipo_deficiencia", "") or "").strip()
+            if def_raw and def_raw != "0":
+                def_label = TIPO_DEFICIENCIA_MAP.get(def_raw, "Outras")
+                chave_def = (ano, mes, def_label)
+                if is_admission:
+                    por_tipo_def[chave_def]["admissoes"] += saldo
+                else:
+                    por_tipo_def[chave_def]["desligamentos"] += abs(saldo)
+                indicadores[ano]["pcd"] += abs(saldo)
+
+            # Tamanho do estabelecimento (em janeiro)
+            tam_raw = str(row.get("tamanho_estabelecimento_janeiro", "") or "").strip()
+            tam_label = TAMANHO_ESTAB_MAP.get(tam_raw)
+            if tam_label:
+                chave_tam = (ano, mes, tam_label)
+                if is_admission:
+                    por_tamanho[chave_tam]["admissoes"] += saldo
+                else:
+                    por_tamanho[chave_tam]["desligamentos"] += abs(saldo)
+
+            # Tipo empregador
+            emp_raw = str(row.get("tipo_empregador", "") or "").strip()
+            emp_label = TIPO_EMPREGADOR_MAP.get(emp_raw)
+            if emp_label:
+                chave_emp = (ano, mes, emp_label)
+                if is_admission:
+                    por_tipo_emp[chave_emp]["admissoes"] += saldo
+                else:
+                    por_tipo_emp[chave_emp]["desligamentos"] += abs(saldo)
+
+            # Tipo estabelecimento
+            te_raw = str(row.get("tipo_estabelecimento", "") or "").strip()
+            te_label = TIPO_ESTABELECIMENTO_MAP.get(te_raw)
+            if te_label:
+                chave_te = (ano, mes, te_label)
+                if is_admission:
+                    por_tipo_estab[chave_te]["admissoes"] += saldo
+                else:
+                    por_tipo_estab[chave_te]["desligamentos"] += abs(saldo)
+
+            # Annual contract-quality indicators
+            move_count = abs(saldo)
+            indicadores[ano]["total"] += move_count
+            if str(row.get("indicador_trabalho_parcial", "") or "").strip() == "1":
+                indicadores[ano]["parcial"] += move_count
+            if str(row.get("indicador_trabalho_intermitente", "") or "").strip() == "1":
+                indicadores[ano]["intermitente"] += move_count
+            if str(row.get("indicador_aprendiz", "") or "").strip() == "1":
+                indicadores[ano]["aprendiz"] += move_count
+            if str(row.get("indicador_fora_prazo", "") or "").strip() == "1":
+                indicadores[ano]["fora_prazo"] += move_count
 
     for (ano, mes), totais in mensal.items():
         adm = totais["admissoes"]
@@ -319,6 +432,78 @@ def carregar(cidade_dir: Path, city_name: str, estado: str, db: Session) -> None
         db.add(CagedPorTipoMovimentacao(
             municipio_id=municipio.id, ano=ano, mes=mes,
             tipo_movimentacao=tipo, admissoes=adm, desligamentos=des, saldo=adm - des,
+        ))
+
+    for (ano, mes, label), totais in por_tipo_def.items():
+        adm = totais["admissoes"]; des = totais["desligamentos"]
+        if db.query(CagedPorTipoDeficiencia).filter(
+            CagedPorTipoDeficiencia.municipio_id == municipio.id,
+            CagedPorTipoDeficiencia.ano == ano,
+            CagedPorTipoDeficiencia.mes == mes,
+            CagedPorTipoDeficiencia.tipo_deficiencia == label,
+        ).first():
+            continue
+        db.add(CagedPorTipoDeficiencia(
+            municipio_id=municipio.id, ano=ano, mes=mes,
+            tipo_deficiencia=label, admissoes=adm, desligamentos=des, saldo=adm - des,
+        ))
+
+    for (ano, mes, label), totais in por_tamanho.items():
+        adm = totais["admissoes"]; des = totais["desligamentos"]
+        if db.query(CagedPorTamanhoEstabelecimento).filter(
+            CagedPorTamanhoEstabelecimento.municipio_id == municipio.id,
+            CagedPorTamanhoEstabelecimento.ano == ano,
+            CagedPorTamanhoEstabelecimento.mes == mes,
+            CagedPorTamanhoEstabelecimento.tamanho == label,
+        ).first():
+            continue
+        db.add(CagedPorTamanhoEstabelecimento(
+            municipio_id=municipio.id, ano=ano, mes=mes,
+            tamanho=label, admissoes=adm, desligamentos=des, saldo=adm - des,
+        ))
+
+    for (ano, mes, label), totais in por_tipo_emp.items():
+        adm = totais["admissoes"]; des = totais["desligamentos"]
+        if db.query(CagedPorTipoEmpregador).filter(
+            CagedPorTipoEmpregador.municipio_id == municipio.id,
+            CagedPorTipoEmpregador.ano == ano,
+            CagedPorTipoEmpregador.mes == mes,
+            CagedPorTipoEmpregador.tipo_empregador == label,
+        ).first():
+            continue
+        db.add(CagedPorTipoEmpregador(
+            municipio_id=municipio.id, ano=ano, mes=mes,
+            tipo_empregador=label, admissoes=adm, desligamentos=des, saldo=adm - des,
+        ))
+
+    for (ano, mes, label), totais in por_tipo_estab.items():
+        adm = totais["admissoes"]; des = totais["desligamentos"]
+        if db.query(CagedPorTipoEstabelecimento).filter(
+            CagedPorTipoEstabelecimento.municipio_id == municipio.id,
+            CagedPorTipoEstabelecimento.ano == ano,
+            CagedPorTipoEstabelecimento.mes == mes,
+            CagedPorTipoEstabelecimento.tipo_estabelecimento == label,
+        ).first():
+            continue
+        db.add(CagedPorTipoEstabelecimento(
+            municipio_id=municipio.id, ano=ano, mes=mes,
+            tipo_estabelecimento=label, admissoes=adm, desligamentos=des, saldo=adm - des,
+        ))
+
+    for ano, ind in indicadores.items():
+        if db.query(CagedIndicadoresContrato).filter(
+            CagedIndicadoresContrato.municipio_id == municipio.id,
+            CagedIndicadoresContrato.ano == ano,
+        ).first():
+            continue
+        db.add(CagedIndicadoresContrato(
+            municipio_id=municipio.id, ano=ano,
+            total_movimentacoes=ind["total"],
+            total_parcial=ind["parcial"],
+            total_intermitente=ind["intermitente"],
+            total_aprendiz=ind["aprendiz"],
+            total_pcd=ind["pcd"],
+            total_fora_prazo=ind["fora_prazo"],
         ))
 
     db.commit()
