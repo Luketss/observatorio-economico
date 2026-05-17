@@ -4,7 +4,7 @@ from typing import List
 
 from app.api.deps import get_current_user, get_db
 from app.models.insight_ia import InsightIA as InsightModel
-from app.services.insights_service import buscar_insight, gerar_insight, gerar_release
+from app.services.insights_service import buscar_insight, gerar_insight, gerar_prioridades, gerar_release
 from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
@@ -417,4 +417,20 @@ def get_prioridades(
     if not insight:
         raise HTTPException(status_code=404, detail="Prioridades ainda não foram geradas.")
 
+    return _to_prioridades_response(insight)
+
+
+@router.post("/prioridades/gerar", response_model=PrioridadesResponse)
+def post_gerar_prioridades(
+    body: GerarPrioridadesRequest,
+    db: Session = Depends(get_db),
+    current_user=Depends(get_current_user),
+):
+    if current_user.role.nome != "ADMIN_GLOBAL":
+        raise HTTPException(status_code=403, detail="Apenas ADMIN_GLOBAL pode gerar prioridades.")
+
+    if not body.municipio_id:
+        raise HTTPException(status_code=400, detail="municipio_id é obrigatório.")
+
+    insight = gerar_prioridades(db, body.municipio_id)
     return _to_prioridades_response(insight)
