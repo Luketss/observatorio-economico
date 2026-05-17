@@ -1347,3 +1347,82 @@ body.theme-light .nid-modal__mask {
   background: rgba(15, 23, 42, 0.45);
 }
 
+/* ─────────────────────────────────────────────────────────────────────────────
+   Explorer — ticket 24
+   3-column layout: left rail (table browser) + right (filter chips + table)
+   ───────────────────────────────────────────────────────────────────────────── */
+.nid-explorer {
+  display: grid;
+  grid-template-columns: 240px 1fr;
+  gap: 18px;
+  min-height: 60vh;
+}
+.nid-explorer__browser {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 14px;
+  overflow-y: auto;
+}
+.nid-explorer__browser h5 {
+  font: 600 10.5px/1 var(--font-mono);
+  color: var(--text-mute); letter-spacing: 0.14em; text-transform: uppercase;
+  margin: 14px 0 8px;
+}
+.nid-explorer__browser h5:first-child { margin-top: 0; }
+.nid-explorer__browser ul { list-style: none; margin: 0; padding: 0; }
+.nid-explorer__browser li {
+  padding: 6px 8px; border-radius: 6px;
+  font: 500 12px/1.3 var(--font-mono);
+  color: var(--text-dim); cursor: pointer;
+  transition: background 0.12s, color 0.12s;
+}
+.nid-explorer__browser li:hover { background: var(--panel-2); color: var(--text); }
+.nid-explorer__browser li.sel {
+  background: var(--admin-accent-soft);
+  color: var(--text);
+}
+
+.nid-explorer__results {
+  display: flex; flex-direction: column; gap: 10px;
+  min-width: 0;
+}
+.nid-explorer__filters {
+  display: flex; gap: 8px; align-items: center; flex-wrap: wrap;
+  padding: 8px 10px;
+  background: var(--panel-2); border: 1px solid var(--border);
+  border-radius: 10px;
+}
+.nid-explorer__chip {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 4px 10px; border-radius: 999px;
+  background: var(--admin-accent-soft);
+  border: 1px solid color-mix(in oklab, var(--admin-accent) 28%, transparent);
+  color: var(--text);
+  font: 500 11px/1 var(--font-mono);
+}
+.nid-explorer__chip-x { cursor: pointer; color: var(--text-dim); display: inline-flex; }
+.nid-explorer__chip-x:hover { color: var(--text); }
+.nid-explorer__chip--add {
+  background: transparent; border-style: dashed;
+  color: var(--text-mute); cursor: pointer;
+}
+.nid-explorer__chip--add:hover { color: var(--text); border-color: var(--border-strong); }
+
+.nid-explorer__coltype {
+  font: 500 9px/1 var(--font-mono);
+  letter-spacing: 0.08em;
+  margin-left: 4px;
+  text-transform: uppercase;
+}
+.nid-explorer__coltype--int  { color: var(--accent-4); }
+.nid-explorer__coltype--num  { color: var(--accent-1); }
+.nid-explorer__coltype--str  { color: var(--accent-5); }
+.nid-explorer__coltype--ts   { color: var(--accent-3); }
+.nid-explorer__coltype--bool { color: var(--accent-2); }
+
+@media (max-width: 900px) {
+  .nid-explorer { grid-template-columns: 1fr; }
+  .nid-explorer__browser { max-height: 220px; }
+}
+
