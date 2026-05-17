@@ -42,6 +42,7 @@ export default function CagedPage() {
   const [indicadores, setIndicadores] = useState([]);
 
   const [loading, setLoading] = useState(true);
+  const [turnoverMode, setTurnoverMode] = useState("saldo");
 
   useEffect(() => {
     let alive = true;
@@ -405,12 +406,34 @@ export default function CagedPage() {
           <NidLegend items={[{ name: "Saldo (admissões − desligamentos)", color: A5 }]} />
         </NidPanel>
 
-        <NidPanel title="Turnover Mensal" sub={`Admissões vs Desligamentos · ${anoAtivo || ""}`}>
-          <TwinBarChart data={turnoverMes} glow colorUp={A5} colorDown={A2} height={260} />
-          <NidLegend items={[
-            { name: "Admissões", color: A5 },
-            { name: "Desligamentos", color: A2 },
-          ]} />
+        <NidPanel
+          title="Movimentação CAGED"
+          sub={turnoverMode === "saldo"
+            ? `saldo mensal · acumulado YTD · ${anoAtivo || ""}`
+            : `admissões vs. desligamentos · ${anoAtivo || ""}`}
+          tabs={["Saldo", "Bruto"]}
+          onTabChange={(i) => setTurnoverMode(i === 0 ? "saldo" : "bruto")}
+        >
+          <TwinBarChart
+            data={turnoverMes}
+            glow
+            colorUp={A5}
+            colorDown={A2}
+            height={260}
+            mode={turnoverMode}
+          />
+          {turnoverMode === "bruto" && (
+            <NidLegend items={[
+              { name: "Admissões", color: A5 },
+              { name: "Desligamentos", color: A2 },
+            ]} />
+          )}
+          {turnoverMode === "saldo" && (
+            <NidLegend items={[
+              { name: "Saldo (+/−)", color: A5 },
+              { name: "Acumulado YTD", color: A1 },
+            ]} />
+          )}
         </NidPanel>
       </div>
 

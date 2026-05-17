@@ -790,15 +790,14 @@ export function MultiLineChart({
 }
 
 // ────────── TwinBarChart (CAGED) ──────────
-export function TwinBarChart({
-  data, height = 280, glow = "hover",
-  colorUp = "var(--accent-5)", colorDown = "var(--accent-2)",
-  yCaption,
+// Internal bruto (side-by-side) renderer — preserves pre-ticket-05 behavior exactly.
+function TwinBarBrutoChart({
+  data, height, glow,
+  colorUp, colorDown,
+  yCaption, w, wrapRef,
 }) {
   const id = useId().replace(/:/g, "");
-  const [wrapRef, w] = useContainerWidth(800);
   const [hover, setHover] = useState(null);
-  if (!data || data.length === 0) return <EmptyChart h={height} />;
   const glowMode = resolveGlow(glow);
   const glowHover  = glowMode !== "off";
 
@@ -889,6 +888,194 @@ export function TwinBarChart({
       )}
     </div>
   );
+}
+
+// Internal saldo renderer — single bar per period anchored to 0 baseline.
+function TwinBarSaldoChart({
+  data, height, glow,
+  colorUp, colorDown,
+  yCaption, showCumulative, w, wrapRef,
+}) {
+  const id = useId().replace(/:/g, "");
+  const [hover, setHover] = useState(null);
+  const glowMode = resolveGlow(glow);
+  const glowHover  = glowMode !== "off";
+
+  const padL = 56, padR = 24, padT = 18, padB = 34;
+  const innerW = w - padL - padR;
+  const innerH = height - padT - padB;
+
+  const saldos = data.map((d) => d.admissoes - d.desligamentos);
+
+  // Compute cumulative before finalising maxAbs so we can expand if needed.
+  let acc = 0;
+  const cumRaw = saldos.map((s) => { acc += s; return acc; });
+  const cumAbs = Math.max(...cumRaw.map(Math.abs), 0);
+  const perAbs = Math.max(...saldos.map(Math.abs), 0);
+  const maxAbs = Math.max(perAbs, showCumulative ? cumAbs : 0) * 1.15 || 1;
+
+  const yScaleMin = -maxAbs;
+  const yScaleMax =  maxAbs;
+
+  const slot = innerW / data.length;
+  const barW = slot * 0.55;
+  const sxCenter = (i) => padL + slot * (i + 0.5);
+  const sy = (v) => padT + ((yScaleMax - v) / (yScaleMax - yScaleMin)) * innerH;
+  const zeroY = sy(0);
+
+  // Cumulative path points
+  const cumPts = cumRaw.map((v, i) => ({ x: sxCenter(i), y: sy(v), value: v }));
+  const cumPath = cumPts.length > 1
+    ? `M ${cumPts[0].x} ${cumPts[0].y} ` + cumPts.slice(1).map((p) => `L ${p.x} ${p.y}`).join(" ")
+    : "";
+  const lastCumPt = cumPts[cumPts.length - 1] || { x: 0, y: 0, value: 0 };
+
+  // Y axis: 3 ticks — +max, 0, −max
+  const tickMax  = Math.round(maxAbs / 1.15); // rough "nice" scale before padding
+  const axisTicks = [tickMax, 0, -tickMax];
+
+  return (
+    <div className="nid-chart-wrap" ref={wrapRef} onMouseLeave={() => setHover(null)}>
+      <svg viewBox={`0 0 ${w} ${height}`}>
+        <defs>
+          <filter id={`sglow-${id}`}>
+            <feGaussianBlur stdDeviation="3" />
+          </filter>
+        </defs>
+
+        {/* Grid lines at ±max and 0 */}
+        {axisTicks.map((t, i) => (
+          <g key={i}>
+            <line x1={padL} x2={w - padR} y1={sy(t)} y2={sy(t)}
+              stroke={t === 0 ? "var(--text-mute)" : "var(--grid)"}
+              strokeDasharray={t === 0 ? "none" : "3 4"}
+              strokeWidth={t === 0 ? "1" : "1"}
+              opacity={t === 0 ? "0.6" : "1"}
+            />
+            <text x={padL - 10} y={sy(t) + 3.5} className="nid-axis-text" textAnchor="end">
+              {t === 0 ? "0" : (t > 0 ? "+" : "") + fmtNumberShort(t)}
+            </text>
+          </g>
+        ))}
+
+        {/* Explicit zero line for emphasis */}
+        <line x1={padL} x2={w - padR} y1={zeroY} y2={zeroY}
+          stroke="var(--text-mute)" strokeWidth="1" opacity="0.6" />
+
+        {yCaption && (
+          <text className="axis-cap"
+            x={14} y={height / 2}
+            transform={`rotate(-90 14 ${height / 2})`}
+            textAnchor="middle">
+            {yCaption}
+          </text>
+        )}
+
+        {/* Bars */}
+        {data.map((d, i) => {
+          const saldo = saldos[i];
+          const fill = saldo >= 0 ? colorUp : colorDown;
+          const barY  = saldo >= 0 ? sy(saldo) : zeroY;
+          const barH  = Math.abs(zeroY - sy(saldo));
+          const cx = sxCenter(i);
+          const isH = hover === i;
+          return (
+            <g key={i} onMouseEnter={() => setHover(i)}>
+              {glowHover && isH && (
+                <rect x={cx - barW / 2 - 2} y={barY - 2} width={barW + 4} height={barH + 4}
+                  rx={4} fill={fill} opacity="0.55" filter={`url(#sglow-${id})`} />
+              )}
+              <rect
+                x={cx - barW / 2} y={barY}
+                width={barW} height={Math.max(barH, 1)}
+                rx={2}
+                fill={fill}
+                opacity={hover != null && !isH ? 0.35 : 0.9}
+              />
+              <text x={cx} y={height - padB + 18} className="nid-axis-text" textAnchor="middle">
+                {d.label}
+              </text>
+            </g>
+          );
+        })}
+
+        {/* Cumulative YTD acumulado line */}
+        {showCumulative && cumPts.length > 1 && (
+          <>
+            <path d={cumPath} stroke="var(--accent-1)" strokeWidth="2" fill="none"
+              strokeLinecap="round" strokeLinejoin="round" opacity="0.9" />
+            <circle cx={lastCumPt.x} cy={lastCumPt.y} r="4" fill="var(--accent-1)" />
+            <text x={lastCumPt.x + 8} y={lastCumPt.y + 4}
+              className="nid-axis-text" style={{ fill: "var(--accent-1)" }}>
+              acumulado YTD
+            </text>
+          </>
+        )}
+      </svg>
+
+      {hover != null && (() => {
+        const d = data[hover];
+        const saldo = saldos[hover];
+        const saldoColor = saldo >= 0 ? colorUp : colorDown;
+        const tipX = sxCenter(hover);
+        const barTop = saldo >= 0 ? sy(saldo) : zeroY;
+        return (
+          <div className="nid-tip" style={{
+            left: `${(tipX / w) * 100}%`,
+            top: `${(barTop / height) * 100}%`,
+            transform: "translate(-50%, calc(-100% - 8px))",
+          }}>
+            <div className="tip-label">{d.label}</div>
+            <div className="tip-row" style={{ marginBottom: 2 }}>
+              <span className="name" style={{ fontWeight: 700, color: saldoColor }}>SALDO</span>
+              <span style={{ fontWeight: 700, color: saldoColor }}>
+                {saldo >= 0 ? "+" : ""}{fmtNumber(saldo)} {saldo >= 0 ? "▲" : "▼"}
+              </span>
+            </div>
+            <div className="tip-row" style={{ opacity: 0.7 }}>
+              <span className="name"><span className="swatch" style={{ background: colorUp }}></span>admissões</span>
+              <span>{fmtNumber(d.admissoes)}</span>
+            </div>
+            <div className="tip-row" style={{ opacity: 0.7 }}>
+              <span className="name"><span className="swatch" style={{ background: colorDown }}></span>desligamentos</span>
+              <span>{fmtNumber(d.desligamentos)}</span>
+            </div>
+            {showCumulative && (
+              <div className="tip-row" style={{ borderTop: "1px solid var(--border)", marginTop: 4, paddingTop: 4, opacity: 0.85 }}>
+                <span className="name"><span className="swatch" style={{ background: "var(--accent-1)" }}></span>acumulado YTD</span>
+                <span style={{ color: "var(--accent-1)" }}>
+                  {cumRaw[hover] >= 0 ? "+" : ""}{fmtNumber(cumRaw[hover])}
+                </span>
+              </div>
+            )}
+          </div>
+        );
+      })()}
+    </div>
+  );
+}
+
+// Public component — dispatches to saldo or bruto renderer based on `mode`.
+export function TwinBarChart({
+  data, height = 280, glow = "hover",
+  colorUp = "var(--accent-5)", colorDown = "var(--accent-2)",
+  yCaption,
+  mode = "saldo",
+  showCumulative,
+}) {
+  const [wrapRef, w] = useContainerWidth(800);
+  if (!data || data.length === 0) return <EmptyChart h={height} />;
+
+  // Default showCumulative to true in saldo mode, false otherwise.
+  const cumulative = showCumulative != null ? showCumulative : mode === "saldo";
+
+  const shared = { data, height, glow, colorUp, colorDown, yCaption, w, wrapRef };
+
+  if (mode === "bruto") {
+    return <TwinBarBrutoChart {...shared} />;
+  }
+
+  return <TwinBarSaldoChart {...shared} showCumulative={cumulative} />;
 }
 
 // ────────── DonutChart ──────────
