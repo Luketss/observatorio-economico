@@ -8,24 +8,233 @@ import {
   ChevronUpDownIcon,
   ChevronUpIcon,
   ChevronDownIcon,
+  XMarkIcon,
+  PlusIcon,
+  FunnelIcon,
 } from "@heroicons/react/24/outline";
 import api from "../../services/api";
 
 const LIMIT = 50;
 
+// ── Domain grouping (frontend hardcode by table-name prefix) ──────────────────
+const DOMAIN_RULES = [
+  {
+    label: "Trabalho & renda",
+    test: (name) => /^(caged_|rais_|inss_)/.test(name),
+  },
+  {
+    label: "Economia",
+    test: (name) =>
+      /^(pib_|arrecadacao_|comex_|empresas$|estban$|pix$)/.test(name),
+  },
+  {
+    label: "Social",
+    test: (name) => /^(bolsa_familia$|pe_de_meia$)/.test(name),
+  },
+  {
+    label: "Operacional",
+    test: (name) =>
+      /^(municipios$|usuarios$|insights_ia$|notificacoes$|custom_cards$|plano_config$|marcos$)/.test(
+        name
+      ),
+  },
+];
+
+function getDomain(tableName) {
+  for (const rule of DOMAIN_RULES) {
+    if (rule.test(tableName)) return rule.label;
+  }
+  return "Outros";
+}
+
+// Group tables: prefer backend `group` field if present, else frontend rules
 function groupTables(tables) {
   const groups = {};
   for (const t of tables) {
-    if (!groups[t.group]) groups[t.group] = [];
-    groups[t.group].push(t);
+    const key = t.group || getDomain(t.table);
+    if (!groups[key]) groups[key] = [];
+    groups[key].push(t);
   }
   return groups;
 }
 
-function isNumericType(type) {
-  return ["integer", "float", "numeric", "biginteger", "biginteger"].includes(type);
+// ── Column type inference ─────────────────────────────────────────────────────
+const ISO_DATE_RE =
+  /^\d{4}-\d{2}-\d{2}(T\d{2}:\d{2}(:\d{2}(\.\d+)?)?(Z|[+-]\d{2}:\d{2})?)?$/;
+
+function inferColType(value) {
+  if (value === null || value === undefined) return null;
+  if (typeof value === "boolean") return "BOOL";
+  if (typeof value === "number") {
+    return Number.isInteger(value) ? "INT" : "NUM";
+  }
+  if (typeof value === "string") {
+    return ISO_DATE_RE.test(value) ? "TS" : "STR";
+  }
+  return "STR";
 }
 
+// Build a map of colName → type tag from the first data row
+function buildTypeMap(columns, firstRow) {
+  if (!firstRow) return {};
+  const map = {};
+  for (const col of columns) {
+    const tag = inferColType(firstRow[col.name]);
+    if (tag) map[col.name] = tag;
+  }
+  return map;
+}
+
+function isNumericType(type) {
+  return ["integer", "float", "numeric", "biginteger"].includes(type);
+}
+
+// ── Filter picker (inline dropdown) ──────────────────────────────────────────
+function FilterPicker({ columns, activeKeys, onAdd, onClose }) {
+  const [col, setCol] = useState("");
+  const [val, setVal] = useState("");
+  const ref = useRef(null);
+
+  // Close on outside click
+  useEffect(() => {
+    function handler(e) {
+      if (ref.current && !ref.current.contains(e.target)) onClose();
+    }
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, [onClose]);
+
+  const available = columns.filter((c) => !activeKeys.includes(c.name));
+
+  function submit(e) {
+    e.preventDefault();
+    if (!col || val === "") return;
+    onAdd(col, val);
+    onClose();
+  }
+
+  return (
+    <div
+      ref={ref}
+      style={{
+        position: "absolute",
+        top: "calc(100% + 6px)",
+        left: 0,
+        zIndex: 50,
+        background: "var(--panel)",
+        border: "1px solid var(--border-strong)",
+        borderRadius: "12px",
+        padding: "12px",
+        minWidth: "260px",
+        boxShadow: "0 20px 40px -10px rgba(0,0,0,0.55)",
+        backdropFilter: "blur(12px)",
+      }}
+    >
+      <form onSubmit={submit} style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
+        <select
+          value={col}
+          onChange={(e) => setCol(e.target.value)}
+          style={{
+            padding: "7px 10px",
+            background: "var(--panel-2)",
+            border: "1px solid var(--border)",
+            borderRadius: "8px",
+            color: "var(--text)",
+            fontFamily: "var(--font-mono)",
+            fontSize: "12px",
+            outline: "none",
+          }}
+        >
+          <option value="">— coluna —</option>
+          {available.map((c) => (
+            <option key={c.name} value={c.name}>
+              {c.name}
+            </option>
+          ))}
+        </select>
+        <input
+          type="text"
+          value={val}
+          onChange={(e) => setVal(e.target.value)}
+          placeholder="valor..."
+          style={{
+            padding: "7px 10px",
+            background: "var(--panel-2)",
+            border: "1px solid var(--border)",
+            borderRadius: "8px",
+            color: "var(--text)",
+            fontFamily: "var(--font-mono)",
+            fontSize: "12px",
+            outline: "none",
+          }}
+        />
+        <button
+          type="submit"
+          disabled={!col || val === ""}
+          style={{
+            padding: "6px 12px",
+            background: "var(--admin-accent)",
+            border: "none",
+            borderRadius: "8px",
+            color: "#fff",
+            fontFamily: "var(--font-mono)",
+            fontSize: "11px",
+            fontWeight: 600,
+            cursor: "pointer",
+            opacity: !col || val === "" ? 0.45 : 1,
+          }}
+        >
+          Aplicar filtro
+        </button>
+      </form>
+    </div>
+  );
+}
+
+// ── Column type tag ───────────────────────────────────────────────────────────
+function ColTypeTag({ tag }) {
+  if (!tag) return null;
+  const cls = `nid-explorer__coltype nid-explorer__coltype--${tag.toLowerCase()}`;
+  return <span className={cls}>[{tag}]</span>;
+}
+
+// ── Sort icon ─────────────────────────────────────────────────────────────────
+function SortIcon({ colName, sortBy, sortOrder }) {
+  if (sortBy !== colName) return <ChevronUpDownIcon className="w-3.5 h-3.5 opacity-40" />;
+  return sortOrder === "asc" ? (
+    <ChevronUpIcon className="w-3.5 h-3.5" style={{ color: "var(--admin-accent)" }} />
+  ) : (
+    <ChevronDownIcon className="w-3.5 h-3.5" style={{ color: "var(--admin-accent)" }} />
+  );
+}
+
+// ── Cell renderer ─────────────────────────────────────────────────────────────
+function renderCellValue(col, value) {
+  if (value === null || value === undefined) {
+    return <span style={{ color: "var(--text-mute)" }}>—</span>;
+  }
+  if (typeof value === "boolean") {
+    return (
+      <span
+        className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${
+          value
+            ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400"
+            : "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400"
+        }`}
+      >
+        {value ? "true" : "false"}
+      </span>
+    );
+  }
+  const str = String(value);
+  return (
+    <span className="max-w-xs truncate block" title={str}>
+      {str}
+    </span>
+  );
+}
+
+// ── Main component ────────────────────────────────────────────────────────────
 export default function ExplorerPage() {
   const [tables, setTables] = useState([]);
   const [selectedTable, setSelectedTable] = useState("");
@@ -35,11 +244,15 @@ export default function ExplorerPage() {
   const [page, setPage] = useState(0);
   const [sortBy, setSortBy] = useState("id");
   const [sortOrder, setSortOrder] = useState("asc");
-  const [filters, setFilters] = useState({});
+  // filters: array of { column, value } for chip display
+  const [filterChips, setFilterChips] = useState([]);
   const [debouncedFilters, setDebouncedFilters] = useState({});
   const [loading, setLoading] = useState(false);
   const [loadingTables, setLoadingTables] = useState(true);
+  const [showPicker, setShowPicker] = useState(false);
+  const [typeMap, setTypeMap] = useState({});
   const debounceRef = useRef(null);
+  const pickerAnchorRef = useRef(null);
 
   // Load table list on mount
   useEffect(() => {
@@ -50,15 +263,19 @@ export default function ExplorerPage() {
       .finally(() => setLoadingTables(false));
   }, []);
 
-  // Debounce filter changes
+  // Debounce filter chip changes → convert to params object
   useEffect(() => {
     clearTimeout(debounceRef.current);
     debounceRef.current = setTimeout(() => {
-      setDebouncedFilters(filters);
+      const obj = {};
+      for (const chip of filterChips) {
+        obj[chip.column] = chip.value;
+      }
+      setDebouncedFilters(obj);
       setPage(0);
     }, 400);
     return () => clearTimeout(debounceRef.current);
-  }, [filters]);
+  }, [filterChips]);
 
   // Fetch data when table/page/sort/filters change
   const fetchData = useCallback(() => {
@@ -71,7 +288,6 @@ export default function ExplorerPage() {
       sort_by: sortBy,
       sort_order: sortOrder,
     };
-    // Add non-empty filter params
     for (const [k, v] of Object.entries(debouncedFilters)) {
       if (v !== "" && v !== undefined) params[k] = v;
     }
@@ -79,32 +295,37 @@ export default function ExplorerPage() {
     api
       .get(`/admin/explore/${selectedTable}`, { params })
       .then((res) => {
-        setData(res.data.items || []);
+        const items = res.data.items || [];
+        setData(items);
         setTotal(res.data.total || 0);
+        // Infer types from first row
+        if (items.length > 0) {
+          setTypeMap(buildTypeMap(columns, items[0]));
+        }
       })
       .catch(() => {
         setData([]);
         setTotal(0);
       })
       .finally(() => setLoading(false));
-  }, [selectedTable, page, sortBy, sortOrder, debouncedFilters]);
+  }, [selectedTable, page, sortBy, sortOrder, debouncedFilters, columns]);
 
   useEffect(() => {
     fetchData();
   }, [fetchData]);
 
-  function handleTableSelect(e) {
-    const tname = e.target.value;
-    setSelectedTable(tname);
-    setFilters({});
+  function handleTableSelect(tableName) {
+    setSelectedTable(tableName);
+    setFilterChips([]);
     setDebouncedFilters({});
     setPage(0);
     setSortBy("id");
     setSortOrder("asc");
-    const found = tables.find((t) => t.table === tname);
+    const found = tables.find((t) => t.table === tableName);
     setColumns(found ? found.columns : []);
     setData([]);
     setTotal(0);
+    setTypeMap({});
   }
 
   function handleSort(colName) {
@@ -117,8 +338,19 @@ export default function ExplorerPage() {
     setPage(0);
   }
 
-  function handleFilterChange(colName, value) {
-    setFilters((prev) => ({ ...prev, [colName]: value }));
+  function addFilterChip(column, value) {
+    setFilterChips((prev) => {
+      // replace if column already exists
+      const exists = prev.find((c) => c.column === column);
+      if (exists) {
+        return prev.map((c) => (c.column === column ? { column, value } : c));
+      }
+      return [...prev, { column, value }];
+    });
+  }
+
+  function removeFilterChip(column) {
+    setFilterChips((prev) => prev.filter((c) => c.column !== column));
   }
 
   function exportCSV() {
@@ -132,7 +364,9 @@ export default function ExplorerPage() {
         })
         .join(",")
     );
-    const blob = new Blob([[header, ...rows].join("\n")], { type: "text/csv;charset=utf-8;" });
+    const blob = new Blob([[header, ...rows].join("\n")], {
+      type: "text/csv;charset=utf-8;",
+    });
     const a = document.createElement("a");
     a.href = URL.createObjectURL(blob);
     a.download = `${selectedTable}_pagina${page + 1}.csv`;
@@ -142,262 +376,508 @@ export default function ExplorerPage() {
 
   const totalPages = Math.ceil(total / LIMIT);
   const grouped = groupTables(tables);
-
-  function renderCellValue(col, value) {
-    if (value === null || value === undefined) {
-      return <span className="text-slate-400 dark:text-slate-500">—</span>;
-    }
-    if (typeof value === "boolean") {
-      return (
-        <span
-          className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${
-            value
-              ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400"
-              : "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400"
-          }`}
-        >
-          {value ? "true" : "false"}
-        </span>
-      );
-    }
-    const str = String(value);
-    return (
-      <span className="max-w-xs truncate block" title={str}>
-        {str}
-      </span>
-    );
-  }
-
-  function SortIcon({ colName }) {
-    if (sortBy !== colName) return <ChevronUpDownIcon className="w-3.5 h-3.5 opacity-40" />;
-    return sortOrder === "asc" ? (
-      <ChevronUpIcon className="w-3.5 h-3.5 text-violet-500" />
-    ) : (
-      <ChevronDownIcon className="w-3.5 h-3.5 text-violet-500" />
-    );
-  }
+  const activeFilterKeys = filterChips.map((c) => c.column);
 
   return (
     <div className="space-y-6">
       {/* Header */}
       <div className="flex items-center justify-between flex-wrap gap-3">
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-violet-100 dark:bg-violet-900/30 flex items-center justify-center">
-            <CircleStackIcon className="w-5 h-5 text-violet-600 dark:text-violet-400" />
+          <div
+            style={{
+              width: 40,
+              height: 40,
+              borderRadius: 12,
+              background: "var(--admin-accent-soft)",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+            }}
+          >
+            <CircleStackIcon
+              style={{ width: 20, height: 20, color: "var(--admin-accent)" }}
+            />
           </div>
           <div>
-            <h1 className="text-xl font-bold text-slate-800 dark:text-white">Explorador de Dados</h1>
-            <p className="text-sm text-slate-500 dark:text-slate-400">
-              Consulte qualquer tabela do banco de dados com filtros e ordenação
+            <h1
+              style={{
+                fontFamily: "var(--font-display)",
+                fontSize: 20,
+                fontWeight: 700,
+                color: "var(--text)",
+                margin: 0,
+              }}
+            >
+              Explorador de Dados
+            </h1>
+            <p
+              style={{
+                fontSize: 12,
+                color: "var(--text-dim)",
+                margin: "3px 0 0",
+                fontFamily: "var(--font-mono)",
+              }}
+            >
+              Consulte qualquer tabela do banco com filtros e ordenação
             </p>
           </div>
         </div>
         {selectedTable && data.length > 0 && (
           <button
             onClick={exportCSV}
-            className="flex items-center gap-2 px-4 py-2 bg-violet-600 hover:bg-violet-700 text-white text-sm font-medium rounded-lg transition-colors"
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: 6,
+              padding: "8px 14px",
+              background: "var(--admin-accent)",
+              border: "none",
+              borderRadius: 10,
+              color: "#fff",
+              fontFamily: "var(--font-mono)",
+              fontSize: 12,
+              fontWeight: 600,
+              cursor: "pointer",
+              letterSpacing: "0.03em",
+            }}
           >
-            <ArrowDownTrayIcon className="w-4 h-4" />
+            <ArrowDownTrayIcon style={{ width: 15, height: 15 }} />
             Exportar CSV
           </button>
         )}
       </div>
 
-      {/* Controls */}
-      <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 p-4 flex flex-wrap gap-4 items-center">
-        {/* Table selector */}
-        <div className="flex-1 min-w-48">
-          <label className="block text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1.5">
-            Tabela
-          </label>
+      {/* ── 3-column explorer layout ── */}
+      <div className="nid-explorer">
+        {/* Left rail: table browser */}
+        <div className="nid-explorer__browser">
           {loadingTables ? (
-            <div className="h-9 bg-slate-100 dark:bg-slate-700 rounded-lg animate-pulse" />
-          ) : (
-            <select
-              value={selectedTable}
-              onChange={handleTableSelect}
-              className="w-full text-sm border border-slate-200 dark:border-slate-600 rounded-lg px-3 py-2 bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-violet-500"
+            <div
+              style={{
+                display: "flex",
+                flexDirection: "column",
+                gap: 8,
+              }}
             >
-              <option value="">— Selecione uma tabela —</option>
-              {Object.entries(grouped).map(([group, items]) => (
-                <optgroup key={group} label={group}>
-                  {items.map((t) => (
-                    <option key={t.table} value={t.table}>
-                      {t.label} ({t.table})
-                    </option>
-                  ))}
-                </optgroup>
+              {[...Array(6)].map((_, i) => (
+                <div
+                  key={i}
+                  style={{
+                    height: 24,
+                    borderRadius: 6,
+                    background: "var(--panel-2)",
+                    opacity: 0.6,
+                    animation: "pulse 1.5s ease-in-out infinite",
+                  }}
+                />
               ))}
-            </select>
+            </div>
+          ) : (
+            Object.entries(grouped).map(([group, items]) => (
+              <div key={group}>
+                <h5>{group}</h5>
+                <ul>
+                  {items.map((t) => (
+                    <li
+                      key={t.table}
+                      className={selectedTable === t.table ? "sel" : ""}
+                      onClick={() => handleTableSelect(t.table)}
+                      title={t.table}
+                    >
+                      {t.label || t.table}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            ))
+          )}
+          {!loadingTables && tables.length === 0 && (
+            <p
+              style={{
+                fontSize: 11,
+                color: "var(--text-mute)",
+                fontFamily: "var(--font-mono)",
+                textAlign: "center",
+                marginTop: 20,
+              }}
+            >
+              Nenhuma tabela disponível
+            </p>
           )}
         </div>
 
-        {/* Sort by */}
-        {columns.length > 0 && (
-          <div className="min-w-40">
-            <label className="block text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1.5">
-              Ordenar por
-            </label>
-            <select
-              value={sortBy}
-              onChange={(e) => { setSortBy(e.target.value); setPage(0); }}
-              className="w-full text-sm border border-slate-200 dark:border-slate-600 rounded-lg px-3 py-2 bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-violet-500"
-            >
-              {columns.map((c) => (
-                <option key={c.name} value={c.name}>
-                  {c.name}
-                </option>
+        {/* Right: results panel */}
+        <div className="nid-explorer__results">
+          {/* Filter chips bar — always visible when a table is selected */}
+          {selectedTable && (
+            <div className="nid-explorer__filters">
+              <FunnelIcon
+                style={{
+                  width: 13,
+                  height: 13,
+                  color: "var(--text-mute)",
+                  flexShrink: 0,
+                }}
+              />
+              {filterChips.map((chip) => (
+                <span key={chip.column} className="nid-explorer__chip">
+                  <span>
+                    {chip.column}={chip.value}
+                  </span>
+                  <span
+                    className="nid-explorer__chip-x"
+                    onClick={() => removeFilterChip(chip.column)}
+                    title="Remover filtro"
+                  >
+                    <XMarkIcon style={{ width: 11, height: 11 }} />
+                  </span>
+                </span>
               ))}
-            </select>
-          </div>
-        )}
+              {/* + Filtro pseudo-chip */}
+              <div style={{ position: "relative" }} ref={pickerAnchorRef}>
+                <span
+                  className="nid-explorer__chip nid-explorer__chip--add"
+                  onClick={() => setShowPicker((v) => !v)}
+                >
+                  <PlusIcon style={{ width: 10, height: 10 }} />
+                  Filtro
+                </span>
+                {showPicker && columns.length > 0 && (
+                  <FilterPicker
+                    columns={columns}
+                    activeKeys={activeFilterKeys}
+                    onAdd={addFilterChip}
+                    onClose={() => setShowPicker(false)}
+                  />
+                )}
+              </div>
+              {/* Sort controls — inline right side */}
+              {columns.length > 0 && (
+                <div
+                  style={{
+                    marginLeft: "auto",
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 6,
+                  }}
+                >
+                  <select
+                    value={sortBy}
+                    onChange={(e) => {
+                      setSortBy(e.target.value);
+                      setPage(0);
+                    }}
+                    style={{
+                      padding: "4px 8px",
+                      background: "var(--panel)",
+                      border: "1px solid var(--border)",
+                      borderRadius: 7,
+                      color: "var(--text-dim)",
+                      fontFamily: "var(--font-mono)",
+                      fontSize: 11,
+                      outline: "none",
+                    }}
+                  >
+                    {columns.map((c) => (
+                      <option key={c.name} value={c.name}>
+                        {c.name}
+                      </option>
+                    ))}
+                  </select>
+                  <select
+                    value={sortOrder}
+                    onChange={(e) => {
+                      setSortOrder(e.target.value);
+                      setPage(0);
+                    }}
+                    style={{
+                      padding: "4px 8px",
+                      background: "var(--panel)",
+                      border: "1px solid var(--border)",
+                      borderRadius: 7,
+                      color: "var(--text-dim)",
+                      fontFamily: "var(--font-mono)",
+                      fontSize: 11,
+                      outline: "none",
+                    }}
+                  >
+                    <option value="asc">↑ asc</option>
+                    <option value="desc">↓ desc</option>
+                  </select>
+                  {!loading && (
+                    <span
+                      style={{
+                        fontFamily: "var(--font-mono)",
+                        fontSize: 11,
+                        color: "var(--text-mute)",
+                        whiteSpace: "nowrap",
+                      }}
+                    >
+                      {total.toLocaleString("pt-BR")} reg.
+                    </span>
+                  )}
+                </div>
+              )}
+            </div>
+          )}
 
-        {/* Sort order */}
-        {columns.length > 0 && (
-          <div className="min-w-28">
-            <label className="block text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1.5">
-              Direção
-            </label>
-            <select
-              value={sortOrder}
-              onChange={(e) => { setSortOrder(e.target.value); setPage(0); }}
-              className="w-full text-sm border border-slate-200 dark:border-slate-600 rounded-lg px-3 py-2 bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-violet-500"
+          {/* Data table */}
+          {selectedTable ? (
+            <div
+              style={{
+                background: "var(--panel)",
+                border: "1px solid var(--border)",
+                borderRadius: 14,
+                overflow: "hidden",
+              }}
             >
-              <option value="asc">Crescente ↑</option>
-              <option value="desc">Decrescente ↓</option>
-            </select>
-          </div>
-        )}
-
-        {/* Stats badge */}
-        {selectedTable && !loading && (
-          <div className="ml-auto text-right">
-            <p className="text-xs text-slate-500 dark:text-slate-400">Total de registros</p>
-            <p className="text-lg font-bold text-slate-800 dark:text-white">
-              {total.toLocaleString("pt-BR")}
-            </p>
-          </div>
-        )}
-      </div>
-
-      {/* Table */}
-      {selectedTable && (
-        <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 overflow-hidden">
-          {loading ? (
-            <div className="flex items-center justify-center py-20">
-              <div className="w-8 h-8 border-4 border-violet-500 border-t-transparent rounded-full animate-spin" />
-            </div>
-          ) : data.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-20 text-slate-400 dark:text-slate-500">
-              <CircleStackIcon className="w-12 h-12 mb-3 opacity-40" />
-              <p className="text-sm">Nenhum registro encontrado</p>
-            </div>
-          ) : (
-            <div className="overflow-x-auto">
-              <table className="min-w-full">
-                <thead>
-                  {/* Column headers with sort */}
-                  <tr className="border-b border-slate-200 dark:border-slate-700">
-                    {columns.map((col) => (
-                      <th
-                        key={col.name}
-                        onClick={() => handleSort(col.name)}
-                        className="px-3 py-3 md:px-4 text-left text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider bg-slate-50 dark:bg-slate-700/50 cursor-pointer hover:text-violet-600 dark:hover:text-violet-400 select-none whitespace-nowrap"
-                      >
-                        <div className="flex items-center gap-1.5">
-                          {col.name}
-                          <SortIcon colName={col.name} />
-                        </div>
-                      </th>
-                    ))}
-                  </tr>
-                  {/* Filter row */}
-                  <tr className="border-b border-slate-200 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-800/50">
-                    {columns.map((col) => (
-                      <td key={col.name} className="px-2 py-1.5 md:px-3">
-                        <input
-                          type="text"
-                          value={filters[col.name] || ""}
-                          onChange={(e) => handleFilterChange(col.name, e.target.value)}
-                          placeholder="filtrar..."
-                          className="w-full min-w-16 text-xs border border-slate-200 dark:border-slate-600 rounded px-2 py-1 bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300 placeholder-slate-400 focus:outline-none focus:ring-1 focus:ring-violet-400"
-                        />
-                      </td>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-100 dark:divide-slate-700/50">
-                  <AnimatePresence mode="wait">
-                    {data.map((row, idx) => (
-                      <motion.tr
-                        key={row.id ?? idx}
-                        initial={{ opacity: 0, y: 4 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        exit={{ opacity: 0 }}
-                        transition={{ duration: 0.12, delay: idx * 0.01 }}
-                        className="hover:bg-slate-50 dark:hover:bg-slate-700/30 transition-colors"
+              {loading ? (
+                <div
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    padding: "64px 0",
+                  }}
+                >
+                  <div
+                    style={{
+                      width: 32,
+                      height: 32,
+                      borderRadius: "50%",
+                      border: "3px solid var(--admin-accent)",
+                      borderTopColor: "transparent",
+                      animation: "spin 0.7s linear infinite",
+                    }}
+                  />
+                </div>
+              ) : data.length === 0 ? (
+                <div
+                  style={{
+                    display: "flex",
+                    flexDirection: "column",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    padding: "64px 0",
+                    color: "var(--text-mute)",
+                  }}
+                >
+                  <CircleStackIcon style={{ width: 40, height: 40, opacity: 0.3 }} />
+                  <p
+                    style={{
+                      fontFamily: "var(--font-mono)",
+                      fontSize: 12,
+                      marginTop: 12,
+                    }}
+                  >
+                    Nenhum registro encontrado
+                  </p>
+                </div>
+              ) : (
+                <div style={{ overflowX: "auto" }}>
+                  <table style={{ minWidth: "100%", borderCollapse: "collapse" }}>
+                    <thead>
+                      <tr
+                        style={{
+                          borderBottom: "1px solid var(--border)",
+                          background: "var(--panel-2)",
+                        }}
                       >
                         {columns.map((col) => (
-                          <td
+                          <th
                             key={col.name}
-                            className={`px-3 py-2.5 md:px-4 text-sm text-slate-700 dark:text-slate-300 whitespace-nowrap ${
-                              isNumericType(col.type) ? "text-right font-mono" : ""
-                            }`}
+                            onClick={() => handleSort(col.name)}
+                            style={{
+                              padding: "10px 14px",
+                              textAlign: "left",
+                              font: "600 10.5px/1 var(--font-mono)",
+                              letterSpacing: "0.1em",
+                              textTransform: "uppercase",
+                              color: "var(--text-mute)",
+                              whiteSpace: "nowrap",
+                              cursor: "pointer",
+                              userSelect: "none",
+                            }}
                           >
-                            {renderCellValue(col, row[col.name])}
-                          </td>
+                            <div
+                              style={{
+                                display: "flex",
+                                alignItems: "center",
+                                gap: 5,
+                              }}
+                            >
+                              {col.name}
+                              <ColTypeTag tag={typeMap[col.name]} />
+                              <SortIcon
+                                colName={col.name}
+                                sortBy={sortBy}
+                                sortOrder={sortOrder}
+                              />
+                            </div>
+                          </th>
                         ))}
-                      </motion.tr>
-                    ))}
-                  </AnimatePresence>
-                </tbody>
-              </table>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <AnimatePresence mode="wait">
+                        {data.map((row, idx) => (
+                          <motion.tr
+                            key={row.id ?? idx}
+                            initial={{ opacity: 0, y: 4 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            exit={{ opacity: 0 }}
+                            transition={{ duration: 0.12, delay: idx * 0.008 }}
+                            style={{ borderBottom: "1px solid var(--border)" }}
+                          >
+                            {columns.map((col) => (
+                              <td
+                                key={col.name}
+                                style={{
+                                  padding: "10px 14px",
+                                  fontSize: 13,
+                                  color: "var(--text)",
+                                  whiteSpace: "nowrap",
+                                  fontFamily: isNumericType(col.type)
+                                    ? "var(--font-mono)"
+                                    : "var(--font-display)",
+                                  textAlign: isNumericType(col.type)
+                                    ? "right"
+                                    : "left",
+                                }}
+                              >
+                                {renderCellValue(col, row[col.name])}
+                              </td>
+                            ))}
+                          </motion.tr>
+                        ))}
+                      </AnimatePresence>
+                    </tbody>
+                  </table>
+                </div>
+              )}
+
+              {/* Pagination */}
+              {!loading && totalPages > 1 && (
+                <div
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "space-between",
+                    padding: "10px 16px",
+                    borderTop: "1px solid var(--border)",
+                    background: "var(--panel-2)",
+                  }}
+                >
+                  <button
+                    onClick={() => setPage((p) => Math.max(0, p - 1))}
+                    disabled={page === 0}
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 5,
+                      padding: "5px 10px",
+                      background: "transparent",
+                      border: "1px solid var(--border)",
+                      borderRadius: 7,
+                      color: page === 0 ? "var(--text-mute)" : "var(--text-dim)",
+                      fontFamily: "var(--font-mono)",
+                      fontSize: 12,
+                      cursor: page === 0 ? "not-allowed" : "pointer",
+                      opacity: page === 0 ? 0.4 : 1,
+                    }}
+                  >
+                    <ChevronLeftIcon style={{ width: 14, height: 14 }} />
+                    Anterior
+                  </button>
+
+                  <span
+                    style={{
+                      fontFamily: "var(--font-mono)",
+                      fontSize: 12,
+                      color: "var(--text-dim)",
+                    }}
+                  >
+                    Página{" "}
+                    <strong style={{ color: "var(--text)" }}>{page + 1}</strong>{" "}
+                    de{" "}
+                    <strong style={{ color: "var(--text)" }}>{totalPages}</strong>
+                    {" · "}
+                    <span style={{ color: "var(--text-mute)", fontSize: 11 }}>
+                      {total.toLocaleString("pt-BR")} registros
+                    </span>
+                  </span>
+
+                  <button
+                    onClick={() =>
+                      setPage((p) => Math.min(totalPages - 1, p + 1))
+                    }
+                    disabled={page >= totalPages - 1}
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 5,
+                      padding: "5px 10px",
+                      background: "transparent",
+                      border: "1px solid var(--border)",
+                      borderRadius: 7,
+                      color:
+                        page >= totalPages - 1
+                          ? "var(--text-mute)"
+                          : "var(--text-dim)",
+                      fontFamily: "var(--font-mono)",
+                      fontSize: 12,
+                      cursor: page >= totalPages - 1 ? "not-allowed" : "pointer",
+                      opacity: page >= totalPages - 1 ? 0.4 : 1,
+                    }}
+                  >
+                    Próximo
+                    <ChevronRightIcon style={{ width: 14, height: 14 }} />
+                  </button>
+                </div>
+              )}
             </div>
-          )}
-
-          {/* Pagination */}
-          {!loading && totalPages > 1 && (
-            <div className="flex items-center justify-between px-4 py-3 border-t border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50">
-              <button
-                onClick={() => setPage((p) => Math.max(0, p - 1))}
-                disabled={page === 0}
-                className="flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+          ) : (
+            /* Empty state — no table selected */
+            !loadingTables && (
+              <div
+                style={{
+                  display: "flex",
+                  flexDirection: "column",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  minHeight: "40vh",
+                  color: "var(--text-mute)",
+                }}
               >
-                <ChevronLeftIcon className="w-4 h-4" />
-                Anterior
-              </button>
-
-              <span className="text-sm text-slate-500 dark:text-slate-400">
-                Página{" "}
-                <span className="font-semibold text-slate-800 dark:text-white">{page + 1}</span> de{" "}
-                <span className="font-semibold text-slate-800 dark:text-white">{totalPages}</span>
-                {" "}·{" "}
-                <span className="text-xs">{total.toLocaleString("pt-BR")} registros</span>
-              </span>
-
-              <button
-                onClick={() => setPage((p) => Math.min(totalPages - 1, p + 1))}
-                disabled={page >= totalPages - 1}
-                className="flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
-              >
-                Próximo
-                <ChevronRightIcon className="w-4 h-4" />
-              </button>
-            </div>
+                <CircleStackIcon
+                  style={{ width: 56, height: 56, opacity: 0.22 }}
+                />
+                <p
+                  style={{
+                    fontFamily: "var(--font-display)",
+                    fontSize: 15,
+                    fontWeight: 600,
+                    color: "var(--text-dim)",
+                    marginTop: 16,
+                    marginBottom: 4,
+                  }}
+                >
+                  Selecione uma tabela
+                </p>
+                <p
+                  style={{
+                    fontFamily: "var(--font-mono)",
+                    fontSize: 12,
+                    color: "var(--text-mute)",
+                  }}
+                >
+                  {tables.length} tabelas em {Object.keys(grouped).length} grupos
+                </p>
+              </div>
+            )
           )}
         </div>
-      )}
-
-      {/* Empty state */}
-      {!selectedTable && !loadingTables && (
-        <div className="flex flex-col items-center justify-center py-24 text-slate-400 dark:text-slate-500">
-          <CircleStackIcon className="w-16 h-16 mb-4 opacity-30" />
-          <p className="text-base font-medium">Selecione uma tabela para começar</p>
-          <p className="text-sm mt-1 opacity-70">
-            {tables.length} tabelas disponíveis em {Object.keys(grouped).length} grupos
-          </p>
-        </div>
-      )}
+      </div>
     </div>
   );
 }

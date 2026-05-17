@@ -12,6 +12,8 @@
 
 /* ─── Theme: NEON CYBER (default dark) ─── */
 body.theme-neon {
+  --admin-accent: var(--accent-3); /* purple #b97cff */
+  --admin-accent-soft: rgba(185, 124, 255, 0.14);
   --bg:        #050610;
   --bg-grad:   radial-gradient(ellipse 1200px 600px at 20% -10%, #0d1230 0%, transparent 60%),
                radial-gradient(ellipse 900px 500px at 95% 0%, #1a0830 0%, transparent 55%),
@@ -42,6 +44,8 @@ body.theme-neon {
 
 /* ─── Theme: AURORA ─── */
 body.theme-aurora {
+  --admin-accent: var(--accent-3); /* purple #a78bfa */
+  --admin-accent-soft: rgba(167, 139, 250, 0.14);
   --bg:        #0b0820;
   --bg-grad:   radial-gradient(ellipse 1400px 700px at 50% -20%, #2b1564 0%, transparent 55%),
                radial-gradient(ellipse 900px 500px at 90% 100%, #0d2d4a 0%, transparent 50%),
@@ -72,6 +76,8 @@ body.theme-aurora {
 
 /* ─── Theme: SUNSET GLASS ─── */
 body.theme-sunset {
+  --admin-accent: var(--accent-4); /* gold/yellow #ffd166 — purple is too close to sunset reds */
+  --admin-accent-soft: rgba(255, 209, 102, 0.14);
   --bg:        #190d18;
   --bg-grad:   radial-gradient(ellipse 1200px 600px at 15% -10%, #3d1820 0%, transparent 60%),
                radial-gradient(ellipse 900px 500px at 95% 100%, #2a1004 0%, transparent 55%),
@@ -102,6 +108,8 @@ body.theme-sunset {
 
 /* ─── Theme: MINIMAL DARK ─── */
 body.theme-minimal {
+  --admin-accent: var(--accent-3); /* indigo #6366f1 */
+  --admin-accent-soft: rgba(99, 102, 241, 0.14);
   --bg:        #0a0a0c;
   --bg-grad:   #0a0a0c;
   --panel:     #111114;
@@ -130,6 +138,8 @@ body.theme-minimal {
 
 /* ─── Theme: LIGHT PRO ─── */
 body.theme-light {
+  --admin-accent: var(--accent-3); /* violet #8b5cf6 */
+  --admin-accent-soft: rgba(139, 92, 246, 0.14);
   --bg:        #f7f8fb;
   --bg-grad:   radial-gradient(ellipse 1200px 600px at 15% -10%, #eef2fc 0%, transparent 60%),
                radial-gradient(ellipse 900px 500px at 95% 0%, #f3edff 0%, transparent 55%),
@@ -311,6 +321,22 @@ body.theme-light .nid-nav-item:hover:not(.active) {
   background: rgba(15, 23, 42, 0.04);
   color: #0f172a;
 }
+/* ── Admin shell: active nav uses --admin-accent instead of --accent-1 ── */
+.admin-shell .nid-nav-item.admin-active {
+  border-left-color: var(--admin-accent);
+  background: linear-gradient(90deg, color-mix(in oklab, var(--admin-accent) 10%, transparent), transparent);
+}
+body.theme-neon .admin-shell .nid-nav-item.admin-active,
+body.theme-aurora .admin-shell .nid-nav-item.admin-active {
+  box-shadow: inset 2px 0 12px -4px color-mix(in oklab, var(--admin-accent) 40%, transparent);
+}
+body.theme-light .admin-shell .nid-nav-item.admin-active {
+  background: color-mix(in oklab, var(--admin-accent) 10%, transparent);
+  border-left-color: var(--admin-accent);
+  color: var(--admin-accent);
+  font-weight: 700;
+}
+
 .nid-nav-section {
   font-size: 10px;
   color: var(--text-mute);
@@ -366,6 +392,25 @@ body.theme-light .nid-pill { background: #ffffff; border-color: rgba(15, 23, 42,
   padding: 0 1px;
 }
 .nid-pill-x:hover { color: var(--text); }
+
+/* ── Status pill kind variants (StatusPill component) ─────────────── */
+/* Override base .nid-pill sizing/border for the status context */
+.nid-pill[class*="nid-pill--"] {
+  padding: 2px 8px;
+  font-size: 10.5px;
+  border: 1px solid transparent;
+  line-height: 1.6;
+}
+.nid-pill-dot { width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
+
+.nid-pill--ok      { color: var(--accent-5); background: color-mix(in oklab, var(--accent-5) 14%, transparent); border-color: color-mix(in oklab, var(--accent-5) 28%, transparent); }
+.nid-pill--warn    { color: var(--accent-4); background: color-mix(in oklab, var(--accent-4) 14%, transparent); border-color: color-mix(in oklab, var(--accent-4) 28%, transparent); }
+.nid-pill--err     { color: var(--accent-2); background: color-mix(in oklab, var(--accent-2) 14%, transparent); border-color: color-mix(in oklab, var(--accent-2) 28%, transparent); }
+.nid-pill--draft   { color: var(--text-dim); background: var(--panel-2); border-color: var(--border); }
+.nid-pill--info    { color: var(--accent-1); background: color-mix(in oklab, var(--accent-1) 14%, transparent); border-color: color-mix(in oklab, var(--accent-1) 28%, transparent); }
+.nid-pill--pro     { color: var(--admin-accent); background: var(--admin-accent-soft); border-color: color-mix(in oklab, var(--admin-accent) 28%, transparent); }
+.nid-pill--premium { color: var(--accent-4); background: color-mix(in oklab, var(--accent-4) 14%, transparent); border-color: color-mix(in oklab, var(--accent-4) 28%, transparent); }
+.nid-pill--free    { color: var(--text-dim); background: var(--panel-2); border-color: var(--border); }
 
 /* Notification bell */
 .nid-bell {
@@ -781,5 +826,603 @@ body.theme-light .nid-tab.active {
 body.theme-light .nid-hbar-row .city {
   text-shadow: none;
   color: var(--text);
+}
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   AdminTable — ticket 17
+   Matches the .tbl design from the Admin Panel Review handoff.
+   ───────────────────────────────────────────────────────────────────────────── */
+
+/* Outer wrapper */
+.nid-admin-table {
+  overflow-x: auto;
+  width: 100%;
+}
+
+/* Table base — sits on nid-panel background */
+.nid-admin-table table {
+  width: 100%;
+  border-collapse: collapse;
+  font: 500 13px/1.4 var(--font-display);
+  background: transparent;
+}
+
+/* Header row */
+.nid-admin-table thead tr {
+  background: var(--panel-2);
+}
+
+.nid-admin-table thead th {
+  padding: 10px 14px;
+  text-align: left;
+  font: 600 10.5px/1 var(--font-mono);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--text-mute);
+  white-space: nowrap;
+}
+
+/* Body cells */
+.nid-admin-table tbody td {
+  padding: 12px 14px;
+  border-bottom: 1px solid var(--border);
+  color: var(--text);
+  vertical-align: middle;
+}
+.nid-admin-table tbody tr:last-child td {
+  border-bottom: none;
+}
+
+/* Row hover */
+.nid-admin-table tbody tr:hover td {
+  background: color-mix(in oklab, var(--admin-accent) 4%, transparent);
+}
+
+/* Selected row */
+.nid-admin-table tbody tr[data-selected] td {
+  background: color-mix(in oklab, var(--admin-accent) 6%, transparent);
+}
+
+/* Mono cells (tabular numerics) */
+.nid-admin-table td.mono,
+.nid-admin-table .mono {
+  font-family: var(--font-mono);
+  font-weight: 500;
+  font-feature-settings: "tnum";
+  font-variant-numeric: tabular-nums;
+}
+
+/* ── Row checkbox ─────────────────────────────────────────────────────────── */
+.tbl-row-checkbox {
+  display: inline-block;
+  vertical-align: middle;
+  width: 14px;
+  height: 14px;
+  border-radius: 4px;
+  border: 1.5px solid var(--text-mute);
+  background: transparent;
+  cursor: pointer;
+  position: relative;
+  transition: border-color 0.12s, background 0.12s;
+  flex-shrink: 0;
+}
+.tbl-row-checkbox:hover {
+  border-color: var(--admin-accent);
+}
+.tbl-row-checkbox:focus-visible {
+  outline: 2px solid var(--admin-accent);
+  outline-offset: 2px;
+}
+.tbl-row-checkbox.on {
+  background: var(--admin-accent);
+  border-color: var(--admin-accent);
+}
+.tbl-row-checkbox.on::after {
+  content: "";
+  position: absolute;
+  left: 3px;
+  top: 1px;
+  width: 4px;
+  height: 7px;
+  border: solid #1a0a32;
+  border-width: 0 1.5px 1.5px 0;
+  transform: rotate(45deg);
+}
+/* Partial / indeterminate (master checkbox with some rows selected) */
+.tbl-row-checkbox.partial {
+  background: color-mix(in oklab, var(--admin-accent) 30%, transparent);
+  border-color: var(--admin-accent);
+}
+.tbl-row-checkbox.partial::after {
+  content: "";
+  position: absolute;
+  left: 2px;
+  top: 5px;
+  width: 8px;
+  height: 1.5px;
+  background: var(--admin-accent);
+  border: none;
+  transform: none;
+}
+
+/* ── Avatar + text cell ───────────────────────────────────────────────────── */
+.nid-admin-table__avatar-cell {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.nid-admin-table__avatar {
+  flex-shrink: 0;
+}
+.nid-admin-table__avatar-text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.nid-admin-table__avatar-primary {
+  font: 600 13px/1.2 var(--font-display);
+  color: var(--text);
+}
+.nid-admin-table__avatar-secondary {
+  font: 500 11px/1 var(--font-mono);
+  color: var(--text-mute);
+}
+
+/* ── Row actions ─────────────────────────────────────────────────────────── */
+.rowact {
+  display: inline-flex;
+  gap: 4px;
+  opacity: 0.7;
+  transition: opacity 0.12s;
+}
+.nid-admin-table tbody tr:hover .rowact {
+  opacity: 1;
+}
+.rowact button {
+  width: 28px;
+  height: 28px;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--text-dim);
+  display: grid;
+  place-items: center;
+  font: 600 12px/1 var(--font-mono);
+  cursor: pointer;
+  transition: color 0.12s, border-color 0.12s, background 0.12s;
+}
+.rowact button:hover {
+  color: var(--text);
+  border-color: var(--border-strong);
+  background: color-mix(in oklab, var(--admin-accent) 8%, transparent);
+}
+
+/* ── Empty state ─────────────────────────────────────────────────────────── */
+.nid-admin-table__empty {
+  padding: 48px 20px;
+  text-align: center;
+}
+.nid-admin-table__empty-text {
+  font-size: 13px;
+  color: var(--text-mute);
+  font-family: var(--font-mono);
+  letter-spacing: 0.04em;
+}
+
+/* ── Muted dash ──────────────────────────────────────────────────────────── */
+.nid-admin-table__muted {
+  color: var(--text-mute);
+}
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   EmptyState — ticket 23
+   4 variants: list-empty, search-empty, permission-empty, error-empty
+   ───────────────────────────────────────────────────────────────────────────── */
+.nid-empty-state {
+  display: grid; place-items: center; gap: 12px;
+  padding: 40px 20px; max-width: 360px; margin: 0 auto;
+  text-align: center;
+  background: repeating-linear-gradient(135deg, transparent 0 12px, color-mix(in oklab, var(--admin-accent) 4%, transparent) 12px 24px);
+  border: 1px dashed var(--border);
+  border-radius: 14px;
+}
+.nid-empty-state__ico {
+  width: 44px; height: 44px; border-radius: 50%;
+  background: color-mix(in oklab, var(--admin-accent) 12%, transparent);
+  color: var(--admin-accent);
+  display: grid; place-items: center;
+}
+.nid-empty-state__title { font: 600 14px/1.3 var(--font-display); color: var(--text); margin: 0; }
+.nid-empty-state__detail { font: 400 12.5px/1.5 var(--font-display); color: var(--text-dim); margin: 0; max-width: 320px; }
+.nid-empty-state__actions { display: flex; gap: 8px; margin-top: 6px; }
+.nid-empty-state__primary {
+  padding: 6px 12px; border-radius: 8px;
+  background: var(--admin-accent); color: white;
+  border: none; cursor: pointer;
+  font: 600 12px/1 var(--font-display);
+}
+.nid-empty-state__primary:hover { filter: brightness(1.1); }
+.nid-empty-state__secondary {
+  padding: 6px 12px; border-radius: 8px;
+  background: var(--panel-2); color: var(--text-dim);
+  border: 1px solid var(--border); cursor: pointer;
+  font: 500 12px/1 var(--font-display);
+}
+.nid-empty-state__secondary:hover { color: var(--text); border-color: var(--border-strong); }
+
+/* Variants: tint the dashed frame */
+.nid-empty-state--error-empty { background: repeating-linear-gradient(135deg, transparent 0 12px, color-mix(in oklab, var(--accent-2) 5%, transparent) 12px 24px); }
+.nid-empty-state--error-empty .nid-empty-state__ico { background: color-mix(in oklab, var(--accent-2) 12%, transparent); color: var(--accent-2); }
+.nid-empty-state--permission-empty .nid-empty-state__ico { background: var(--panel-2); color: var(--text-dim); }
+
+/* ── Bulk-action toolbar ─────────────────────────────────────────────────── */
+.nid-bulk-bar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 14px;
+  background: var(--admin-accent-soft);
+  border: 1px solid color-mix(in oklab, var(--admin-accent) 28%, transparent);
+  border-radius: 12px;
+  margin: 14px 0;
+  position: sticky;
+  top: 10px;
+  z-index: 5;
+  backdrop-filter: blur(8px);
+}
+.nid-bulk-bar__count {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--text);
+}
+.nid-bulk-bar__count em {
+  font-style: normal;
+  font-weight: 700;
+  color: var(--admin-accent);
+}
+.nid-bulk-bar__sep { flex: 1; }
+.nid-bulk-bar__actions { display: flex; gap: 8px; }
+.nid-bulk-bar__clear {
+  background: transparent;
+  border: 1px solid var(--border);
+  color: var(--text-dim);
+  border-radius: 8px;
+  padding: 4px 8px;
+  cursor: pointer;
+  font-size: 13px;
+}
+.nid-bulk-bar__clear:hover {
+  color: var(--text);
+  border-color: var(--border-strong);
+}
+
+/* ── AdminStats KPI strip ─────────────────────────────────────────────────── */
+.nid-admin-stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 12px;
+  margin: 14px 0 18px;
+}
+.nid-admin-stats__cell {
+  padding: 14px 16px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--panel);
+  transition: border-color 0.15s, background 0.15s;
+}
+.nid-admin-stats__cell[role="button"] { cursor: pointer; }
+.nid-admin-stats__cell[role="button"]:hover { border-color: var(--border-strong); background: color-mix(in oklab, var(--admin-accent) 4%, var(--panel)); }
+.nid-admin-stats__label { font: 500 10.5px/1 var(--font-mono); color: var(--text-mute); text-transform: uppercase; letter-spacing: 0.14em; margin-bottom: 8px; }
+.nid-admin-stats__value { font: 700 22px/1.05 var(--font-display); color: var(--text); font-variant-numeric: tabular-nums; }
+.nid-admin-stats__unit { font: 500 13px/1.05 var(--font-display); color: var(--text-dim); }
+.nid-admin-stats__detail { font: 500 11px/1.3 var(--font-mono); color: var(--text-dim); margin-top: 6px; letter-spacing: 0.02em; }
+
+/* Light theme adjustments */
+body.theme-light .tbl-row-checkbox.on::after {
+  border-color: #ffffff;
+}
+body.theme-light .tbl-row-checkbox.partial::after {
+  background: var(--admin-accent);
+}
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   InsightCard grid — ticket 21
+   .nid-icards  → responsive auto-fill grid
+   .nid-icard   → per-dataset card with status variants
+   ───────────────────────────────────────────────────────────────────────────── */
+.nid-icards {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 14px;
+  margin-top: 4px;
+}
+
+.nid-icard {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 16px 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  transition: border-color 0.15s, background 0.15s;
+}
+.nid-icard:hover { border-color: var(--border-strong); }
+
+.nid-icard__head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+}
+.nid-icard__name {
+  font: 700 14px/1.2 var(--font-display);
+  color: var(--text);
+}
+.nid-icard__sub {
+  font: 500 10.5px/1 var(--font-mono);
+  color: var(--text-mute);
+  letter-spacing: 0.04em;
+  margin-top: 4px;
+}
+
+.nid-icard__bullets {
+  margin: 4px 0 0;
+  padding: 0 0 0 16px;
+}
+.nid-icard__bullets li {
+  font: 500 12.5px/1.55 var(--font-display);
+  color: var(--text-dim);
+  margin-bottom: 4px;
+}
+
+.nid-icard__stamp {
+  font: 500 11px/1.3 var(--font-mono);
+  color: var(--text-mute);
+  margin: 0;
+}
+
+.nid-icard__footer {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  margin-top: auto;
+  padding-top: 6px;
+}
+.nid-icard__footer button {
+  padding: 6px 10px;
+  border-radius: 8px;
+  background: var(--panel-2);
+  border: 1px solid var(--border);
+  color: var(--text);
+  font: 600 11px/1 var(--font-display);
+  cursor: pointer;
+  transition: border-color 0.15s, background 0.15s;
+  display: inline-flex;
+  align-items: center;
+}
+.nid-icard__footer button:hover { border-color: var(--border-strong); }
+.nid-icard__footer button.primary {
+  background: var(--admin-accent);
+  color: #ffffff;
+  border-color: transparent;
+}
+.nid-icard__footer button.primary:hover { filter: brightness(1.1); }
+.nid-icard__footer button.ghost {
+  background: transparent;
+  color: var(--text-dim);
+}
+.nid-icard__footer button.danger {
+  color: var(--accent-2);
+  border-color: color-mix(in oklab, var(--accent-2) 28%, transparent);
+  background: transparent;
+}
+.nid-icard__footer button.danger:hover {
+  background: color-mix(in oklab, var(--accent-2) 8%, transparent);
+}
+.nid-icard__footer button:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+  filter: none;
+}
+
+/* ── Status border / background variants ─────────────────────────────────── */
+.nid-icard--never { background: var(--panel-2); }
+
+.nid-icard--stale .nid-icard__bullets li { opacity: 0.6; }
+.nid-icard--stale .nid-icard__stamp { color: var(--accent-2); }
+
+.nid-icard--failed {
+  border-color: color-mix(in oklab, var(--accent-2) 35%, transparent);
+}
+
+.nid-icard--pending {
+  border-color: color-mix(in oklab, var(--accent-4) 35%, transparent);
+}
+
+/* Narrative card (dataset=geral) — admin-accent gradient */
+.nid-icard--narrative {
+  background: linear-gradient(135deg, var(--admin-accent-soft), transparent);
+  border-color: color-mix(in oklab, var(--admin-accent) 35%, transparent);
+}
+
+@media (max-width: 640px) {
+  .nid-icards { grid-template-columns: 1fr; }
+}
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   NidModal — ticket 22
+   Reusable modal chrome: mask + dialog panel + header/body/footer zones.
+   Three width variants: --sm (420px) | --md (560px) | --lg (760px).
+   ───────────────────────────────────────────────────────────────────────────── */
+.nid-modal__mask {
+  position: fixed; inset: 0;
+  background: rgba(5, 6, 16, 0.6);
+  backdrop-filter: blur(8px);
+  z-index: 100;
+  display: grid; place-items: center;
+  padding: 24px;
+}
+
+.nid-modal {
+  background: var(--panel);
+  border: 1px solid var(--border-strong);
+  border-radius: 16px;
+  box-shadow: var(--shadow-card);
+  backdrop-filter: blur(12px);
+  display: flex; flex-direction: column;
+  max-height: 90vh; overflow: hidden;
+  width: 100%;
+}
+.nid-modal--sm { max-width: 420px; }
+.nid-modal--md { max-width: 560px; }
+.nid-modal--lg { max-width: 760px; }
+
+.nid-modal__header {
+  display: flex; align-items: flex-start; justify-content: space-between;
+  padding: 20px 22px 16px;
+  border-bottom: 1px solid var(--border);
+}
+.nid-modal__eyebrow {
+  font: 600 10.5px/1 var(--font-mono);
+  color: var(--admin-accent); letter-spacing: 0.18em; text-transform: uppercase;
+  margin: 0 0 6px;
+}
+.nid-modal__title {
+  font: 700 16px/1.2 var(--font-display);
+  color: var(--text); margin: 0;
+}
+.nid-modal__close {
+  background: transparent; border: none; cursor: pointer; padding: 4px;
+  color: var(--text-dim); border-radius: 8px; flex-shrink: 0; margin-left: 12px;
+  transition: color 0.12s, background 0.12s;
+}
+.nid-modal__close:hover { color: var(--text); background: var(--panel-2); }
+
+.nid-modal__body {
+  padding: 18px 22px;
+  overflow-y: auto;
+  flex: 1;
+  min-height: 0;
+}
+
+.nid-modal__footer {
+  display: flex; gap: 10px; justify-content: flex-end;
+  padding: 14px 22px;
+  border-top: 1px solid var(--border);
+  background: var(--panel-2);
+  flex-shrink: 0;
+}
+
+/* NidField — labeled form field inside a modal */
+.nid-field { display: grid; gap: 6px; margin-bottom: 14px; }
+.nid-field:last-child { margin-bottom: 0; }
+.nid-field__label {
+  font: 600 10.5px/1 var(--font-mono);
+  color: var(--text-mute); letter-spacing: 0.14em; text-transform: uppercase;
+}
+.nid-field input,
+.nid-field textarea,
+.nid-field select {
+  width: 100%;
+  padding: 10px 12px;
+  background: var(--panel-2);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  color: var(--text);
+  font: 500 13px/1.4 var(--font-display);
+  transition: border-color 0.12s, box-shadow 0.12s;
+}
+.nid-field input:focus,
+.nid-field textarea:focus,
+.nid-field select:focus {
+  outline: none;
+  border-color: var(--admin-accent);
+  box-shadow: 0 0 0 2px var(--admin-accent-soft);
+}
+.nid-field textarea { resize: vertical; }
+
+/* Light-theme modal adjustments */
+body.theme-light .nid-modal__mask {
+  background: rgba(15, 23, 42, 0.45);
+}
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   Explorer — ticket 24
+   3-column layout: left rail (table browser) + right (filter chips + table)
+   ───────────────────────────────────────────────────────────────────────────── */
+.nid-explorer {
+  display: grid;
+  grid-template-columns: 240px 1fr;
+  gap: 18px;
+  min-height: 60vh;
+}
+.nid-explorer__browser {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 14px;
+  overflow-y: auto;
+}
+.nid-explorer__browser h5 {
+  font: 600 10.5px/1 var(--font-mono);
+  color: var(--text-mute); letter-spacing: 0.14em; text-transform: uppercase;
+  margin: 14px 0 8px;
+}
+.nid-explorer__browser h5:first-child { margin-top: 0; }
+.nid-explorer__browser ul { list-style: none; margin: 0; padding: 0; }
+.nid-explorer__browser li {
+  padding: 6px 8px; border-radius: 6px;
+  font: 500 12px/1.3 var(--font-mono);
+  color: var(--text-dim); cursor: pointer;
+  transition: background 0.12s, color 0.12s;
+}
+.nid-explorer__browser li:hover { background: var(--panel-2); color: var(--text); }
+.nid-explorer__browser li.sel {
+  background: var(--admin-accent-soft);
+  color: var(--text);
+}
+
+.nid-explorer__results {
+  display: flex; flex-direction: column; gap: 10px;
+  min-width: 0;
+}
+.nid-explorer__filters {
+  display: flex; gap: 8px; align-items: center; flex-wrap: wrap;
+  padding: 8px 10px;
+  background: var(--panel-2); border: 1px solid var(--border);
+  border-radius: 10px;
+}
+.nid-explorer__chip {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 4px 10px; border-radius: 999px;
+  background: var(--admin-accent-soft);
+  border: 1px solid color-mix(in oklab, var(--admin-accent) 28%, transparent);
+  color: var(--text);
+  font: 500 11px/1 var(--font-mono);
+}
+.nid-explorer__chip-x { cursor: pointer; color: var(--text-dim); display: inline-flex; }
+.nid-explorer__chip-x:hover { color: var(--text); }
+.nid-explorer__chip--add {
+  background: transparent; border-style: dashed;
+  color: var(--text-mute); cursor: pointer;
+}
+.nid-explorer__chip--add:hover { color: var(--text); border-color: var(--border-strong); }
+
+.nid-explorer__coltype {
+  font: 500 9px/1 var(--font-mono);
+  letter-spacing: 0.08em;
+  margin-left: 4px;
+  text-transform: uppercase;
+}
+.nid-explorer__coltype--int  { color: var(--accent-4); }
+.nid-explorer__coltype--num  { color: var(--accent-1); }
+.nid-explorer__coltype--str  { color: var(--accent-5); }
+.nid-explorer__coltype--ts   { color: var(--accent-3); }
+.nid-explorer__coltype--bool { color: var(--accent-2); }
+
+@media (max-width: 900px) {
+  .nid-explorer { grid-template-columns: 1fr; }
+  .nid-explorer__browser { max-height: 220px; }
 }
 

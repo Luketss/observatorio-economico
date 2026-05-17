@@ -1,8 +1,8 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { ToastProvider } from "../../context/ToastContext";
 import { NavLink, Outlet, useNavigate, useLocation } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext";
-import { useTheme } from "../../context/ThemeContext";
+import { useTheme, THEMES } from "../../context/ThemeContext";
 import {
   SparklesIcon,
   FlagIcon,
@@ -11,8 +11,6 @@ import {
   PowerIcon,
   ArrowLeftIcon,
   Cog6ToothIcon,
-  SunIcon,
-  MoonIcon,
   BuildingOfficeIcon,
   Squares2X2Icon,
   ShieldCheckIcon,
@@ -21,169 +19,397 @@ import {
   XMarkIcon,
   CircleStackIcon,
   BellIcon,
+  SwatchIcon,
 } from "@heroicons/react/24/outline";
+
+// ── Route → display name map ──────────────────────────────────────────────────
+const ROUTE_LABELS = {
+  "/admin/municipios":    "Municípios",
+  "/admin/insights":      "Insights IA",
+  "/admin/releases":      "Releases",
+  "/admin/cards":         "Cards Customizados",
+  "/admin/planos":        "Planos & Acesso",
+  "/admin/usuarios":      "Usuários",
+  "/admin/explorer":      "Explorador de Dados",
+  "/admin/notificacoes":  "Notificações",
+  "/admin/projetos-eixos":"Eixos de Projetos",
+  "/admin/mandato":       "Timeline do Mandato",
+};
+
+// ── ThemePicker (identical pattern to DashboardLayout) ────────────────────────
+function ThemePicker() {
+  const { themeId, setThemeId } = useTheme();
+  const [open, setOpen] = useState(false);
+  const ref = useRef(null);
+
+  useEffect(() => {
+    if (!open) return;
+    const handle = (e) => {
+      if (ref.current && !ref.current.contains(e.target)) setOpen(false);
+    };
+    document.addEventListener("mousedown", handle);
+    return () => document.removeEventListener("mousedown", handle);
+  }, [open]);
+
+  const current = THEMES.find((t) => t.id === themeId) || THEMES[0];
+
+  return (
+    <div className="relative" ref={ref}>
+      <button
+        onClick={() => setOpen((v) => !v)}
+        className="w-full flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg text-xs cursor-pointer"
+        style={{
+          background: "var(--panel-2)",
+          border: "1px solid var(--border)",
+          color: "var(--text-dim)",
+        }}
+        title="Trocar tema"
+      >
+        <SwatchIcon className="w-4 h-4" />
+        <span className="truncate">{current.label}</span>
+      </button>
+      {open && (
+        <div
+          className="absolute bottom-full mb-2 left-0 right-0 rounded-xl overflow-hidden z-50"
+          style={{
+            background: "var(--panel)",
+            border: "1px solid var(--border-strong)",
+            boxShadow: "var(--shadow-card)",
+            backdropFilter: "blur(12px)",
+          }}
+        >
+          {THEMES.map((t) => (
+            <button
+              key={t.id}
+              onClick={() => { setThemeId(t.id); setOpen(false); }}
+              className="w-full flex items-center gap-2 px-3 py-2 text-xs text-left cursor-pointer"
+              style={{
+                background: t.id === themeId ? "var(--panel-2)" : "transparent",
+                color: t.id === themeId ? "var(--text)" : "var(--text-dim)",
+                fontFamily: "var(--font-mono)",
+                letterSpacing: "0.04em",
+              }}
+            >
+              <span
+                className="inline-block w-3 h-3 rounded-full"
+                style={{
+                  background:
+                    t.id === "neon"    ? "linear-gradient(135deg,#00e5ff,#ff3d92)" :
+                    t.id === "aurora"  ? "linear-gradient(135deg,#7aa2ff,#f178b6)" :
+                    t.id === "sunset"  ? "linear-gradient(135deg,#ff9b54,#ff5e7e)" :
+                    t.id === "minimal" ? "linear-gradient(135deg,#14b8a6,#6366f1)" :
+                                         "linear-gradient(135deg,#0ea5e9,#8b5cf6)",
+                }}
+              />
+              {t.label}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ── Nav section groups ────────────────────────────────────────────────────────
+const GESTAO_ITEMS = [
+  { to: "/admin/municipios",     label: "Municípios",        icon: BuildingOfficeIcon },
+  { to: "/admin/insights",       label: "Insights IA",       icon: SparklesIcon },
+  { to: "/admin/releases",       label: "Releases",          icon: NewspaperIcon },
+  { to: "/admin/cards",          label: "Cards Customizados",icon: Squares2X2Icon },
+  { to: "/admin/planos",         label: "Planos & Acesso",   icon: ShieldCheckIcon },
+  { to: "/admin/usuarios",       label: "Usuários",          icon: UsersIcon },
+];
+
+const DADOS_ITEMS = [
+  { to: "/admin/explorer",       label: "Explorador de Dados", icon: CircleStackIcon },
+  { to: "/admin/notificacoes",   label: "Notificações",        icon: BellIcon },
+];
+
+const EXTRA_ITEMS = [
+  { to: "/admin/projetos-eixos", label: "Eixos de Projetos",   icon: FolderOpenIcon },
+  { to: "/admin/mandato",        label: "Timeline do Mandato", icon: FlagIcon },
+];
 
 export default function AdminLayout() {
   const { logout, user } = useAuth();
-  const { theme, toggleTheme } = useTheme();
   const navigate = useNavigate();
   const location = useLocation();
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
   const isGlobal = user?.role === "ADMIN_GLOBAL";
 
+  // Derive page title + breadcrumb from current pathname
+  const pageTitle = ROUTE_LABELS[location.pathname] || "Admin";
+
   // Close sidebar on navigation
   useEffect(() => {
     setSidebarOpen(false);
   }, [location.pathname]);
 
-  const navItems = [
-    ...(isGlobal
-      ? [
-          { to: "/admin/municipios", label: "Municípios", icon: BuildingOfficeIcon },
-          { to: "/admin/insights", label: "Insights IA", icon: SparklesIcon },
-          { to: "/admin/releases", label: "Releases", icon: NewspaperIcon },
-          { to: "/admin/cards", label: "Cards Customizados", icon: Squares2X2Icon },
-          { to: "/admin/planos", label: "Planos & Acesso", icon: ShieldCheckIcon },
-          { to: "/admin/usuarios", label: "Usuários", icon: UsersIcon },
-          { to: "/admin/explorer", label: "Explorador de Dados", icon: CircleStackIcon },
-          { to: "/admin/notificacoes", label: "Notificações", icon: BellIcon },
-          { to: "/admin/projetos-eixos", label: "Eixos de Projetos", icon: FolderOpenIcon },
-        ]
-      : []),
-    { to: "/admin/mandato", label: "Timeline do Mandato", icon: FlagIcon },
-  ];
+  // Avatar initial
+  const avatarInitial = (user?.nome || "A").charAt(0).toUpperCase();
 
-  const linkClass = (isActive) =>
-    `flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-150 ${
-      isActive
-        ? "bg-violet-600 text-white shadow"
-        : "text-slate-300 hover:bg-slate-700 hover:text-white"
-    }`;
+  // Role display
+  const roleLabel = user?.role === "ADMIN_GLOBAL"
+    ? "Admin Global"
+    : user?.role === "ADMIN_MUNICIPIO"
+    ? "Admin Município"
+    : user?.role || "Admin";
+
+  // Nav section renderer
+  const renderNavItems = (items) =>
+    items.map(({ to, label, icon: Icon }) => (
+      <NavLink
+        key={to}
+        to={to}
+        className={({ isActive }) =>
+          `nid-nav-item admin-nav-item ${isActive ? "active admin-active" : ""}`
+        }
+      >
+        <Icon className="w-4 h-4 flex-shrink-0" />
+        <span>{label}</span>
+      </NavLink>
+    ));
 
   const sidebarContent = (
     <>
-      {/* Logo */}
-      <div className="px-6 py-7 border-b border-slate-700 relative">
-        <div className="flex items-center gap-2.5">
-          <div className="w-7 h-7 rounded-lg bg-violet-600 flex items-center justify-center">
-            <Cog6ToothIcon className="w-4 h-4 text-white" />
-          </div>
-          <div>
-            <h1 className="text-sm font-extrabold tracking-tight leading-tight">
-              Painel Admin
-            </h1>
-            <p className="text-xs text-slate-400 mt-0.5 uppercase tracking-widest">
-              {user?.role?.replace("_", " ")}
-            </p>
-          </div>
+      {/* Logo / Header */}
+      <div
+        className="px-5 py-5 relative flex items-center gap-3"
+        style={{ borderBottom: "1px solid var(--border)" }}
+      >
+        <div
+          className="w-8 h-8 rounded-xl flex items-center justify-center flex-shrink-0 text-white font-bold text-sm select-none"
+          style={{ background: "var(--admin-accent)" }}
+        >
+          A
         </div>
+        <div style={{ lineHeight: 1.1 }}>
+          <b style={{ fontSize: 14, color: "var(--text)", letterSpacing: "-0.01em" }}>
+            NID Admin
+          </b>
+          <small
+            style={{
+              display: "block",
+              fontSize: 10,
+              color: "var(--text-mute)",
+              textTransform: "uppercase",
+              letterSpacing: "0.12em",
+              marginTop: 2,
+            }}
+          >
+            Painel Global
+          </small>
+        </div>
+        {/* Mobile close */}
         <button
           onClick={() => setSidebarOpen(false)}
-          className="absolute top-4 right-4 md:hidden p-1 rounded-lg text-slate-400 hover:text-white hover:bg-slate-700 transition-colors"
+          className="absolute top-3 right-3 md:hidden p-1 rounded-lg cursor-pointer"
+          style={{ color: "var(--text-dim)" }}
         >
           <XMarkIcon className="w-5 h-5" />
         </button>
       </div>
 
       {/* Back to dashboard */}
-      <div className="px-4 pt-4 pb-2">
+      <div className="px-3 pt-3 pb-1">
         <button
           onClick={() => navigate("/app")}
-          className="flex items-center gap-2 text-slate-400 hover:text-white text-xs font-medium transition-colors px-3 py-2 rounded-lg hover:bg-slate-700 w-full"
+          className="nid-nav-item w-full"
+          style={{ fontSize: 12 }}
         >
-          <ArrowLeftIcon className="w-3.5 h-3.5" />
+          <ArrowLeftIcon className="w-3.5 h-3.5 flex-shrink-0" />
           Voltar ao Dashboard
         </button>
       </div>
 
       {/* Nav */}
-      <nav className="p-4 space-y-1">
-        <p className="text-xs uppercase text-slate-500 px-3 mb-2 tracking-widest">
-          Administração
-        </p>
-        {navItems.map(({ to, label, icon: Icon }) => (
-          <NavLink key={to} to={to} className={({ isActive }) => linkClass(isActive)}>
-            <Icon className="w-4 h-4 flex-shrink-0" />
-            {label}
-          </NavLink>
-        ))}
+      <nav className="px-3 py-2 space-y-0.5">
+        {isGlobal && (
+          <>
+            {/* Gestão section */}
+            <p className="nid-nav-section">Gestão</p>
+            <div className="space-y-0.5">
+              {renderNavItems(GESTAO_ITEMS)}
+            </div>
+
+            {/* Dados section */}
+            <p className="nid-nav-section" style={{ marginTop: 8 }}>Dados</p>
+            <div className="space-y-0.5">
+              {renderNavItems(DADOS_ITEMS)}
+            </div>
+
+            {/* Extra (if any global-only extras) */}
+            {EXTRA_ITEMS.length > 0 && (
+              <>
+                <p className="nid-nav-section" style={{ marginTop: 8 }}>Outros</p>
+                <div className="space-y-0.5">
+                  {renderNavItems(EXTRA_ITEMS)}
+                </div>
+              </>
+            )}
+          </>
+        )}
+
+        {/* Non-global: just mandato */}
+        {!isGlobal && (
+          <div className="space-y-0.5">
+            {renderNavItems([{ to: "/admin/mandato", label: "Timeline do Mandato", icon: FlagIcon }])}
+          </div>
+        )}
       </nav>
     </>
   );
 
   return (
     <ToastProvider>
-    <div className="flex h-screen bg-slate-50 dark:bg-slate-950">
-      {/* Mobile backdrop */}
-      {sidebarOpen && (
-        <div
-          className="fixed inset-0 bg-black/50 z-40 md:hidden"
-          onClick={() => setSidebarOpen(false)}
-        />
-      )}
-
-      {/* Admin Sidebar */}
-      <aside
-        className={`fixed inset-y-0 left-0 z-50 w-64 bg-gradient-to-b from-slate-900 to-slate-800 text-white flex flex-col shadow-xl transform transition-transform duration-300
-          md:relative md:translate-x-0 md:flex-shrink-0
-          ${sidebarOpen ? "translate-x-0" : "-translate-x-full"}`}
+      <div
+        className="admin-shell flex h-screen"
+        style={{ background: "var(--bg)", backgroundImage: "var(--bg-grad)" }}
       >
-        <div className="flex-1 min-h-0 overflow-y-auto [&::-webkit-scrollbar]:hidden [scrollbar-width:none]">
-          {sidebarContent}
-        </div>
+        {/* Mobile backdrop */}
+        {sidebarOpen && (
+          <div
+            className="fixed inset-0 bg-black/50 z-40 md:hidden"
+            onClick={() => setSidebarOpen(false)}
+          />
+        )}
 
-        {/* Footer */}
-        <div className="flex-shrink-0 p-4 border-t border-slate-700 space-y-3">
-          <div className="px-3 py-2 rounded-lg bg-slate-700/50">
-            <p className="text-xs text-slate-400">Logado como</p>
-            <p className="text-sm font-semibold text-white truncate">
-              {user?.nome || "Usuário"}
-            </p>
-            <p className="text-xs text-violet-400">{user?.role}</p>
+        {/* Admin Sidebar */}
+        <aside
+          className={`nid-sidebar fixed inset-y-0 left-0 z-50 w-64 flex flex-col transform transition-transform duration-300
+            md:relative md:translate-x-0 md:flex-shrink-0
+            ${sidebarOpen ? "translate-x-0" : "-translate-x-full"}`}
+        >
+          <div className="flex-1 min-h-0 overflow-y-auto [&::-webkit-scrollbar]:hidden [scrollbar-width:none]">
+            {sidebarContent}
           </div>
-          <button
-            onClick={toggleTheme}
-            className="w-full flex items-center justify-center gap-2 bg-slate-700 hover:bg-slate-600 transition-colors px-4 py-2 rounded-lg text-sm text-slate-300 hover:text-white"
-          >
-            {theme === "dark" ? <SunIcon className="w-4 h-4" /> : <MoonIcon className="w-4 h-4" />}
-            {theme === "dark" ? "Modo Claro" : "Modo Escuro"}
-          </button>
-          <button
-            onClick={logout}
-            className="w-full flex items-center justify-center gap-2 bg-slate-700 hover:bg-red-600 transition-colors duration-150 px-4 py-2 rounded-lg text-sm text-slate-300 hover:text-white"
-          >
-            <PowerIcon className="w-4 h-4" />
-            Sair
-          </button>
-        </div>
-      </aside>
 
-      {/* Main content */}
-      <main className="flex-1 overflow-y-auto flex flex-col min-w-0">
-        <header className="bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-700 px-4 md:px-8 py-4 flex items-center gap-3 flex-shrink-0">
-          {/* Hamburger */}
-          <button
-            onClick={() => setSidebarOpen(true)}
-            className="md:hidden p-2 rounded-lg text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+          {/* Sidebar Footer */}
+          <div
+            className="flex-shrink-0 p-3 space-y-2"
+            style={{ borderTop: "1px solid var(--border)" }}
           >
-            <Bars3Icon className="w-6 h-6" />
-          </button>
-          <div>
-            <h2 className="text-base font-semibold text-slate-800 dark:text-white">
-              Painel de Administração
-            </h2>
-            <p className="text-xs text-slate-400 dark:text-slate-500 mt-0.5">
-              Gerencie configurações e dados do sistema
-            </p>
+            {/* User card */}
+            <div
+              className="flex items-center gap-3 px-3 py-2.5 rounded-xl"
+              style={{ background: "var(--panel-2)", border: "1px solid var(--border)" }}
+            >
+              {/* Avatar */}
+              <div
+                className="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 text-white text-xs font-bold select-none"
+                style={{ background: "var(--admin-accent)" }}
+              >
+                {avatarInitial}
+              </div>
+              <div className="min-w-0 flex-1">
+                <p
+                  className="text-sm font-semibold truncate leading-tight"
+                  style={{ color: "var(--text)" }}
+                >
+                  {user?.nome || "Usuário"}
+                </p>
+                {/* Role pill */}
+                <span
+                  className="inline-block text-[9px] font-semibold px-1.5 py-0.5 rounded mt-0.5"
+                  style={{
+                    background: "color-mix(in oklab, var(--admin-accent) 18%, transparent)",
+                    color: "var(--admin-accent)",
+                    fontFamily: "var(--font-mono)",
+                    letterSpacing: "0.06em",
+                    textTransform: "uppercase",
+                  }}
+                >
+                  {roleLabel}
+                </span>
+              </div>
+            </div>
+
+            {/* Theme picker + logout */}
+            <div className="flex gap-2">
+              <div className="flex-1 min-w-0">
+                <ThemePicker />
+              </div>
+              <button
+                onClick={logout}
+                className="flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg text-xs cursor-pointer"
+                style={{
+                  background: "var(--panel-2)",
+                  border: "1px solid var(--border)",
+                  color: "var(--text-dim)",
+                }}
+                title="Sair"
+              >
+                <PowerIcon className="w-4 h-4" />
+              </button>
+            </div>
           </div>
-        </header>
+        </aside>
 
-        <div className="flex-1 p-4 md:p-8">
-          <Outlet />
-        </div>
-      </main>
-    </div>
+        {/* Main content */}
+        <main className="flex-1 overflow-y-auto flex flex-col min-w-0">
+          {/* Topbar */}
+          <header
+            className="px-4 md:px-8 py-4 flex items-center gap-3 flex-shrink-0"
+            style={{
+              background: "var(--panel)",
+              borderBottom: "1px solid var(--border)",
+              backdropFilter: "blur(10px)",
+            }}
+          >
+            {/* Hamburger (mobile) */}
+            <button
+              onClick={() => setSidebarOpen(true)}
+              className="md:hidden p-2 rounded-lg cursor-pointer"
+              style={{ color: "var(--text-dim)" }}
+            >
+              <Bars3Icon className="w-6 h-6" />
+            </button>
+
+            <div className="min-w-0 flex-1">
+              {/* Breadcrumb */}
+              <p
+                className="text-xs nid-mono"
+                style={{ color: "var(--text-mute)", letterSpacing: "0.04em" }}
+              >
+                Admin{" "}
+                <span style={{ color: "var(--text-dim)" }}>›</span>{" "}
+                <b style={{ color: "var(--admin-accent)" }}>{pageTitle}</b>
+              </p>
+              {/* Page title */}
+              <h2
+                className="text-base font-semibold mt-0.5 truncate"
+                style={{ color: "var(--text)", fontFamily: "var(--font-display)" }}
+              >
+                {pageTitle}
+              </h2>
+            </div>
+
+            {/* Admin accent indicator pill */}
+            <span
+              className="hidden md:inline-flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-full"
+              style={{
+                background: "color-mix(in oklab, var(--admin-accent) 12%, transparent)",
+                border: "1px solid color-mix(in oklab, var(--admin-accent) 30%, transparent)",
+                color: "var(--admin-accent)",
+                fontFamily: "var(--font-mono)",
+                letterSpacing: "0.04em",
+              }}
+            >
+              <Cog6ToothIcon className="w-3 h-3" />
+              Área Admin
+            </span>
+          </header>
+
+          {/* Page content */}
+          <div
+            className="flex-1 p-4 md:p-8"
+            style={{ color: "var(--text)" }}
+          >
+            <Outlet />
+          </div>
+        </main>
+      </div>
     </ToastProvider>
   );
 }
