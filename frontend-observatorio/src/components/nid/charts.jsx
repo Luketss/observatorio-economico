@@ -540,18 +540,43 @@ export function MultiLineChart({
   data, series, colors, height = 280, glow = "hover",
   yFmt = fmtMoneyShort, tipFmt = fmtMoneyFull,
   yCaption,
-  benchmark,   // { value, label, color? }
-  forecast,    // { steps, method, color?, label? } — applied to ALL series; draws one band per series
-  annotations, // [{ x, kind, label? } | { xRange:[x1,x2], kind }]
+  benchmark,    // { value, label, color? }
+  forecast,     // { steps, method, color?, label? } — applied to ALL series; draws one band per series
+  annotations,  // [{ x, kind, label? } | { xRange:[x1,x2], kind }]
+  // ── focus + context (ticket 06) ──────────────────────────────────────────
+  focusSeries,  // string — when set, switches to focus+context mode
+  focusColor,   // defaults to var(--accent-2)
+  showMedian,   // boolean — draw dashed peer-median line
+  showBand,     // boolean — draw peer min/max band
 }) {
   const id = useId().replace(/:/g, "");
   const [wrapRef, w] = useContainerWidth(800);
   const [hover, setHover] = useState(null);
+  const [hoverSeries, setHoverSeries] = useState(null);
   if (!data || data.length === 0) return <EmptyChart h={height} />;
   const glowMode = resolveGlow(glow);
   const glowHover  = glowMode !== "off";
 
-  const padL = 56, padR = 16, padT = 14, padB = 34;
+  // ── focus + context helpers ──────────────────────────────────────────────
+  const focusMode = !!focusSeries;
+  const resolvedFocusColor = focusColor || "var(--accent-2)";
+  // focusIdx may be -1 if focusSeries is not in series array — graceful fallback
+  const focusIdx = focusMode ? series.indexOf(focusSeries) : -1;
+
+  const colorFor = (si) => {
+    if (!focusMode) return (colors || [])[si] || "var(--accent-1)";
+    if (si === focusIdx) return resolvedFocusColor;
+    return "rgba(120,145,255,.28)";
+  };
+
+  const strokeFor = (si, isHovered) => {
+    if (!focusMode) return 2;
+    if (si === focusIdx) return 2.5;
+    return isHovered ? 1.8 : 1.2;
+  };
+
+  // Widen right padding when focus label is painted at line end
+  const padL = 56, padR = focusMode ? 80 : 16, padT = 14, padB = 34;
   const innerW = w - padL - padR;
   const innerH = height - padT - padB;
 
@@ -597,6 +622,50 @@ export function MultiLineChart({
     fc.map((v, i) => ({ x: sx(data.length + i), y: sy(v), v, isForecast: true }))
   );
 
+  // ── Focused-series last point (for endpoint dot + label) ─────────────────
+  const focusedPts = focusMode && focusIdx >= 0 ? ptsBySeries[focusIdx] : null;
+  const focusedLast = focusedPts ? focusedPts[focusedPts.length - 1] : null;
+
+  // ── Peer median per x-tick ────────────────────────────────────────────────
+  const medianAt = (i) => {
+    const peerVals = series
+      .filter((s) => s !== focusSeries)
+      .map((s) => data[i][s])
+      .filter((v) => v != null && !isNaN(v))
+      .sort((a, b) => a - b);
+    if (peerVals.length === 0) return null;
+    const mid = Math.floor(peerVals.length / 2);
+    return peerVals.length % 2 === 0
+      ? (peerVals[mid - 1] + peerVals[mid]) / 2
+      : peerVals[mid];
+  };
+  const medianPts = (focusMode && showMedian)
+    ? data.map((_, i) => {
+        const mv = medianAt(i);
+        return { x: sx(i), y: sy(mv != null ? mv : 0), v: mv };
+      })
+    : [];
+
+  // ── Peer min/max band path ────────────────────────────────────────────────
+  let bandPath = null;
+  if (focusMode && showBand) {
+    const peerSeries = series.filter((s) => s !== focusSeries);
+    const peerMin = data.map((row) => {
+      const vals = peerSeries.map((s) => row[s]).filter((v) => v != null && !isNaN(v) && isFinite(v));
+      return vals.length ? Math.min(...vals) : null;
+    });
+    const peerMax = data.map((row) => {
+      const vals = peerSeries.map((s) => row[s]).filter((v) => v != null && !isNaN(v) && isFinite(v));
+      return vals.length ? Math.max(...vals) : null;
+    });
+    const validIndices = peerMin.map((v, i) => (v != null && peerMax[i] != null ? i : null)).filter((i) => i != null);
+    if (validIndices.length >= 2) {
+      const upper = validIndices.map((i) => `${sx(i)} ${sy(peerMax[i])}`).join(" L ");
+      const lower = [...validIndices].reverse().map((i) => `${sx(i)} ${sy(peerMin[i])}`).join(" L ");
+      bandPath = `M ${upper} L ${lower} Z`;
+    }
+  }
+
   const handleMove = (e) => {
     const rect = e.currentTarget.getBoundingClientRect();
     const px = ((e.clientX - rect.left) / rect.width) * w;
@@ -611,15 +680,21 @@ export function MultiLineChart({
   const isHoverForecast = hover != null && hover >= data.length;
 
   return (
-    <div className="nid-chart-wrap" ref={wrapRef} onMouseLeave={() => setHover(null)}>
+    <div className="nid-chart-wrap" ref={wrapRef} onMouseLeave={() => { setHover(null); setHoverSeries(null); }}>
       <svg viewBox={`0 0 ${w} ${height}`}>
         <defs>
-          {colors.map((c, i) => (
+          {(colors || []).map((c, i) => (
             <filter key={i} id={`mglow-${id}-${i}`} x="-50%" y="-50%" width="200%" height="200%">
               <feGaussianBlur stdDeviation="2.5" result="b" />
               <feMerge><feMergeNode in="b" /><feMergeNode in="SourceGraphic" /></feMerge>
             </filter>
           ))}
+          {focusMode && (
+            <filter id={`mglow-${id}-focus`} x="-50%" y="-50%" width="200%" height="200%">
+              <feGaussianBlur stdDeviation="2.5" result="b" />
+              <feMerge><feMergeNode in="b" /><feMergeNode in="SourceGraphic" /></feMerge>
+            </filter>
+          )}
         </defs>
         {ticks.map((t, i) => (
           <g key={i}>
@@ -664,12 +739,87 @@ export function MultiLineChart({
           );
         })}
 
-        {/* ── Real series paths ── */}
-        {ptsBySeries.map((pts, si) => (
-          <g key={si}>
-            <path d={smoothPath(pts)} stroke={colors[si]} strokeWidth="2" fill="none" strokeLinecap="round" />
-          </g>
-        ))}
+        {/* ── Peer min/max band (behind all lines) ── */}
+        {focusMode && showBand && bandPath && (
+          <path d={bandPath} fill="rgba(120,145,255,.06)" stroke="none" />
+        )}
+
+        {/* ── Real series paths ── peer lines first, focused line last (on top) ── */}
+        {focusMode ? (
+          <>
+            {/* Peer lines */}
+            {ptsBySeries.map((pts, si) => {
+              if (si === focusIdx) return null; // drawn after
+              const isHov = hoverSeries === si;
+              return (
+                <g key={si}
+                  onMouseEnter={() => setHoverSeries(si)}
+                  onMouseLeave={() => setHoverSeries(null)}>
+                  <path
+                    d={smoothPath(pts)}
+                    stroke={isHov ? "var(--accent-1)" : colorFor(si)}
+                    strokeWidth={strokeFor(si, isHov)}
+                    fill="none" strokeLinecap="round"
+                    opacity={isHov ? 1 : 0.55}
+                    style={{ transition: "stroke 0.15s, opacity 0.15s" }}
+                  />
+                  {/* Invisible wider hit target for hover */}
+                  <path d={smoothPath(pts)} stroke="transparent" strokeWidth="12" fill="none" />
+                </g>
+              );
+            })}
+
+            {/* Peer median dashed line */}
+            {showMedian && medianPts.length >= 2 && (
+              <>
+                <path
+                  d={smoothPath(medianPts)}
+                  stroke="var(--text-dim)" strokeWidth="1.4"
+                  strokeDasharray="5 4" fill="none"
+                />
+                <text
+                  x={medianPts[medianPts.length - 1].x + 6}
+                  y={medianPts[medianPts.length - 1].y + 4}
+                  className="nid-axis-text"
+                  style={{ fill: "var(--text-dim)" }}>
+                  mediana
+                </text>
+              </>
+            )}
+
+            {/* Focused line — drawn last so it sits on top */}
+            {focusIdx >= 0 && (
+              <g>
+                <path
+                  d={smoothPath(ptsBySeries[focusIdx])}
+                  stroke={resolvedFocusColor}
+                  strokeWidth={2.5}
+                  fill="none" strokeLinecap="round"
+                />
+              </g>
+            )}
+
+            {/* Endpoint dot + label for focused series */}
+            {focusedLast && (
+              <>
+                <circle cx={focusedLast.x} cy={focusedLast.y} r="5" fill={resolvedFocusColor} />
+                <text
+                  x={focusedLast.x + 8} y={focusedLast.y + 4}
+                  className="nid-axis-text"
+                  style={{ fill: resolvedFocusColor, fontSize: 11, fontWeight: 700 }}>
+                  {focusSeries}
+                </text>
+              </>
+            )}
+          </>
+        ) : (
+          /* Legacy per-series-color rendering */
+          ptsBySeries.map((pts, si) => (
+            <g key={si}>
+              <path d={smoothPath(pts)} stroke={(colors || [])[si] || "var(--accent-1)"} strokeWidth="2" fill="none" strokeLinecap="round" />
+            </g>
+          ))
+        )}
 
         {/* ── Forecast paths (one per series) ── */}
         {hasForecast && ptsBySeries.map((pts, si) => {
@@ -709,14 +859,23 @@ export function MultiLineChart({
               stroke={isHoverForecast ? forecastColor : "var(--text-dim)"}
               strokeOpacity="0.3" strokeDasharray="2 3" />
             {/* Real series hover dots */}
-            {!isHoverForecast && ptsBySeries.map((pts, si) => (
-              <g key={si}>
-                {glowHover && (
-                  <circle cx={pts[hover].x} cy={pts[hover].y} r="8" fill={colors[si]} opacity="0.4" filter={`url(#mglow-${id}-${si})`} />
-                )}
-                <circle cx={pts[hover].x} cy={pts[hover].y} r="4" fill="var(--bg)" stroke={colors[si]} strokeWidth="2" />
-              </g>
-            ))}
+            {!isHoverForecast && ptsBySeries.map((pts, si) => {
+              const dotColor = focusMode ? colorFor(si) : ((colors || [])[si] || "var(--accent-1)");
+              const glowFilter = focusMode && si === focusIdx
+                ? `url(#mglow-${id}-focus)`
+                : `url(#mglow-${id}-${si})`;
+              return (
+                <g key={si}>
+                  {glowHover && !focusMode && (
+                    <circle cx={pts[hover].x} cy={pts[hover].y} r="8" fill={dotColor} opacity="0.4" filter={glowFilter} />
+                  )}
+                  {glowHover && focusMode && si === focusIdx && (
+                    <circle cx={pts[hover].x} cy={pts[hover].y} r="8" fill={resolvedFocusColor} opacity="0.4" filter={glowFilter} />
+                  )}
+                  <circle cx={pts[hover].x} cy={pts[hover].y} r="4" fill="var(--bg)" stroke={dotColor} strokeWidth="2" />
+                </g>
+              );
+            })}
             {/* Forecast hover dots */}
             {isHoverForecast && fcPtsBySeries.map((fc, si) => {
               const fcIdx = hover - data.length;
@@ -775,10 +934,45 @@ export function MultiLineChart({
                 regressão linear, {forecastN} pts
               </div>
             </>
+          ) : focusMode ? (
+            /* Focus-mode tooltip: focused first (bold) → peers (dimmed) → median */
+            (() => {
+              const focusValue = focusIdx >= 0 ? (data[hover][focusSeries] || 0) : null;
+              const peers = series
+                .filter((s) => s !== focusSeries)
+                .map((s) => ({ name: s, value: data[hover][s] || 0 }))
+                .sort((a, b) => b.value - a.value);
+              const medianValue = medianAt(hover);
+              return (
+                <>
+                  {focusIdx >= 0 && focusValue != null && (
+                    <div className="tip-row" style={{ fontWeight: 700 }}>
+                      <span className="name">
+                        <span className="swatch" style={{ background: resolvedFocusColor }} />
+                        {focusSeries}
+                      </span>
+                      <span>{tipFmt(focusValue)}</span>
+                    </div>
+                  )}
+                  {peers.map((p) => (
+                    <div className="tip-row" key={p.name} style={{ opacity: 0.7 }}>
+                      <span className="name">{p.name}</span>
+                      <span>{tipFmt(p.value)}</span>
+                    </div>
+                  ))}
+                  {showMedian && medianValue != null && (
+                    <div className="tip-row" style={{ borderTop: "1px solid var(--border)", paddingTop: 4, marginTop: 2 }}>
+                      <span className="name">mediana</span>
+                      <span>{tipFmt(medianValue)}</span>
+                    </div>
+                  )}
+                </>
+              );
+            })()
           ) : (
             series.map((s, si) => (
               <div className="tip-row" key={s}>
-                <span className="name"><span className="swatch" style={{ background: colors[si] }}></span>{s}</span>
+                <span className="name"><span className="swatch" style={{ background: (colors || [])[si] || "var(--accent-1)" }}></span>{s}</span>
                 <span>{tipFmt(data[hover][s] || 0)}</span>
               </div>
             ))

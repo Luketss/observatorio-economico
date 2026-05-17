@@ -9,6 +9,7 @@ import FilterBar from "../../components/FilterBar";
 import KpiCard from "../../components/KpiCard";
 import PlanGate from "../../components/PlanGate";
 import { NidPanel, NidLegend } from "../../components/nid/Panel";
+import { useAuth } from "../../context/AuthContext";
 import {
   AreaLineChart,
   StackedBarChart,
@@ -21,6 +22,9 @@ const fmtBRL = (v) =>
   `R$ ${Number(v).toLocaleString("pt-BR", { maximumFractionDigits: 0 })}`;
 
 export default function PibPage() {
+  const { user } = useAuth();
+  const ownCity = user?.municipio?.nome;
+
   const [rawSerie, setRawSerie] = useState([]);
   const [resumo, setResumo] = useState(null);
   const [comparativo, setComparativo] = useState([]);
@@ -226,6 +230,9 @@ export default function PibPage() {
             height={280}
             yFmt={fmtMoneyShort}
             tipFmt={fmtMoneyFull}
+            focusSeries={ownCity}
+            showMedian
+            showBand
           />
         </NidPanel>
       )}
