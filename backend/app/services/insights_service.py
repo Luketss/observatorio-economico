@@ -1135,6 +1135,7 @@ def gerar_prioridades(db: Session, municipio_id: int) -> InsightIA:
     try:
         prioridades = json.loads(raw)
         if not isinstance(prioridades, list):
+            logger.warning("gerar_prioridades: expected list, got %s — storing fallback", type(prioridades).__name__)
             prioridades = [{"titulo": "Prioridade", "observacao": raw, "dataset_referencia": None}]
     except json.JSONDecodeError:
         logger.warning("gerar_prioridades: malformed JSON from Claude, storing fallback")
