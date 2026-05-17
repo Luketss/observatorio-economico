@@ -8,6 +8,7 @@ import {
 } from "@heroicons/react/24/outline";
 import { useAuth } from "../context/AuthContext";
 import api from "../services/api";
+import { Sparkline } from "./nid/charts";
 
 /**
  * Shared KPI indicator card.
@@ -20,8 +21,14 @@ import api from "../services/api";
  *
  * Props:
  *   label        — string (required)
+ *   period       — string? — appended to label as "· 2023"
  *   value        — string (required)
- *   sub          — string? — subtitle below value
+ *   unit         — string? — softer-weight unit rendered after value (e.g. "Bi")
+ *   sub          — string? — subtitle below value (deprecated in favour of period)
+ *   delta        — { value: number, direction: "up"|"down"|"flat", fmt?: fn }? — delta chip
+ *   deltaLabel   — string? — text after the delta chip (e.g. "vs 2022")
+ *   spark        — number[]? — sparkline data array
+ *   sparkColor   — string? — CSS color for sparkline (defaults to --accent-1 or --accent-2 on down)
  *   icon         — Heroicon component (optional)
  *   color        — { bg, text } tailwind strings (optional, for icon background)
  *   accent       — tailwind color class for value text (optional)
@@ -29,10 +36,29 @@ import api from "../services/api";
  *   dataset      — string — page key e.g. "pib"
  *   indicadorKey — string — slug e.g. "ultimo_ano"
  */
+
+function DeltaChip({ value, direction }) {
+  if (value == null) return null;
+  const arrow = direction === "up" ? "▲" : direction === "down" ? "▼" : "—";
+  const sign = value > 0 ? "+" : value < 0 ? "−" : "±";
+  const cls = `nid-delta ${direction || "flat"}`;
+  return (
+    <span className={cls}>
+      {arrow} {sign}{Math.abs(value).toFixed(1)}%
+    </span>
+  );
+}
+
 export default function KpiCard({
   label,
+  period,
   value,
+  unit,
   sub,
+  delta,
+  deltaLabel,
+  spark,
+  sparkColor,
   icon: Icon,
   color,
   accent,
@@ -82,6 +108,11 @@ export default function KpiCard({
   const showInfoIcon = hasIndicador && (isGlobal || info?.tooltip || info?.descricao);
   const hasContent = info?.tooltip || info?.descricao;
 
+  const fullLabel = period ? `${label} · ${period}` : label;
+  const autoSparkColor =
+    sparkColor || (delta?.direction === "down" ? "var(--accent-2)" : "var(--accent-1)");
+  const showFoot = delta || deltaLabel || sub;
+
   return (
     <>
       <motion.div
@@ -93,13 +124,16 @@ export default function KpiCard({
         <div className="flex items-start justify-between gap-2">
           {/* Main content */}
           <div className="flex-1 min-w-0">
-            <p className="nid-kpi-label">{label}</p>
+            <p className="nid-kpi-label">{fullLabel}</p>
             <p className={`nid-kpi-value ${accent || ""}`}>
               {value}
+              {unit && <span className="nid-unit"> {unit}</span>}
             </p>
-            {sub && (
+            {showFoot && (
               <p className="nid-kpi-foot">
-                <span className="foot-text">{sub}</span>
+                {delta && <DeltaChip {...delta} />}
+                {deltaLabel && <span>{deltaLabel}</span>}
+                {sub && <span className="foot-text" style={{ marginLeft: delta || deltaLabel ? "auto" : undefined }}>{sub}</span>}
               </p>
             )}
           </div>
@@ -148,6 +182,12 @@ export default function KpiCard({
             )}
           </div>
         </div>
+
+        {spark && spark.length > 1 && (
+          <div className="nid-kpi-spark">
+            <Sparkline data={spark} color={autoSparkColor} />
+          </div>
+        )}
       </motion.div>
 
       {/* Description Modal */}
