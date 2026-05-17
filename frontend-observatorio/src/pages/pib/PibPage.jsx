@@ -184,6 +184,11 @@ export default function PibPage() {
           label="PIB Total"
           yFmt={fmtMoneyShort}
           tipFmt={fmtMoneyFull}
+          forecast={{ steps: 1, method: "linear-6" }}
+          annotations={[
+            { xRange: ["2020", "2021"], kind: "negative" },
+            { x: "2020", kind: "negative", label: "COVID" },
+          ]}
         />
       </NidPanel>
 

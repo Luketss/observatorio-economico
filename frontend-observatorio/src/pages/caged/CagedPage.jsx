@@ -108,6 +108,16 @@ export default function CagedPage() {
       .map(([ano, v]) => ({ label: String(ano), value: v }));
   }, [serie]);
 
+  // Auto-annotate extremes on the saldo chart (ticket 04)
+  const saldoAnnotations = useMemo(() => {
+    if (!saldoAnual || saldoAnual.length < 2) return [];
+    const sorted = [...saldoAnual].sort((a, b) => a.value - b.value);
+    return [
+      { x: sorted[0].label, kind: "negative", label: "mínimo" },
+      { x: sorted[sorted.length - 1].label, kind: "positive", label: "máximo" },
+    ];
+  }, [saldoAnual]);
+
   // Spark series
   const admissoesSpark = useMemo(() => {
     const acc = new Map();
@@ -390,6 +400,7 @@ export default function CagedPage() {
             label="Saldo"
             yFmt={fmtNumberShort}
             tipFmt={fmtNumber}
+            annotations={saldoAnnotations}
           />
           <NidLegend items={[{ name: "Saldo (admissões − desligamentos)", color: A5 }]} />
         </NidPanel>

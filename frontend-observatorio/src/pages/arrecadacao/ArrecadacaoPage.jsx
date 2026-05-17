@@ -7,10 +7,10 @@ import ReleasesPanel from "../../components/ReleasesPanel";
 import InfoTooltip from "../../components/InfoTooltip";
 import FilterBar from "../../components/FilterBar";
 import KpiCard from "../../components/KpiCard";
+import { NidPanel } from "../../components/nid/Panel";
+import { AreaLineChart, fmtMoneyShort, fmtMoneyFull } from "../../components/nid/charts";
 import {
   ResponsiveContainer,
-  AreaChart,
-  Area,
   BarChart,
   Bar,
   CartesianGrid,
@@ -54,6 +54,12 @@ export default function ArrecadacaoPage() {
       return true;
     });
   }, [rawSerie, filters]);
+
+  // NID chart shape for AreaLineChart
+  const areaData = useMemo(
+    () => serie.map((d) => ({ label: String(d.periodo), value: d.total || 0 })),
+    [serie]
+  );
 
   const cards = [
     {
@@ -126,47 +132,17 @@ export default function ArrecadacaoPage() {
         </div>
       )}
 
-      <div className="bg-white dark:bg-slate-900 p-6 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-800">
-        <h3 className="text-base font-bold mb-5 text-slate-800 dark:text-white">
-          Série Histórica Mensal
-        </h3>
-        {serie.length === 0 ? (
-          <div className="h-64 flex items-center justify-center text-slate-400 dark:text-slate-500 text-sm">
-            Sem dados disponíveis
-          </div>
-        ) : (
-          <div className="h-44 md:h-64">
-            <ResponsiveContainer width="100%" height="100%">
-              <AreaChart data={serie}>
-                <defs>
-                  <linearGradient id="gradArrecadacao" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#6366f1" stopOpacity={0.15} />
-                    <stop offset="95%" stopColor="#6366f1" stopOpacity={0} />
-                  </linearGradient>
-                </defs>
-                <CartesianGrid strokeDasharray="3 3" stroke={ct.grid} />
-                <XAxis dataKey="periodo" tick={{ fontSize: 11, fill: ct.tick }} stroke={ct.axis} />
-                <YAxis tick={{ fontSize: 11, fill: ct.tick }} stroke={ct.axis} width={70}
-                  tickFormatter={(v) =>
-                    `${(v / 1_000_000).toFixed(0)}M`
-                  }
-                />
-                <Tooltip
-                  formatter={(v) => [fmtBRL(v), "Total"]}
-                  labelFormatter={(l) => `Período: ${l}`}
-                />
-                <Area
-                  type="monotone"
-                  dataKey="total"
-                  stroke="#6366f1"
-                  strokeWidth={2.5}
-                  fill="url(#gradArrecadacao)"
-                />
-              </AreaChart>
-            </ResponsiveContainer>
-          </div>
-        )}
-      </div>
+      <NidPanel title="Série Histórica Mensal" sub="receita total por período">
+        <AreaLineChart
+          data={areaData}
+          height={280}
+          color="var(--accent-3)"
+          label="Total Arrecadado"
+          yFmt={fmtMoneyShort}
+          tipFmt={fmtMoneyFull}
+          forecast={{ steps: 2, method: "linear-6" }}
+        />
+      </NidPanel>
 
       {/* ICMS / IPVA / IPI Breakdown */}
       {serie.length > 0 && (

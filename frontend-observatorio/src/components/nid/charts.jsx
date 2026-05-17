@@ -8,6 +8,32 @@ function resolveGlow(glow) {
   return glow;                          // "hover" | "always" | "off"
 }
 
+// ────────── linear forecast (ticket 04) ──────────
+function linearForecast(values, steps = 1, n = 6) {
+  const tail = values.slice(-n);
+  const N = tail.length;
+  if (N < 2) return [];
+  const xMean = (N - 1) / 2;
+  const yMean = tail.reduce((s, v) => s + v, 0) / N;
+  let num = 0, den = 0;
+  for (let i = 0; i < N; i++) {
+    num += (i - xMean) * (tail[i] - yMean);
+    den += (i - xMean) ** 2;
+  }
+  const slope = den ? num / den : 0;
+  const intercept = yMean - slope * xMean;
+  const out = [];
+  for (let i = 1; i <= steps; i++) out.push(intercept + slope * (N - 1 + i));
+  return out;
+}
+
+// Parse "linear-N" method string → N points used for regression
+function parseN(method) {
+  if (!method) return 6;
+  const m = String(method).match(/linear-(\d+)/);
+  return m ? parseInt(m[1], 10) : 6;
+}
+
 // ────────── helpers ──────────
 const smoothPath = (pts) => {
   if (pts.length < 2) return "";
@@ -102,6 +128,9 @@ export function AreaLineChart({
   data, height = 280, glow = "hover", color = "var(--accent-1)",
   yFmt = fmtMoneyShort, tipFmt = fmtMoneyFull, label = "PIB Total",
   yCaption,
+  benchmark,   // { value, label, color? }
+  forecast,    // { steps, method, color?, label? }
+  annotations, // [{ x, kind, label? } | { xRange:[x1,x2], kind }]
 }) {
   const id = useId().replace(/:/g, "");
   const [wrapRef, w] = useContainerWidth(800);
@@ -115,28 +144,66 @@ export function AreaLineChart({
   const innerW = w - padL - padR;
   const innerH = height - padT - padB;
 
+  // ── forecast values ──────────────────────────────────────────────────────
+  const forecastSteps  = forecast?.steps  ?? 1;
+  const forecastN      = parseN(forecast?.method);
+  const forecastColor  = forecast?.color  || "var(--accent-3)";
+  const forecastLabel  = forecast?.label  || "projeção";
+  const forecastVals   = forecast ? linearForecast(data.map((d) => d.value), forecastSteps, forecastN) : [];
+
+  // Extended x domain: real labels + projected labels
+  const lastLabel = data[data.length - 1]?.label ?? "";
+  const projLabels = forecastVals.map((_, i) => {
+    // Try to make a "next period" label.  If label is a 4-digit year, increment it.
+    const base = parseInt(lastLabel, 10);
+    const suffix = "P";
+    return isNaN(base) ? `${lastLabel}+${i + 1}${suffix}` : `${base + i + 1} ${suffix}`;
+  });
+  const allLabels  = [...data.map((d) => d.label), ...projLabels];
+  const totalPts   = allLabels.length;
+
+  // ── Y scale (expand for benchmark / forecast) ─────────────────────────
   const ys = data.map((d) => d.value);
-  const yMax = Math.max(...ys) * 1.12;
-  const ticks = niceTicks(0, yMax, yCaption ? 3 : 4);
+  const allYs = [...ys, ...forecastVals, ...(benchmark?.value != null ? [benchmark.value] : [])];
+  const yMaxRaw = Math.max(...allYs) * 1.12;
+  const ticks = niceTicks(0, yMaxRaw, yCaption ? 3 : 4);
   const tickFmt = yCaption ? fmtNumberShort : yFmt;
   const yScaleMax = ticks[ticks.length - 1];
-  const sx = (i) => padL + (i / (data.length - 1 || 1)) * innerW;
+
+  // ── Coordinate mappers ────────────────────────────────────────────────
+  // sx maps a global index over allLabels
+  const sx = (i) => padL + (i / (totalPts - 1 || 1)) * innerW;
   const sy = (v) => padT + (1 - v / yScaleMax) * innerH;
 
-  const pts = data.map((d, i) => ({ x: sx(i), y: sy(d.value), v: d.value, label: d.label }));
+  // Real points (indices 0..data.length-1)
+  const pts = data.map((d, i) => ({ x: sx(i), y: sy(d.value), v: d.value, label: d.label, isForecast: false }));
+  // Forecast points (indices data.length..totalPts-1)
+  const fcPts = forecastVals.map((v, i) => ({
+    x: sx(data.length + i),
+    y: sy(v),
+    v,
+    label: projLabels[i],
+    isForecast: true,
+  }));
+
   const path = smoothPath(pts);
   const area = `${path} L ${pts[pts.length - 1].x} ${padT + innerH} L ${pts[0].x} ${padT + innerH} Z`;
+
+  // All hoverable points (real + forecast)
+  const allPts = [...pts, ...fcPts];
 
   const handleMove = (e) => {
     const rect = e.currentTarget.getBoundingClientRect();
     const px = ((e.clientX - rect.left) / rect.width) * w;
     let best = 0, bestD = Infinity;
-    pts.forEach((p, i) => {
+    allPts.forEach((p, i) => {
       const d = Math.abs(p.x - px);
       if (d < bestD) { bestD = d; best = i; }
     });
     setHover(best);
   };
+
+  const hoveredPt = hover != null ? allPts[hover] : null;
 
   return (
     <div className="nid-chart-wrap" ref={wrapRef} onMouseLeave={() => setHover(null)}>
@@ -167,11 +234,34 @@ export function AreaLineChart({
             {yCaption}
           </text>
         )}
-        {data.map((d, i) =>
-          (i % Math.ceil(data.length / 10) === 0 || i === data.length - 1) && (
-            <text key={i} x={sx(i)} y={height - padB + 18} className="nid-axis-text" textAnchor="middle">{d.label}</text>
-          )
-        )}
+        {/* X-axis labels — show every ~10th real label + all forecast labels */}
+        {allLabels.map((lbl, i) => {
+          const isReal = i < data.length;
+          if (isReal && !(i % Math.ceil(data.length / 10) === 0 || i === data.length - 1)) return null;
+          return (
+            <text key={i} x={sx(i)} y={height - padB + 18}
+              className="nid-axis-text" textAnchor="middle"
+              style={!isReal ? { fill: forecastColor } : undefined}>
+              {lbl}
+            </text>
+          );
+        })}
+
+        {/* ── Range annotations (behind everything) ── */}
+        {annotations?.filter((a) => a.xRange).map((a, i) => {
+          const i0 = data.findIndex((d) => d.label === a.xRange[0]);
+          const i1 = data.findIndex((d) => d.label === a.xRange[1]);
+          if (i0 < 0 || i1 < 0) return null;
+          const fill   = a.kind === "negative" ? "rgba(255,61,146,.06)" : "rgba(0,229,255,.06)";
+          const stroke = a.kind === "negative" ? "rgba(255,61,146,.15)" : "rgba(0,229,255,.15)";
+          return (
+            <rect key={`band-${i}`}
+              x={pts[i0].x} y={padT}
+              width={pts[i1].x - pts[i0].x}
+              height={innerH}
+              fill={fill} stroke={stroke} />
+          );
+        })}
 
         <path d={area} fill={`url(#area-${id})`} />
         {/* Resting glow halo: only when glowAlways */}
@@ -180,28 +270,107 @@ export function AreaLineChart({
         )}
         <path d={path} stroke={color} strokeWidth="2.25" fill="none" strokeLinecap="round" strokeLinejoin="round" />
 
+        {/* ── Forecast path ── */}
+        {forecast && fcPts.length > 0 && (
+          <path
+            d={`M ${pts[pts.length - 1].x} ${pts[pts.length - 1].y} L ${fcPts.map((p) => `${p.x} ${p.y}`).join(" L ")}`}
+            stroke={forecastColor} strokeWidth="2" strokeDasharray="3 4" fill="none" opacity="0.9"
+          />
+        )}
+
+        {/* ── Benchmark line ── */}
+        {benchmark && (
+          <g>
+            <line
+              x1={padL} x2={w - padR}
+              y1={sy(benchmark.value)} y2={sy(benchmark.value)}
+              stroke={benchmark.color || "var(--text-dim)"}
+              strokeDasharray="6 5" strokeWidth="1.2" opacity="0.55"
+            />
+            <text
+              x={w - padR} y={sy(benchmark.value) - 5}
+              textAnchor="end"
+              className="nid-axis-text"
+              style={{ fill: benchmark.color || "var(--text-dim)", letterSpacing: ".06em" }}
+            >
+              {benchmark.label} · {tipFmt(benchmark.value)}
+            </text>
+          </g>
+        )}
+
+        {/* ── Real data dots ── */}
         {pts.map((p, i) => (
           <g key={i}>
-            {/* Per-point glow halo: only on hovered point */}
             {glowHover && hover === i && (
               <circle cx={p.x} cy={p.y} r="8" fill={color} opacity="0.4" filter={`url(#glow-${id})`} />
             )}
             <circle cx={p.x} cy={p.y} r={hover === i ? 4.5 : 2.5} fill="var(--bg)" stroke={color} strokeWidth="2" />
           </g>
         ))}
-        {hover != null && (
-          <line x1={pts[hover].x} x2={pts[hover].x} y1={padT} y2={padT + innerH} stroke={color} strokeOpacity="0.4" strokeDasharray="2 3" />
+
+        {/* ── Forecast dots ── */}
+        {fcPts.map((p, i) => (
+          <g key={`fc-${i}`}>
+            {glowHover && hover === (pts.length + i) && (
+              <circle cx={p.x} cy={p.y} r="8" fill={forecastColor} opacity="0.4" filter={`url(#glow-${id})`} />
+            )}
+            <circle cx={p.x} cy={p.y}
+              r={hover === (pts.length + i) ? 4.5 : 3}
+              fill="var(--bg)" stroke={forecastColor} strokeWidth="2" strokeDasharray="2 2" />
+          </g>
+        ))}
+
+        {/* Crosshair */}
+        {hoveredPt && (
+          <line x1={hoveredPt.x} x2={hoveredPt.x} y1={padT} y2={padT + innerH}
+            stroke={hoveredPt.isForecast ? forecastColor : color}
+            strokeOpacity="0.4" strokeDasharray="2 3" />
         )}
+
+        {/* ── Point annotations (on top of lines) ── */}
+        {annotations?.filter((a) => a.x != null).map((a, i) => {
+          const idx = data.findIndex((d) => d.label === a.x);
+          if (idx < 0) return null;
+          const p = pts[idx];
+          const fill = a.kind === "negative" ? "var(--accent-2)"
+                     : a.kind === "positive" ? "var(--accent-5)"
+                     : "var(--accent-1)";
+          return (
+            <g key={`ann-${i}`}>
+              <circle cx={p.x} cy={p.y} r="5" fill="var(--bg)" stroke={fill} strokeWidth="2" />
+              {a.label && (
+                <foreignObject x={p.x - 60} y={p.y - 38} width="120" height="22">
+                  <div xmlns="http://www.w3.org/1999/xhtml" className={`nid-pin${a.kind ? ` ${a.kind}` : ""}`}>
+                    {a.label}
+                  </div>
+                </foreignObject>
+              )}
+            </g>
+          );
+        })}
+
         <rect x={padL} y={padT} width={innerW} height={innerH} fill="transparent" onMouseMove={handleMove} />
       </svg>
 
-      {hover != null && (
-        <div className="nid-tip" style={{ left: `${(pts[hover].x / w) * 100}%`, top: `${(pts[hover].y / height) * 100}%` }}>
-          <div className="tip-label">{pts[hover].label}</div>
-          <div className="tip-row">
-            <span className="name"><span className="swatch" style={{ background: color }}></span>{label}</span>
-            <span>{tipFmt(pts[hover].v)}</span>
-          </div>
+      {hoveredPt && (
+        <div className="nid-tip" style={{ left: `${(hoveredPt.x / w) * 100}%`, top: `${(hoveredPt.y / height) * 100}%` }}>
+          <div className="tip-label">{hoveredPt.label}</div>
+          {hoveredPt.isForecast ? (
+            <>
+              <div className="tip-row">
+                <span className="name"><span className="swatch" style={{ background: forecastColor }}></span>{forecastLabel.toUpperCase()}</span>
+                <span>{tipFmt(hoveredPt.v)}</span>
+              </div>
+              <div style={{ fontSize: 10, color: "var(--text-mute)", marginTop: 3, fontFamily: "var(--font-mono)" }}>
+                regressão linear, {forecastN} pts
+              </div>
+            </>
+          ) : (
+            <div className="tip-row">
+              <span className="name"><span className="swatch" style={{ background: color }}></span>{label}</span>
+              <span>{tipFmt(hoveredPt.v)}</span>
+            </div>
+          )}
         </div>
       )}
     </div>
@@ -371,6 +540,9 @@ export function MultiLineChart({
   data, series, colors, height = 280, glow = "hover",
   yFmt = fmtMoneyShort, tipFmt = fmtMoneyFull,
   yCaption,
+  benchmark,   // { value, label, color? }
+  forecast,    // { steps, method, color?, label? } — applied to ALL series; draws one band per series
+  annotations, // [{ x, kind, label? } | { xRange:[x1,x2], kind }]
 }) {
   const id = useId().replace(/:/g, "");
   const [wrapRef, w] = useContainerWidth(800);
@@ -382,25 +554,61 @@ export function MultiLineChart({
   const padL = 56, padR = 16, padT = 14, padB = 34;
   const innerW = w - padL - padR;
   const innerH = height - padT - padB;
-  const allVals = data.flatMap((d) => series.map((s) => d[s] || 0));
-  const yMax = Math.max(...allVals) * 1.12;
-  const ticks = niceTicks(0, yMax, yCaption ? 3 : 4);
+
+  // ── forecast per series ──────────────────────────────────────────────────
+  const forecastSteps = forecast?.steps ?? 1;
+  const forecastN     = parseN(forecast?.method);
+  const forecastColor = forecast?.color || "var(--accent-3)";
+  const forecastLabel = forecast?.label || "projeção";
+  // one forecast array per series
+  const forecastValsBySeries = forecast
+    ? series.map((s) => linearForecast(data.map((d) => d[s] || 0), forecastSteps, forecastN))
+    : series.map(() => []);
+  const hasForecast = forecast && forecastValsBySeries.some((fc) => fc.length > 0);
+
+  // Extended x domain
+  const lastLabel = data[data.length - 1]?.label ?? "";
+  const projLabels = hasForecast
+    ? forecastValsBySeries[0].map((_, i) => {
+        const base = parseInt(lastLabel, 10);
+        return isNaN(base) ? `${lastLabel}+${i + 1}P` : `${base + i + 1} P`;
+      })
+    : [];
+  const allLabels = [...data.map((d) => d.label), ...projLabels];
+  const totalPts  = allLabels.length;
+
+  // ── Y scale (expand for benchmark / forecast) ────────────────────────
+  const allVals = [
+    ...data.flatMap((d) => series.map((s) => d[s] || 0)),
+    ...forecastValsBySeries.flat(),
+    ...(benchmark?.value != null ? [benchmark.value] : []),
+  ];
+  const yMaxRaw = Math.max(...allVals) * 1.12;
+  const ticks = niceTicks(0, yMaxRaw, yCaption ? 3 : 4);
   const tickFmt = yCaption ? fmtNumberShort : yFmt;
   const yScaleMax = ticks[ticks.length - 1];
-  const sx = (i) => padL + (i / (data.length - 1 || 1)) * innerW;
+
+  const sx = (i) => padL + (i / (totalPts - 1 || 1)) * innerW;
   const sy = (v) => padT + (1 - v / yScaleMax) * innerH;
-  const ptsBySeries = series.map((s) => data.map((d, i) => ({ x: sx(i), y: sy(d[s] || 0), v: d[s] || 0 })));
+  const ptsBySeries = series.map((s) =>
+    data.map((d, i) => ({ x: sx(i), y: sy(d[s] || 0), v: d[s] || 0 }))
+  );
+  const fcPtsBySeries = forecastValsBySeries.map((fc) =>
+    fc.map((v, i) => ({ x: sx(data.length + i), y: sy(v), v, isForecast: true }))
+  );
 
   const handleMove = (e) => {
     const rect = e.currentTarget.getBoundingClientRect();
     const px = ((e.clientX - rect.left) / rect.width) * w;
     let best = 0, bestD = Infinity;
-    for (let i = 0; i < data.length; i++) {
+    for (let i = 0; i < totalPts; i++) {
       const d = Math.abs(sx(i) - px);
       if (d < bestD) { bestD = d; best = i; }
     }
     setHover(best);
   };
+
+  const isHoverForecast = hover != null && hover >= data.length;
 
   return (
     <div className="nid-chart-wrap" ref={wrapRef} onMouseLeave={() => setHover(null)}>
@@ -427,42 +635,154 @@ export function MultiLineChart({
             {yCaption}
           </text>
         )}
-        {data.map((d, i) =>
-          (i % Math.ceil(data.length / 10) === 0 || i === data.length - 1) && (
-            <text key={i} x={sx(i)} y={height - padB + 18} className="nid-axis-text" textAnchor="middle">{d.label}</text>
-          )
-        )}
+        {/* X-axis labels */}
+        {allLabels.map((lbl, i) => {
+          const isReal = i < data.length;
+          if (isReal && !(i % Math.ceil(data.length / 10) === 0 || i === data.length - 1)) return null;
+          return (
+            <text key={i} x={sx(i)} y={height - padB + 18}
+              className="nid-axis-text" textAnchor="middle"
+              style={!isReal ? { fill: forecastColor } : undefined}>
+              {lbl}
+            </text>
+          );
+        })}
+
+        {/* ── Range annotations (behind everything) ── */}
+        {annotations?.filter((a) => a.xRange).map((a, i) => {
+          const i0 = data.findIndex((d) => d.label === a.xRange[0]);
+          const i1 = data.findIndex((d) => d.label === a.xRange[1]);
+          if (i0 < 0 || i1 < 0) return null;
+          const fill   = a.kind === "negative" ? "rgba(255,61,146,.06)" : "rgba(0,229,255,.06)";
+          const stroke = a.kind === "negative" ? "rgba(255,61,146,.15)" : "rgba(0,229,255,.15)";
+          return (
+            <rect key={`band-${i}`}
+              x={ptsBySeries[0][i0].x} y={padT}
+              width={ptsBySeries[0][i1].x - ptsBySeries[0][i0].x}
+              height={innerH}
+              fill={fill} stroke={stroke} />
+          );
+        })}
+
+        {/* ── Real series paths ── */}
         {ptsBySeries.map((pts, si) => (
           <g key={si}>
-            {/* No resting ghost path — flat by default */}
             <path d={smoothPath(pts)} stroke={colors[si]} strokeWidth="2" fill="none" strokeLinecap="round" />
           </g>
         ))}
+
+        {/* ── Forecast paths (one per series) ── */}
+        {hasForecast && ptsBySeries.map((pts, si) => {
+          const fc = fcPtsBySeries[si];
+          if (!fc.length) return null;
+          const lastReal = pts[pts.length - 1];
+          return (
+            <path key={`fc-${si}`}
+              d={`M ${lastReal.x} ${lastReal.y} L ${fc.map((p) => `${p.x} ${p.y}`).join(" L ")}`}
+              stroke={forecastColor} strokeWidth="2" strokeDasharray="3 4" fill="none" opacity="0.8"
+            />
+          );
+        })}
+
+        {/* ── Benchmark line ── */}
+        {benchmark && (
+          <g>
+            <line
+              x1={padL} x2={w - padR}
+              y1={sy(benchmark.value)} y2={sy(benchmark.value)}
+              stroke={benchmark.color || "var(--text-dim)"}
+              strokeDasharray="6 5" strokeWidth="1.2" opacity="0.55"
+            />
+            <text
+              x={w - padR} y={sy(benchmark.value) - 5}
+              textAnchor="end" className="nid-axis-text"
+              style={{ fill: benchmark.color || "var(--text-dim)", letterSpacing: ".06em" }}
+            >
+              {benchmark.label} · {tipFmt(benchmark.value)}
+            </text>
+          </g>
+        )}
+
         {hover != null && (
           <>
-            <line x1={sx(hover)} x2={sx(hover)} y1={padT} y2={padT + innerH} stroke="var(--text-dim)" strokeOpacity="0.3" strokeDasharray="2 3" />
-            {ptsBySeries.map((pts, si) => (
+            <line x1={sx(hover)} x2={sx(hover)} y1={padT} y2={padT + innerH}
+              stroke={isHoverForecast ? forecastColor : "var(--text-dim)"}
+              strokeOpacity="0.3" strokeDasharray="2 3" />
+            {/* Real series hover dots */}
+            {!isHoverForecast && ptsBySeries.map((pts, si) => (
               <g key={si}>
-                {/* Per-point glow halo: only on hovered point */}
                 {glowHover && (
                   <circle cx={pts[hover].x} cy={pts[hover].y} r="8" fill={colors[si]} opacity="0.4" filter={`url(#mglow-${id}-${si})`} />
                 )}
                 <circle cx={pts[hover].x} cy={pts[hover].y} r="4" fill="var(--bg)" stroke={colors[si]} strokeWidth="2" />
               </g>
             ))}
+            {/* Forecast hover dots */}
+            {isHoverForecast && fcPtsBySeries.map((fc, si) => {
+              const fcIdx = hover - data.length;
+              const p = fc[fcIdx];
+              if (!p) return null;
+              return (
+                <circle key={`fch-${si}`} cx={p.x} cy={p.y} r="4"
+                  fill="var(--bg)" stroke={forecastColor} strokeWidth="2" strokeDasharray="2 2" />
+              );
+            })}
           </>
         )}
+
+        {/* ── Point annotations ── */}
+        {annotations?.filter((a) => a.x != null).map((a, i) => {
+          const idx = data.findIndex((d) => d.label === a.x);
+          if (idx < 0) return null;
+          // Use first series for y position
+          const p = ptsBySeries[0][idx];
+          const fill = a.kind === "negative" ? "var(--accent-2)"
+                     : a.kind === "positive" ? "var(--accent-5)"
+                     : "var(--accent-1)";
+          return (
+            <g key={`ann-${i}`}>
+              <circle cx={p.x} cy={p.y} r="5" fill="var(--bg)" stroke={fill} strokeWidth="2" />
+              {a.label && (
+                <foreignObject x={p.x - 60} y={p.y - 38} width="120" height="22">
+                  <div xmlns="http://www.w3.org/1999/xhtml" className={`nid-pin${a.kind ? ` ${a.kind}` : ""}`}>
+                    {a.label}
+                  </div>
+                </foreignObject>
+              )}
+            </g>
+          );
+        })}
+
         <rect x={padL} y={padT} width={innerW} height={innerH} fill="transparent" onMouseMove={handleMove} />
       </svg>
       {hover != null && (
         <div className="nid-tip" style={{ left: `${(sx(hover) / w) * 100}%`, top: "10%" }}>
-          <div className="tip-label">{data[hover].label}</div>
-          {series.map((s, si) => (
-            <div className="tip-row" key={s}>
-              <span className="name"><span className="swatch" style={{ background: colors[si] }}></span>{s}</span>
-              <span>{tipFmt(data[hover][s] || 0)}</span>
-            </div>
-          ))}
+          <div className="tip-label">{allLabels[hover]}</div>
+          {isHoverForecast ? (
+            <>
+              {series.map((s, si) => {
+                const fcIdx = hover - data.length;
+                const p = fcPtsBySeries[si][fcIdx];
+                if (!p) return null;
+                return (
+                  <div className="tip-row" key={s}>
+                    <span className="name"><span className="swatch" style={{ background: forecastColor }}></span>{s} {forecastLabel.toUpperCase()}</span>
+                    <span>{tipFmt(p.v)}</span>
+                  </div>
+                );
+              })}
+              <div style={{ fontSize: 10, color: "var(--text-mute)", marginTop: 3, fontFamily: "var(--font-mono)" }}>
+                regressão linear, {forecastN} pts
+              </div>
+            </>
+          ) : (
+            series.map((s, si) => (
+              <div className="tip-row" key={s}>
+                <span className="name"><span className="swatch" style={{ background: colors[si] }}></span>{s}</span>
+                <span>{tipFmt(data[hover][s] || 0)}</span>
+              </div>
+            ))
+          )}
         </div>
       )}
     </div>
