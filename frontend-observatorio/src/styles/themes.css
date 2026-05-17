@@ -1125,3 +1125,100 @@ body.theme-light .tbl-row-checkbox.partial::after {
   background: var(--admin-accent);
 }
 
+/* ─────────────────────────────────────────────────────────────────────────────
+   NidModal — ticket 22
+   Reusable modal chrome: mask + dialog panel + header/body/footer zones.
+   Three width variants: --sm (420px) | --md (560px) | --lg (760px).
+   ───────────────────────────────────────────────────────────────────────────── */
+.nid-modal__mask {
+  position: fixed; inset: 0;
+  background: rgba(5, 6, 16, 0.6);
+  backdrop-filter: blur(8px);
+  z-index: 100;
+  display: grid; place-items: center;
+  padding: 24px;
+}
+
+.nid-modal {
+  background: var(--panel);
+  border: 1px solid var(--border-strong);
+  border-radius: 16px;
+  box-shadow: var(--shadow-card);
+  backdrop-filter: blur(12px);
+  display: flex; flex-direction: column;
+  max-height: 90vh; overflow: hidden;
+  width: 100%;
+}
+.nid-modal--sm { max-width: 420px; }
+.nid-modal--md { max-width: 560px; }
+.nid-modal--lg { max-width: 760px; }
+
+.nid-modal__header {
+  display: flex; align-items: flex-start; justify-content: space-between;
+  padding: 20px 22px 16px;
+  border-bottom: 1px solid var(--border);
+}
+.nid-modal__eyebrow {
+  font: 600 10.5px/1 var(--font-mono);
+  color: var(--admin-accent); letter-spacing: 0.18em; text-transform: uppercase;
+  margin: 0 0 6px;
+}
+.nid-modal__title {
+  font: 700 16px/1.2 var(--font-display);
+  color: var(--text); margin: 0;
+}
+.nid-modal__close {
+  background: transparent; border: none; cursor: pointer; padding: 4px;
+  color: var(--text-dim); border-radius: 8px; flex-shrink: 0; margin-left: 12px;
+  transition: color 0.12s, background 0.12s;
+}
+.nid-modal__close:hover { color: var(--text); background: var(--panel-2); }
+
+.nid-modal__body {
+  padding: 18px 22px;
+  overflow-y: auto;
+  flex: 1;
+  min-height: 0;
+}
+
+.nid-modal__footer {
+  display: flex; gap: 10px; justify-content: flex-end;
+  padding: 14px 22px;
+  border-top: 1px solid var(--border);
+  background: var(--panel-2);
+  flex-shrink: 0;
+}
+
+/* NidField — labeled form field inside a modal */
+.nid-field { display: grid; gap: 6px; margin-bottom: 14px; }
+.nid-field:last-child { margin-bottom: 0; }
+.nid-field__label {
+  font: 600 10.5px/1 var(--font-mono);
+  color: var(--text-mute); letter-spacing: 0.14em; text-transform: uppercase;
+}
+.nid-field input,
+.nid-field textarea,
+.nid-field select {
+  width: 100%;
+  padding: 10px 12px;
+  background: var(--panel-2);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  color: var(--text);
+  font: 500 13px/1.4 var(--font-display);
+  transition: border-color 0.12s, box-shadow 0.12s;
+}
+.nid-field input:focus,
+.nid-field textarea:focus,
+.nid-field select:focus {
+  outline: none;
+  border-color: var(--admin-accent);
+  box-shadow: 0 0 0 2px var(--admin-accent-soft);
+}
+.nid-field textarea { resize: vertical; }
+
+/* Light-theme modal adjustments */
+body.theme-light .nid-modal__mask {
+  background: rgba(15, 23, 42, 0.45);
+}
+

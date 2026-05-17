@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion } from "framer-motion";
 import api from "../../services/api";
 import {
   SparklesIcon,
@@ -10,9 +10,9 @@ import {
   EyeSlashIcon,
   TrashIcon,
   NewspaperIcon,
-  XMarkIcon,
   PencilSquareIcon,
 } from "@heroicons/react/24/outline";
+import NidModal, { NidField } from "../../components/nid/NidModal";
 
 const DATASETS = [
   { key: "geral", label: "Visão Geral" },
@@ -534,145 +534,92 @@ export default function InsightsAdminPage() {
       )}
 
       {/* Release preview modal */}
-      <AnimatePresence>
-        {releaseModal && (
-          <motion.div
-            className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            onClick={() => setReleaseModal(null)}
-          >
-            <motion.div
-              className="bg-white dark:bg-slate-900 rounded-2xl shadow-xl w-full max-w-2xl max-h-[80vh] overflow-y-auto"
-              initial={{ scale: 0.95, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              exit={{ scale: 0.95, opacity: 0 }}
-              transition={{ duration: 0.15 }}
-              onClick={(e) => e.stopPropagation()}
+      <NidModal
+        open={!!releaseModal}
+        onClose={() => setReleaseModal(null)}
+        eyebrow="Release de Imprensa"
+        title={releaseModal ? `${releaseModal.label} — ${municipioNome}` : ""}
+        size="lg"
+        footer={
+          <>
+            <button
+              onClick={() => setReleaseModal(null)}
+              className="px-4 py-2 rounded-xl border text-sm font-medium transition-colors"
+              style={{ borderColor: "var(--border)", color: "var(--text-dim)", background: "transparent" }}
             >
-              {/* Modal header */}
-              <div className="flex items-start justify-between p-6 border-b border-slate-100 dark:border-slate-800">
-                <div>
-                  <p className="text-xs uppercase tracking-wider text-slate-400 dark:text-slate-500 font-semibold mb-1">
-                    Release de Imprensa
-                  </p>
-                  <h3 className="text-base font-bold text-slate-800 dark:text-white">
-                    {releaseModal.label} — {municipioNome}
-                  </h3>
-                  <p className="text-xs text-slate-400 dark:text-slate-500 mt-1">
-                    Gerado em {fmtDate(releaseModal.release.gerado_em)}
-                  </p>
-                </div>
-                <button
-                  onClick={() => setReleaseModal(null)}
-                  className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 transition-colors ml-4"
-                >
-                  <XMarkIcon className="w-5 h-5" />
-                </button>
-              </div>
-
-              {/* Modal body — 5 paragraphs */}
-              <div className="p-6 space-y-4">
-                {releaseModal.release.bullets.map((paragraph, i) => (
-                  <p
-                    key={i}
-                    className="text-sm leading-relaxed text-slate-700 dark:text-slate-300"
-                  >
-                    {paragraph}
-                  </p>
-                ))}
-              </div>
-
-              {/* Modal footer */}
-              <div className="flex items-center justify-end gap-3 px-6 py-4 border-t border-slate-100 dark:border-slate-800">
-                <button
-                  onClick={() => setReleaseModal(null)}
-                  className="px-4 py-2 rounded-xl border border-slate-200 dark:border-slate-700 text-sm text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors"
-                >
-                  Fechar
-                </button>
-                <button
-                  onClick={() => handlePrintRelease(releaseModal.release, releaseModal.label, municipioNome)}
-                  className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-violet-600 hover:bg-violet-700 text-white text-sm font-medium transition-colors"
-                >
-                  <NewspaperIcon className="w-4 h-4" />
-                  Imprimir / Baixar PDF
-                </button>
-              </div>
-            </motion.div>
-          </motion.div>
+              Fechar
+            </button>
+            <button
+              onClick={() => handlePrintRelease(releaseModal.release, releaseModal.label, municipioNome)}
+              className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium transition-colors"
+              style={{ background: "var(--admin-accent)", color: "#fff" }}
+            >
+              <NewspaperIcon className="w-4 h-4" />
+              Imprimir / Baixar PDF
+            </button>
+          </>
+        }
+      >
+        {releaseModal && (
+          <>
+            <p className="text-xs mb-4" style={{ color: "var(--text-mute)", fontFamily: "var(--font-mono)", letterSpacing: "0.04em" }}>
+              Gerado em {fmtDate(releaseModal.release.gerado_em)}
+            </p>
+            <div className="space-y-4">
+              {releaseModal.release.bullets.map((paragraph, i) => (
+                <p key={i} className="text-sm leading-relaxed" style={{ color: "var(--text-dim)" }}>
+                  {paragraph}
+                </p>
+              ))}
+            </div>
+          </>
         )}
-      </AnimatePresence>
+      </NidModal>
 
       {/* Manual release insertion modal */}
-      <AnimatePresence>
-        {manualModal && (
-          <motion.div
-            className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            onClick={() => setManualModal(null)}
-          >
-            <motion.div
-              className="bg-white dark:bg-slate-900 rounded-2xl shadow-xl w-full max-w-2xl"
-              initial={{ scale: 0.95, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              exit={{ scale: 0.95, opacity: 0 }}
-              transition={{ duration: 0.15 }}
-              onClick={(e) => e.stopPropagation()}
+      <NidModal
+        open={!!manualModal}
+        onClose={() => setManualModal(null)}
+        eyebrow="Especialista"
+        title={manualModal ? `Inserir Release Manual — ${manualModal.label}` : ""}
+        size="lg"
+        footer={
+          <>
+            <button
+              onClick={() => setManualModal(null)}
+              className="px-4 py-2 rounded-xl border text-sm font-medium transition-colors"
+              style={{ borderColor: "var(--border)", color: "var(--text-dim)", background: "transparent" }}
             >
-              <div className="flex items-start justify-between p-6 border-b border-slate-100 dark:border-slate-800">
-                <div>
-                  <p className="text-xs uppercase tracking-wider text-teal-600 dark:text-teal-400 font-semibold mb-1">
-                    Especialista
-                  </p>
-                  <h3 className="text-base font-bold text-slate-800 dark:text-white">
-                    Inserir Release Manual — {manualModal.label}
-                  </h3>
-                  <p className="text-xs text-slate-400 dark:text-slate-500 mt-1">
-                    {municipioNome} · Separe os parágrafos com uma linha em branco.
-                  </p>
-                </div>
-                <button
-                  onClick={() => setManualModal(null)}
-                  className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 transition-colors ml-4"
-                >
-                  <XMarkIcon className="w-5 h-5" />
-                </button>
-              </div>
-
-              <div className="p-6">
-                <textarea
-                  value={manualText}
-                  onChange={(e) => setManualText(e.target.value)}
-                  rows={10}
-                  placeholder={"Parágrafo 1...\n\nParágrafo 2...\n\nParágrafo 3..."}
-                  className="w-full border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-3 text-sm text-slate-700 dark:text-slate-200 bg-white dark:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-teal-500 resize-y leading-relaxed"
-                />
-              </div>
-
-              <div className="flex items-center justify-end gap-3 px-6 py-4 border-t border-slate-100 dark:border-slate-800">
-                <button
-                  onClick={() => setManualModal(null)}
-                  className="px-4 py-2 rounded-xl border border-slate-200 dark:border-slate-700 text-sm text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors"
-                >
-                  Cancelar
-                </button>
-                <button
-                  onClick={handleInserirManual}
-                  disabled={submittingManual || !manualText.trim()}
-                  className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-teal-600 hover:bg-teal-700 text-white text-sm font-medium transition-colors disabled:opacity-50"
-                >
-                  <PencilSquareIcon className="w-4 h-4" />
-                  {submittingManual ? "Salvando..." : "Inserir Release"}
-                </button>
-              </div>
-            </motion.div>
-          </motion.div>
+              Cancelar
+            </button>
+            <button
+              onClick={handleInserirManual}
+              disabled={submittingManual || !manualText.trim()}
+              className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium transition-colors disabled:opacity-50"
+              style={{ background: "var(--accent-5)", color: "#0a0a0c" }}
+            >
+              <PencilSquareIcon className="w-4 h-4" />
+              {submittingManual ? "Salvando..." : "Inserir Release"}
+            </button>
+          </>
+        }
+      >
+        {manualModal && (
+          <>
+            <p className="text-xs mb-4" style={{ color: "var(--text-mute)", fontFamily: "var(--font-mono)", letterSpacing: "0.04em" }}>
+              {municipioNome} · Separe os parágrafos com uma linha em branco.
+            </p>
+            <NidField label="Texto do Release">
+              <textarea
+                value={manualText}
+                onChange={(e) => setManualText(e.target.value)}
+                rows={10}
+                placeholder={"Parágrafo 1...\n\nParágrafo 2...\n\nParágrafo 3..."}
+              />
+            </NidField>
+          </>
         )}
-      </AnimatePresence>
+      </NidModal>
     </motion.div>
   );
 }
