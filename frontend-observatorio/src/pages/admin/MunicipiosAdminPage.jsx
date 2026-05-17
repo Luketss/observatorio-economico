@@ -2,13 +2,79 @@ import { useEffect, useRef, useState } from "react";
 import { motion } from "framer-motion";
 import api from "../../services/api";
 import { PhotoIcon } from "@heroicons/react/24/outline";
+import AdminTable from "../../components/nid/AdminTable";
+import BulkActions from "../../components/nid/BulkActions";
+import { useRowSelection } from "../../hooks/useRowSelection";
+
+// ─── helpers ──────────────────────────────────────────────────────────────────
+
+const PLANO_LABEL = { pro: "Pro", premium: "Premium", free: "Gratuito" };
+const NEXT_PLANO = { free: "pro", pro: "premium", premium: "free" };
+
+function planoLabel(p) { return PLANO_LABEL[p] ?? p; }
+function nextPlano(p)  { return NEXT_PLANO[p] ?? "pro"; }
+
+/** Client-side CSV export for selected rows */
+function exportCsv(rows) {
+  const cols = ["id", "nome", "estado", "codigo_ibge", "plano", "updated_at"];
+  const header = ["ID", "Município", "UF", "Cód. IBGE", "Plano", "Última atualização"];
+  const lines = [
+    header.join(";"),
+    ...rows.map((r) =>
+      cols.map((c) => {
+        const v = r[c] ?? "";
+        // Escape quotes and wrap strings with commas/quotes in quotes
+        const s = String(v).replace(/"/g, '""');
+        return s.includes(";") || s.includes('"') ? `"${s}"` : s;
+      }).join(";")
+    ),
+  ];
+  const blob = new Blob([lines.join("\n")], { type: "text/csv;charset=utf-8;" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  const today = new Date().toISOString().slice(0, 10);
+  a.href = url;
+  a.download = `municipios-selecionados-${today}.csv`;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+// ─── Brasão cell ──────────────────────────────────────────────────────────────
+
+function BrasaoCell({ m }) {
+  if (m.brasao) {
+    return (
+      <img
+        src={m.brasao}
+        alt={`Brasão ${m.nome}`}
+        style={{ width: 36, height: 36, objectFit: "contain", borderRadius: 6, border: "1px solid var(--border)" }}
+      />
+    );
+  }
+  return (
+    <div
+      style={{
+        width: 36, height: 36, borderRadius: 6,
+        border: "1.5px dashed var(--border-strong)",
+        display: "flex", alignItems: "center", justifyContent: "center",
+      }}
+    >
+      <PhotoIcon style={{ width: 16, height: 16, color: "var(--text-mute)" }} />
+    </div>
+  );
+}
+
+// ─── Page ─────────────────────────────────────────────────────────────────────
 
 export default function MunicipiosAdminPage() {
   const [municipios, setMunicipios] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState({}); // { [id]: bool }
+  const [saving, setSaving] = useState({}); // { [id]: bool, [brasao_id]: bool }
   const fileRefs = useRef({});
 
+  const { selectedIds, setSelectedIds, clear, count } = useRowSelection();
+
+  // ── Load ──────────────────────────────────────────────────────────────────
   const load = () => {
     setLoading(true);
     api
@@ -20,28 +86,8 @@ export default function MunicipiosAdminPage() {
 
   useEffect(() => { load(); }, []);
 
-  const nextPlano = (atual) => {
-    if (atual === "free") return "pro";
-    if (atual === "pro") return "premium";
-    return "free";
-  };
-
-  const planoLabel = (plano) => {
-    if (plano === "pro") return "Pro";
-    if (plano === "premium") return "Premium";
-    return "Gratuito";
-  };
-
-  const planoBadgeClass = (plano) => {
-    if (plano === "pro")
-      return "bg-violet-50 dark:bg-violet-950/40 text-violet-700 dark:text-violet-400";
-    if (plano === "premium")
-      return "bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-400";
-    return "bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400";
-  };
-
-  const togglePlano = async (municipio) => {
-    const novoPlano = nextPlano(municipio.plano);
+  // ── Per-row plano change (used by row action dropdown) ────────────────────
+  const changePlano = async (municipio, novoPlano) => {
     setSaving((prev) => ({ ...prev, [municipio.id]: true }));
     try {
       await api.put(`/municipios/${municipio.id}`, { plano: novoPlano });
@@ -55,6 +101,10 @@ export default function MunicipiosAdminPage() {
     }
   };
 
+  // Keep old cycle-on-click behaviour available for the row "→ <next>" action
+  const togglePlano = (municipio) => changePlano(municipio, nextPlano(municipio.plano));
+
+  // ── Brasão management ─────────────────────────────────────────────────────
   const handleBrasaoChange = async (municipio, file) => {
     if (!file) return;
     const reader = new FileReader();
@@ -89,122 +139,221 @@ export default function MunicipiosAdminPage() {
     }
   };
 
+  // ── Bulk operations ───────────────────────────────────────────────────────
+
+  /** Promote all selected rows to a given plano via Promise.all (per-row endpoint) */
+  const bulkSetPlano = async (novoPlano) => {
+    const targets = municipios.filter((m) => selectedIds.has(m.id));
+    if (targets.length === 0) return;
+    const ids = targets.map((m) => m.id);
+    // Mark all as saving
+    setSaving((prev) => {
+      const next = { ...prev };
+      ids.forEach((id) => { next[id] = true; });
+      return next;
+    });
+    try {
+      await Promise.all(
+        targets.map((m) => api.put(`/municipios/${m.id}`, { plano: novoPlano }))
+      );
+      setMunicipios((prev) =>
+        prev.map((m) => (selectedIds.has(m.id) ? { ...m, plano: novoPlano } : m))
+      );
+      clear();
+    } catch {
+      alert(`Erro ao promover municípios para ${planoLabel(novoPlano)}.`);
+    } finally {
+      setSaving((prev) => {
+        const next = { ...prev };
+        ids.forEach((id) => { next[id] = false; });
+        return next;
+      });
+    }
+  };
+
+  /** Export CSV of selected rows */
+  const bulkExportCsv = () => {
+    const targets = municipios.filter((m) => selectedIds.has(m.id));
+    exportCsv(targets);
+  };
+
+  // TODO (ticket 22+): bulk Suspender — no `suspenso` flag exists on the
+  // /municipios endpoint today. When the API exposes a `suspenso` boolean or a
+  // dedicated PATCH /municipios/bulk-suspend endpoint, wire it here with a
+  // window.confirm() guard and call clear() on success.
+  // const bulkSuspend = async () => { ... }
+
+  // ── Column definition ─────────────────────────────────────────────────────
+  const columns = [
+    { key: "_select", kind: "checkbox", width: 36 },
+    {
+      key: "nome",
+      label: "Município",
+      kind: "avatar+text",
+      render: (row) => ({
+        avatar: <BrasaoCell m={row} />,
+        primary: row.nome,
+        secondary: row.codigo_ibge || undefined,
+      }),
+    },
+    { key: "estado", label: "UF", mono: true, width: 56 },
+    {
+      key: "plano",
+      label: "Plano",
+      kind: "pill",
+      pillKind: (row) => row.plano ?? "free",
+      pillLabel: (row) => planoLabel(row.plano),
+    },
+    {
+      // Datasets cobertos — field not yet available in API; show — until exposed
+      key: "_datasets",
+      label: "Datasets",
+      mono: true,
+      render: (row) =>
+        row.datasets_cobertos != null && row.datasets_total != null
+          ? `${row.datasets_cobertos} / ${row.datasets_total}`
+          : null, // AdminTable renders — for null
+    },
+    {
+      // Última sync — use updated_at if present
+      key: "updated_at",
+      label: "Última sync",
+      kind: "relative-time",
+    },
+    {
+      // Status — fixed "ok" / Ativo until sync-health business logic is wired
+      key: "_status",
+      label: "Status",
+      kind: "pill",
+      pillKind: (row) => {
+        // Future: derive from row.sync_status or row.last_sync_error
+        if (row.sync_status === "warn") return "warn";
+        if (row.sync_status === "err")  return "err";
+        return "ok";
+      },
+      pillLabel: (row) => {
+        if (row.sync_status === "warn") return "Sync atrasada";
+        if (row.sync_status === "err")  return "Falha · comex";
+        return "Ativo";
+      },
+    },
+    {
+      key: "_actions",
+      kind: "row-actions",
+      width: 100,
+      actions: [
+        {
+          icon: "edit",
+          label: "Editar brasão",
+          onClick: (row) => {
+            // Trigger the hidden file input for this row
+            fileRefs.current[row.id]?.click();
+          },
+        },
+        {
+          icon: "menu",
+          label: "Mais ações",
+          onClick: (row) => {
+            // Simple inline action menu via window prompt (ticket 22 will add a proper modal)
+            const choice = window.prompt(
+              `Ações para ${row.nome}:\n` +
+              `1 — → ${planoLabel(nextPlano(row.plano))}\n` +
+              `2 — Remover brasão${row.brasao ? "" : " (sem brasão)"}\n` +
+              `\nDigite o número da ação:`
+            );
+            if (choice === "1") togglePlano(row);
+            if (choice === "2" && row.brasao) removeBrasao(row);
+          },
+        },
+      ],
+    },
+  ];
+
+  // ── Render ────────────────────────────────────────────────────────────────
   return (
     <motion.div
       initial={{ opacity: 0, y: 15 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.3 }}
-      className="space-y-6"
     >
-      <div>
-        <h1 className="text-2xl font-extrabold tracking-tight text-slate-800 dark:text-white">
-          Municípios
-        </h1>
-        <p className="text-sm text-slate-400 dark:text-slate-500 mt-1">
-          Gerencie planos, brasões e configurações de cada município.
-        </p>
+      {/* Page header */}
+      <div className="nid-panel-head" style={{ marginBottom: 20 }}>
+        <div>
+          <h1 style={{ fontSize: 20, fontWeight: 800, letterSpacing: "-0.02em", color: "var(--text)", margin: 0 }}>
+            Municípios
+          </h1>
+          <p style={{ fontSize: 13, color: "var(--text-dim)", marginTop: 4 }}>
+            {municipios.length} cadastrado{municipios.length !== 1 ? "s" : ""}
+            {municipios.filter((m) => m.plano !== "free").length > 0 &&
+              ` · ${municipios.filter((m) => m.plano !== "free").length} em plano pago`}
+          </p>
+        </div>
       </div>
 
-      <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-100 dark:border-slate-800 shadow-sm overflow-hidden">
+      {/* Bulk toolbar — renders nothing when count === 0 */}
+      <BulkActions count={count} onClear={clear}>
+        <button
+          className="rowact-btn"
+          style={{ padding: "5px 12px", fontSize: 12, fontWeight: 600, background: "var(--admin-accent-soft)", border: "1px solid color-mix(in oklab, var(--admin-accent) 35%, transparent)", color: "var(--admin-accent)", borderRadius: 8, cursor: "pointer" }}
+          onClick={() => bulkSetPlano("pro")}
+        >
+          Promover → Pro
+        </button>
+        <button
+          className="rowact-btn"
+          style={{ padding: "5px 12px", fontSize: 12, fontWeight: 600, background: "color-mix(in oklab, var(--accent-4) 14%, transparent)", border: "1px solid color-mix(in oklab, var(--accent-4) 28%, transparent)", color: "var(--accent-4)", borderRadius: 8, cursor: "pointer" }}
+          onClick={() => bulkSetPlano("premium")}
+        >
+          Promover → Premium
+        </button>
+        <button
+          className="rowact-btn"
+          style={{ padding: "5px 12px", fontSize: 12, fontWeight: 600, background: "var(--panel-2)", border: "1px solid var(--border)", color: "var(--text-dim)", borderRadius: 8, cursor: "pointer" }}
+          onClick={bulkExportCsv}
+        >
+          Exportar CSV
+        </button>
+        {/* TODO: Suspender bulk — add when API exposes suspenso flag */}
+      </BulkActions>
+
+      {/* Table */}
+      <div className="nid-panel" style={{ padding: 0 }}>
         {loading ? (
-          <div className="p-6 space-y-3">
+          <div style={{ padding: 24, display: "flex", flexDirection: "column", gap: 12 }}>
             {[1, 2, 3].map((i) => (
-              <div key={i} className="h-16 bg-slate-100 dark:bg-slate-800 rounded-xl animate-pulse" />
+              <div
+                key={i}
+                style={{ height: 56, borderRadius: 10, background: "var(--panel-2)", animation: "pulse 1.5s ease-in-out infinite" }}
+              />
             ))}
           </div>
-        ) : municipios.length === 0 ? (
-          <div className="flex items-center justify-center py-16 text-slate-400 dark:text-slate-500 text-sm">
-            Nenhum município cadastrado.
-          </div>
         ) : (
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="bg-slate-50 dark:bg-slate-800 text-left text-xs uppercase text-slate-400 dark:text-slate-500 tracking-wider">
-                <th className="px-3 py-3 md:px-6">Brasão</th>
-                <th className="px-3 py-3 md:px-6">Nome</th>
-                <th className="px-3 py-3 md:px-6">Estado</th>
-                <th className="px-3 py-3 md:px-6">IBGE</th>
-                <th className="px-3 py-3 md:px-6">Plano</th>
-                <th className="px-3 py-3 md:px-6 text-right">Ações</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-50 dark:divide-slate-800">
-              {municipios.map((m) => (
-                <tr key={m.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
-                  {/* Brasão */}
-                  <td className="px-3 py-3 md:px-6">
-                    <div className="flex items-center gap-2">
-                      {m.brasao ? (
-                        <img
-                          src={m.brasao}
-                          alt="Brasão"
-                          className="w-10 h-10 object-contain rounded border border-slate-100 dark:border-slate-700"
-                        />
-                      ) : (
-                        <div className="w-10 h-10 rounded border border-dashed border-slate-200 dark:border-slate-700 flex items-center justify-center">
-                          <PhotoIcon className="w-5 h-5 text-slate-300 dark:text-slate-600" />
-                        </div>
-                      )}
-                    </div>
-                  </td>
-
-                  {/* Nome */}
-                  <td className="px-3 py-3 md:px-6 font-medium text-slate-800 dark:text-white">{m.nome}</td>
-                  <td className="px-3 py-3 md:px-6 text-slate-500 dark:text-slate-400">{m.estado}</td>
-                  <td className="px-3 py-3 md:px-6 text-slate-400 dark:text-slate-500">{m.codigo_ibge || "—"}</td>
-
-                  {/* Plano */}
-                  <td className="px-3 py-3 md:px-6">
-                    <span className={`inline-flex items-center px-2.5 py-1 rounded-lg text-xs font-semibold ${planoBadgeClass(m.plano)}`}>
-                      {planoLabel(m.plano)}
-                    </span>
-                  </td>
-
-                  {/* Ações */}
-                  <td className="px-3 py-3 md:px-6 text-right">
-                    <div className="flex items-center justify-end gap-2">
-                      {/* Toggle plano */}
-                      <button
-                        onClick={() => togglePlano(m)}
-                        disabled={saving[m.id]}
-                        className="text-xs font-medium px-3 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors disabled:opacity-40"
-                      >
-                        {saving[m.id] ? "..." : `→ ${planoLabel(nextPlano(m.plano))}`}
-                      </button>
-
-                      {/* Upload brasão */}
-                      <input
-                        type="file"
-                        accept="image/*"
-                        className="hidden"
-                        ref={(el) => (fileRefs.current[m.id] = el)}
-                        onChange={(e) => handleBrasaoChange(m, e.target.files?.[0])}
-                      />
-                      <button
-                        onClick={() => fileRefs.current[m.id]?.click()}
-                        disabled={saving[`brasao_${m.id}`]}
-                        className="text-xs font-medium px-3 py-1.5 rounded-lg bg-violet-50 dark:bg-violet-950/40 text-violet-700 dark:text-violet-400 hover:bg-violet-100 transition-colors disabled:opacity-40"
-                      >
-                        {saving[`brasao_${m.id}`] ? "Salvando..." : m.brasao ? "Alterar Brasão" : "Adicionar Brasão"}
-                      </button>
-
-                      {m.brasao && (
-                        <button
-                          onClick={() => removeBrasao(m)}
-                          disabled={saving[`brasao_${m.id}`]}
-                          className="text-xs font-medium px-3 py-1.5 rounded-lg text-red-500 hover:bg-red-50 dark:hover:bg-red-950/40 transition-colors disabled:opacity-40"
-                        >
-                          Remover
-                        </button>
-                      )}
-                    </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+          <AdminTable
+            columns={columns}
+            data={municipios}
+            rowKey={(row) => row.id}
+            selectedIds={selectedIds}
+            onSelectionChange={setSelectedIds}
+            emptyState={
+              <span style={{ fontSize: 13, color: "var(--text-mute)" }}>
+                Nenhum município cadastrado.
+              </span>
+            }
+          />
         )}
       </div>
+
+      {/* Hidden file inputs for brasão upload — one per row, rendered outside the table */}
+      {municipios.map((m) => (
+        <input
+          key={m.id}
+          type="file"
+          accept="image/*"
+          style={{ display: "none" }}
+          ref={(el) => (fileRefs.current[m.id] = el)}
+          onChange={(e) => handleBrasaoChange(m, e.target.files?.[0])}
+        />
+      ))}
     </motion.div>
   );
 }
