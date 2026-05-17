@@ -13,6 +13,7 @@
 /* ─── Theme: NEON CYBER (default dark) ─── */
 body.theme-neon {
   --admin-accent: var(--accent-3); /* purple #b97cff */
+  --admin-accent-soft: rgba(185, 124, 255, 0.14);
   --bg:        #050610;
   --bg-grad:   radial-gradient(ellipse 1200px 600px at 20% -10%, #0d1230 0%, transparent 60%),
                radial-gradient(ellipse 900px 500px at 95% 0%, #1a0830 0%, transparent 55%),
@@ -44,6 +45,7 @@ body.theme-neon {
 /* ─── Theme: AURORA ─── */
 body.theme-aurora {
   --admin-accent: var(--accent-3); /* purple #a78bfa */
+  --admin-accent-soft: rgba(167, 139, 250, 0.14);
   --bg:        #0b0820;
   --bg-grad:   radial-gradient(ellipse 1400px 700px at 50% -20%, #2b1564 0%, transparent 55%),
                radial-gradient(ellipse 900px 500px at 90% 100%, #0d2d4a 0%, transparent 50%),
@@ -75,6 +77,7 @@ body.theme-aurora {
 /* ─── Theme: SUNSET GLASS ─── */
 body.theme-sunset {
   --admin-accent: var(--accent-4); /* gold/yellow #ffd166 — purple is too close to sunset reds */
+  --admin-accent-soft: rgba(255, 209, 102, 0.14);
   --bg:        #190d18;
   --bg-grad:   radial-gradient(ellipse 1200px 600px at 15% -10%, #3d1820 0%, transparent 60%),
                radial-gradient(ellipse 900px 500px at 95% 100%, #2a1004 0%, transparent 55%),
@@ -106,6 +109,7 @@ body.theme-sunset {
 /* ─── Theme: MINIMAL DARK ─── */
 body.theme-minimal {
   --admin-accent: var(--accent-3); /* indigo #6366f1 */
+  --admin-accent-soft: rgba(99, 102, 241, 0.14);
   --bg:        #0a0a0c;
   --bg-grad:   #0a0a0c;
   --panel:     #111114;
@@ -135,6 +139,7 @@ body.theme-minimal {
 /* ─── Theme: LIGHT PRO ─── */
 body.theme-light {
   --admin-accent: var(--accent-3); /* violet #8b5cf6 */
+  --admin-accent-soft: rgba(139, 92, 246, 0.14);
   --bg:        #f7f8fb;
   --bg-grad:   radial-gradient(ellipse 1200px 600px at 15% -10%, #eef2fc 0%, transparent 60%),
                radial-gradient(ellipse 900px 500px at 95% 0%, #f3edff 0%, transparent 55%),
@@ -387,6 +392,25 @@ body.theme-light .nid-pill { background: #ffffff; border-color: rgba(15, 23, 42,
   padding: 0 1px;
 }
 .nid-pill-x:hover { color: var(--text); }
+
+/* ── Status pill kind variants (StatusPill component) ─────────────── */
+/* Override base .nid-pill sizing/border for the status context */
+.nid-pill[class*="nid-pill--"] {
+  padding: 2px 8px;
+  font-size: 10.5px;
+  border: 1px solid transparent;
+  line-height: 1.6;
+}
+.nid-pill-dot { width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
+
+.nid-pill--ok      { color: var(--accent-5); background: color-mix(in oklab, var(--accent-5) 14%, transparent); border-color: color-mix(in oklab, var(--accent-5) 28%, transparent); }
+.nid-pill--warn    { color: var(--accent-4); background: color-mix(in oklab, var(--accent-4) 14%, transparent); border-color: color-mix(in oklab, var(--accent-4) 28%, transparent); }
+.nid-pill--err     { color: var(--accent-2); background: color-mix(in oklab, var(--accent-2) 14%, transparent); border-color: color-mix(in oklab, var(--accent-2) 28%, transparent); }
+.nid-pill--draft   { color: var(--text-dim); background: var(--panel-2); border-color: var(--border); }
+.nid-pill--info    { color: var(--accent-1); background: color-mix(in oklab, var(--accent-1) 14%, transparent); border-color: color-mix(in oklab, var(--accent-1) 28%, transparent); }
+.nid-pill--pro     { color: var(--admin-accent); background: var(--admin-accent-soft); border-color: color-mix(in oklab, var(--admin-accent) 28%, transparent); }
+.nid-pill--premium { color: var(--accent-4); background: color-mix(in oklab, var(--accent-4) 14%, transparent); border-color: color-mix(in oklab, var(--accent-4) 28%, transparent); }
+.nid-pill--free    { color: var(--text-dim); background: var(--panel-2); border-color: var(--border); }
 
 /* Notification bell */
 .nid-bell {
