@@ -4,7 +4,7 @@ from typing import List
 
 from app.api.deps import get_current_user, get_db
 from app.models.insight_ia import InsightIA as InsightModel
-from app.services.insights_service import buscar_insight, gerar_insight, gerar_release
+from app.services.insights_service import buscar_insight, gerar_insight, gerar_prioridades, gerar_release
 from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
@@ -41,6 +41,56 @@ class InserirReleaseRequest(BaseModel):
     dataset: str
     paragrafos: list[str]
     periodo: str | None = None
+
+
+class PrioridadeItem(BaseModel):
+    titulo: str
+    observacao: str
+    dataset_referencia: str | None = None
+
+
+class PrioridadesResponse(BaseModel):
+    id: int
+    municipio_id: int
+    periodo: str
+    prioridades: list[PrioridadeItem]
+    modelo: str
+    gerado_em: datetime
+    ativo: bool
+    oculto_planos: list[str]
+
+    model_config = {"from_attributes": True}
+
+
+class GerarPrioridadesRequest(BaseModel):
+    municipio_id: int
+
+
+def _to_prioridades_response(insight) -> PrioridadesResponse:
+    try:
+        prioridades_raw = json.loads(insight.conteudo)
+    except (json.JSONDecodeError, TypeError):
+        prioridades_raw = [{"titulo": "Prioridade", "observacao": insight.conteudo, "dataset_referencia": None}]
+
+    items = [
+        PrioridadeItem(
+            titulo=p.get("titulo", ""),
+            observacao=p.get("observacao", ""),
+            dataset_referencia=p.get("dataset_referencia"),
+        )
+        for p in (prioridades_raw if isinstance(prioridades_raw, list) else [])
+    ]
+
+    return PrioridadesResponse(
+        id=insight.id,
+        municipio_id=insight.municipio_id,
+        periodo=insight.periodo,
+        prioridades=items,
+        modelo=insight.modelo,
+        gerado_em=insight.gerado_em,
+        ativo=insight.ativo,
+        oculto_planos=_parse_oculto_planos(insight),
+    )
 
 
 def _parse_oculto_planos(insight) -> list[str]:
@@ -331,3 +381,56 @@ def deletar_insight(
     db.delete(insight)
     db.commit()
     return {"ok": True}
+
+
+@router.get("/prioridades", response_model=PrioridadesResponse)
+def get_prioridades(
+    municipio_id: int | None = Query(default=None),
+    db: Session = Depends(get_db),
+    current_user=Depends(get_current_user),
+):
+    is_global = current_user.role.nome == "ADMIN_GLOBAL"
+    mid = municipio_id if (is_global and municipio_id) else current_user.municipio_id
+    if not mid:
+        raise HTTPException(status_code=404, detail="Prioridades ainda não foram geradas.")
+
+    q = db.query(InsightModel).filter(
+        InsightModel.municipio_id == mid,
+        InsightModel.dataset == "prioridades",
+    )
+
+    if not is_global:
+        q = q.filter(InsightModel.ativo == True)
+        from app.models.municipio import Municipio
+        municipio = db.get(Municipio, mid)
+        if municipio and municipio.plano == "free":
+            from sqlalchemy import or_, not_
+            q = q.filter(
+                or_(
+                    InsightModel.oculto_planos.is_(None),
+                    not_(InsightModel.oculto_planos.contains("free")),
+                )
+            )
+
+    insight = q.order_by(InsightModel.gerado_em.desc()).first()
+
+    if not insight:
+        raise HTTPException(status_code=404, detail="Prioridades ainda não foram geradas.")
+
+    return _to_prioridades_response(insight)
+
+
+@router.post("/prioridades/gerar", response_model=PrioridadesResponse)
+def post_gerar_prioridades(
+    body: GerarPrioridadesRequest,
+    db: Session = Depends(get_db),
+    current_user=Depends(get_current_user),
+):
+    if current_user.role.nome != "ADMIN_GLOBAL":
+        raise HTTPException(status_code=403, detail="Apenas ADMIN_GLOBAL pode gerar prioridades.")
+
+    if not body.municipio_id:
+        raise HTTPException(status_code=400, detail="municipio_id é obrigatório.")
+
+    insight = gerar_prioridades(db, body.municipio_id)
+    return _to_prioridades_response(insight)

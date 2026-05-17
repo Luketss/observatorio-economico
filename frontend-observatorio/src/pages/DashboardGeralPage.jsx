@@ -3,6 +3,7 @@ import { motion } from "framer-motion";
 import api from "../services/api";
 import { useAuth } from "../context/AuthContext";
 import InsightsPanel from "../components/InsightsPanel";
+import PrioridadesPanel from "../components/PrioridadesPanel";
 import ReleasesPanel from "../components/ReleasesPanel";
 import KpiCard from "../components/KpiCard";
 import {
@@ -228,6 +229,10 @@ export default function DashboardGeralPage() {
         title="Dashboard Geral"
         sub="Indicadores econômicos consolidados do município"
       />
+
+      <div className="mt-4 mb-6">
+        <PrioridadesPanel />
+      </div>
 
       {/* Hero KPIs (neon design) */}
       {loading ? (

@@ -4,6 +4,42 @@ Backlog de funcionalidades e melhorias identificadas. Organizadas por impacto e 
 
 ---
 
+## IA — Próximos Passos
+
+Direções de IA brainstormadas em 2026-05-17. A primeira está em design fechado; as outras três ficam aqui como follow-ups com escopo definido.
+
+### 🟢 Prioridades do Mês (em design — spec aprovado)
+Painel no topo da Dashboard Geral com as 3 observações estratégicas mais relevantes do mês cruzando todos os datasets, cada uma com drill-down para a página de origem.
+- Reusa `InsightIA` + `insights_service.py` (sem migração).
+- Geração ADMIN_GLOBAL única por mês, cacheada em `(municipio_id, dataset='prioridades', periodo='YYYY-MM')`.
+- Spec: [`docs/superpowers/specs/2026-05-17-prioridades-do-mes-design.md`](docs/superpowers/specs/2026-05-17-prioridades-do-mes-design.md)
+
+### Auto-preenchimento de formulários via CNPJ / URL de edital
+Reduzir fricção dos formulários do módulo Desenvolvimento Econômico.
+- **Retenção & Expansão**: digitar/colar um CNPJ → backend chama API pública (BrasilAPI / ReceitaWS) e preenche nome, setor, porte, situação. IA opcional para inferir setor padronizado quando o CNAE for ambíguo.
+- **Captação de Recursos**: colar a URL de um edital → backend faz fetch da página, IA extrai título, entidade, valor, prazo e descrição em JSON estruturado.
+- **Empresas (admin)**: import em lote via lista de CNPJs com auto-fill.
+- Dependências externas: BrasilAPI (estável, gratuita) para CNPJ; scraping de edital é frágil — começar com 2-3 portais comuns (gov.br, FNDE, BNDES).
+- Risco: variabilidade dos formatos de edital. Mitigação: AI extrai o que conseguir, deixa em branco quando inseguro, admin completa.
+
+### Alertas com explicação de causa pela IA
+Distinto do "Alertas Automáticos por Email" já listado abaixo (que é threshold-based puro). Aqui a IA contextualiza a anomalia.
+- Job noturno (APScheduler) varre cada dataset por município, sinaliza variações atípicas vs. baseline histórico do próprio município.
+- Para cada anomalia, chama Claude com (a) a série histórica, (b) regras do dataset (herda os prompts de `insights_service.py`), (c) pergunta: "isso é sazonal/metodológico/atípico? sugira próximo passo de análise".
+- Saída alimenta o `NotificationBell` existente como notificação tipada (`tipo='alerta_ia'`).
+- Reusa: `Notificacao` + `NotificacaoLida` (já existem).
+- Dependências: APScheduler (também necessário para "Relatório Executivo Mensal"). Mitigação de falso-positivo: percentil-based threshold por dataset, calibrado nas primeiras semanas.
+
+### "Pergunte aos seus dados" (precursor leve do Copilot Municipal)
+Barra de busca em linguagem natural no topo de cada página de dataset, escopada ao dataset daquela página.
+- Mais leve que o "Chat com os Dados (Copilot Municipal)" listado abaixo — sem histórico de conversa, sem botão flutuante global, sem cruzamento entre datasets.
+- Pergunta + dados do dataset atual → 1 chamada Claude → resposta + citação ("Segundo CAGED jan/2026...").
+- Reusa a montagem de contexto que já existe em `_fetch_dados` por dataset.
+- Boa pavimentação para o Copilot completo depois (mesmo padrão de prompt, escopo expandido).
+- Decisão de UX a tomar mais tarde: respostas em modal, em painel lateral, ou inline abaixo da barra.
+
+---
+
 ## ⭐ Diferencial Estratégico
 
 ### Índice de Saúde Econômica Municipal (ISEM)
