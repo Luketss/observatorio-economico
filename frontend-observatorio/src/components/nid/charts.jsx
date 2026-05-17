@@ -1601,6 +1601,18 @@ export function DonutChart({
     prefer === "bar" ||
     (prefer === "auto" && data && data.length > threshold);
 
+  // When the caller passes only baseColor (monochrome), synthesize a colors
+  // array using the same opacity ramp PercentBarChart uses, via color-mix()
+  // so the donut still respects theme tokens.
+  const opacityRamp = [0.95, 0.7, 0.5, 0.35, 0.25, 0.18];
+  const resolvedColors =
+    colors && colors.length > 0
+      ? colors
+      : data.map((_, i) => {
+          const opacity = opacityRamp[i] ?? 0.12;
+          return `color-mix(in oklab, ${baseColor || "var(--accent-1)"} ${Math.round(opacity * 100)}%, transparent)`;
+        });
+
   return useBar
     ? (
       <PercentBarChart
@@ -1613,7 +1625,7 @@ export function DonutChart({
     : (
       <DonutChartCore
         data={data}
-        colors={colors}
+        colors={resolvedColors}
         height={height}
         glow={glow}
         centerLabel={centerLabel}
