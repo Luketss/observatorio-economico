@@ -48,3 +48,12 @@ def test_gerar_prioridades_happy_path():
     parsed = json.loads(added.conteudo)
     assert len(parsed) == 3
     assert parsed[0]["dataset_referencia"] == "caged"
+
+
+def test_httpexception_stub_preserves_attributes():
+    """Sanity-check that conftest's fastapi.HTTPException stub stores status_code/detail."""
+    from fastapi import HTTPException
+    e = HTTPException(status_code=418, detail="teapot")
+    assert e.status_code == 418
+    assert e.detail == "teapot"
+    assert "teapot" in str(e)
