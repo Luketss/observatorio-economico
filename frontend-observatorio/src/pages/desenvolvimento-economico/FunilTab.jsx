@@ -10,13 +10,7 @@ import {
   InformationCircleIcon,
   FunnelIcon,
 } from "@heroicons/react/24/outline";
-import {
-  FunnelChart,
-  Funnel,
-  LabelList,
-  Tooltip,
-  ResponsiveContainer,
-} from "recharts";
+import NidFunnel from "../../components/nid/Funnel.jsx";
 import api from "../../services/api";
 import { useAuth } from "../../context/AuthContext";
 import { useToast } from "../../context/ToastContext";
@@ -89,12 +83,13 @@ export default function FunilTab() {
 
   useEffect(() => { load(); }, []);
 
-  const funnelData = useMemo(() => {
+  const funnelStages = useMemo(() => {
     if (!resumo) return [];
     return ESTAGIOS.map((e) => ({
-      name: ESTAGIO_CONFIG[e].label,
+      key: e,
+      label: ESTAGIO_CONFIG[e].label,
       value: resumo.por_estagio[e] || 0,
-      fill: ESTAGIO_CONFIG[e].color,
+      color: ESTAGIO_CONFIG[e].color,
     }));
   }, [resumo]);
 
@@ -231,23 +226,10 @@ export default function FunilTab() {
       </div>
 
       {/* Funnel chart */}
-      {funnelData.some((d) => d.value > 0) && (
+      {funnelStages.some((d) => d.value > 0) && (
         <div className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-100 dark:border-slate-700 p-6">
           <h3 className="text-sm font-semibold text-slate-600 dark:text-slate-300 mb-4">Visão em Funil</h3>
-          <div className="h-64">
-            <ResponsiveContainer width="100%" height="100%">
-              <FunnelChart>
-                <Tooltip
-                  formatter={(value) => [value, "Empresas"]}
-                  contentStyle={{ borderRadius: "8px", border: "1px solid #e2e8f0", fontSize: "12px" }}
-                />
-                <Funnel dataKey="value" data={funnelData} isAnimationActive>
-                  <LabelList position="right" fill="#64748b" stroke="none" dataKey="name" fontSize={12} />
-                  <LabelList position="center" fill="#ffffff" stroke="none" dataKey="value" fontSize={14} fontWeight={700} />
-                </Funnel>
-              </FunnelChart>
-            </ResponsiveContainer>
-          </div>
+          <NidFunnel stages={funnelStages} height={280} />
         </div>
       )}
 

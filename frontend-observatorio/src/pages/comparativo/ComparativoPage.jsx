@@ -1,17 +1,8 @@
 ﻿import { useEffect, useState, useMemo } from "react";
 import api from "../../services/api";
-import { useChartTheme } from "../../hooks/useChartTheme";
 import { useAuth } from "../../context/AuthContext";
 import { motion } from "framer-motion";
-import {
-  ResponsiveContainer,
-  BarChart,
-  Bar,
-  XAxis,
-  YAxis,
-  Tooltip,
-  Cell,
-} from "recharts";
+import { HBarChart } from "../../components/nid/charts";
 
 const fmtBRL = (v) =>
   v != null
@@ -53,7 +44,6 @@ const CURRENT_YEAR = new Date().getFullYear();
 const YEAR_OPTIONS = Array.from({ length: 8 }, (_, i) => CURRENT_YEAR - i);
 
 export default function BenchmarkPage() {
-  const ct = useChartTheme();
   const { user } = useAuth();
   const [activeKey, setActiveKey] = useState("arrecadacao");
   const [ano, setAno] = useState(CURRENT_YEAR - 1);
@@ -175,55 +165,16 @@ export default function BenchmarkPage() {
           {METRIC_LABELS[activeKey]}{activeDataset?.hasAno ? ` — ${ano}` : ""}
         </h3>
 
-        {loading ? (
-          <div className="animate-pulse h-64 bg-slate-50 dark:bg-slate-800 rounded-xl" />
-        ) : chartData.length === 0 ? (
-          <div className="h-64 flex items-center justify-center text-slate-400 dark:text-slate-500 text-sm">
-            Sem dados disponíveis
-          </div>
-        ) : (
-          <div className="h-64 md:h-96">
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart
-                data={chartData}
-                layout="vertical"
-                margin={{ left: 8, right: 24, top: 4, bottom: 4 }}
-              >
-                <XAxis
-                  type="number"
-                  tick={{ fontSize: 10, fill: ct.tick }}
-                  stroke={ct.axis}
-                  tickFormatter={(v) => {
-                    if (v >= 1_000_000_000) return `${(v / 1e9).toFixed(1)}B`;
-                    if (v >= 1_000_000) return `${(v / 1e6).toFixed(1)}M`;
-                    if (v >= 1_000) return `${(v / 1e3).toFixed(0)}K`;
-                    return v;
-                  }}
-                />
-                <YAxis
-                  type="category"
-                  dataKey="municipio"
-                  tick={{ fontSize: 11, fill: ct.tick }}
-                  stroke={ct.axis}
-                  width={180}
-                />
-                <Tooltip contentStyle={ct.tooltipStyle} formatter={tooltipFormatter} />
-                <Bar dataKey="valor" radius={[0, 4, 4, 0]}>
-                  {chartData.map((row, i) => (
-                    <Cell
-                      key={i}
-                      fill={
-                        myId && row.municipio_id === myId
-                          ? "#f59e0b"
-                          : "#3b82f6"
-                      }
-                    />
-                  ))}
-                </Bar>
-              </BarChart>
-            </ResponsiveContainer>
-          </div>
-        )}
+        <HBarChart
+          data={chartData.map((row) => ({ label: row.municipio, value: row.valor, municipio_id: row.municipio_id }))}
+          highlight={myId ? chartData.find((r) => r.municipio_id === myId)?.municipio : undefined}
+          color="#3b82f6"
+          highlightColor="#f59e0b"
+          showPosition={true}
+          fmt={activeDataset?.fmt ?? ((v) => String(v))}
+          loading={loading}
+          emptyMessage="Sem dados disponíveis"
+        />
       </div>
 
       {/* Ranking table */}

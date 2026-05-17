@@ -1,25 +1,12 @@
 ﻿import { useEffect, useState } from "react";
 import api from "../../services/api";
-import { useChartTheme } from "../../hooks/useChartTheme";
 import { motion } from "framer-motion";
 import InsightsPanel from "../../components/InsightsPanel";
 import ReleasesPanel from "../../components/ReleasesPanel";
 import InfoTooltip from "../../components/InfoTooltip";
 import KpiCard from "../../components/KpiCard";
 import PlanGate from "../../components/PlanGate";
-import {
-  ResponsiveContainer,
-  BarChart,
-  Bar,
-  PieChart,
-  Pie,
-  Cell,
-  CartesianGrid,
-  XAxis,
-  YAxis,
-  Tooltip,
-  Legend,
-} from "recharts";
+import { DonutChart, HBarChart, StackedBarChart, AreaLineChart, fmtMoneyShort, fmtMoneyFull } from "../../components/nid/charts";
 
 
 function MiniStat({ label, value, color }) {
@@ -42,7 +29,6 @@ const fmtPct = (num, total) => {
 };
 
 export default function EmpresasPage() {
-  const ct = useChartTheme();
   const [resumo, setResumo] = useState(null);
   const [porPorte, setPorPorte] = useState([]);
   const [porSituacao, setPorSituacao] = useState([]);
@@ -159,37 +145,13 @@ export default function EmpresasPage() {
           <h3 className="text-base font-bold mb-5 text-slate-800 dark:text-white">
             Distribuição por Porte
           </h3>
-          {loading ? (
-            <div className="animate-pulse h-64 bg-slate-50 dark:bg-slate-800 rounded-xl" />
-          ) : porPorte.length === 0 ? (
-            <div className="h-64 flex items-center justify-center text-slate-400 dark:text-slate-500 text-sm">
-              Sem dados disponíveis
-            </div>
-          ) : (
-            <div className="h-44 md:h-64">
-              <ResponsiveContainer width="100%" height="100%">
-                <PieChart>
-                  <Pie
-                    data={porPorte}
-                    dataKey="value"
-                    nameKey="name"
-                    cx="50%"
-                    cy="50%"
-                    outerRadius={90}
-                    label={({ name, percent }) =>
-                      `${name} ${(percent * 100).toFixed(1)}%`
-                    }
-                    labelLine={false}
-                  >
-                    {porPorte.map((_, i) => (
-                      <Cell key={i} fill={`color-mix(in srgb, var(--accent-1) ${Math.round(100 - i * 15)}%, transparent)`} />
-                    ))}
-                  </Pie>
-                  <Tooltip contentStyle={ct.tooltipStyle} formatter={(v) => [fmtNum(v), "Empresas"]} />
-                </PieChart>
-              </ResponsiveContainer>
-            </div>
-          )}
+          <DonutChart
+            data={porPorte.map((d) => ({ label: d.name, value: d.value }))}
+            baseColor="var(--accent-1)"
+            height={220}
+            loading={loading}
+            emptyMessage="Sem dados disponíveis"
+          />
         </div>
 
         </PlanGate>
@@ -199,42 +161,13 @@ export default function EmpresasPage() {
           <h3 className="text-base font-bold mb-5 text-slate-800 dark:text-white">
             Empresas por Situação Cadastral
           </h3>
-          {loading ? (
-            <div className="animate-pulse h-64 bg-slate-50 dark:bg-slate-800 rounded-xl" />
-          ) : porSituacao.length === 0 ? (
-            <div className="h-64 flex items-center justify-center text-slate-400 dark:text-slate-500 text-sm">
-              Sem dados disponíveis
-            </div>
-          ) : (
-            <div className="h-44 md:h-64">
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart
-                  data={porSituacao}
-                  layout="vertical"
-                  margin={{ left: 10, right: 20 }}
-                >
-                  <CartesianGrid strokeDasharray="3 3" stroke={ct.grid} horizontal={false} />
-                  <XAxis type="number" tick={{ fontSize: 11, fill: ct.tick }} stroke={ct.axis} />
-                  <YAxis
-                    type="category"
-                    dataKey="label"
-                    tick={{ fontSize: 10, fill: ct.tick }}
-                    stroke={ct.axis}
-                    width={120}
-                  />
-                  <Tooltip contentStyle={ct.tooltipStyle} formatter={(v) => [fmtNum(v), "Empresas"]} />
-                  <Bar dataKey="total" name="Empresas" radius={[0, 4, 4, 0]}>
-                    {porSituacao.map((d, i) => (
-                      <Cell
-                        key={i}
-                        fill={d.situacao === "02" ? "#10b981" : "#ef4444"}
-                      />
-                    ))}
-                  </Bar>
-                </BarChart>
-              </ResponsiveContainer>
-            </div>
-          )}
+          <HBarChart
+            data={porSituacao.map((d) => ({ label: d.label, value: d.total || 0 }))}
+            color="var(--accent-1)"
+            fmt={fmtNum}
+            loading={loading}
+            emptyMessage="Sem dados disponíveis"
+          />
         </div>
       </div>
 
@@ -243,27 +176,20 @@ export default function EmpresasPage() {
         <h3 className="text-base font-bold mb-5 text-slate-800 dark:text-white">
           Ativas vs. Fechadas por Porte
         </h3>
-        {loading ? (
-          <div className="animate-pulse h-72 bg-slate-50 dark:bg-slate-800 rounded-xl" />
-        ) : situacaoPorPorte.length === 0 ? (
-          <div className="h-64 flex items-center justify-center text-slate-400 dark:text-slate-500 text-sm">
-            Sem dados disponíveis
-          </div>
-        ) : (
-          <div className="h-48 md:h-72">
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={situacaoPorPorte} margin={{ left: 10, right: 10 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke={ct.grid} />
-                <XAxis dataKey="porte" tick={{ fontSize: 11, fill: ct.tick }} stroke={ct.axis} />
-                <YAxis tick={{ fontSize: 11, fill: ct.tick }} stroke={ct.axis} />
-                <Tooltip contentStyle={ct.tooltipStyle} formatter={(v) => fmtNum(v)} />
-                <Legend />
-                <Bar dataKey="ativas" name="Ativas" fill="#10b981" radius={[4, 4, 0, 0]} />
-                <Bar dataKey="fechadas" name="Fechadas/Baixadas" fill="#ef4444" radius={[4, 4, 0, 0]} />
-              </BarChart>
-            </ResponsiveContainer>
-          </div>
-        )}
+        <StackedBarChart
+          data={situacaoPorPorte.map((d) => ({
+            label: d.porte,
+            "Ativas": d.ativas || 0,
+            "Fechadas/Baixadas": d.fechadas || 0,
+          }))}
+          keys={["Ativas", "Fechadas/Baixadas"]}
+          colors={["#10b981", "#ef4444"]}
+          height={280}
+          yFmt={(v) => Number(v).toLocaleString("pt-BR")}
+          tipFmt={(v) => Number(v).toLocaleString("pt-BR")}
+          loading={loading}
+          emptyMessage="Sem dados disponíveis"
+        />
       </div>
 
       {/* Empresas por Setor CNAE */}
@@ -272,35 +198,13 @@ export default function EmpresasPage() {
         <h3 className="text-base font-bold mb-5 text-slate-800 dark:text-white">
           Empresas por Setor de Atividade (CNAE — Seção)
         </h3>
-        {loading ? (
-          <div className="animate-pulse h-96 bg-slate-50 dark:bg-slate-800 rounded-xl" />
-        ) : porCnaeSecao.length === 0 ? (
-          <div className="h-64 flex items-center justify-center text-slate-400 dark:text-slate-500 text-sm">
-            Sem dados disponíveis
-          </div>
-        ) : (
-          <div className="h-96">
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart
-                data={porCnaeSecao}
-                layout="vertical"
-                margin={{ left: 20, right: 20 }}
-              >
-                <CartesianGrid strokeDasharray="3 3" stroke={ct.grid} horizontal={false} />
-                <XAxis type="number" tick={{ fontSize: 11, fill: ct.tick }} stroke={ct.axis} />
-                <YAxis
-                  type="category"
-                  dataKey="descricao"
-                  tick={{ fontSize: 9, fill: ct.tick }}
-                  stroke={ct.axis}
-                  width={220}
-                />
-                <Tooltip contentStyle={ct.tooltipStyle} formatter={(v) => [fmtNum(v), "Empresas"]} />
-                <Bar dataKey="total_vinculos" name="Empresas" fill="var(--accent-1)" radius={[0, 4, 4, 0]} />
-              </BarChart>
-            </ResponsiveContainer>
-          </div>
-        )}
+        <HBarChart
+          data={porCnaeSecao.map((d) => ({ label: d.descricao, value: d.total_vinculos || 0 }))}
+          color="var(--accent-1)"
+          fmt={fmtNum}
+          loading={loading}
+          emptyMessage="Sem dados disponíveis"
+        />
       </div>
 
       </PlanGate>
@@ -336,26 +240,11 @@ export default function EmpresasPage() {
           <p className="text-xs text-slate-400 dark:text-slate-500 mb-5">
             Capital médio declarado por empresas com registro ativo
           </p>
-          <div className="h-48 md:h-72">
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={capitalPorPorte} margin={{ left: 10, right: 20 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke={ct.grid} />
-                <XAxis dataKey="porte" tick={{ fontSize: 11, fill: ct.tick }} stroke={ct.axis} />
-                <YAxis
-                  tick={{ fontSize: 11, fill: ct.tick }}
-                  stroke={ct.axis}
-                  tickFormatter={(v) => {
-                    if (v >= 1_000_000) return `R$ ${(v / 1_000_000).toFixed(1)}M`;
-                    if (v >= 1_000) return `R$ ${(v / 1_000).toFixed(0)}k`;
-                    return `R$ ${v}`;
-                  }}
-                />
-                <Tooltip contentStyle={ct.tooltipStyle} formatter={(v) => [fmtBRL(v)]} />
-                <Legend />
-                <Bar dataKey="capital_medio" name="Capital Médio" fill="var(--accent-1)" radius={[4, 4, 0, 0]} />
-              </BarChart>
-            </ResponsiveContainer>
-          </div>
+          <HBarChart
+            data={capitalPorPorte.map((d) => ({ label: d.porte, value: d.capital_medio || 0 }))}
+            color="var(--accent-1)"
+            fmt={fmtBRL}
+          />
         </div>
       )}
 

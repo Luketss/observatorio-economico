@@ -1,27 +1,12 @@
 ﻿import { useEffect, useMemo, useState } from "react";
 import api from "../../services/api";
-import { useChartTheme } from "../../hooks/useChartTheme";
 import { motion } from "framer-motion";
 import InsightsPanel from "../../components/InsightsPanel";
 import ReleasesPanel from "../../components/ReleasesPanel";
 import InfoTooltip from "../../components/InfoTooltip";
 import FilterBar from "../../components/FilterBar";
 import KpiCard from "../../components/KpiCard";
-import {
-  ResponsiveContainer,
-  AreaChart,
-  Area,
-  BarChart,
-  Bar,
-  PieChart,
-  Pie,
-  Cell,
-  CartesianGrid,
-  XAxis,
-  YAxis,
-  Tooltip,
-  Legend,
-} from "recharts";
+import { AreaLineChart, HBarChart, DonutChart } from "../../components/nid/charts";
 
 
 const fmtBRL = (v) =>
@@ -32,7 +17,6 @@ const fmtBRL = (v) =>
 const fmtNum = (v) => (v != null ? Number(v).toLocaleString("pt-BR") : "—");
 
 export default function PeDeMeiaPage() {
-  const ct = useChartTheme();
   const [rawSerie, setRawSerie] = useState([]);
   const [resumo, setResumo] = useState(null);
   const [porEtapa, setPorEtapa] = useState([]);
@@ -149,55 +133,16 @@ export default function PeDeMeiaPage() {
         <h3 className="text-base font-bold mb-5 text-slate-800 dark:text-white">
           Evolução de Estudantes Beneficiados
         </h3>
-        {loading ? (
-          <div className="animate-pulse h-64 bg-slate-50 dark:bg-slate-800 rounded-xl" />
-        ) : serie.length === 0 ? (
-          <div className="h-64 flex items-center justify-center text-slate-400 dark:text-slate-500 text-sm">
-            Sem dados disponíveis
-          </div>
-        ) : (
-          <div className="h-48 md:h-72">
-            <ResponsiveContainer width="100%" height="100%">
-              <AreaChart data={serie}>
-                <defs>
-                  <linearGradient
-                    id="colorEstudantes"
-                    x1="0"
-                    y1="0"
-                    x2="0"
-                    y2="1"
-                  >
-                    <stop offset="5%" stopColor="var(--accent-5)" stopOpacity={0.2} />
-                    <stop offset="95%" stopColor="var(--accent-5)" stopOpacity={0} />
-                  </linearGradient>
-                </defs>
-                <CartesianGrid strokeDasharray="3 3" stroke={ct.grid} />
-                <XAxis
-                  dataKey="periodo"
-                  tick={{ fontSize: 10, fill: ct.tick }}
-                  stroke={ct.axis}
-                  interval="preserveStartEnd"
-                />
-                <YAxis tick={{ fontSize: 11, fill: ct.tick }} stroke={ct.axis} />
-                <Tooltip
-                  formatter={(v) => [
-                    Number(v).toLocaleString("pt-BR"),
-                    "Estudantes",
-                  ]}
-                />
-                <Area
-                  type="monotone"
-                  dataKey="total_estudantes"
-                  name="Estudantes"
-                  stroke="var(--accent-5)"
-                  strokeWidth={2}
-                  fill="url(#colorEstudantes)"
-                  dot={false}
-                />
-              </AreaChart>
-            </ResponsiveContainer>
-          </div>
-        )}
+        <AreaLineChart
+          data={serie.map((d) => ({ label: d.periodo, value: d.total_estudantes || 0 }))}
+          height={280}
+          color="var(--accent-5)"
+          label="Estudantes"
+          yFmt={(v) => Number(v).toLocaleString("pt-BR")}
+          tipFmt={(v) => Number(v).toLocaleString("pt-BR")}
+          loading={loading}
+          emptyMessage="Sem dados disponíveis"
+        />
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -206,49 +151,13 @@ export default function PeDeMeiaPage() {
           <h3 className="text-base font-bold mb-5 text-slate-800 dark:text-white">
             Estudantes por Etapa de Ensino
           </h3>
-          {loading ? (
-            <div className="animate-pulse h-64 bg-slate-50 dark:bg-slate-800 rounded-xl" />
-          ) : porEtapa.length === 0 ? (
-            <div className="h-64 flex items-center justify-center text-slate-400 dark:text-slate-500 text-sm">
-              Sem dados disponíveis
-            </div>
-          ) : (
-            <div className="h-48 md:h-72">
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart
-                  data={porEtapa}
-                  layout="vertical"
-                  margin={{ left: 20, right: 20 }}
-                >
-                  <CartesianGrid
-                    strokeDasharray="3 3"
-                    stroke={ct.grid}
-                    horizontal={false}
-                  />
-                  <XAxis type="number" tick={{ fontSize: 11, fill: ct.tick }} stroke={ct.axis} />
-                  <YAxis
-                    type="category"
-                    dataKey="etapa_ensino"
-                    tick={{ fontSize: 10, fill: ct.tick }}
-                    stroke={ct.axis}
-                    width={110}
-                  />
-                  <Tooltip
-                    formatter={(v) => [
-                      Number(v).toLocaleString("pt-BR"),
-                      "Estudantes",
-                    ]}
-                  />
-                  <Bar
-                    dataKey="total_estudantes"
-                    name="Estudantes"
-                    fill="var(--accent-5)"
-                    radius={[0, 4, 4, 0]}
-                  />
-                </BarChart>
-              </ResponsiveContainer>
-            </div>
-          )}
+          <HBarChart
+            data={porEtapa.map((d) => ({ label: d.etapa_ensino, value: d.total_estudantes || 0 }))}
+            color="var(--accent-5)"
+            fmt={(v) => Number(v).toLocaleString("pt-BR")}
+            loading={loading}
+            emptyMessage="Sem dados disponíveis"
+          />
         </div>
 
         {/* Breakdown por Tipo de Incentivo */}
@@ -256,46 +165,13 @@ export default function PeDeMeiaPage() {
           <h3 className="text-base font-bold mb-5 text-slate-800 dark:text-white">
             Estudantes por Tipo de Incentivo
           </h3>
-          {loading ? (
-            <div className="animate-pulse h-64 bg-slate-50 dark:bg-slate-800 rounded-xl" />
-          ) : porIncentivo.length === 0 ? (
-            <div className="h-64 flex items-center justify-center text-slate-400 dark:text-slate-500 text-sm">
-              Sem dados disponíveis
-            </div>
-          ) : (
-            <div className="h-48 md:h-72">
-              <ResponsiveContainer width="100%" height="100%">
-                <PieChart>
-                  <Pie
-                    data={porIncentivo}
-                    dataKey="value"
-                    nameKey="name"
-                    cx="50%"
-                    cy="50%"
-                    outerRadius={80}
-                    label={({ name, percent }) =>
-                      `${name} (${(percent * 100).toFixed(0)}%)`
-                    }
-                    labelLine={false}
-                  >
-                    {porIncentivo.map((_, i) => (
-                      <Cell
-                        key={i}
-                        fill={`color-mix(in srgb, var(--accent-5) ${Math.round(100 - i * 18)}%, transparent)`}
-                      />
-                    ))}
-                  </Pie>
-                  <Tooltip
-                    formatter={(v) => [
-                      Number(v).toLocaleString("pt-BR"),
-                      "Estudantes",
-                    ]}
-                  />
-                  <Legend />
-                </PieChart>
-              </ResponsiveContainer>
-            </div>
-          )}
+          <DonutChart
+            data={porIncentivo.map((d) => ({ label: d.name, value: d.value }))}
+            baseColor="var(--accent-5)"
+            height={220}
+            loading={loading}
+            emptyMessage="Sem dados disponíveis"
+          />
         </div>
       </div>
       <ReleasesPanel dataset="pe_de_meia" />

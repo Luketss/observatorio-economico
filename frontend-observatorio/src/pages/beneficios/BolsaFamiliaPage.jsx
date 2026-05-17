@@ -1,6 +1,5 @@
 ﻿import { useEffect, useMemo, useState } from "react";
 import api from "../../services/api";
-import { useChartTheme } from "../../hooks/useChartTheme";
 import { motion } from "framer-motion";
 import InsightsPanel from "../../components/InsightsPanel";
 import ReleasesPanel from "../../components/ReleasesPanel";
@@ -9,20 +8,7 @@ import InfoTooltip from "../../components/InfoTooltip";
 import FilterBar, { describeFilter, clearFilter } from "../../components/FilterBar";
 import KpiCard from "../../components/KpiCard";
 import { NidPageHeader } from "../../components/nid/Panel";
-import {
-  ResponsiveContainer,
-  AreaChart,
-  Area,
-  BarChart,
-  Bar,
-  LineChart,
-  Line,
-  CartesianGrid,
-  XAxis,
-  YAxis,
-  Tooltip,
-  Legend,
-} from "recharts";
+import { AreaLineChart, MultiLineChart, StackedBarChart } from "../../components/nid/charts";
 
 const fmtBRL = (v) =>
   v != null
@@ -32,7 +18,6 @@ const fmtBRL = (v) =>
 const fmtNum = (v) => (v != null ? Number(v).toLocaleString("pt-BR") : "—");
 
 export default function BolsaFamiliaPage() {
-  const ct = useChartTheme();
   const [rawSerie, setRawSerie] = useState([]);
   const [resumo, setResumo] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -140,49 +125,16 @@ export default function BolsaFamiliaPage() {
         <h3 className="text-base font-bold mb-5 text-slate-800 dark:text-white">
           Evolução de Beneficiários
         </h3>
-        {loading ? (
-          <div className="animate-pulse h-64 bg-slate-50 dark:bg-slate-800 rounded-xl" />
-        ) : serie.length === 0 ? (
-          <div className="h-64 flex items-center justify-center text-slate-400 dark:text-slate-500 text-sm">
-            Sem dados disponíveis
-          </div>
-        ) : (
-          <div className="h-48 md:h-72">
-            <ResponsiveContainer width="100%" height="100%">
-              <AreaChart data={serie}>
-                <defs>
-                  <linearGradient id="colorBenef" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.2} />
-                    <stop offset="95%" stopColor="#3b82f6" stopOpacity={0} />
-                  </linearGradient>
-                </defs>
-                <CartesianGrid strokeDasharray="3 3" stroke={ct.grid} />
-                <XAxis
-                  dataKey="periodo"
-                  tick={{ fontSize: 10, fill: ct.tick }}
-                  stroke={ct.axis}
-                  interval="preserveStartEnd"
-                />
-                <YAxis tick={{ fontSize: 11, fill: ct.tick }} stroke={ct.axis} />
-                <Tooltip
-                  formatter={(v) => [
-                    Number(v).toLocaleString("pt-BR"),
-                    "Beneficiários",
-                  ]}
-                />
-                <Area
-                  type="monotone"
-                  dataKey="total_beneficiarios"
-                  name="Beneficiários"
-                  stroke="#3b82f6"
-                  strokeWidth={2}
-                  fill="url(#colorBenef)"
-                  dot={false}
-                />
-              </AreaChart>
-            </ResponsiveContainer>
-          </div>
-        )}
+        <AreaLineChart
+          data={serie.map((d) => ({ label: d.periodo, value: d.total_beneficiarios || 0 }))}
+          height={280}
+          color="#3b82f6"
+          label="Beneficiários"
+          yFmt={(v) => Number(v).toLocaleString("pt-BR")}
+          tipFmt={(v) => Number(v).toLocaleString("pt-BR")}
+          loading={loading}
+          emptyMessage="Sem dados disponíveis"
+        />
       </div>
 
       {/* Beneficiários: Total vs Primeira Infância */}
@@ -190,46 +142,20 @@ export default function BolsaFamiliaPage() {
         <h3 className="text-base font-bold mb-5 text-slate-800 dark:text-white">
           Beneficiários: Total vs Primeira Infância
         </h3>
-        {loading ? (
-          <div className="animate-pulse h-64 bg-slate-50 dark:bg-slate-800 rounded-xl" />
-        ) : serie.length === 0 ? (
-          <div className="h-64 flex items-center justify-center text-slate-400 dark:text-slate-500 text-sm">
-            Sem dados disponíveis
-          </div>
-        ) : (
-          <div className="h-48 md:h-72">
-            <ResponsiveContainer width="100%" height="100%">
-              <LineChart data={serie}>
-                <CartesianGrid strokeDasharray="3 3" stroke={ct.grid} />
-                <XAxis
-                  dataKey="periodo"
-                  tick={{ fontSize: 10, fill: ct.tick }}
-                  stroke={ct.axis}
-                  interval="preserveStartEnd"
-                />
-                <YAxis tick={{ fontSize: 11, fill: ct.tick }} stroke={ct.axis} tickFormatter={(v) => v.toLocaleString("pt-BR")} />
-                <Tooltip contentStyle={ct.tooltipStyle} formatter={(v, name) => [fmtNum(v), name]} />
-                <Legend />
-                <Line
-                  type="monotone"
-                  dataKey="total_beneficiarios"
-                  name="Total Beneficiários"
-                  stroke="#3b82f6"
-                  strokeWidth={2.5}
-                  dot={false}
-                />
-                <Line
-                  type="monotone"
-                  dataKey="beneficiarios_primeira_infancia"
-                  name="Primeira Infância"
-                  stroke="#8b5cf6"
-                  strokeWidth={2.5}
-                  dot={false}
-                />
-              </LineChart>
-            </ResponsiveContainer>
-          </div>
-        )}
+        <MultiLineChart
+          data={serie.map((d) => ({
+            label: d.periodo,
+            "Total Beneficiários": d.total_beneficiarios || 0,
+            "Primeira Infância": d.beneficiarios_primeira_infancia || 0,
+          }))}
+          series={["Total Beneficiários", "Primeira Infância"]}
+          colors={["#3b82f6", "#8b5cf6"]}
+          height={280}
+          yFmt={(v) => Number(v).toLocaleString("pt-BR")}
+          tipFmt={(v) => Number(v).toLocaleString("pt-BR")}
+          loading={loading}
+          emptyMessage="Sem dados disponíveis"
+        />
       </div>
 
       {/* Comparativo Bolsa vs Primeira Infância */}
@@ -237,54 +163,20 @@ export default function BolsaFamiliaPage() {
         <h3 className="text-base font-bold mb-5 text-slate-800 dark:text-white">
           Repasses: Bolsa Família vs Primeira Infância
         </h3>
-        {loading ? (
-          <div className="animate-pulse h-64 bg-slate-50 dark:bg-slate-800 rounded-xl" />
-        ) : serie.length === 0 ? (
-          <div className="h-64 flex items-center justify-center text-slate-400 dark:text-slate-500 text-sm">
-            Sem dados disponíveis
-          </div>
-        ) : (
-          <div className="h-48 md:h-72">
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={serie}>
-                <CartesianGrid strokeDasharray="3 3" stroke={ct.grid} />
-                <XAxis
-                  dataKey="periodo"
-                  tick={{ fontSize: 10, fill: ct.tick }}
-                  stroke={ct.axis}
-                  interval="preserveStartEnd"
-                />
-                <YAxis
-                  tick={{ fontSize: 11, fill: ct.tick }}
-                  stroke={ct.axis}
-                  tickFormatter={(v) =>
-                    `R$ ${(v / 1000).toLocaleString("pt-BR", {
-                      maximumFractionDigits: 0,
-                    })}k`
-                  }
-                />
-                <Tooltip
-                  formatter={(v, name) => [fmtBRL(v), name]}
-                />
-                <Legend />
-                <Bar
-                  dataKey="valor_bolsa"
-                  name="Valor Bolsa"
-                  fill="#3b82f6"
-                  radius={[2, 2, 0, 0]}
-                  stackId="stack"
-                />
-                <Bar
-                  dataKey="valor_primeira_infancia"
-                  name="Primeira Infância"
-                  fill="#8b5cf6"
-                  radius={[2, 2, 0, 0]}
-                  stackId="stack"
-                />
-              </BarChart>
-            </ResponsiveContainer>
-          </div>
-        )}
+        <StackedBarChart
+          data={serie.map((d) => ({
+            label: d.periodo,
+            "Valor Bolsa": d.valor_bolsa || 0,
+            "Primeira Infância": d.valor_primeira_infancia || 0,
+          }))}
+          keys={["Valor Bolsa", "Primeira Infância"]}
+          colors={["#3b82f6", "#8b5cf6"]}
+          height={280}
+          yFmt={(v) => `R$ ${(v / 1000).toLocaleString("pt-BR", { maximumFractionDigits: 0 })}k`}
+          tipFmt={fmtBRL}
+          loading={loading}
+          emptyMessage="Sem dados disponíveis"
+        />
       </div>
       <NidComparativoPanel
         title="Comparativo Municipal"

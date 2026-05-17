@@ -1,25 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
-import {
-  RadarChart,
-  Radar,
-  PolarGrid,
-  PolarAngleAxis,
-  PolarRadiusAxis,
-  Tooltip as RadarTooltip,
-  LineChart,
-  Line,
-  BarChart,
-  Bar,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip,
-  Legend,
-  ResponsiveContainer,
-} from "recharts";
 import api from "../../services/api";
 import { useAuth } from "../../context/AuthContext";
-import { useChartTheme } from "../../hooks/useChartTheme";
+import { HBarChart, MultiLineChart } from "../../components/nid/charts";
 
 function fmt(v) {
   if (v == null) return "—";
@@ -89,7 +71,6 @@ const COLORS = ["#3b82f6", "#10b981", "#f59e0b", "#ef4444", "#8b5cf6", "#06b6d4"
 
 export default function IpsPage() {
   const { user } = useAuth();
-  const ct = useChartTheme();
 
   const [estados, setEstados] = useState([]);
   const [selectedEstado, setSelectedEstado] = useState("");
@@ -368,30 +349,16 @@ export default function IpsPage() {
             ))}
           </div>
 
-          {/* Radar Chart */}
+          {/* Component Profile — HBarChart replaces RadarChart */}
           <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl p-6">
             <h2 className="text-sm font-semibold text-slate-700 dark:text-slate-200 mb-4">
               Perfil por Componente
             </h2>
-            <ResponsiveContainer width="100%" height={320}>
-              <RadarChart data={radarData}>
-                <PolarGrid stroke={ct.grid} />
-                <PolarAngleAxis dataKey="subject" tick={{ fill: ct.text, fontSize: 11 }} />
-                <PolarRadiusAxis
-                  angle={30}
-                  domain={[0, 100]}
-                  tick={{ fill: ct.text, fontSize: 10 }}
-                />
-                <Radar
-                  name="Município"
-                  dataKey="valor"
-                  stroke="#3b82f6"
-                  fill="#3b82f6"
-                  fillOpacity={0.3}
-                />
-                <RadarTooltip formatter={(v) => [`${fmt(v)}`, "Score"]} />
-              </RadarChart>
-            </ResponsiveContainer>
+            <HBarChart
+              data={radarData.map((d) => ({ label: d.subject, value: d.valor }))}
+              color="#3b82f6"
+              fmt={(v) => `${fmt(v)} / 100`}
+            />
           </div>
 
           {/* Strengths & Weaknesses */}
@@ -521,47 +488,20 @@ export default function IpsPage() {
               <h2 className="text-sm font-semibold text-slate-700 dark:text-slate-200 mb-4">
                 Evolução ao Longo do Tempo
               </h2>
-              <ResponsiveContainer width="100%" height={220}>
-                <LineChart data={evolucao}>
-                  <CartesianGrid strokeDasharray="3 3" stroke={ct.grid} />
-                  <XAxis dataKey="ano" stroke={ct.text} />
-                  <YAxis domain={[0, 100]} stroke={ct.text} />
-                  <Tooltip />
-                  <Legend />
-                  <Line
-                    type="monotone"
-                    dataKey="ips_geral"
-                    name="IPS Geral"
-                    stroke="#3b82f6"
-                    strokeWidth={2}
-                    dot
-                  />
-                  <Line
-                    type="monotone"
-                    dataKey="necessidades_humanas_basicas"
-                    name="NHB"
-                    stroke="#10b981"
-                    strokeWidth={1.5}
-                    dot
-                  />
-                  <Line
-                    type="monotone"
-                    dataKey="fundamentos_bem_estar"
-                    name="FBE"
-                    stroke="#f59e0b"
-                    strokeWidth={1.5}
-                    dot
-                  />
-                  <Line
-                    type="monotone"
-                    dataKey="oportunidades"
-                    name="OPO"
-                    stroke="#8b5cf6"
-                    strokeWidth={1.5}
-                    dot
-                  />
-                </LineChart>
-              </ResponsiveContainer>
+              <MultiLineChart
+                data={evolucao.map((d) => ({
+                  label: String(d.ano),
+                  "IPS Geral": d.ips_geral || 0,
+                  "NHB": d.necessidades_humanas_basicas || 0,
+                  "FBE": d.fundamentos_bem_estar || 0,
+                  "OPO": d.oportunidades || 0,
+                }))}
+                series={["IPS Geral", "NHB", "FBE", "OPO"]}
+                colors={["#3b82f6", "#10b981", "#f59e0b", "#8b5cf6"]}
+                height={220}
+                yFmt={(v) => v.toFixed(1)}
+                tipFmt={(v) => v.toFixed(1)}
+              />
               {evolucao.length >= 2 && (() => {
                 const last = evolucao[evolucao.length - 1];
                 const prev = evolucao[evolucao.length - 2];
@@ -633,18 +573,14 @@ export default function IpsPage() {
             )}
 
             {comparativo.length > 0 && (
-              <ResponsiveContainer width="100%" height={250}>
-                <BarChart data={comparativoData}>
-                  <CartesianGrid strokeDasharray="3 3" stroke={ct.grid} />
-                  <XAxis dataKey="name" stroke={ct.text} />
-                  <YAxis domain={[0, 100]} stroke={ct.text} />
-                  <Tooltip />
-                  <Legend />
-                  {comparativo.map((c, i) => (
-                    <Bar key={c.municipio_id} dataKey={c.nome} fill={COLORS[i % COLORS.length]} />
-                  ))}
-                </BarChart>
-              </ResponsiveContainer>
+              <MultiLineChart
+                data={comparativoData.map((d) => ({ label: d.name, ...d }))}
+                series={comparativo.map((c) => c.nome)}
+                colors={COLORS}
+                height={250}
+                yFmt={(v) => v.toFixed(1)}
+                tipFmt={(v) => v.toFixed(1)}
+              />
             )}
           </div>
         </>
