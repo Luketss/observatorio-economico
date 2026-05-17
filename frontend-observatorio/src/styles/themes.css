@@ -2038,3 +2038,142 @@ body.theme-light .nid-filterbar [aria-pressed="true"] {
 }
 .nid-funnel-list__bar-fill { height: 100%; }
 
+/* ─────────────────────────────────────────────────────────────────────────────
+   Indicadores Internos — dense KPI grid (ticket 33)
+   .ind-grid   → auto-fill responsive grid container
+   .ind-cell   → compact KPI cell
+   .ind-cell--add → dashed "+ Adicionar" trailing cell
+   ───────────────────────────────────────────────────────────────────────────── */
+.ind-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 12px;
+  margin-top: 12px;
+}
+.ind-cell {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 12px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  transition: border-color 0.15s, background 0.15s;
+}
+.ind-cell:hover { border-color: var(--border-strong); }
+.ind-cell__label {
+  font: 600 10.5px/1 var(--font-mono);
+  color: var(--text-mute);
+  text-transform: uppercase;
+  letter-spacing: 0.14em;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.ind-cell__value {
+  font: 700 18px/1 var(--font-display);
+  color: var(--text);
+  font-variant-numeric: tabular-nums;
+  display: flex;
+  gap: 6px;
+  align-items: baseline;
+}
+.ind-cell__unit {
+  font: 500 11px/1 var(--font-display);
+  color: var(--text-dim);
+}
+.ind-cell__foot {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 4px;
+}
+.ind-cell__spark {
+  flex: 1;
+  min-width: 0;
+  height: 32px;
+  pointer-events: none;
+  opacity: 0.85;
+}
+.ind-cell__spark svg { width: 100%; height: 100%; display: block; }
+.ind-cell__period {
+  font: 500 10px/1 var(--font-mono);
+  color: var(--text-mute);
+  letter-spacing: 0.04em;
+  white-space: nowrap;
+  margin-left: auto;
+}
+.ind-cell__actions {
+  display: flex;
+  gap: 4px;
+  margin-top: 2px;
+  opacity: 0;
+  transition: opacity 0.12s;
+}
+.ind-cell:hover .ind-cell__actions { opacity: 1; }
+.ind-cell__actions button {
+  width: 24px; height: 24px;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--text-dim);
+  display: grid; place-items: center;
+  cursor: pointer;
+  transition: color 0.12s, border-color 0.12s, background 0.12s;
+}
+.ind-cell__actions button:hover {
+  color: var(--text);
+  border-color: var(--border-strong);
+  background: color-mix(in oklab, var(--admin-accent) 8%, transparent);
+}
+.ind-cell__actions button.del:hover {
+  color: var(--accent-2);
+  background: color-mix(in oklab, var(--accent-2) 10%, transparent);
+  border-color: color-mix(in oklab, var(--accent-2) 30%, transparent);
+}
+.ind-cell--add {
+  border: 1px dashed var(--border);
+  background: repeating-linear-gradient(
+    135deg,
+    transparent 0 12px,
+    color-mix(in oklab, var(--admin-accent) 4%, transparent) 12px 24px
+  );
+  cursor: pointer;
+  align-items: center;
+  justify-content: center;
+  min-height: 110px;
+  color: var(--text-dim);
+  gap: 8px;
+  transition: border-color 0.15s, color 0.15s;
+}
+.ind-cell--add:hover { color: var(--text); border-color: var(--border-strong); }
+.ind-cell--add span {
+  font: 600 12px/1 var(--font-mono);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+.ind-section__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 0 2px;
+  cursor: pointer;
+  user-select: none;
+}
+.ind-section__title {
+  font: 700 13px/1 var(--font-display);
+  color: var(--text);
+  letter-spacing: -0.01em;
+}
+.ind-section__count {
+  font: 500 10.5px/1 var(--font-mono);
+  color: var(--text-mute);
+  letter-spacing: 0.06em;
+}
+.ind-section__chevron {
+  color: var(--text-mute);
+  transition: transform 0.18s;
+}
+.ind-section__chevron.open { transform: rotate(90deg); }
+
