@@ -1141,6 +1141,7 @@ def gerar_prioridades(db: Session, municipio_id: int) -> InsightIA:
         logger.warning("gerar_prioridades: malformed JSON from Claude, storing fallback")
         prioridades = [{"titulo": "Prioridade", "observacao": raw, "dataset_referencia": None}]
 
+    prioridades = prioridades[:3]
     conteudo = json.dumps(prioridades, ensure_ascii=False)
     periodo = datetime.now(timezone.utc).strftime("%Y-%m")
 
