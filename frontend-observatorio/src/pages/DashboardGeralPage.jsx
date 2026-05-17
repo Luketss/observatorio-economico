@@ -24,6 +24,7 @@ import {
   fmtMoneyFull,
   fmtNumber,
 } from "../components/nid/charts";
+import { ChartHoverProvider } from "../components/nid/ChartHoverContext";
 import {
   StarIcon, UserGroupIcon, HomeIcon, HeartIcon, AcademicCapIcon,
   TruckIcon, ChartBarIcon, BuildingOfficeIcon, BoltIcon, GlobeAltIcon,
@@ -323,75 +324,79 @@ export default function DashboardGeralPage() {
       </div>
 
       {/* PIB area chart + Receita Donut */}
-      <div className="nid-grid-2">
-        <NidPanel title="Evolução do PIB" sub="Série anual · IBGE / SIDRA" tabs={["Anual"]}>
-          <AreaLineChart data={pibChartData} color={A1} glow height={280} label="PIB Total" />
-          <NidLegend items={[{ name: "PIB Total", color: A1 }]} />
-        </NidPanel>
+      {/* ChartHoverProvider syncs "annual" group: PIB Evolução ↔ PIB Comparativo */}
+      <ChartHoverProvider>
+        <div className="nid-grid-2">
+          <NidPanel title="Evolução do PIB" sub="Série anual · IBGE / SIDRA" tabs={["Anual"]}>
+            <AreaLineChart data={pibChartData} color={A1} glow height={280} label="PIB Total" syncGroup="annual" />
+            <NidLegend items={[{ name: "PIB Total", color: A1 }]} />
+          </NidPanel>
 
-        <NidPanel
-          title="Receita por Tipo"
-          sub={arrecResumo?.total_geral != null ? "Composição YTD" : "Sem dados"}
-        >
-          {arrecDonut.items.length > 0 ? (
-            <>
-              <DonutChart
-                data={arrecDonut.items}
-                colors={arrecDonut.palette}
-                glow
-                height={210}
-                centerLabel={arrecResumo?.total_geral != null ? fmtMoneyShort(arrecResumo.total_geral) : ""}
-                centerSub="ARRECADADO"
-              />
-              <NidLegend items={arrecDonut.legendItems} />
-            </>
-          ) : (
-            <div style={{
-              height: 210, display: "grid", placeItems: "center",
-              color: "var(--text-mute)", fontSize: 13, fontFamily: "var(--font-mono)",
-            }}>
-              Sem dados disponíveis
-            </div>
-          )}
-        </NidPanel>
-      </div>
+          <NidPanel
+            title="Receita por Tipo"
+            sub={arrecResumo?.total_geral != null ? "Composição YTD" : "Sem dados"}
+          >
+            {arrecDonut.items.length > 0 ? (
+              <>
+                <DonutChart
+                  data={arrecDonut.items}
+                  colors={arrecDonut.palette}
+                  glow
+                  height={210}
+                  centerLabel={arrecResumo?.total_geral != null ? fmtMoneyShort(arrecResumo.total_geral) : ""}
+                  centerSub="ARRECADADO"
+                />
+                <NidLegend items={arrecDonut.legendItems} />
+              </>
+            ) : (
+              <div style={{
+                height: 210, display: "grid", placeItems: "center",
+                color: "var(--text-mute)", fontSize: 13, fontFamily: "var(--font-mono)",
+              }}>
+                Sem dados disponíveis
+              </div>
+            )}
+          </NidPanel>
+        </div>
 
-      {/* VA por Setor + Comparativo cidades */}
-      <div className="nid-grid-1-1">
-        <NidPanel title="Valor Adicionado por Setor" sub="Decomposição setorial · R$ correntes">
-          <StackedBarChart
-            data={vaSetorData}
-            keys={["Agropecuária", "Indústria", "Serviços", "Governo"]}
-            colors={[A5, A1, A3, A4]}
-            glow
-            height={260}
-          />
-          <NidLegend items={[
-            { name: "Agropecuária", color: A5 },
-            { name: "Indústria",   color: A1 },
-            { name: "Serviços",    color: A3 },
-            { name: "Governo",     color: A4 },
-          ]} />
-        </NidPanel>
+        {/* VA por Setor + Comparativo cidades */}
+        <div className="nid-grid-1-1">
+          <NidPanel title="Valor Adicionado por Setor" sub="Decomposição setorial · R$ correntes">
+            <StackedBarChart
+              data={vaSetorData}
+              keys={["Agropecuária", "Indústria", "Serviços", "Governo"]}
+              colors={[A5, A1, A3, A4]}
+              glow
+              height={260}
+            />
+            <NidLegend items={[
+              { name: "Agropecuária", color: A5 },
+              { name: "Indústria",   color: A1 },
+              { name: "Serviços",    color: A3 },
+              { name: "Governo",     color: A4 },
+            ]} />
+          </NidPanel>
 
-        <NidPanel
-          title="PIB Comparativo"
-          sub={comparativoCidades.series.length > 1
-            ? `${comparativoCidades.series.length} municípios`
-            : "Histórico do município"}
-        >
-          <MultiLineChart
-            data={comparativoCidades.data}
-            series={comparativoCidades.series}
-            colors={[A3, A1, A4, A2]}
-            glow
-            height={260}
-          />
-          <NidLegend items={comparativoCidades.series.map((s, i) => ({
-            name: s, color: [A3, A1, A4, A2][i % 4],
-          }))} />
-        </NidPanel>
-      </div>
+          <NidPanel
+            title="PIB Comparativo"
+            sub={comparativoCidades.series.length > 1
+              ? `${comparativoCidades.series.length} municípios`
+              : "Histórico do município"}
+          >
+            <MultiLineChart
+              data={comparativoCidades.data}
+              series={comparativoCidades.series}
+              colors={[A3, A1, A4, A2]}
+              glow
+              height={260}
+              syncGroup="annual"
+            />
+            <NidLegend items={comparativoCidades.series.map((s, i) => ({
+              name: s, color: [A3, A1, A4, A2][i % 4],
+            }))} />
+          </NidPanel>
+        </div>
+      </ChartHoverProvider>
 
       {/* CAGED twin bars + Top setores */}
       <div className="nid-grid-1-1">

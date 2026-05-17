@@ -1,5 +1,6 @@
 import { useEffect, useId, useRef, useState } from "react";
 import ChartState from "./ChartState.jsx";
+import { useChartHover } from "./ChartHoverContext.jsx";
 
 // ────────── glow resolver ──────────
 function resolveGlow(glow) {
@@ -135,10 +136,29 @@ export function AreaLineChart({
   loading,
   emptyMessage,
   emptyAction,
+  syncGroup,    // ticket 14: cross-chart hover sync
 }) {
   const id = useId().replace(/:/g, "");
   const [wrapRef, w] = useContainerWidth(800);
-  const [hover, setHover] = useState(null);
+  const [localHover, setLocalHover] = useState(null);
+  const [externalLabel, setExternalLabel] = useChartHover(syncGroup);
+
+  // Resolve external label → index in data (real points only)
+  const externalIdx =
+    externalLabel != null && data
+      ? data.findIndex((d) => String(d.label) === String(externalLabel))
+      : -1;
+
+  // Local hover wins; fall back to external
+  const hover = localHover ?? (externalIdx >= 0 ? externalIdx : null);
+  const isExternalHover = localHover == null && externalIdx >= 0;
+
+  // Broadcast local hover changes to siblings
+  useEffect(() => {
+    if (!syncGroup || !data) return;
+    setExternalLabel(localHover != null ? data[localHover]?.label ?? null : null);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [localHover, syncGroup]);
   if (loading) return <ChartState kind="loading" shape="line" height={height} />;
   if (!data || data.length === 0) return <EmptyChart h={height} shape="line" message={emptyMessage} action={emptyAction} />;
   const glowMode = resolveGlow(glow);
@@ -205,13 +225,13 @@ export function AreaLineChart({
       const d = Math.abs(p.x - px);
       if (d < bestD) { bestD = d; best = i; }
     });
-    setHover(best);
+    setLocalHover(best);
   };
 
   const hoveredPt = hover != null ? allPts[hover] : null;
 
   return (
-    <div className="nid-chart-wrap" ref={wrapRef} onMouseLeave={() => setHover(null)}>
+    <div className="nid-chart-wrap" ref={wrapRef} onMouseLeave={() => setLocalHover(null)}>
       <svg viewBox={`0 0 ${w} ${height}`}>
         <defs>
           <linearGradient id={`area-${id}`} x1="0" y1="0" x2="0" y2="1">
@@ -325,11 +345,12 @@ export function AreaLineChart({
           </g>
         ))}
 
-        {/* Crosshair */}
+        {/* Crosshair — dimmer when driven by an external sync peer */}
         {hoveredPt && (
           <line x1={hoveredPt.x} x2={hoveredPt.x} y1={padT} y2={padT + innerH}
             stroke={hoveredPt.isForecast ? forecastColor : color}
-            strokeOpacity="0.4" strokeDasharray="2 3" />
+            strokeOpacity={isExternalHover ? 0.2 : 0.4}
+            strokeDasharray={isExternalHover ? "3 5" : "2 3"} />
         )}
 
         {/* ── Point annotations (on top of lines) ── */}
@@ -358,7 +379,17 @@ export function AreaLineChart({
       </svg>
 
       {hoveredPt && (
-        <div className="nid-tip" style={{ left: `${(hoveredPt.x / w) * 100}%`, top: `${(hoveredPt.y / height) * 100}%` }}>
+        <div
+          className="nid-tip"
+          style={{
+            left: `${(hoveredPt.x / w) * 100}%`,
+            // External hover: anchor to top of chart area; local hover: follow the point
+            top: isExternalHover
+              ? `${((padT + 8) / height) * 100}%`
+              : `${(hoveredPt.y / height) * 100}%`,
+            opacity: isExternalHover ? 0.75 : 1,
+          }}
+        >
           <div className="tip-label">{hoveredPt.label}</div>
           {hoveredPt.isForecast ? (
             <>
@@ -560,11 +591,28 @@ export function MultiLineChart({
   loading,
   emptyMessage,
   emptyAction,
+  syncGroup,    // ticket 14: cross-chart hover sync
 }) {
   const id = useId().replace(/:/g, "");
   const [wrapRef, w] = useContainerWidth(800);
-  const [hover, setHover] = useState(null);
+  const [localHover, setLocalHover] = useState(null);
   const [hoverSeries, setHoverSeries] = useState(null);
+  const [externalLabel, setExternalLabel] = useChartHover(syncGroup);
+
+  const externalIdx =
+    externalLabel != null && data
+      ? data.findIndex((d) => String(d.label) === String(externalLabel))
+      : -1;
+
+  const hover = localHover ?? (externalIdx >= 0 ? externalIdx : null);
+  const isExternalHover = localHover == null && externalIdx >= 0;
+
+  useEffect(() => {
+    if (!syncGroup || !data) return;
+    setExternalLabel(localHover != null ? data[localHover]?.label ?? null : null);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [localHover, syncGroup]);
+
   if (loading) return <ChartState kind="loading" shape="line" height={height} />;
   if (!data || data.length === 0) return <EmptyChart h={height} shape="line" message={emptyMessage} action={emptyAction} />;
   const glowMode = resolveGlow(glow);
@@ -687,13 +735,13 @@ export function MultiLineChart({
       const d = Math.abs(sx(i) - px);
       if (d < bestD) { bestD = d; best = i; }
     }
-    setHover(best);
+    setLocalHover(best);
   };
 
   const isHoverForecast = hover != null && hover >= data.length;
 
   return (
-    <div className="nid-chart-wrap" ref={wrapRef} onMouseLeave={() => { setHover(null); setHoverSeries(null); }}>
+    <div className="nid-chart-wrap" ref={wrapRef} onMouseLeave={() => { setLocalHover(null); setHoverSeries(null); }}>
       <svg viewBox={`0 0 ${w} ${height}`}>
         <defs>
           {(colors || []).map((c, i) => (
@@ -870,7 +918,8 @@ export function MultiLineChart({
           <>
             <line x1={sx(hover)} x2={sx(hover)} y1={padT} y2={padT + innerH}
               stroke={isHoverForecast ? forecastColor : "var(--text-dim)"}
-              strokeOpacity="0.3" strokeDasharray="2 3" />
+              strokeOpacity={isExternalHover ? 0.15 : 0.3}
+              strokeDasharray={isExternalHover ? "3 5" : "2 3"} />
             {/* Real series hover dots */}
             {!isHoverForecast && ptsBySeries.map((pts, si) => {
               const dotColor = focusMode ? colorFor(si) : ((colors || [])[si] || "var(--accent-1)");
@@ -928,7 +977,7 @@ export function MultiLineChart({
         <rect x={padL} y={padT} width={innerW} height={innerH} fill="transparent" onMouseMove={handleMove} />
       </svg>
       {hover != null && (
-        <div className="nid-tip" style={{ left: `${(sx(hover) / w) * 100}%`, top: "10%" }}>
+        <div className="nid-tip" style={{ left: `${(sx(hover) / w) * 100}%`, top: "10%", opacity: isExternalHover ? 0.75 : 1 }}>
           <div className="tip-label">{allLabels[hover]}</div>
           {isHoverForecast ? (
             <>
@@ -1002,9 +1051,26 @@ function TwinBarBrutoChart({
   data, height, glow,
   colorUp, colorDown,
   yCaption, w, wrapRef,
+  syncGroup,
 }) {
   const id = useId().replace(/:/g, "");
-  const [hover, setHover] = useState(null);
+  const [localHover, setLocalHover] = useState(null);
+  const [externalLabel, setExternalLabel] = useChartHover(syncGroup);
+
+  const externalIdx =
+    externalLabel != null && data
+      ? data.findIndex((d) => String(d.label) === String(externalLabel))
+      : -1;
+
+  const hover = localHover ?? (externalIdx >= 0 ? externalIdx : null);
+  const isExternalHover = localHover == null && externalIdx >= 0;
+
+  useEffect(() => {
+    if (!syncGroup || !data) return;
+    setExternalLabel(localHover != null ? data[localHover]?.label ?? null : null);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [localHover, syncGroup]);
+
   const glowMode = resolveGlow(glow);
   const glowHover  = glowMode !== "off";
 
@@ -1020,7 +1086,7 @@ function TwinBarBrutoChart({
   const sy = (v) => padT + (1 - v / yScaleMax) * innerH;
 
   return (
-    <div className="nid-chart-wrap" ref={wrapRef} onMouseLeave={() => setHover(null)}>
+    <div className="nid-chart-wrap" ref={wrapRef} onMouseLeave={() => setLocalHover(null)}>
       <svg viewBox={`0 0 ${w} ${height}`}>
         <defs>
           <linearGradient id={`tup-${id}`} x1="0" y1="0" x2="0" y2="1">
@@ -1059,7 +1125,7 @@ function TwinBarBrutoChart({
           const hDn = padT + innerH - yDn;
           const isH = hover === i;
           return (
-            <g key={i} onMouseEnter={() => setHover(i)}>
+            <g key={i} onMouseEnter={() => setLocalHover(i)}>
               {glowHover && isH && (
                 <>
                   <rect x={xUp - 2} y={yUp - 2} width={barW + 4} height={hUp + 4} rx={5} fill={colorUp} opacity="0.6" filter={`url(#tglow-${id})`} />
@@ -1078,7 +1144,10 @@ function TwinBarBrutoChart({
       {hover != null && (
         <div className="nid-tip" style={{
           left: `${(sxCenter(hover) / w) * 100}%`,
-          top: `${(Math.min(sy(data[hover].admissoes), sy(data[hover].desligamentos)) / height) * 100}%`,
+          top: isExternalHover
+            ? `${((padT + 8) / height) * 100}%`
+            : `${(Math.min(sy(data[hover].admissoes), sy(data[hover].desligamentos)) / height) * 100}%`,
+          opacity: isExternalHover ? 0.75 : 1,
           transform: "translate(-50%, calc(-100% - 8px))",
         }}>
           <div className="tip-label">{data[hover].label}</div>
@@ -1102,9 +1171,26 @@ function TwinBarSaldoChart({
   data, height, glow,
   colorUp, colorDown,
   yCaption, showCumulative, w, wrapRef,
+  syncGroup,
 }) {
   const id = useId().replace(/:/g, "");
-  const [hover, setHover] = useState(null);
+  const [localHover, setLocalHover] = useState(null);
+  const [externalLabel, setExternalLabel] = useChartHover(syncGroup);
+
+  const externalIdx =
+    externalLabel != null && data
+      ? data.findIndex((d) => String(d.label) === String(externalLabel))
+      : -1;
+
+  const hover = localHover ?? (externalIdx >= 0 ? externalIdx : null);
+  const isExternalHover = localHover == null && externalIdx >= 0;
+
+  useEffect(() => {
+    if (!syncGroup || !data) return;
+    setExternalLabel(localHover != null ? data[localHover]?.label ?? null : null);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [localHover, syncGroup]);
+
   const glowMode = resolveGlow(glow);
   const glowHover  = glowMode !== "off";
 
@@ -1142,7 +1228,7 @@ function TwinBarSaldoChart({
   const axisTicks = [tickMax, 0, -tickMax];
 
   return (
-    <div className="nid-chart-wrap" ref={wrapRef} onMouseLeave={() => setHover(null)}>
+    <div className="nid-chart-wrap" ref={wrapRef} onMouseLeave={() => setLocalHover(null)}>
       <svg viewBox={`0 0 ${w} ${height}`}>
         <defs>
           <filter id={`sglow-${id}`}>
@@ -1187,7 +1273,7 @@ function TwinBarSaldoChart({
           const cx = sxCenter(i);
           const isH = hover === i;
           return (
-            <g key={i} onMouseEnter={() => setHover(i)}>
+            <g key={i} onMouseEnter={() => setLocalHover(i)}>
               {glowHover && isH && (
                 <rect x={cx - barW / 2 - 2} y={barY - 2} width={barW + 4} height={barH + 4}
                   rx={4} fill={fill} opacity="0.55" filter={`url(#sglow-${id})`} />
@@ -1229,7 +1315,10 @@ function TwinBarSaldoChart({
         return (
           <div className="nid-tip" style={{
             left: `${(tipX / w) * 100}%`,
-            top: `${(barTop / height) * 100}%`,
+            top: isExternalHover
+              ? `${((padT + 8) / height) * 100}%`
+              : `${(barTop / height) * 100}%`,
+            opacity: isExternalHover ? 0.75 : 1,
             transform: "translate(-50%, calc(-100% - 8px))",
           }}>
             <div className="tip-label">{d.label}</div>
@@ -1272,6 +1361,7 @@ export function TwinBarChart({
   loading,
   emptyMessage,
   emptyAction,
+  syncGroup,    // ticket 14: cross-chart hover sync
 }) {
   const [wrapRef, w] = useContainerWidth(800);
   if (loading) return <ChartState kind="loading" shape="twin" height={height} />;
@@ -1280,7 +1370,7 @@ export function TwinBarChart({
   // Default showCumulative to true in saldo mode, false otherwise.
   const cumulative = showCumulative != null ? showCumulative : mode === "saldo";
 
-  const shared = { data, height, glow, colorUp, colorDown, yCaption, w, wrapRef };
+  const shared = { data, height, glow, colorUp, colorDown, yCaption, w, wrapRef, syncGroup };
 
   if (mode === "bruto") {
     return <TwinBarBrutoChart {...shared} />;
