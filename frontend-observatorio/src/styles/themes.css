@@ -1426,3 +1426,754 @@ body.theme-light .nid-modal__mask {
   .nid-explorer__browser { max-height: 220px; }
 }
 
+/* ─────────────────────────────────────────────────────────────────────────────
+   FilterBar — ticket 26
+   Pill row with segmented preset control. All tokens, no Tailwind.
+   ───────────────────────────────────────────────────────────────────────────── */
+
+/* Root container (inline styles set on the element; this class allows
+   external overrides and responsive narrowing). */
+.nid-filterbar {
+  /* Ensure selects inside pick up the body font */
+  font-family: var(--font-body);
+}
+
+/* Selects inside the filter bar inherit the theme font */
+.nid-filterbar select {
+  font-family: var(--font-mono);
+  appearance: auto; /* keep native arrow */
+}
+
+/* Light-theme: select background */
+body.theme-light .nid-filterbar select {
+  background: #ffffff;
+  border-color: rgba(15, 23, 42, 0.10);
+  color: var(--text);
+}
+
+/* Active preset button — light theme needs dark text on accent */
+body.theme-light .nid-filterbar [aria-pressed="true"] {
+  color: #ffffff;
+}
+
+@media (max-width: 640px) {
+  .nid-filterbar {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+  .nid-filterbar > span[style*="flex: 1"] {
+    display: none;
+  }
+}
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   NidTabBar — ticket 30
+   Standalone pill-row tab bar for page-level section switching.
+   Lives OUTSIDE panel headers (those use .nid-tab inside NidPanel).
+   ───────────────────────────────────────────────────────────────────────────── */
+.nid-tabbar {
+  display: inline-flex;
+  background: var(--panel-2);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 4px;
+  gap: 2px;
+}
+.nid-tabbar__tab {
+  padding: 8px 14px;
+  border: none; background: transparent;
+  border-radius: 8px;
+  font: 600 12px/1 var(--font-display);
+  color: var(--text-dim);
+  cursor: pointer;
+  display: inline-flex; align-items: center; gap: 6px;
+  transition: background 0.15s, color 0.15s;
+}
+.nid-tabbar__tab:hover { color: var(--text); }
+.nid-tabbar__tab.is-active {
+  background: color-mix(in oklab, var(--accent-1) 14%, transparent);
+  color: var(--text);
+}
+.nid-tabbar__count {
+  font: 600 10px/1 var(--font-mono);
+  color: var(--text-mute);
+  padding: 2px 6px;
+  border-radius: 999px;
+  background: var(--panel-2);
+  border: 1px solid var(--border);
+}
+.nid-tabbar__tab.is-active .nid-tabbar__count {
+  color: var(--accent-1);
+  border-color: color-mix(in oklab, var(--accent-1) 28%, transparent);
+  background: color-mix(in oklab, var(--accent-1) 10%, transparent);
+}
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   MandatoTimeline — ticket 31
+   Rail-based timeline with dots colored by event kind and above/below cards.
+   ─────────────────────────────────────────────────────────────────────────── */
+
+/* ── Outer wrapper & rail ─────────────────────────────────────────────────── */
+.tl-wrap {
+  position: relative;
+  padding: 0 4px 8px;
+  overflow-x: auto;
+}
+
+.tl-rail {
+  position: absolute;
+  left: 4px;
+  right: 4px;
+  /* vertically centered on the dot row: card-above max ~120px + 7px dot center */
+  top: 127px;
+  height: 2px;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    var(--border) 6%,
+    var(--border) 94%,
+    transparent
+  );
+  pointer-events: none;
+}
+
+/* ── Items row ───────────────────────────────────────────────────────────── */
+.tl-row {
+  display: flex;
+  gap: 18px;
+  min-width: max-content;
+}
+
+.tl-item {
+  flex: 0 0 180px;
+  min-width: 160px;
+  max-width: 220px;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+}
+
+/* ── Dot ─────────────────────────────────────────────────────────────────── */
+.tl-dot {
+  position: relative;
+  z-index: 1;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: var(--bg);
+  border: 2px solid var(--accent-1);
+  flex-shrink: 0;
+  transition: transform 0.15s, box-shadow 0.15s;
+}
+.tl-item:hover .tl-dot { transform: scale(1.35); }
+
+.tl-dot.start {
+  border-color: var(--accent-1);
+  background: var(--accent-1);
+  box-shadow: 0 0 14px var(--accent-1);
+}
+.tl-dot.obras {
+  border-color: var(--accent-4);
+  box-shadow: 0 0 12px color-mix(in oklab, var(--accent-4) 50%, transparent);
+}
+.tl-dot.politica {
+  border-color: var(--accent-5);
+}
+.tl-dot.evento {
+  border-color: var(--text-dim);
+}
+
+/* ── Card ────────────────────────────────────────────────────────────────── */
+.tl-card {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 12px 14px;
+  width: 100%;
+  transition: border-color 0.15s;
+}
+.tl-item:hover .tl-card {
+  border-color: var(--border-strong);
+}
+
+/* Card above the rail: push its bottom flush to the dot row */
+.tl-card--above {
+  margin-bottom: 14px;
+  min-height: 100px;
+}
+
+/* Card below the rail: push its top away from the dot */
+.tl-card--below {
+  margin-top: 14px;
+}
+
+/* Kind eyebrow */
+.tl-card .kind {
+  font: 600 10px/1 var(--font-mono);
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  margin-bottom: 8px;
+}
+.tl-card .kind.start   { color: var(--accent-1); }
+.tl-card .kind.obras   { color: var(--accent-4); }
+.tl-card .kind.politica{ color: var(--accent-5); }
+.tl-card .kind.evento  { color: var(--text-dim); }
+
+/* Title */
+.tl-card h5 {
+  margin: 0 0 4px;
+  font: 600 13px/1.3 var(--font-display);
+  color: var(--text);
+}
+
+/* Date */
+.tl-card .meta {
+  font: 500 10.5px/1 var(--font-mono);
+  color: var(--text-mute);
+  letter-spacing: 0.04em;
+}
+
+/* Optional description */
+.tl-card__desc {
+  font: 400 11.5px/1.45 var(--font-display);
+  color: var(--text-dim);
+  margin-top: 6px;
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+/* Optional link */
+.tl-card__link {
+  display: inline-block;
+  margin-top: 8px;
+  font: 600 10.5px/1 var(--font-mono);
+  letter-spacing: 0.04em;
+  color: var(--accent-1);
+  text-decoration: none;
+}
+.tl-card__link:hover { text-decoration: underline; }
+
+/* ── Manage link ──────────────────────────────────────────────────────────── */
+.tl-manage-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  border-radius: 8px;
+  background: var(--panel-2);
+  border: 1px solid var(--border);
+  color: var(--text-dim);
+  font: 600 12px/1 var(--font-mono);
+  letter-spacing: 0.04em;
+  text-decoration: none;
+  transition: color 0.12s, border-color 0.12s;
+  flex-shrink: 0;
+}
+.tl-manage-link:hover {
+  color: var(--text);
+  border-color: var(--border-strong);
+}
+
+/* ── Empty state ──────────────────────────────────────────────────────────── */
+.tl-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 40px 20px;
+  text-align: center;
+}
+.tl-empty__icon {
+  width: 40px;
+  height: 40px;
+  color: var(--text-mute);
+  margin-bottom: 12px;
+}
+.tl-empty__text {
+  font: 400 13px/1.4 var(--font-mono);
+  color: var(--text-dim);
+}
+.tl-empty__link {
+  margin-top: 12px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font: 600 12px/1 var(--font-mono);
+  letter-spacing: 0.04em;
+  color: var(--accent-1);
+  text-decoration: none;
+}
+.tl-empty__link:hover { text-decoration: underline; }
+
+/* ── Loading skeleton ─────────────────────────────────────────────────────── */
+@keyframes tl-pulse {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0.4; }
+}
+
+.tl-skeleton-head {
+  height: 14px;
+  width: 180px;
+  background: var(--panel-2);
+  border-radius: 6px;
+  animation: tl-pulse 1.5s ease-in-out infinite;
+}
+
+.tl-skeleton-card {
+  height: 80px;
+  width: 190px;
+  flex-shrink: 0;
+  background: var(--panel-2);
+  border-radius: 12px;
+  animation: tl-pulse 1.5s ease-in-out infinite;
+}
+
+/* ─── NidFunnel (ticket 29) ─── */
+.nid-funnel { display: block; }
+.nid-funnel__svg { display: block; max-width: 100%; }
+.nid-funnel__stage-label { font: 600 12px/1.2 var(--font-display); fill: var(--text); }
+.nid-funnel__stage-value { font: 700 16px/1 var(--font-mono); fill: var(--text); }
+.nid-funnel__stage-conv  { font: 500 10.5px/1 var(--font-mono); fill: var(--text-dim); }
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   Projetos — Acervo & Acompanhamento card grid (ticket 32)
+   ─────────────────────────────────────────────────────────────────────────── */
+
+/* Card grid */
+.proj-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 16px;
+}
+@media (max-width: 1024px) { .proj-grid { grid-template-columns: repeat(2, 1fr); } }
+@media (max-width: 640px)  { .proj-grid { grid-template-columns: 1fr; } }
+
+/* Card shell */
+.proj-card {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  transition: box-shadow 0.18s, border-color 0.18s;
+}
+.proj-card:hover {
+  border-color: var(--border-strong);
+  box-shadow: var(--shadow-card);
+}
+
+/* Image / gradient placeholder */
+.proj-card__img {
+  height: 80px;
+  border-radius: 8px;
+  background: linear-gradient(
+    135deg,
+    color-mix(in oklab, var(--proj-accent, var(--accent-3)) 22%, transparent),
+    color-mix(in oklab, var(--accent-1) 10%, transparent)
+  );
+  border: 1px solid var(--border);
+  display: grid;
+  place-items: center;
+  color: var(--text-mute);
+  font: 600 9.5px/1 var(--font-mono);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+/* Eixo tag */
+.proj-card__eixo-tag {
+  display: inline-block;
+  font: 600 9.5px/1 var(--font-mono);
+  letter-spacing: 0.10em;
+  text-transform: uppercase;
+  padding: 4px 8px;
+  border-radius: 6px;
+  border: 1px solid transparent;
+  margin-bottom: 6px;
+}
+
+/* Title */
+.proj-card__title {
+  font: 600 13.5px/1.3 var(--font-display);
+  color: var(--text);
+  margin: 0;
+  transition: color 0.15s;
+}
+.proj-card__title:hover { color: var(--accent-1); }
+
+/* Description */
+.proj-card__desc {
+  font: 400 12px/1.45 var(--font-display);
+  color: var(--text-dim);
+  flex: 1;
+  margin: 0;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+/* Card footer row */
+.proj-card__footer {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding-top: 8px;
+  border-top: 1px solid var(--border);
+  margin-top: auto;
+}
+
+/* Select button (Acervo) */
+.proj-card__select-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+  background: color-mix(in oklab, var(--accent-5) 20%, transparent);
+  color: var(--accent-5);
+  border: 1px solid color-mix(in oklab, var(--accent-5) 35%, transparent);
+  padding: 8px 12px;
+  border-radius: 8px;
+  font: 600 12px/1 var(--font-display);
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s;
+}
+.proj-card__select-btn:hover:not(:disabled) {
+  background: color-mix(in oklab, var(--accent-5) 30%, transparent);
+  border-color: color-mix(in oklab, var(--accent-5) 50%, transparent);
+}
+.proj-card__select-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+/* Icon action buttons on cards */
+.proj-card__icon-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 6px;
+  border-radius: 7px;
+  border: none;
+  background: transparent;
+  color: var(--text-mute);
+  cursor: pointer;
+  transition: color 0.15s, background 0.15s;
+}
+.proj-card__icon-btn:hover {
+  color: var(--accent-1);
+  background: color-mix(in oklab, var(--accent-1) 10%, transparent);
+}
+.proj-card__icon-btn--danger:hover {
+  color: var(--accent-2);
+  background: color-mix(in oklab, var(--accent-2) 10%, transparent);
+}
+
+/* Add / New button (toolbar) */
+.proj-add-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background: color-mix(in oklab, var(--accent-1) 18%, transparent);
+  color: var(--accent-1);
+  border: 1px solid color-mix(in oklab, var(--accent-1) 40%, transparent);
+  padding: 8px 16px;
+  border-radius: 10px;
+  font: 600 13px/1 var(--font-display);
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background 0.15s, border-color 0.15s;
+}
+.proj-add-btn:hover {
+  background: color-mix(in oklab, var(--accent-1) 28%, transparent);
+  border-color: color-mix(in oklab, var(--accent-1) 55%, transparent);
+}
+
+/* ── Shared modal primitives ──────────────────────────────────────────────── */
+.nid-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.52);
+  backdrop-filter: blur(6px);
+  padding: 16px;
+}
+.nid-modal {
+  background: var(--panel);
+  border: 1px solid var(--border-strong);
+  border-radius: 18px;
+  padding: 24px;
+  width: 100%;
+  max-height: 90vh;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  box-shadow: var(--shadow-card), 0 32px 64px -32px rgba(0, 0, 0, 0.6);
+  backdrop-filter: blur(12px);
+}
+.nid-modal__close {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 6px;
+  border-radius: 8px;
+  border: none;
+  background: transparent;
+  color: var(--text-mute);
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: color 0.15s, background 0.15s;
+}
+.nid-modal__close:hover { color: var(--text); background: var(--panel-2); }
+
+.nid-modal__btn-cancel {
+  padding: 8px 16px;
+  border-radius: 8px;
+  border: 1px solid var(--border-strong);
+  background: transparent;
+  color: var(--text-dim);
+  font: 500 13px/1 var(--font-display);
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+}
+.nid-modal__btn-cancel:hover { background: var(--panel-2); color: var(--text); }
+
+.nid-modal__btn-primary {
+  padding: 8px 18px;
+  border-radius: 8px;
+  border: 1px solid color-mix(in oklab, var(--accent-1) 40%, transparent);
+  background: color-mix(in oklab, var(--accent-1) 18%, transparent);
+  color: var(--accent-1);
+  font: 600 13px/1 var(--font-display);
+  cursor: pointer;
+  transition: background 0.15s;
+}
+.nid-modal__btn-primary:hover:not(:disabled) {
+  background: color-mix(in oklab, var(--accent-1) 28%, transparent);
+}
+.nid-modal__btn-primary:disabled { opacity: 0.5; cursor: not-allowed; }
+
+.nid-modal__btn-danger {
+  padding: 8px 18px;
+  border-radius: 8px;
+  border: 1px solid color-mix(in oklab, var(--accent-2) 40%, transparent);
+  background: color-mix(in oklab, var(--accent-2) 18%, transparent);
+  color: var(--accent-2);
+  font: 600 13px/1 var(--font-display);
+  cursor: pointer;
+  transition: background 0.15s;
+}
+.nid-modal__btn-danger:hover { background: color-mix(in oklab, var(--accent-2) 28%, transparent); }
+
+/* ── Shared form input / label ────────────────────────────────────────────── */
+.nid-form-label {
+  font: 600 10.5px/1 var(--font-mono);
+  text-transform: uppercase;
+  letter-spacing: 0.09em;
+  color: var(--text-dim);
+}
+.nid-form-input {
+  width: 100%;
+  padding: 8px 12px;
+  border-radius: 8px;
+  border: 1px solid var(--border-strong);
+  background: var(--panel-2);
+  color: var(--text);
+  font: 400 13px/1.4 var(--font-body);
+  outline: none;
+  box-sizing: border-box;
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+.nid-form-input:focus {
+  border-color: color-mix(in oklab, var(--accent-1) 50%, transparent);
+  box-shadow: 0 0 0 3px color-mix(in oklab, var(--accent-1) 12%, transparent);
+}
+.nid-form-input option { background: var(--panel); color: var(--text); }
+
+/* View toggle */
+.nid-funnel__toggle {
+  display: flex; gap: 4px; justify-content: flex-end; margin-bottom: 10px;
+}
+.nid-funnel__toggle-btn {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 28px; height: 28px;
+  border: 1px solid var(--border); border-radius: 8px;
+  background: transparent; color: var(--text-dim);
+  cursor: pointer; transition: background 0.15s, color 0.15s, border-color 0.15s;
+}
+.nid-funnel__toggle-btn:hover { color: var(--text); background: var(--panel-2); }
+.nid-funnel__toggle-btn.is-active {
+  background: color-mix(in oklab, var(--accent-1) 14%, transparent);
+  color: var(--text);
+  border-color: color-mix(in oklab, var(--accent-1) 28%, transparent);
+}
+
+/* List (kanban) view */
+.nid-funnel-list {
+  display: grid; gap: 10px;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+}
+.nid-funnel-list__card {
+  background: var(--panel-2); border: 1px solid var(--border);
+  border-radius: 12px; padding: 12px 14px;
+}
+.nid-funnel-list__label {
+  font: 600 11px/1 var(--font-mono);
+  color: var(--text-mute); text-transform: uppercase; letter-spacing: 0.14em;
+}
+.nid-funnel-list__value {
+  font: 700 24px/1 var(--font-display); color: var(--text); margin-top: 6px;
+}
+.nid-funnel-list__conv  {
+  font: 500 11px/1 var(--font-mono); color: var(--text-dim); margin-top: 4px;
+}
+.nid-funnel-list__bar {
+  height: 4px; border-radius: 999px; background: var(--panel); margin-top: 8px; overflow: hidden;
+}
+.nid-funnel-list__bar-fill { height: 100%; }
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   Indicadores Internos — dense KPI grid (ticket 33)
+   .ind-grid   → auto-fill responsive grid container
+   .ind-cell   → compact KPI cell
+   .ind-cell--add → dashed "+ Adicionar" trailing cell
+   ───────────────────────────────────────────────────────────────────────────── */
+.ind-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 12px;
+  margin-top: 12px;
+}
+.ind-cell {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 12px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  transition: border-color 0.15s, background 0.15s;
+}
+.ind-cell:hover { border-color: var(--border-strong); }
+.ind-cell__label {
+  font: 600 10.5px/1 var(--font-mono);
+  color: var(--text-mute);
+  text-transform: uppercase;
+  letter-spacing: 0.14em;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.ind-cell__value {
+  font: 700 18px/1 var(--font-display);
+  color: var(--text);
+  font-variant-numeric: tabular-nums;
+  display: flex;
+  gap: 6px;
+  align-items: baseline;
+}
+.ind-cell__unit {
+  font: 500 11px/1 var(--font-display);
+  color: var(--text-dim);
+}
+.ind-cell__foot {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 4px;
+}
+.ind-cell__spark {
+  flex: 1;
+  min-width: 0;
+  height: 32px;
+  pointer-events: none;
+  opacity: 0.85;
+}
+.ind-cell__spark svg { width: 100%; height: 100%; display: block; }
+.ind-cell__period {
+  font: 500 10px/1 var(--font-mono);
+  color: var(--text-mute);
+  letter-spacing: 0.04em;
+  white-space: nowrap;
+  margin-left: auto;
+}
+.ind-cell__actions {
+  display: flex;
+  gap: 4px;
+  margin-top: 2px;
+  opacity: 0;
+  transition: opacity 0.12s;
+}
+.ind-cell:hover .ind-cell__actions { opacity: 1; }
+.ind-cell__actions button {
+  width: 24px; height: 24px;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--text-dim);
+  display: grid; place-items: center;
+  cursor: pointer;
+  transition: color 0.12s, border-color 0.12s, background 0.12s;
+}
+.ind-cell__actions button:hover {
+  color: var(--text);
+  border-color: var(--border-strong);
+  background: color-mix(in oklab, var(--admin-accent) 8%, transparent);
+}
+.ind-cell__actions button.del:hover {
+  color: var(--accent-2);
+  background: color-mix(in oklab, var(--accent-2) 10%, transparent);
+  border-color: color-mix(in oklab, var(--accent-2) 30%, transparent);
+}
+.ind-cell--add {
+  border: 1px dashed var(--border);
+  background: repeating-linear-gradient(
+    135deg,
+    transparent 0 12px,
+    color-mix(in oklab, var(--admin-accent) 4%, transparent) 12px 24px
+  );
+  cursor: pointer;
+  align-items: center;
+  justify-content: center;
+  min-height: 110px;
+  color: var(--text-dim);
+  gap: 8px;
+  transition: border-color 0.15s, color 0.15s;
+}
+.ind-cell--add:hover { color: var(--text); border-color: var(--border-strong); }
+.ind-cell--add span {
+  font: 600 12px/1 var(--font-mono);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+.ind-section__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 0 2px;
+  cursor: pointer;
+  user-select: none;
+}
+.ind-section__title {
+  font: 700 13px/1 var(--font-display);
+  color: var(--text);
+  letter-spacing: -0.01em;
+}
+.ind-section__count {
+  font: 500 10.5px/1 var(--font-mono);
+  color: var(--text-mute);
+  letter-spacing: 0.06em;
+}
+.ind-section__chevron {
+  color: var(--text-mute);
+  transition: transform 0.18s;
+}
+.ind-section__chevron.open { transform: rotate(90deg); }
+

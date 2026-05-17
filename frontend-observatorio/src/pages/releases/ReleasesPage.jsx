@@ -10,8 +10,8 @@ function Badge({ modelo }) {
     <span
       className={`inline-flex items-center gap-1 text-xs font-semibold px-2 py-0.5 rounded-full ${
         isEspecialista
-          ? "bg-teal-50 dark:bg-teal-950/40 text-teal-700 dark:text-teal-400"
-          : "bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-400"
+          ? "bg-[var(--panel-2)] text-[var(--accent-1)]"
+          : "bg-[var(--panel-2)] text-amber-400"
       }`}
     >
       {isEspecialista
@@ -131,11 +131,11 @@ export default function ReleasesPage() {
     >
       <div>
         <div className="flex items-center gap-2">
-          <h1 className="text-2xl font-extrabold tracking-tight text-slate-800 dark:text-white">
+          <h1 className="text-2xl font-extrabold tracking-tight text-[var(--text)]">
             Releases de Imprensa
           </h1>
         </div>
-        <p className="text-sm text-slate-400 dark:text-slate-500 mt-1">
+        <p className="text-sm text-[var(--text-mute)] mt-1">
           Comunicados para divulgação institucional, gerados por IA ou por especialista.
         </p>
       </div>
@@ -145,17 +145,17 @@ export default function ReleasesPage() {
           {[...Array(4)].map((_, i) => (
             <div
               key={i}
-              className="bg-white dark:bg-slate-900 p-6 rounded-2xl border border-slate-100 dark:border-slate-800 animate-pulse h-40"
+              className="bg-[var(--panel)] p-6 rounded-2xl border border-[var(--border)] animate-pulse h-40"
             />
           ))}
         </div>
       ) : releases.length === 0 ? (
-        <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-100 dark:border-slate-800 p-12 text-center">
-          <NewspaperIcon className="w-12 h-12 text-slate-300 dark:text-slate-600 mx-auto mb-4" />
-          <p className="text-slate-500 dark:text-slate-400 text-sm">
+        <div className="bg-[var(--panel)] rounded-2xl border border-[var(--border)] p-12 text-center">
+          <NewspaperIcon className="w-12 h-12 text-[var(--text-mute)] mx-auto mb-4" />
+          <p className="text-[var(--text-dim)] text-sm">
             Nenhum release disponível para o seu município.
           </p>
-          <p className="text-slate-400 dark:text-slate-500 text-xs mt-1">
+          <p className="text-[var(--text-mute)] text-xs mt-1">
             Os releases são gerados pelo administrador e aparecem aqui quando disponíveis.
           </p>
         </div>
@@ -166,31 +166,31 @@ export default function ReleasesPage() {
             return (
               <div
                 key={release.id}
-                className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-100 dark:border-slate-800 shadow-sm p-6 flex flex-col gap-4"
+                className="bg-[var(--panel)] rounded-2xl border border-[var(--border)] shadow-sm p-6 flex flex-col gap-4"
               >
                 <div className="flex items-start gap-3">
-                  <div className="w-10 h-10 rounded-xl bg-violet-100 dark:bg-violet-950/40 flex items-center justify-center flex-shrink-0">
-                    <NewspaperIcon className="w-5 h-5 text-violet-600 dark:text-violet-400" />
+                  <div className="w-10 h-10 rounded-xl bg-violet-100  flex items-center justify-center flex-shrink-0">
+                    <NewspaperIcon className="w-5 h-5 text-violet-600 " />
                   </div>
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 flex-wrap">
-                      <h3 className="font-bold text-slate-800 dark:text-white text-sm">{label}</h3>
+                      <h3 className="font-bold text-[var(--text)] text-sm">{label}</h3>
                       <Badge modelo={release.modelo} />
                     </div>
-                    <p className="text-xs text-slate-400 dark:text-slate-500 mt-0.5">
+                    <p className="text-xs text-[var(--text-mute)] mt-0.5">
                       {fmtDate(release.gerado_em)}
                     </p>
                   </div>
                 </div>
 
-                <p className="text-xs text-slate-500 dark:text-slate-400 line-clamp-3 leading-relaxed">
+                <p className="text-xs text-[var(--text-dim)] line-clamp-3 leading-relaxed">
                   {release.bullets[0]}
                 </p>
 
                 <div className="flex gap-2 mt-auto">
                   <button
                     onClick={() => setModal(release)}
-                    className="flex-1 text-sm font-medium text-violet-600 dark:text-violet-400 border border-violet-200 dark:border-violet-800 rounded-xl py-2 hover:bg-violet-50 dark:hover:bg-violet-950/40 transition-colors"
+                    className="flex-1 text-sm font-medium text-violet-600  border border-violet-200  rounded-xl py-2 hover:bg-[var(--panel-2)] transition-colors"
                   >
                     Visualizar
                   </button>
@@ -218,31 +218,31 @@ export default function ReleasesPage() {
             onClick={() => setModal(null)}
           >
             <motion.div
-              className="bg-white dark:bg-slate-900 rounded-2xl shadow-xl w-full max-w-2xl max-h-[80vh] overflow-y-auto"
+              className="bg-[var(--panel)] rounded-2xl shadow-xl w-full max-w-2xl max-h-[80vh] overflow-y-auto"
               initial={{ scale: 0.95, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 0.95, opacity: 0 }}
               transition={{ duration: 0.15 }}
               onClick={(e) => e.stopPropagation()}
             >
-              <div className="flex items-start justify-between p-6 border-b border-slate-100 dark:border-slate-800">
+              <div className="flex items-start justify-between p-6 border-b border-[var(--border)]">
                 <div>
                   <div className="flex items-center gap-2 mb-1">
-                    <p className="text-xs uppercase tracking-wider text-slate-400 dark:text-slate-500 font-semibold">
+                    <p className="text-xs uppercase tracking-wider text-[var(--text-mute)] font-semibold">
                       Release de Imprensa
                     </p>
                     <Badge modelo={modal.modelo} />
                   </div>
-                  <h3 className="text-base font-bold text-slate-800 dark:text-white">
+                  <h3 className="text-base font-bold text-[var(--text)]">
                     {getLabel(modal.dataset)}
                   </h3>
-                  <p className="text-xs text-slate-400 dark:text-slate-500 mt-1">
+                  <p className="text-xs text-[var(--text-mute)] mt-1">
                     {fmtDate(modal.gerado_em)}
                   </p>
                 </div>
                 <button
                   onClick={() => setModal(null)}
-                  className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 transition-colors ml-4"
+                  className="text-slate-400 hover:text-slate-600  transition-colors ml-4"
                 >
                   <XMarkIcon className="w-5 h-5" />
                 </button>
@@ -250,16 +250,16 @@ export default function ReleasesPage() {
 
               <div className="p-6 space-y-4">
                 {modal.bullets.map((paragraph, i) => (
-                  <p key={i} className="text-sm leading-relaxed text-slate-700 dark:text-slate-300">
+                  <p key={i} className="text-sm leading-relaxed text-slate-700 ">
                     {paragraph}
                   </p>
                 ))}
               </div>
 
-              <div className="flex items-center justify-end gap-3 px-6 py-4 border-t border-slate-100 dark:border-slate-800">
+              <div className="flex items-center justify-end gap-3 px-6 py-4 border-t border-[var(--border)]">
                 <button
                   onClick={() => setModal(null)}
-                  className="px-4 py-2 rounded-xl border border-slate-200 dark:border-slate-700 text-sm text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors"
+                  className="px-4 py-2 rounded-xl border border-[var(--border)] text-sm text-[var(--text-dim)] hover:bg-[var(--panel-2)] transition-colors"
                 >
                   Fechar
                 </button>

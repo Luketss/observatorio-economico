@@ -117,10 +117,10 @@ export default function ChartInfoIcon({ dataset, indicadorKey }) {
               animate={{ scale: 1, opacity: 1, y: 0 }}
               exit={{ scale: 0.97, opacity: 0, y: 4 }}
               transition={{ duration: 0.22, ease: "easeOut" }}
-              className="bg-white dark:bg-slate-800 rounded-2xl shadow-xl w-full max-w-md p-6 space-y-4"
+              className="bg-[var(--panel)] rounded-2xl shadow-xl w-full max-w-md p-6 space-y-4"
             >
               <div className="flex items-start justify-between gap-3">
-                <h3 className="text-base font-bold text-slate-800 dark:text-slate-100">
+                <h3 className="text-base font-bold text-[var(--text)]">
                   Descrição do gráfico
                 </h3>
                 <button
@@ -183,7 +183,7 @@ export default function ChartInfoIcon({ dataset, indicadorKey }) {
               ) : (
                 <div className="space-y-3">
                   {info?.descricao ? (
-                    <p className="text-sm text-slate-600 dark:text-slate-300 whitespace-pre-line leading-relaxed">
+                    <p className="text-sm text-[var(--text-dim)] whitespace-pre-line leading-relaxed">
                       {info.descricao}
                     </p>
                   ) : (

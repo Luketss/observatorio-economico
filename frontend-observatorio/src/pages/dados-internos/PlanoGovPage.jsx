@@ -15,9 +15,9 @@ import { useToast } from "../../context/ToastContext";
 import { useEscapeKey } from "../../hooks/useEscapeKey";
 
 const STATUS_CONFIG = {
-  nao_iniciado: { label: "Não iniciado", color: "bg-slate-100 text-slate-600 dark:bg-slate-700 dark:text-slate-300", dot: "bg-slate-400" },
-  em_andamento: { label: "Em andamento", color: "bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-400", dot: "bg-amber-500" },
-  concluido:    { label: "Concluído",    color: "bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-400", dot: "bg-green-500" },
+  nao_iniciado: { label: "Não iniciado", color: "bg-[var(--panel-2)] text-[var(--text-dim)]", dot: "bg-slate-400" },
+  em_andamento: { label: "Em andamento", color: "bg-[var(--panel-2)] text-amber-400", dot: "bg-amber-500" },
+  concluido:    { label: "Concluído",    color: "bg-[var(--panel-2)] text-green-400", dot: "bg-green-500" },
 };
 
 const defaultForm = {
@@ -160,18 +160,18 @@ export default function PlanoGovPage() {
   function AcaoCard({ acao }) {
     const st = STATUS_CONFIG[acao.status];
     return (
-      <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-100 dark:border-slate-700 p-4 space-y-2 hover:shadow-md transition-shadow">
+      <div className="bg-[var(--panel)] rounded-xl border border-[var(--border)] p-4 space-y-2 hover:shadow-md transition-shadow">
         <div className="flex items-start justify-between gap-2">
           <h4
-            className="font-medium text-slate-700 dark:text-slate-200 text-sm leading-snug cursor-pointer hover:text-blue-600 transition-colors flex-1"
+            className="font-medium text-[var(--text)] text-sm leading-snug cursor-pointer hover:text-blue-600 transition-colors flex-1"
             onClick={() => setViewingAcao(acao)}
           >
             {acao.titulo}
           </h4>
           {canEdit && (
             <div className="flex gap-1 shrink-0">
-              <button onClick={() => openEdit(acao)} aria-label="Editar ação" className="p-1.5 rounded-lg text-slate-400 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-950/40 transition-colors cursor-pointer"><PencilIcon className="w-3.5 h-3.5" /></button>
-              <button onClick={() => setDeleteConfirmId(acao.id)} aria-label="Excluir ação" className="p-1.5 rounded-lg text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-950/40 transition-colors cursor-pointer"><TrashIcon className="w-3.5 h-3.5" /></button>
+              <button onClick={() => openEdit(acao)} aria-label="Editar ação" className="p-1.5 rounded-lg text-slate-400 hover:text-blue-600 hover:bg-[var(--panel-2)] transition-colors cursor-pointer"><PencilIcon className="w-3.5 h-3.5" /></button>
+              <button onClick={() => setDeleteConfirmId(acao.id)} aria-label="Excluir ação" className="p-1.5 rounded-lg text-slate-400 hover:text-red-500 hover:bg-[var(--panel-2)] transition-colors cursor-pointer"><TrashIcon className="w-3.5 h-3.5" /></button>
             </div>
           )}
         </div>
@@ -179,11 +179,11 @@ export default function PlanoGovPage() {
         {acao.data_prazo && <p className="text-xs text-slate-400">Prazo: {fmtDate(acao.data_prazo)}</p>}
         {acao.responsavel && <p className="text-xs text-slate-500">Resp.: {acao.responsavel}</p>}
         {canEdit && (
-          <div className="pt-1 border-t border-slate-50 dark:border-slate-700">
+          <div className="pt-1 border-t border-[var(--border)]">
             <select
               value={acao.status}
               onChange={(e) => handleStatusChange(acao.id, e.target.value)}
-              className="w-full text-xs px-2 py-1 rounded-lg border border-slate-200 dark:border-slate-600 focus:outline-none focus:ring-1 focus:ring-blue-500 bg-white dark:bg-slate-700"
+              className="w-full text-xs px-2 py-1 rounded-lg border border-[var(--border)] focus:outline-none focus:ring-1 focus:ring-blue-500 bg-[var(--panel-2)]"
             >
               {Object.entries(STATUS_CONFIG).map(([k, v]) => (
                 <option key={k} value={k}>{v.label}</option>
@@ -204,13 +204,13 @@ export default function PlanoGovPage() {
         <div className="flex items-center gap-3">
           <ClipboardDocumentListIcon className="w-7 h-7 text-blue-600" />
           <div>
-            <h1 className="text-2xl font-extrabold tracking-tight text-slate-800 dark:text-slate-100">Plano de Governo</h1>
+            <h1 className="text-2xl font-extrabold tracking-tight text-[var(--text)]">Plano de Governo</h1>
             <p className="text-sm text-slate-400 mt-0.5">Ações e metas por secretaria/departamento.</p>
           </div>
         </div>
         <div className="flex items-center gap-2">
-          <button onClick={() => setViewMode("kanban")} aria-label="Visualização Kanban" aria-pressed={viewMode === "kanban"} className={`p-2 rounded-lg transition-colors cursor-pointer ${viewMode === "kanban" ? "bg-blue-100 text-blue-600" : "text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700"}`}><ViewColumnsIcon className="w-5 h-5" aria-hidden="true" /></button>
-          <button onClick={() => setViewMode("table")} aria-label="Visualização em tabela" aria-pressed={viewMode === "table"} className={`p-2 rounded-lg transition-colors cursor-pointer ${viewMode === "table" ? "bg-blue-100 text-blue-600" : "text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700"}`}><TableCellsIcon className="w-5 h-5" aria-hidden="true" /></button>
+          <button onClick={() => setViewMode("kanban")} aria-label="Visualização Kanban" aria-pressed={viewMode === "kanban"} className={`p-2 rounded-lg transition-colors cursor-pointer ${viewMode === "kanban" ? "bg-blue-100 text-blue-600" : "text-slate-400 hover:bg-[var(--panel-2)]"}`}><ViewColumnsIcon className="w-5 h-5" aria-hidden="true" /></button>
+          <button onClick={() => setViewMode("table")} aria-label="Visualização em tabela" aria-pressed={viewMode === "table"} className={`p-2 rounded-lg transition-colors cursor-pointer ${viewMode === "table" ? "bg-blue-100 text-blue-600" : "text-slate-400 hover:bg-[var(--panel-2)]"}`}><TableCellsIcon className="w-5 h-5" aria-hidden="true" /></button>
           {canEdit && (
             <button onClick={openCreate} className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2.5 rounded-xl text-sm font-medium transition-colors ml-2">
               <PlusIcon className="w-4 h-4" /> Nova Ação
@@ -222,12 +222,12 @@ export default function PlanoGovPage() {
       {/* KPIs */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         {[
-          { label: "Total", value: kpis.total, color: "text-slate-700 dark:text-slate-100" },
+          { label: "Total", value: kpis.total, color: "text-[var(--text)]" },
           { label: "Não iniciadas", value: kpis.nao_iniciado, color: "text-slate-500" },
           { label: "Em andamento", value: kpis.em_andamento, color: "text-amber-600" },
           { label: "Concluídas", value: kpis.concluido, color: "text-green-600" },
         ].map((k) => (
-          <div key={k.label} className="bg-white dark:bg-slate-800 rounded-xl border border-slate-100 dark:border-slate-700 p-4">
+          <div key={k.label} className="bg-[var(--panel)] rounded-xl border border-[var(--border)] p-4">
             <p className="text-xs text-slate-400 uppercase tracking-wider">{k.label}</p>
             <p className={`text-3xl font-extrabold mt-1 ${k.color}`}>{k.value}</p>
           </div>
@@ -239,7 +239,7 @@ export default function PlanoGovPage() {
         <select
           value={filterDept}
           onChange={(e) => setFilterDept(e.target.value)}
-          className="px-3 py-2 rounded-lg border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-slate-800 dark:border-slate-700"
+          className="px-3 py-2 rounded-lg border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500  "
         >
           <option value="">Todos os departamentos</option>
           {departamentos.map((d) => <option key={d} value={d}>{d}</option>)}
@@ -255,12 +255,12 @@ export default function PlanoGovPage() {
               <div key={status} className="space-y-3">
                 <div className="flex items-center gap-2">
                   <div className={`w-2 h-2 rounded-full ${cfg.dot}`} />
-                  <h3 className="font-semibold text-slate-600 dark:text-slate-300 text-sm">{cfg.label}</h3>
-                  <span className="ml-auto text-xs text-slate-400 bg-slate-100 dark:bg-slate-700 px-2 py-0.5 rounded-full">{cols.length}</span>
+                  <h3 className="font-semibold text-[var(--text-dim)] text-sm">{cfg.label}</h3>
+                  <span className="ml-auto text-xs text-slate-400 bg-[var(--panel-2)] px-2 py-0.5 rounded-full">{cols.length}</span>
                 </div>
                 <div className="space-y-3 min-h-[80px]">
                   {cols.map((a) => <AcaoCard key={a.id} acao={a} />)}
-                  {cols.length === 0 && <div className="h-20 border-2 border-dashed border-slate-100 dark:border-slate-700 rounded-xl flex items-center justify-center text-xs text-slate-300">Vazio</div>}
+                  {cols.length === 0 && <div className="h-20 border-2 border-dashed border-[var(--border)] rounded-xl flex items-center justify-center text-xs text-slate-300">Vazio</div>}
                 </div>
               </div>
             );
@@ -270,10 +270,10 @@ export default function PlanoGovPage() {
 
       {/* Table view */}
       {viewMode === "table" && (
-        <div className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-100 dark:border-slate-700 overflow-hidden">
+        <div className="bg-[var(--panel)] rounded-2xl border border-[var(--border)] overflow-hidden">
           <table className="w-full text-sm">
             <thead>
-              <tr className="bg-slate-50 dark:bg-slate-700/50 text-xs uppercase text-slate-400 tracking-wider text-left">
+              <tr className="bg-slate-50  text-xs uppercase text-slate-400 tracking-wider text-left">
                 <th className="px-6 py-3">Título</th>
                 <th className="px-6 py-3">Departamento</th>
                 <th className="px-6 py-3">Status</th>
@@ -282,15 +282,15 @@ export default function PlanoGovPage() {
                 {canEdit && <th className="px-6 py-3" />}
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-50 dark:divide-slate-700">
+            <tbody className="divide-y divide-[var(--border)]">
               {filtradas.length === 0 ? (
                 <tr><td colSpan={6} className="px-6 py-10 text-center text-slate-400">Nenhuma ação encontrada.</td></tr>
               ) : (
                 filtradas.map((a) => {
                   const st = STATUS_CONFIG[a.status];
                   return (
-                    <tr key={a.id} className="hover:bg-slate-50 dark:hover:bg-slate-700/30 transition-colors">
-                      <td className="px-6 py-3 font-medium text-slate-700 dark:text-slate-200 cursor-pointer hover:text-blue-600" onClick={() => setViewingAcao(a)}>{a.titulo}</td>
+                    <tr key={a.id} className="hover:bg-[var(--panel-2)]/30 transition-colors">
+                      <td className="px-6 py-3 font-medium text-[var(--text)] cursor-pointer hover:text-blue-600" onClick={() => setViewingAcao(a)}>{a.titulo}</td>
                       <td className="px-6 py-3 text-slate-500">{a.departamento}</td>
                       <td className="px-6 py-3"><span className={`px-2.5 py-1 rounded-full text-xs font-medium ${st.color}`}>{st.label}</span></td>
                       <td className="px-6 py-3 text-slate-400 text-xs">{fmtDate(a.data_prazo) || "—"}</td>
@@ -320,18 +320,18 @@ export default function PlanoGovPage() {
             onClick={(e) => { if (e.target === e.currentTarget) setViewingAcao(null); }}
           >
             <motion.div initial={{ scale: 0.95 }} animate={{ scale: 1 }} exit={{ scale: 0.95 }}
-              className="bg-white dark:bg-slate-800 rounded-2xl shadow-xl w-full max-w-lg p-6 space-y-4 max-h-[90vh] overflow-y-auto"
+              className="bg-[var(--panel)] rounded-2xl shadow-xl w-full max-w-lg p-6 space-y-4 max-h-[90vh] overflow-y-auto"
             >
               <div className="flex items-start justify-between gap-3">
                 <div>
                   <span className={`px-2.5 py-1 rounded-full text-xs font-medium ${STATUS_CONFIG[viewingAcao.status]?.color}`}>{STATUS_CONFIG[viewingAcao.status]?.label}</span>
-                  <h2 className="text-lg font-bold text-slate-800 dark:text-slate-100 mt-2">{viewingAcao.titulo}</h2>
+                  <h2 className="text-lg font-bold text-[var(--text)] mt-2">{viewingAcao.titulo}</h2>
                   <p className="text-sm text-slate-400">{viewingAcao.departamento}</p>
                 </div>
                 <button onClick={() => setViewingAcao(null)} className="text-slate-400 hover:text-slate-600"><XMarkIcon className="w-5 h-5" /></button>
               </div>
-              {viewingAcao.descricao && <p className="text-sm text-slate-600 dark:text-slate-300">{viewingAcao.descricao}</p>}
-              <div className="flex flex-wrap gap-4 text-xs text-slate-400 border-t border-slate-100 dark:border-slate-700 pt-3">
+              {viewingAcao.descricao && <p className="text-sm text-[var(--text-dim)]">{viewingAcao.descricao}</p>}
+              <div className="flex flex-wrap gap-4 text-xs text-slate-400 border-t border-[var(--border)] pt-3">
                 {viewingAcao.responsavel && <span><span className="font-medium">Responsável:</span> {viewingAcao.responsavel}</span>}
                 {viewingAcao.data_inicio && <span><span className="font-medium">Início:</span> {fmtDate(viewingAcao.data_inicio)}</span>}
                 {viewingAcao.data_prazo && <span><span className="font-medium">Prazo:</span> {fmtDate(viewingAcao.data_prazo)}</span>}
@@ -352,10 +352,10 @@ export default function PlanoGovPage() {
             onClick={(e) => { if (e.target === e.currentTarget) closeForm(); }}
           >
             <motion.div initial={{ scale: 0.95 }} animate={{ scale: 1 }} exit={{ scale: 0.95 }}
-              className="bg-white dark:bg-slate-800 rounded-2xl shadow-xl w-full max-w-xl p-6 max-h-[90vh] overflow-y-auto"
+              className="bg-[var(--panel)] rounded-2xl shadow-xl w-full max-w-xl p-6 max-h-[90vh] overflow-y-auto"
             >
               <div className="flex items-center justify-between mb-5">
-                <h3 className="text-base font-bold text-slate-800 dark:text-slate-100">{editingId ? "Editar Ação" : "Nova Ação"}</h3>
+                <h3 className="text-base font-bold text-[var(--text)]">{editingId ? "Editar Ação" : "Nova Ação"}</h3>
                 <button onClick={closeForm} className="text-slate-400 hover:text-slate-600"><XMarkIcon className="w-5 h-5" /></button>
               </div>
               <form onSubmit={handleSubmit} className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -415,9 +415,9 @@ export default function PlanoGovPage() {
             className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4"
           >
             <motion.div initial={{ scale: 0.95 }} animate={{ scale: 1 }} exit={{ scale: 0.95 }}
-              className="bg-white dark:bg-slate-800 rounded-2xl shadow-xl p-6 w-full max-w-sm space-y-4"
+              className="bg-[var(--panel)] rounded-2xl shadow-xl p-6 w-full max-w-sm space-y-4"
             >
-              <h3 className="font-bold text-slate-800 dark:text-slate-100">Excluir ação?</h3>
+              <h3 className="font-bold text-[var(--text)]">Excluir ação?</h3>
               <p className="text-sm text-slate-500">Esta ação não pode ser desfeita.</p>
               <div className="flex gap-3 justify-end">
                 <button onClick={() => setDeleteConfirmId(null)} className="px-4 py-2 rounded-lg border border-slate-200 text-sm text-slate-600 hover:bg-slate-50">Cancelar</button>

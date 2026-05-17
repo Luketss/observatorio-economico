@@ -23,15 +23,15 @@ export default function PlanGate({ planKey, children }) {
       </div>
 
       {/* Overlay */}
-      <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-white/70 dark:bg-slate-900/70 backdrop-blur-[2px] rounded-2xl">
-        <div className="w-12 h-12 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center">
-          <LockClosedIcon className="w-6 h-6 text-slate-400 dark:text-slate-500" />
+      <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-[var(--panel)]/70 backdrop-blur-[2px] rounded-2xl">
+        <div className="w-12 h-12 rounded-full bg-[var(--panel-2)] flex items-center justify-center">
+          <LockClosedIcon className="w-6 h-6 text-[var(--text-mute)]" />
         </div>
         <div className="text-center px-4">
-          <p className="text-sm font-semibold text-slate-700 dark:text-slate-200">
+          <p className="text-sm font-semibold text-[var(--text)]">
             Disponível apenas no plano pago
           </p>
-          <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+          <p className="text-xs text-[var(--text-dim)] mt-1">
             Faça upgrade para acessar este conteúdo
           </p>
         </div>

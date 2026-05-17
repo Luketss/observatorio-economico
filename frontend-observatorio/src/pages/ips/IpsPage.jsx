@@ -1,25 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
-import {
-  RadarChart,
-  Radar,
-  PolarGrid,
-  PolarAngleAxis,
-  PolarRadiusAxis,
-  Tooltip as RadarTooltip,
-  LineChart,
-  Line,
-  BarChart,
-  Bar,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip,
-  Legend,
-  ResponsiveContainer,
-} from "recharts";
 import api from "../../services/api";
 import { useAuth } from "../../context/AuthContext";
-import { useChartTheme } from "../../hooks/useChartTheme";
+import { HBarChart, MultiLineChart } from "../../components/nid/charts";
 
 function fmt(v) {
   if (v == null) return "—";
@@ -34,12 +16,12 @@ function scoreColor(score) {
 }
 
 function scoreBg(score) {
-  if (score == null) return "bg-slate-100 dark:bg-slate-800";
+  if (score == null) return "bg-[var(--panel-2)]";
   if (score >= 70)
-    return "bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800";
+    return "bg-[var(--panel-2)] border border-emerald-500/20";
   if (score >= 50)
-    return "bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800";
-  return "bg-red-50 dark:bg-red-950/40 border border-red-200 dark:border-red-800";
+    return "bg-amber-50  border border-amber-200 ";
+  return "bg-[var(--panel-2)] border border-red-500/20";
 }
 
 const DIMENSIONS = [
@@ -89,7 +71,6 @@ const COLORS = ["#3b82f6", "#10b981", "#f59e0b", "#ef4444", "#8b5cf6", "#06b6d4"
 
 export default function IpsPage() {
   const { user } = useAuth();
-  const ct = useChartTheme();
 
   const [estados, setEstados] = useState([]);
   const [selectedEstado, setSelectedEstado] = useState("");
@@ -213,10 +194,10 @@ export default function IpsPage() {
     <div className="max-w-6xl mx-auto space-y-8 pb-12">
       {/* Header */}
       <div>
-        <h1 className="text-2xl font-bold text-slate-800 dark:text-white">
+        <h1 className="text-2xl font-bold text-[var(--text)]">
           Índice de Progresso Social
         </h1>
-        <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
+        <p className="text-sm text-[var(--text-dim)] mt-1">
           Avaliação multidimensional da qualidade de vida — escala de 0 a 100
         </p>
       </div>
@@ -228,7 +209,7 @@ export default function IpsPage() {
           <select
             value={selectedEstado}
             onChange={(e) => setSelectedEstado(e.target.value)}
-            className="rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-800 dark:text-white px-3 py-2 text-sm"
+            className="rounded-lg border border-[var(--border)] bg-[var(--panel)] text-[var(--text)] px-3 py-2 text-sm"
           >
             {estados.map((e) => (
               <option key={e} value={e}>
@@ -242,7 +223,7 @@ export default function IpsPage() {
           <select
             value={selectedMunicipioId ?? ""}
             onChange={(e) => setSelectedMunicipioId(Number(e.target.value))}
-            className="w-full rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-800 dark:text-white px-3 py-2 text-sm"
+            className="w-full rounded-lg border border-[var(--border)] bg-[var(--panel)] text-[var(--text)] px-3 py-2 text-sm"
           >
             {municipios.map((m) => (
               <option key={m.municipio_id} value={m.municipio_id}>
@@ -253,7 +234,7 @@ export default function IpsPage() {
         </div>
         <div>
           <label className="block text-xs text-slate-500 mb-1">Ano</label>
-          <div className="flex rounded-lg overflow-hidden border border-slate-200 dark:border-slate-700">
+          <div className="flex rounded-lg overflow-hidden border border-[var(--border)]">
             {[2024, 2025].map((a) => (
               <button
                 key={a}
@@ -261,7 +242,7 @@ export default function IpsPage() {
                 className={`px-4 py-2 text-sm font-medium transition-colors ${
                   selectedAno === a
                     ? "bg-blue-500 text-white"
-                    : "bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700"
+                    : "bg-[var(--panel)] text-[var(--text-dim)] hover:bg-[var(--panel-2)]"
                 }`}
               >
                 {a}
@@ -293,13 +274,13 @@ export default function IpsPage() {
               <p className="text-sm text-slate-400 mt-1">de 100</p>
             </div>
 
-            <div className="rounded-2xl p-6 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 space-y-3">
+            <div className="rounded-2xl p-6 bg-[var(--panel)] border border-[var(--border)] space-y-3">
               <p className="text-xs font-semibold uppercase tracking-widest text-slate-500">
                 Ranking Nacional
               </p>
               {ranking ? (
                 <>
-                  <p className="text-3xl font-bold text-slate-800 dark:text-white">
+                  <p className="text-3xl font-bold text-[var(--text)]">
                     {ranking.ranking_nacional}º
                     <span className="text-sm font-normal text-slate-400 ml-1">
                       de {ranking.total_nacional.toLocaleString("pt-BR")}
@@ -308,7 +289,7 @@ export default function IpsPage() {
                   <p className="text-xs font-semibold uppercase tracking-widest text-slate-500">
                     Ranking Estadual
                   </p>
-                  <p className="text-2xl font-bold text-slate-800 dark:text-white">
+                  <p className="text-2xl font-bold text-[var(--text)]">
                     {ranking.ranking_estadual}º
                     <span className="text-sm font-normal text-slate-400 ml-1">
                       de {ranking.total_estadual.toLocaleString("pt-BR")}
@@ -320,11 +301,11 @@ export default function IpsPage() {
               )}
             </div>
 
-            <div className="rounded-2xl p-6 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700">
+            <div className="rounded-2xl p-6 bg-[var(--panel)] border border-[var(--border)]">
               <p className="text-xs font-semibold uppercase tracking-widest text-slate-500 mb-2">
                 PIB per capita
               </p>
-              <p className="text-2xl font-bold text-slate-800 dark:text-white">
+              <p className="text-2xl font-bold text-[var(--text)]">
                 {scorecard.pib_per_capita
                   ? `R$ ${Number(scorecard.pib_per_capita).toLocaleString("pt-BR", {
                       maximumFractionDigits: 0,
@@ -358,7 +339,7 @@ export default function IpsPage() {
                 <p className="text-xs font-semibold uppercase tracking-widest text-slate-500">
                   {d.short}
                 </p>
-                <p className="text-sm font-medium text-slate-700 dark:text-slate-300 mt-0.5">
+                <p className="text-sm font-medium text-slate-700  mt-0.5">
                   {d.label}
                 </p>
                 <p className={`text-4xl font-black mt-2 ${scoreColor(scorecard[d.key])}`}>
@@ -368,43 +349,29 @@ export default function IpsPage() {
             ))}
           </div>
 
-          {/* Radar Chart */}
-          <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl p-6">
-            <h2 className="text-sm font-semibold text-slate-700 dark:text-slate-200 mb-4">
+          {/* Component Profile — HBarChart replaces RadarChart */}
+          <div className="bg-[var(--panel)] border border-[var(--border)] rounded-2xl p-6">
+            <h2 className="text-sm font-semibold text-[var(--text)] mb-4">
               Perfil por Componente
             </h2>
-            <ResponsiveContainer width="100%" height={320}>
-              <RadarChart data={radarData}>
-                <PolarGrid stroke={ct.grid} />
-                <PolarAngleAxis dataKey="subject" tick={{ fill: ct.text, fontSize: 11 }} />
-                <PolarRadiusAxis
-                  angle={30}
-                  domain={[0, 100]}
-                  tick={{ fill: ct.text, fontSize: 10 }}
-                />
-                <Radar
-                  name="Município"
-                  dataKey="valor"
-                  stroke="#3b82f6"
-                  fill="#3b82f6"
-                  fillOpacity={0.3}
-                />
-                <RadarTooltip formatter={(v) => [`${fmt(v)}`, "Score"]} />
-              </RadarChart>
-            </ResponsiveContainer>
+            <HBarChart
+              data={radarData.map((d) => ({ label: d.subject, value: d.valor }))}
+              color="#3b82f6"
+              fmt={(v) => `${fmt(v)} / 100`}
+            />
           </div>
 
           {/* Strengths & Weaknesses */}
           {destaques && (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl p-5">
-                <h2 className="text-sm font-semibold text-emerald-600 dark:text-emerald-400 mb-3">
+              <div className="bg-[var(--panel)] border border-[var(--border)] rounded-2xl p-5">
+                <h2 className="text-sm font-semibold text-[var(--accent-5)] mb-3">
                   Pontos Fortes
                 </h2>
                 <div className="space-y-3">
                   {destaques.melhores.map((d) => (
                     <div key={d.campo} className="flex justify-between items-center">
-                      <span className="text-sm text-slate-600 dark:text-slate-300">{d.label}</span>
+                      <span className="text-sm text-[var(--text-dim)]">{d.label}</span>
                       <div className="text-right">
                         <span className="text-sm font-bold text-emerald-600">{fmt(d.valor)}</span>
                         <span className="text-xs text-slate-400 ml-1">
@@ -415,14 +382,14 @@ export default function IpsPage() {
                   ))}
                 </div>
               </div>
-              <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl p-5">
-                <h2 className="text-sm font-semibold text-red-600 dark:text-red-400 mb-3">
+              <div className="bg-[var(--panel)] border border-[var(--border)] rounded-2xl p-5">
+                <h2 className="text-sm font-semibold text-red-600  mb-3">
                   Pontos a Melhorar
                 </h2>
                 <div className="space-y-3">
                   {destaques.piores.map((d) => (
                     <div key={d.campo} className="flex justify-between items-center">
-                      <span className="text-sm text-slate-600 dark:text-slate-300">{d.label}</span>
+                      <span className="text-sm text-[var(--text-dim)]">{d.label}</span>
                       <div className="text-right">
                         <span className="text-sm font-bold text-red-500">{fmt(d.valor)}</span>
                         <span className="text-xs text-slate-400 ml-1">
@@ -438,7 +405,7 @@ export default function IpsPage() {
 
           {/* Dimension Drill-down */}
           <div className="space-y-3">
-            <h2 className="text-base font-semibold text-slate-700 dark:text-slate-200">
+            <h2 className="text-base font-semibold text-[var(--text)]">
               Detalhamento por Dimensão
             </h2>
             {[
@@ -451,17 +418,17 @@ export default function IpsPage() {
               return (
                 <div
                   key={dimKey}
-                  className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl overflow-hidden"
+                  className="bg-[var(--panel)] border border-[var(--border)] rounded-2xl overflow-hidden"
                 >
                   <button
                     onClick={() => setOpenDims((p) => ({ ...p, [dimKey]: !p[dimKey] }))}
                     className="w-full flex justify-between items-center p-5 text-left cursor-pointer"
                   >
-                    <span className="font-medium text-slate-700 dark:text-slate-200">{label}</span>
+                    <span className="font-medium text-[var(--text)]">{label}</span>
                     <span className="text-slate-400 text-sm">{openDims[dimKey] ? "▲" : "▼"}</span>
                   </button>
                   {openDims[dimKey] && (
-                    <div className="px-5 pb-5 space-y-2 border-t border-slate-100 dark:border-slate-700 pt-4">
+                    <div className="px-5 pb-5 space-y-2 border-t border-[var(--border)] pt-4">
                       <p className="text-xs font-semibold uppercase tracking-widest text-slate-400 mb-3">
                         Componentes
                       </p>
@@ -472,7 +439,7 @@ export default function IpsPage() {
                             <span className="text-xs text-slate-500 w-48 flex-shrink-0">
                               {c.label}
                             </span>
-                            <div className="flex-1 bg-slate-100 dark:bg-slate-700 rounded-full h-2">
+                            <div className="flex-1 bg-[var(--panel-2)] rounded-full h-2">
                               <div
                                 className="h-2 rounded-full bg-blue-500"
                                 style={{ width: `${v ?? 0}%` }}
@@ -496,7 +463,7 @@ export default function IpsPage() {
                             <span className="text-xs text-slate-400 w-48 flex-shrink-0">
                               {s.label}
                             </span>
-                            <div className="flex-1 bg-slate-100 dark:bg-slate-700 rounded-full h-1.5">
+                            <div className="flex-1 bg-[var(--panel-2)] rounded-full h-1.5">
                               <div
                                 className="h-1.5 rounded-full bg-slate-400"
                                 style={{ width: `${Math.min(v ?? 0, 100)}%` }}
@@ -517,51 +484,24 @@ export default function IpsPage() {
 
           {/* Evolution */}
           {evolucao.length > 0 && (
-            <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl p-6">
-              <h2 className="text-sm font-semibold text-slate-700 dark:text-slate-200 mb-4">
+            <div className="bg-[var(--panel)] border border-[var(--border)] rounded-2xl p-6">
+              <h2 className="text-sm font-semibold text-[var(--text)] mb-4">
                 Evolução ao Longo do Tempo
               </h2>
-              <ResponsiveContainer width="100%" height={220}>
-                <LineChart data={evolucao}>
-                  <CartesianGrid strokeDasharray="3 3" stroke={ct.grid} />
-                  <XAxis dataKey="ano" stroke={ct.text} />
-                  <YAxis domain={[0, 100]} stroke={ct.text} />
-                  <Tooltip />
-                  <Legend />
-                  <Line
-                    type="monotone"
-                    dataKey="ips_geral"
-                    name="IPS Geral"
-                    stroke="#3b82f6"
-                    strokeWidth={2}
-                    dot
-                  />
-                  <Line
-                    type="monotone"
-                    dataKey="necessidades_humanas_basicas"
-                    name="NHB"
-                    stroke="#10b981"
-                    strokeWidth={1.5}
-                    dot
-                  />
-                  <Line
-                    type="monotone"
-                    dataKey="fundamentos_bem_estar"
-                    name="FBE"
-                    stroke="#f59e0b"
-                    strokeWidth={1.5}
-                    dot
-                  />
-                  <Line
-                    type="monotone"
-                    dataKey="oportunidades"
-                    name="OPO"
-                    stroke="#8b5cf6"
-                    strokeWidth={1.5}
-                    dot
-                  />
-                </LineChart>
-              </ResponsiveContainer>
+              <MultiLineChart
+                data={evolucao.map((d) => ({
+                  label: String(d.ano),
+                  "IPS Geral": d.ips_geral || 0,
+                  "NHB": d.necessidades_humanas_basicas || 0,
+                  "FBE": d.fundamentos_bem_estar || 0,
+                  "OPO": d.oportunidades || 0,
+                }))}
+                series={["IPS Geral", "NHB", "FBE", "OPO"]}
+                colors={["#3b82f6", "#10b981", "#f59e0b", "#8b5cf6"]}
+                height={220}
+                yFmt={(v) => v.toFixed(1)}
+                tipFmt={(v) => v.toFixed(1)}
+              />
               {evolucao.length >= 2 && (() => {
                 const last = evolucao[evolucao.length - 1];
                 const prev = evolucao[evolucao.length - 2];
@@ -581,8 +521,8 @@ export default function IpsPage() {
           )}
 
           {/* Comparison */}
-          <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl p-6 space-y-4">
-            <h2 className="text-sm font-semibold text-slate-700 dark:text-slate-200">
+          <div className="bg-[var(--panel)] border border-[var(--border)] rounded-2xl p-6 space-y-4">
+            <h2 className="text-sm font-semibold text-[var(--text)]">
               Comparar com Outros Municípios
             </h2>
 
@@ -599,8 +539,8 @@ export default function IpsPage() {
                       disabled={compareMunicipioIds.includes(s.municipio_id)}
                       className={`px-3 py-1.5 rounded-full text-xs font-medium border transition-colors cursor-pointer ${
                         compareMunicipioIds.includes(s.municipio_id)
-                          ? "bg-blue-100 dark:bg-blue-900 border-blue-300 text-blue-700 dark:text-blue-300"
-                          : "border-slate-200 dark:border-slate-600 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700"
+                          ? "bg-[var(--panel-2)] border-[var(--border)] text-[var(--accent-1)]"
+                          : "border-[var(--border)] text-[var(--text-dim)] hover:bg-[var(--panel-2)]"
                       }`}
                     >
                       {s.nome} ({s.estado}) — {fmt(s.ips_geral)}
@@ -633,18 +573,14 @@ export default function IpsPage() {
             )}
 
             {comparativo.length > 0 && (
-              <ResponsiveContainer width="100%" height={250}>
-                <BarChart data={comparativoData}>
-                  <CartesianGrid strokeDasharray="3 3" stroke={ct.grid} />
-                  <XAxis dataKey="name" stroke={ct.text} />
-                  <YAxis domain={[0, 100]} stroke={ct.text} />
-                  <Tooltip />
-                  <Legend />
-                  {comparativo.map((c, i) => (
-                    <Bar key={c.municipio_id} dataKey={c.nome} fill={COLORS[i % COLORS.length]} />
-                  ))}
-                </BarChart>
-              </ResponsiveContainer>
+              <MultiLineChart
+                data={comparativoData.map((d) => ({ label: d.name, ...d }))}
+                series={comparativo.map((c) => c.nome)}
+                colors={COLORS}
+                height={250}
+                yFmt={(v) => v.toFixed(1)}
+                tipFmt={(v) => v.toFixed(1)}
+              />
             )}
           </div>
         </>

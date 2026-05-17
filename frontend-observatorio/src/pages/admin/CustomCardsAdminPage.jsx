@@ -127,23 +127,23 @@ export default function CustomCardsAdminPage() {
       className="space-y-6"
     >
       <div>
-        <h1 className="text-2xl font-extrabold tracking-tight text-slate-800 dark:text-white">
+        <h1 className="text-2xl font-extrabold tracking-tight text-[var(--text)]">
           Cards Customizados
         </h1>
-        <p className="text-sm text-slate-400 dark:text-slate-500 mt-1">
+        <p className="text-sm text-[var(--text-mute)] mt-1">
           Adicione indicadores personalizados ao Dashboard Geral de cada município.
         </p>
       </div>
 
       {/* Municipality selector */}
-      <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-100 dark:border-slate-800 shadow-sm p-6">
-        <label className="block text-xs font-semibold text-slate-600 dark:text-slate-300 uppercase tracking-wider mb-2">
+      <div className="bg-[var(--panel)] rounded-2xl border border-[var(--border)] shadow-sm p-6">
+        <label className="block text-xs font-semibold text-[var(--text-dim)] uppercase tracking-wider mb-2">
           Município
         </label>
         <select
           value={selectedId}
           onChange={(e) => setSelectedId(e.target.value)}
-          className="w-full max-w-sm border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-2.5 text-sm dark:bg-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-violet-500"
+          className="w-full max-w-sm border border-[var(--border)] rounded-xl px-4 py-2.5 text-sm   focus:outline-none focus:ring-2 focus:ring-violet-500"
         >
           <option value="">Selecione um município...</option>
           {municipios.map((m) => (
@@ -156,9 +156,9 @@ export default function CustomCardsAdminPage() {
 
       {/* Cards list */}
       {selectedId && (
-        <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-100 dark:border-slate-800 shadow-sm overflow-hidden">
-          <div className="px-3 py-4 md:px-6 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
-            <h3 className="text-base font-bold text-slate-800 dark:text-white">Cards</h3>
+        <div className="bg-[var(--panel)] rounded-2xl border border-[var(--border)] shadow-sm overflow-hidden">
+          <div className="px-3 py-4 md:px-6 border-b border-[var(--border)] flex items-center justify-between">
+            <h3 className="text-base font-bold text-[var(--text)]">Cards</h3>
             <button
               onClick={openCreate}
               className="flex items-center gap-2 bg-violet-600 hover:bg-violet-700 text-white text-sm font-medium px-4 py-2 rounded-xl transition-colors"
@@ -171,19 +171,19 @@ export default function CustomCardsAdminPage() {
           {loading ? (
             <div className="p-6 space-y-3">
               {[1, 2].map((i) => (
-                <div key={i} className="h-14 bg-slate-100 dark:bg-slate-800 rounded-xl animate-pulse" />
+                <div key={i} className="h-14 bg-[var(--panel-2)] rounded-xl animate-pulse" />
               ))}
             </div>
           ) : cards.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-16 text-center">
-              <p className="text-slate-400 dark:text-slate-500 text-sm">
+              <p className="text-[var(--text-mute)] text-sm">
                 Nenhum card criado. Clique em "Novo Card" para começar.
               </p>
             </div>
           ) : (
             <table className="w-full text-sm">
               <thead>
-                <tr className="bg-slate-50 dark:bg-slate-800 text-left text-xs uppercase text-slate-400 dark:text-slate-500 tracking-wider">
+                <tr className="bg-slate-50  text-left text-xs uppercase text-[var(--text-mute)] tracking-wider">
                   <th className="px-3 py-3 md:px-6">Ícone</th>
                   <th className="px-3 py-3 md:px-6">Título</th>
                   <th className="px-3 py-3 md:px-6">Valor</th>
@@ -192,32 +192,32 @@ export default function CustomCardsAdminPage() {
                   <th className="px-3 py-3 md:px-6 text-right">Ações</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-50 dark:divide-slate-800">
+              <tbody className="divide-y divide-[var(--border)]">
                 {cards.map((card) => {
                   const Icon = ICON_MAP[card.icone] || StarIcon;
                   const color = COLORS.find((c) => c.key === card.cor);
                   return (
-                    <tr key={card.id} className="hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors">
+                    <tr key={card.id} className="hover:bg-[var(--panel-2)] transition-colors">
                       <td className="px-3 py-4 md:px-6">
                         <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${color?.cls || "bg-blue-500"}`}>
                           <Icon className="w-4 h-4 text-white" />
                         </div>
                       </td>
-                      <td className="px-3 py-4 md:px-6 font-medium text-slate-800 dark:text-white">{card.titulo}</td>
-                      <td className="px-3 py-4 md:px-6 text-slate-600 dark:text-slate-300">{card.valor}</td>
-                      <td className="px-3 py-4 md:px-6 text-slate-400 dark:text-slate-500">{card.subtitulo || "—"}</td>
-                      <td className="px-3 py-4 md:px-6 text-slate-400 dark:text-slate-500">{card.ordem}</td>
+                      <td className="px-3 py-4 md:px-6 font-medium text-[var(--text)]">{card.titulo}</td>
+                      <td className="px-3 py-4 md:px-6 text-[var(--text-dim)]">{card.valor}</td>
+                      <td className="px-3 py-4 md:px-6 text-[var(--text-mute)]">{card.subtitulo || "—"}</td>
+                      <td className="px-3 py-4 md:px-6 text-[var(--text-mute)]">{card.ordem}</td>
                       <td className="px-3 py-4 md:px-6 text-right">
                         <div className="flex items-center justify-end gap-2">
                           <button
                             onClick={() => openEdit(card)}
-                            className="p-1.5 text-slate-400 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-950/40 rounded-lg transition-colors"
+                            className="p-1.5 text-slate-400 hover:text-blue-600 hover:bg-[var(--panel-2)] rounded-lg transition-colors"
                           >
                             <PencilIcon className="w-4 h-4" />
                           </button>
                           <button
                             onClick={() => handleDelete(card.id)}
-                            className="p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-950/40 rounded-lg transition-colors"
+                            className="p-1.5 text-slate-400 hover:text-red-600 hover:bg-[var(--panel-2)] rounded-lg transition-colors"
                           >
                             <TrashIcon className="w-4 h-4" />
                           </button>
@@ -246,52 +246,52 @@ export default function CustomCardsAdminPage() {
               initial={{ scale: 0.95, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 0.95, opacity: 0 }}
-              className="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl w-full max-w-md p-6"
+              className="bg-[var(--panel)] rounded-2xl shadow-2xl w-full max-w-md p-6"
             >
               <div className="flex items-center justify-between mb-5">
-                <h2 className="text-lg font-bold text-slate-800 dark:text-white">
+                <h2 className="text-lg font-bold text-[var(--text)]">
                   {editing ? "Editar Card" : "Novo Card"}
                 </h2>
-                <button onClick={() => setShowForm(false)} className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200">
+                <button onClick={() => setShowForm(false)} className="text-slate-400 hover:text-slate-600 ">
                   <XMarkIcon className="w-5 h-5" />
                 </button>
               </div>
 
               <form onSubmit={handleSubmit} className="space-y-4">
                 <div>
-                  <label className="block text-xs font-semibold text-slate-600 dark:text-slate-300 uppercase tracking-wider mb-1.5">Título *</label>
+                  <label className="block text-xs font-semibold text-[var(--text-dim)] uppercase tracking-wider mb-1.5">Título *</label>
                   <input
                     required
                     value={form.titulo}
                     onChange={(e) => setForm({ ...form, titulo: e.target.value })}
                     placeholder="Ex: População"
-                    className="w-full border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-violet-500"
+                    className="w-full border border-[var(--border)] bg-[var(--panel)] text-[var(--text)] rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-violet-500"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-xs font-semibold text-slate-600 dark:text-slate-300 uppercase tracking-wider mb-1.5">Valor *</label>
+                  <label className="block text-xs font-semibold text-[var(--text-dim)] uppercase tracking-wider mb-1.5">Valor *</label>
                   <input
                     required
                     value={form.valor}
                     onChange={(e) => setForm({ ...form, valor: e.target.value })}
                     placeholder="Ex: 112.000 hab."
-                    className="w-full border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-violet-500"
+                    className="w-full border border-[var(--border)] bg-[var(--panel)] text-[var(--text)] rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-violet-500"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-xs font-semibold text-slate-600 dark:text-slate-300 uppercase tracking-wider mb-1.5">Subtítulo</label>
+                  <label className="block text-xs font-semibold text-[var(--text-dim)] uppercase tracking-wider mb-1.5">Subtítulo</label>
                   <input
                     value={form.subtitulo}
                     onChange={(e) => setForm({ ...form, subtitulo: e.target.value })}
                     placeholder="Ex: Censo 2022"
-                    className="w-full border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-violet-500"
+                    className="w-full border border-[var(--border)] bg-[var(--panel)] text-[var(--text)] rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-violet-500"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-xs font-semibold text-slate-600 dark:text-slate-300 uppercase tracking-wider mb-1.5">Ícone</label>
+                  <label className="block text-xs font-semibold text-[var(--text-dim)] uppercase tracking-wider mb-1.5">Ícone</label>
                   <div className="grid grid-cols-5 gap-2">
                     {ICONS.map(({ key, label, Icon }) => (
                       <button
@@ -301,19 +301,19 @@ export default function CustomCardsAdminPage() {
                         onClick={() => setForm({ ...form, icone: key })}
                         className={`flex flex-col items-center gap-1 p-2 rounded-lg border-2 transition-colors ${
                           form.icone === key
-                            ? "border-violet-500 bg-violet-50 dark:bg-violet-950/40"
-                            : "border-slate-200 dark:border-slate-700 hover:border-slate-300"
+                            ? "border-violet-500 bg-violet-50 "
+                            : "border-[var(--border)] hover:border-slate-300"
                         }`}
                       >
-                        <Icon className="w-5 h-5 text-slate-600 dark:text-slate-300" />
-                        <span className="text-[10px] text-slate-500 dark:text-slate-400 text-center leading-tight">{label}</span>
+                        <Icon className="w-5 h-5 text-[var(--text-dim)]" />
+                        <span className="text-[10px] text-[var(--text-dim)] text-center leading-tight">{label}</span>
                       </button>
                     ))}
                   </div>
                 </div>
 
                 <div>
-                  <label className="block text-xs font-semibold text-slate-600 dark:text-slate-300 uppercase tracking-wider mb-1.5">Cor</label>
+                  <label className="block text-xs font-semibold text-[var(--text-dim)] uppercase tracking-wider mb-1.5">Cor</label>
                   <div className="flex gap-2">
                     {COLORS.map(({ key, label, cls }) => (
                       <button
@@ -330,12 +330,12 @@ export default function CustomCardsAdminPage() {
                 </div>
 
                 <div>
-                  <label className="block text-xs font-semibold text-slate-600 dark:text-slate-300 uppercase tracking-wider mb-1.5">Ordem</label>
+                  <label className="block text-xs font-semibold text-[var(--text-dim)] uppercase tracking-wider mb-1.5">Ordem</label>
                   <input
                     type="number"
                     value={form.ordem}
                     onChange={(e) => setForm({ ...form, ordem: parseInt(e.target.value) || 0 })}
-                    className="w-24 border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-violet-500"
+                    className="w-24 border border-[var(--border)] bg-[var(--panel)] text-[var(--text)] rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-violet-500"
                   />
                 </div>
 
@@ -343,7 +343,7 @@ export default function CustomCardsAdminPage() {
                   <button
                     type="button"
                     onClick={() => setShowForm(false)}
-                    className="flex-1 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 text-sm font-medium py-2.5 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors"
+                    className="flex-1 border border-[var(--border)] text-[var(--text-dim)] text-sm font-medium py-2.5 rounded-xl hover:bg-[var(--panel-2)] transition-colors"
                   >
                     Cancelar
                   </button>

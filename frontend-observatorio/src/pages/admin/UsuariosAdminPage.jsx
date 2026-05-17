@@ -154,7 +154,7 @@ export default function UsuariosAdminPage() {
     >
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-extrabold tracking-tight text-slate-800 dark:text-slate-100">
+          <h1 className="text-2xl font-extrabold tracking-tight text-[var(--text)]">
             Administração de Usuários
           </h1>
           <p className="text-sm text-slate-400 mt-1">
@@ -179,10 +179,10 @@ export default function UsuariosAdminPage() {
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -8 }}
             transition={{ duration: 0.2, ease: "easeOut" }}
-            className="bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-700 p-6"
+            className="bg-[var(--panel)] rounded-2xl shadow-sm border border-[var(--border)] p-6"
           >
             <div className="flex items-center justify-between mb-5">
-              <h3 className="text-base font-bold text-slate-800 dark:text-slate-100">
+              <h3 className="text-base font-bold text-[var(--text)]">
                 {editingId ? "Editar Usuário" : "Criar Novo Usuário"}
               </h3>
               <button
@@ -208,7 +208,7 @@ export default function UsuariosAdminPage() {
                   required
                   autoComplete="name"
                   placeholder="Nome completo"
-                  className="px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-600 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-slate-700 dark:text-slate-100"
+                  className="px-3 py-2 rounded-lg border border-[var(--border)] text-sm focus:outline-none focus:ring-2 focus:ring-blue-500  "
                 />
               </div>
 
@@ -225,7 +225,7 @@ export default function UsuariosAdminPage() {
                   required
                   autoComplete="email"
                   placeholder="email@exemplo.com"
-                  className="px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-600 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-slate-700 dark:text-slate-100"
+                  className="px-3 py-2 rounded-lg border border-[var(--border)] text-sm focus:outline-none focus:ring-2 focus:ring-blue-500  "
                 />
               </div>
 
@@ -244,7 +244,7 @@ export default function UsuariosAdminPage() {
                     required={!editingId}
                     autoComplete={editingId ? "new-password" : "new-password"}
                     placeholder={editingId ? "Nova senha (opcional)" : "Senha inicial"}
-                    className="w-full px-3 py-2 pr-10 rounded-lg border border-slate-200 dark:border-slate-600 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-slate-700 dark:text-slate-100"
+                    className="w-full px-3 py-2 pr-10 rounded-lg border border-[var(--border)] text-sm focus:outline-none focus:ring-2 focus:ring-blue-500  "
                   />
                   <button
                     type="button"
@@ -266,7 +266,7 @@ export default function UsuariosAdminPage() {
                     id="u-estado"
                     value={estadoFiltro}
                     onChange={(e) => { setEstadoFiltro(e.target.value); setForm((prev) => ({ ...prev, municipio_id: "" })); }}
-                    className="px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-600 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-slate-700 dark:text-slate-100"
+                    className="px-3 py-2 rounded-lg border border-[var(--border)] text-sm focus:outline-none focus:ring-2 focus:ring-blue-500  "
                   >
                     <option value="">Todos os estados</option>
                     {estados.map((uf) => <option key={uf} value={uf}>{uf}</option>)}
@@ -281,7 +281,7 @@ export default function UsuariosAdminPage() {
                   name="municipio_id"
                   value={form.municipio_id}
                   onChange={handleChange}
-                  className="px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-600 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-slate-700 dark:text-slate-100"
+                  className="px-3 py-2 rounded-lg border border-[var(--border)] text-sm focus:outline-none focus:ring-2 focus:ring-blue-500  "
                 >
                   <option value="">— Sem município —</option>
                   {municipiosFiltrados.map((m) => (
@@ -299,7 +299,7 @@ export default function UsuariosAdminPage() {
                   name="role_id"
                   value={form.role_id}
                   onChange={handleChange}
-                  className="px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-600 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-slate-700 dark:text-slate-100"
+                  className="px-3 py-2 rounded-lg border border-[var(--border)] text-sm focus:outline-none focus:ring-2 focus:ring-blue-500  "
                 >
                   {ROLES.map((r) => <option key={r.id} value={r.id}>{r.nome}</option>)}
                 </select>
@@ -330,18 +330,18 @@ export default function UsuariosAdminPage() {
       </AnimatePresence>
 
       {/* Users table */}
-      <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-700 overflow-hidden">
+      <div className="bg-[var(--panel)] rounded-2xl shadow-sm border border-[var(--border)] overflow-hidden">
         {loading ? (
           <div className="p-8 space-y-3">
             {[1, 2, 3].map((i) => (
-              <div key={i} className="h-10 bg-slate-100 dark:bg-slate-700 rounded-lg animate-pulse" />
+              <div key={i} className="h-10 bg-[var(--panel-2)] rounded-lg animate-pulse" />
             ))}
           </div>
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
-                <tr className="bg-slate-50 dark:bg-slate-700/50 text-left text-xs uppercase text-slate-400 tracking-wider">
+                <tr className="bg-slate-50  text-left text-xs uppercase text-slate-400 tracking-wider">
                   <th className="px-3 py-3 md:px-6">Nome</th>
                   <th className="px-3 py-3 md:px-6">Email</th>
                   <th className="px-3 py-3 md:px-6">Município</th>
@@ -350,7 +350,7 @@ export default function UsuariosAdminPage() {
                   <th className="px-3 py-3 md:px-6 sr-only">Ações</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-50 dark:divide-slate-700">
+              <tbody className="divide-y divide-[var(--border)]">
                 {usuarios.length === 0 ? (
                   <tr>
                     <td colSpan={6} className="px-6 py-10 text-center text-slate-400">
@@ -360,8 +360,8 @@ export default function UsuariosAdminPage() {
                 ) : (
                   usuarios.map((u) => (
                     <>
-                      <tr key={u.id} className="hover:bg-slate-50 dark:hover:bg-slate-700/30 transition-colors">
-                        <td className="px-3 py-3 md:px-6 font-medium text-slate-700 dark:text-slate-200">{u.nome}</td>
+                      <tr key={u.id} className="hover:bg-[var(--panel-2)]/30 transition-colors">
+                        <td className="px-3 py-3 md:px-6 font-medium text-[var(--text)]">{u.nome}</td>
                         <td className="px-3 py-3 md:px-6 text-slate-500">{u.email}</td>
                         <td className="px-3 py-3 md:px-6 text-slate-500">
                           {municipios.find((m) => m.id === u.municipio_id)?.nome || "—"}
@@ -385,7 +385,7 @@ export default function UsuariosAdminPage() {
                                 type="button"
                                 onClick={() => openEdit(u)}
                                 aria-label={`Editar ${u.nome}`}
-                                className="p-2 rounded-lg text-slate-400 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-colors cursor-pointer"
+                                className="p-2 rounded-lg text-[var(--text-mute)] hover:text-blue-500 hover:bg-[var(--panel-2)] transition-colors cursor-pointer"
                               >
                                 <PencilIcon className="w-4 h-4" aria-hidden="true" />
                               </button>
@@ -393,7 +393,7 @@ export default function UsuariosAdminPage() {
                                 type="button"
                                 onClick={() => setDeleteConfirmId(u.id)}
                                 aria-label={`Excluir ${u.nome}`}
-                                className="p-2 rounded-lg text-slate-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors cursor-pointer"
+                                className="p-2 rounded-lg text-[var(--text-mute)] hover:text-red-400 hover:bg-[var(--panel-2)] transition-colors cursor-pointer"
                               >
                                 <TrashIcon className="w-4 h-4" aria-hidden="true" />
                               </button>
@@ -402,10 +402,10 @@ export default function UsuariosAdminPage() {
                         </td>
                       </tr>
                       {deleteConfirmId === u.id && (
-                        <tr key={`confirm-${u.id}`} className="bg-red-50 dark:bg-red-900/10">
+                        <tr key={`confirm-${u.id}`} className="bg-[var(--panel-2)]">
                           <td colSpan={6} className="px-6 py-3">
                             <div className="flex items-center gap-4 text-sm">
-                              <span className="text-red-700 dark:text-red-400 font-medium">
+                              <span className="text-red-700  font-medium">
                                 Excluir <strong>{u.nome}</strong>? Esta ação não pode ser desfeita.
                               </span>
                               <div className="flex gap-2 ml-auto">

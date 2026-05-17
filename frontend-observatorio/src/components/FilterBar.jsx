@@ -1,10 +1,18 @@
 /**
  * Returns a human-readable period label from a filter object.
  * Returns null when no year filter is set (no chip should be shown).
+ * Understands preset-style labels when a _preset field is present.
  */
 export function describeFilter(filter) {
   if (!filter) return null;
-  const { yearFrom, yearTo } = filter;
+  const { yearFrom, yearTo, _preset } = filter;
+
+  // Named presets take priority for the chip label
+  if (_preset === "12m") return "Últimos 12 meses";
+  if (_preset === "5a")  return "Últimos 5 anos";
+  if (_preset === "10a") return "Últimos 10 anos";
+  if (_preset === "tudo") return null; // no chip when "Tudo" is active
+
   if (!yearFrom && !yearTo) return null;
   if (yearFrom && yearTo) return `${yearFrom}–${yearTo}`;
   if (yearFrom) return `desde ${yearFrom}`;
@@ -18,6 +26,48 @@ export function clearFilter() {
   return { yearFrom: "", yearTo: "" };
 }
 
+// ─── Preset definitions ──────────────────────────────────────────────────────
+
+const PRESETS = [
+  { key: "12m",        label: "12m" },
+  { key: "5a",         label: "5a" },
+  { key: "10a",        label: "10a" },
+  { key: "tudo",       label: "Tudo" },
+  { key: "personalizar", label: "Personalizar" },
+];
+
+/**
+ * Compute the year range for a given preset key.
+ * maxYear is the largest year available in the dataset.
+ */
+function presetRange(key, maxYear) {
+  const cy = maxYear;
+  if (key === "12m")  return { yearFrom: String(cy - 1), yearTo: String(cy) };
+  if (key === "5a")   return { yearFrom: String(cy - 4), yearTo: String(cy) };
+  if (key === "10a")  return { yearFrom: String(cy - 9), yearTo: String(cy) };
+  if (key === "tudo") return { yearFrom: "", yearTo: "" };
+  return null; // personalizar → no auto-fill
+}
+
+/**
+ * Derive the active preset key from current yearFrom / yearTo values.
+ * Returns "tudo" | "12m" | "5a" | "10a" | "personalizar".
+ */
+function detectPreset(yearFrom, yearTo, maxYear) {
+  const cy = maxYear;
+  if (!yearFrom && !yearTo) return "tudo";
+  if (!yearFrom || !yearTo) return "personalizar";
+  const from = Number(yearFrom);
+  const to   = Number(yearTo);
+  if (to === cy) {
+    const span = to - from + 1;
+    if (span === 2)  return "12m";
+    if (span === 5)  return "5a";
+    if (span === 10) return "10a";
+  }
+  return "personalizar";
+}
+
 const MONTHS = [
   { value: 1, label: "Jan" }, { value: 2, label: "Fev" },
   { value: 3, label: "Mar" }, { value: 4, label: "Abr" },
@@ -27,63 +77,210 @@ const MONTHS = [
   { value: 11, label: "Nov" }, { value: 12, label: "Dez" },
 ];
 
-const selectCls =
-  "text-sm border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 rounded-lg px-3 py-1.5 focus:outline-none focus:ring-2 focus:ring-blue-500";
+// ─── Inline styles (NID tokens only — no Tailwind) ───────────────────────────
+
+const S = {
+  root: {
+    display: "flex",
+    flexWrap: "wrap",
+    alignItems: "center",
+    gap: 12,
+    background: "var(--panel)",
+    border: "1px solid var(--border)",
+    borderRadius: 14,
+    padding: "10px 16px",
+    backdropFilter: "blur(10px)",
+  },
+  eyebrow: {
+    fontSize: 10,
+    fontWeight: 600,
+    fontFamily: "var(--font-mono)",
+    textTransform: "uppercase",
+    letterSpacing: "0.14em",
+    color: "var(--text-mute)",
+    flexShrink: 0,
+  },
+  segGroup: {
+    display: "flex",
+    gap: 3,
+    background: "var(--panel-2)",
+    border: "1px solid var(--border)",
+    borderRadius: 10,
+    padding: 3,
+  },
+  segBtn: (active) => ({
+    padding: "4px 10px",
+    borderRadius: 7,
+    border: "none",
+    cursor: "pointer",
+    fontFamily: "var(--font-mono)",
+    fontSize: 11,
+    fontWeight: 600,
+    letterSpacing: "0.04em",
+    textTransform: "uppercase",
+    transition: "all 0.14s",
+    background: active ? "var(--accent-1)" : "transparent",
+    color: active
+      ? "#000"
+      : "var(--text-dim)",
+    boxShadow: active
+      ? "0 1px 6px -2px var(--accent-1-glow)"
+      : "none",
+  }),
+  rangeWrap: {
+    display: "flex",
+    alignItems: "center",
+    gap: 8,
+    flexWrap: "wrap",
+  },
+  rangeLabel: {
+    fontSize: 11,
+    fontFamily: "var(--font-mono)",
+    color: "var(--text-mute)",
+    flexShrink: 0,
+  },
+  select: {
+    fontSize: 12,
+    fontFamily: "var(--font-mono)",
+    border: "1px solid var(--border)",
+    background: "var(--panel-2)",
+    color: "var(--text)",
+    borderRadius: 7,
+    padding: "4px 8px",
+    outline: "none",
+    cursor: "pointer",
+    transition: "border-color 0.14s",
+  },
+  sep: {
+    color: "var(--text-mute)",
+    fontSize: 13,
+    fontFamily: "var(--font-mono)",
+  },
+  clearBtn: {
+    fontSize: 11,
+    fontFamily: "var(--font-mono)",
+    letterSpacing: "0.04em",
+    color: "var(--text-mute)",
+    background: "transparent",
+    border: "none",
+    cursor: "pointer",
+    padding: "3px 6px",
+    borderRadius: 6,
+    transition: "color 0.14s",
+    flexShrink: 0,
+  },
+};
+
+// ─── Component ───────────────────────────────────────────────────────────────
 
 /**
- * Generic client-side filter bar.
+ * Generic client-side filter bar — NID token edition.
  *
- * Props:
+ * Props (unchanged from original):
  *  years      – number[] sorted asc  (derived from data by parent)
  *  showMonths – bool, show month selectors (default false)
- *  value      – { yearFrom, yearTo, monthFrom, monthTo } (all strings or "")
+ *  value      – { yearFrom, yearTo, monthFrom?, monthTo? } (all strings or "")
  *  onChange   – (newValue) => void
+ *  id         – string, forwarded to root element
  */
 export default function FilterBar({ years = [], showMonths = false, value, onChange, id }) {
   const { yearFrom = "", yearTo = "", monthFrom = "", monthTo = "" } = value || {};
 
-  const hasFilter = yearFrom || yearTo || monthFrom || monthTo;
+  if (years.length === 0) return null;
+
+  const maxYear = years[years.length - 1];
+  const activePreset = detectPreset(yearFrom, yearTo, maxYear);
 
   const set = (key, v) => onChange({ ...value, [key]: v });
 
   const clear = () => onChange({ yearFrom: "", yearTo: "", monthFrom: "", monthTo: "" });
 
-  if (years.length === 0) return null;
+  const handlePreset = (key) => {
+    if (key === "personalizar") {
+      // Reveal custom pickers; keep current range or reset to full span
+      const from = yearFrom || String(years[0]);
+      const to   = yearTo   || String(maxYear);
+      onChange({ ...value, yearFrom: from, yearTo: to });
+    } else {
+      const range = presetRange(key, maxYear);
+      // Clear month fields when switching to a preset
+      onChange({ yearFrom: range.yearFrom, yearTo: range.yearTo, monthFrom: "", monthTo: "" });
+    }
+  };
+
+  const showCustom = activePreset === "personalizar";
+  const hasFilter  = yearFrom || yearTo || monthFrom || monthTo;
 
   return (
-    <div id={id} className="flex flex-wrap items-center gap-3 bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-3">
-      <span className="text-xs font-semibold text-slate-400 dark:text-slate-500 uppercase tracking-wider shrink-0">
-        Filtros
-      </span>
+    <div id={id} style={S.root} className="nid-filterbar">
+      {/* Eyebrow label */}
+      <span style={S.eyebrow}>Período</span>
 
-      <div className="flex items-center gap-2">
-        <label className="text-xs text-slate-500 dark:text-slate-400 shrink-0">Ano</label>
-        <select value={yearFrom} onChange={(e) => set("yearFrom", e.target.value)} className={selectCls}>
-          <option value="">De</option>
-          {years.map((y) => (
-            <option key={y} value={y}>{y}</option>
-          ))}
-        </select>
-        <span className="text-slate-300 dark:text-slate-600">–</span>
-        <select value={yearTo} onChange={(e) => set("yearTo", e.target.value)} className={selectCls}>
-          <option value="">Até</option>
-          {years.map((y) => (
-            <option key={y} value={y}>{y}</option>
-          ))}
-        </select>
+      {/* Segmented preset control */}
+      <div style={S.segGroup} role="group" aria-label="Preset de período">
+        {PRESETS.map(({ key, label }) => {
+          const isActive = activePreset === key;
+          return (
+            <button
+              key={key}
+              style={S.segBtn(isActive)}
+              aria-pressed={isActive}
+              onClick={() => handlePreset(key)}
+            >
+              {label}
+            </button>
+          );
+        })}
       </div>
 
-      {showMonths && (
-        <div className="flex items-center gap-2">
-          <label className="text-xs text-slate-500 dark:text-slate-400 shrink-0">Mês</label>
-          <select value={monthFrom} onChange={(e) => set("monthFrom", e.target.value)} className={selectCls}>
+      {/* Custom year range — visible only for Personalizar */}
+      {showCustom && (
+        <div style={S.rangeWrap}>
+          <span style={S.rangeLabel}>Ano</span>
+          <select
+            value={yearFrom}
+            onChange={(e) => set("yearFrom", e.target.value)}
+            style={S.select}
+          >
+            <option value="">De</option>
+            {years.map((y) => (
+              <option key={y} value={y}>{y}</option>
+            ))}
+          </select>
+          <span style={S.sep}>→</span>
+          <select
+            value={yearTo}
+            onChange={(e) => set("yearTo", e.target.value)}
+            style={S.select}
+          >
+            <option value="">Até</option>
+            {years.map((y) => (
+              <option key={y} value={y}>{y}</option>
+            ))}
+          </select>
+        </div>
+      )}
+
+      {/* Month selectors — only when showMonths prop is true AND in custom mode */}
+      {showMonths && showCustom && (
+        <div style={S.rangeWrap}>
+          <span style={S.rangeLabel}>Mês</span>
+          <select
+            value={monthFrom}
+            onChange={(e) => set("monthFrom", e.target.value)}
+            style={S.select}
+          >
             <option value="">De</option>
             {MONTHS.map((m) => (
               <option key={m.value} value={m.value}>{m.label}</option>
             ))}
           </select>
-          <span className="text-slate-300 dark:text-slate-600">–</span>
-          <select value={monthTo} onChange={(e) => set("monthTo", e.target.value)} className={selectCls}>
+          <span style={S.sep}>→</span>
+          <select
+            value={monthTo}
+            onChange={(e) => set("monthTo", e.target.value)}
+            style={S.select}
+          >
             <option value="">Até</option>
             {MONTHS.map((m) => (
               <option key={m.value} value={m.value}>{m.label}</option>
@@ -92,12 +289,18 @@ export default function FilterBar({ years = [], showMonths = false, value, onCha
         </div>
       )}
 
+      {/* Spacer */}
+      <span style={{ flex: 1, minWidth: 0 }} />
+
+      {/* Limpar — subtle, only visible when a non-"Tudo" filter is active */}
       {hasFilter && (
         <button
+          style={S.clearBtn}
           onClick={clear}
-          className="text-xs text-blue-500 hover:text-blue-700 dark:hover:text-blue-300 font-medium transition-colors"
+          onMouseEnter={(e) => { e.currentTarget.style.color = "var(--text)"; }}
+          onMouseLeave={(e) => { e.currentTarget.style.color = "var(--text-mute)"; }}
         >
-          Limpar filtros
+          Limpar
         </button>
       )}
     </div>

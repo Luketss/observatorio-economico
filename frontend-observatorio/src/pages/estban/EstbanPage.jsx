@@ -1,6 +1,5 @@
 ﻿import { useEffect, useMemo, useState } from "react";
 import api from "../../services/api";
-import { useChartTheme } from "../../hooks/useChartTheme";
 import { motion } from "framer-motion";
 import InsightsPanel from "../../components/InsightsPanel";
 import ReleasesPanel from "../../components/ReleasesPanel";
@@ -10,31 +9,9 @@ import FilterBar, { describeFilter, clearFilter } from "../../components/FilterB
 import KpiCard from "../../components/KpiCard";
 import PlanGate from "../../components/PlanGate";
 import { NidPageHeader } from "../../components/nid/Panel";
-import {
-  ResponsiveContainer,
-  LineChart,
-  Line,
-  AreaChart,
-  Area,
-  BarChart,
-  Bar,
-  CartesianGrid,
-  XAxis,
-  YAxis,
-  Tooltip,
-  Legend,
-  Cell,
-} from "recharts";
+import { MultiLineChart, StackedBarChart, HBarChart, fmtMoneyShort, fmtMoneyFull } from "../../components/nid/charts";
 import ChartState from "../../components/nid/ChartState.jsx";
 
-const COLORS = [
-  "#3b82f6",
-  "#10b981",
-  "#f59e0b",
-  "#8b5cf6",
-  "#ef4444",
-  "#06b6d4",
-];
 
 const fmtBRL = (v) =>
   v != null
@@ -44,7 +21,6 @@ const fmtBRL = (v) =>
 const fmtNum = (v) => (v != null ? Number(v).toLocaleString("pt-BR") : "—");
 
 export default function EstbanPage() {
-  const ct = useChartTheme();
   const [rawSerie, setRawSerie] = useState([]);
   const [rawCaptacao, setRawCaptacao] = useState([]);
   const [rawComposicao, setRawComposicao] = useState([]);
@@ -152,7 +128,7 @@ export default function EstbanPage() {
       {loading ? (
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           {[...Array(3)].map((_, i) => (
-            <div key={i} className="bg-white dark:bg-slate-900 p-6 rounded-2xl border border-slate-100 dark:border-slate-800">
+            <div key={i} className="bg-[var(--panel)] p-6 rounded-2xl border border-[var(--border)]">
               <ChartState kind="loading" shape="kpi" height={80} />
             </div>
           ))}
@@ -166,321 +142,169 @@ export default function EstbanPage() {
       )}
 
       {/* Evolução das Operações de Crédito */}
-      <div className="bg-white dark:bg-slate-900 p-6 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-800">
-        <h3 className="text-base font-bold mb-5 text-slate-800 dark:text-white">
+      <div className="bg-[var(--panel)] p-6 rounded-2xl shadow-sm border border-[var(--border)]">
+        <h3 className="text-base font-bold mb-5 text-[var(--text)]">
           Evolução das Operações de Crédito
         </h3>
-        {loading ? (
-          <div className="animate-pulse h-64 bg-slate-50 dark:bg-slate-800 rounded-xl" />
-        ) : serie.length === 0 ? (
-          <div className="h-64 flex items-center justify-center text-slate-400 dark:text-slate-500 text-sm">
-            Sem dados disponíveis
-          </div>
-        ) : (
-          <div className="h-48 md:h-72">
-            <ResponsiveContainer width="100%" height="100%">
-              <LineChart data={serie}>
-                <CartesianGrid strokeDasharray="3 3" stroke={ct.grid} />
-                <XAxis
-                  dataKey="data_referencia"
-                  tick={{ fontSize: 10, fill: ct.tick }}
-                  stroke={ct.axis}
-                  interval="preserveStartEnd"
-                />
-                <YAxis
-                  tick={{ fontSize: 11, fill: ct.tick }}
-                  stroke={ct.axis}
-                  tickFormatter={(v) =>
-                    `R$ ${(v / 1_000_000).toLocaleString("pt-BR", {
-                      maximumFractionDigits: 0,
-                    })}M`
-                  }
-                />
-                <Tooltip contentStyle={ct.tooltipStyle} formatter={(v) => [fmtBRL(v), "Operações de Crédito"]} />
-                <Legend />
-                <Line
-                  type="monotone"
-                  dataKey="valor_operacoes_credito"
-                  name="Operações de Crédito"
-                  stroke="#3b82f6"
-                  strokeWidth={2.5}
-                  dot={false}
-                />
-                <Line
-                  type="monotone"
-                  dataKey="valor_poupanca"
-                  name="Poupança"
-                  stroke="#10b981"
-                  strokeWidth={2}
-                  dot={false}
-                />
-                <Line
-                  type="monotone"
-                  dataKey="valor_depositos_prazo"
-                  name="Depósitos a Prazo"
-                  stroke="#f59e0b"
-                  strokeWidth={2}
-                  dot={false}
-                />
-              </LineChart>
-            </ResponsiveContainer>
-          </div>
-        )}
+        <MultiLineChart
+          data={serie.map((d) => ({
+            label: String(d.data_referencia),
+            "Operações de Crédito": d.valor_operacoes_credito || 0,
+            "Poupança": d.valor_poupanca || 0,
+            "Depósitos a Prazo": d.valor_depositos_prazo || 0,
+          }))}
+          series={["Operações de Crédito", "Poupança", "Depósitos a Prazo"]}
+          colors={["#3b82f6", "#10b981", "#f59e0b"]}
+          height={280}
+          yFmt={(v) => `R$ ${(v / 1_000_000).toLocaleString("pt-BR", { maximumFractionDigits: 0 })}M`}
+          tipFmt={fmtBRL}
+          loading={loading}
+          emptyMessage="Sem dados disponíveis"
+        />
       </div>
 
       {/* Captação — Depósitos por Tipo */}
-      <div className="bg-white dark:bg-slate-900 p-6 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-800">
-        <h3 className="text-base font-bold mb-5 text-slate-800 dark:text-white">
+      <div className="bg-[var(--panel)] p-6 rounded-2xl shadow-sm border border-[var(--border)]">
+        <h3 className="text-base font-bold mb-5 text-[var(--text)]">
           Evolução da Captação — Depósitos por Tipo
         </h3>
-        {loading ? (
-          <div className="animate-pulse h-72 bg-slate-50 dark:bg-slate-800 rounded-xl" />
-        ) : captacao.length === 0 ? (
-          <div className="h-64 flex items-center justify-center text-slate-400 dark:text-slate-500 text-sm">
-            Sem dados disponíveis
-          </div>
-        ) : (
-          <div className="h-48 md:h-72">
-            <ResponsiveContainer width="100%" height="100%">
-              <AreaChart data={captacao}>
-                <defs>
-                  <linearGradient id="gradVista" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.3} />
-                    <stop offset="95%" stopColor="#3b82f6" stopOpacity={0.05} />
-                  </linearGradient>
-                  <linearGradient id="gradPoupanca" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#10b981" stopOpacity={0.3} />
-                    <stop offset="95%" stopColor="#10b981" stopOpacity={0.05} />
-                  </linearGradient>
-                  <linearGradient id="gradPrazo" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#f59e0b" stopOpacity={0.3} />
-                    <stop offset="95%" stopColor="#f59e0b" stopOpacity={0.05} />
-                  </linearGradient>
-                </defs>
-                <CartesianGrid strokeDasharray="3 3" stroke={ct.grid} />
-                <XAxis
-                  dataKey="data_referencia"
-                  tick={{ fontSize: 10, fill: ct.tick }}
-                  stroke={ct.axis}
-                  interval="preserveStartEnd"
-                />
-                <YAxis
-                  tick={{ fontSize: 11, fill: ct.tick }}
-                  stroke={ct.axis}
-                  tickFormatter={(v) =>
-                    `R$ ${(v / 1_000_000).toLocaleString("pt-BR", { maximumFractionDigits: 0 })}M`
-                  }
-                />
-                <Tooltip contentStyle={ct.tooltipStyle} formatter={(v) => [fmtBRL(v)]} />
-                <Legend />
-                <Area type="monotone" dataKey="depositos_vista" name="Depósitos à Vista" stroke="#3b82f6" fill="url(#gradVista)" strokeWidth={2} dot={false} />
-                <Area type="monotone" dataKey="poupanca" name="Poupança" stroke="#10b981" fill="url(#gradPoupanca)" strokeWidth={2} dot={false} />
-                <Area type="monotone" dataKey="depositos_prazo" name="Depósitos a Prazo" stroke="#f59e0b" fill="url(#gradPrazo)" strokeWidth={2} dot={false} />
-              </AreaChart>
-            </ResponsiveContainer>
-          </div>
-        )}
+        <MultiLineChart
+          data={captacao.map((d) => ({
+            label: String(d.data_referencia),
+            "Depósitos à Vista": d.depositos_vista || 0,
+            "Poupança": d.poupanca || 0,
+            "Depósitos a Prazo": d.depositos_prazo || 0,
+          }))}
+          series={["Depósitos à Vista", "Poupança", "Depósitos a Prazo"]}
+          colors={["#3b82f6", "#10b981", "#f59e0b"]}
+          height={280}
+          yFmt={(v) => `R$ ${(v / 1_000_000).toLocaleString("pt-BR", { maximumFractionDigits: 0 })}M`}
+          tipFmt={fmtBRL}
+          loading={loading}
+          emptyMessage="Sem dados disponíveis"
+        />
       </div>
 
       {/* Crédito vs. Captação Total */}
-      <div className="bg-white dark:bg-slate-900 p-6 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-800">
-        <h3 className="text-base font-bold mb-5 text-slate-800 dark:text-white">
+      <div className="bg-[var(--panel)] p-6 rounded-2xl shadow-sm border border-[var(--border)]">
+        <h3 className="text-base font-bold mb-5 text-[var(--text)]">
           Crédito vs. Captação Total
         </h3>
-        {loading ? (
-          <div className="animate-pulse h-64 bg-slate-50 dark:bg-slate-800 rounded-xl" />
-        ) : captacao.length === 0 ? (
-          <div className="h-64 flex items-center justify-center text-slate-400 dark:text-slate-500 text-sm">
-            Sem dados disponíveis
-          </div>
-        ) : (
-          <div className="h-44 md:h-64">
-            <ResponsiveContainer width="100%" height="100%">
-              <LineChart data={captacao}>
-                <CartesianGrid strokeDasharray="3 3" stroke={ct.grid} />
-                <XAxis dataKey="data_referencia" tick={{ fontSize: 10, fill: ct.tick }} stroke={ct.axis} interval="preserveStartEnd" />
-                <YAxis
-                  tick={{ fontSize: 11, fill: ct.tick }}
-                  stroke={ct.axis}
-                  tickFormatter={(v) =>
-                    `R$ ${(v / 1_000_000).toLocaleString("pt-BR", { maximumFractionDigits: 0 })}M`
-                  }
-                />
-                <Tooltip contentStyle={ct.tooltipStyle} formatter={(v) => [fmtBRL(v)]} />
-                <Legend />
-                <Line type="monotone" dataKey="operacoes_credito" name="Operações de Crédito" stroke="#3b82f6" strokeWidth={2.5} dot={false} />
-                <Line type="monotone" dataKey="total_captacao" name="Total Captação" stroke="#10b981" strokeWidth={2} dot={false} strokeDasharray="4 2" />
-              </LineChart>
-            </ResponsiveContainer>
-          </div>
-        )}
+        <MultiLineChart
+          data={captacao.map((d) => ({
+            label: String(d.data_referencia),
+            "Operações de Crédito": d.operacoes_credito || 0,
+            "Total Captação": d.total_captacao || 0,
+          }))}
+          series={["Operações de Crédito", "Total Captação"]}
+          colors={["#3b82f6", "#10b981"]}
+          height={240}
+          yFmt={(v) => `R$ ${(v / 1_000_000).toLocaleString("pt-BR", { maximumFractionDigits: 0 })}M`}
+          tipFmt={fmtBRL}
+          loading={loading}
+          emptyMessage="Sem dados disponíveis"
+        />
       </div>
 
       {/* Composição do Crédito */}
-      <div className="bg-white dark:bg-slate-900 p-6 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-800">
-        <h3 className="text-base font-bold mb-5 text-slate-800 dark:text-white">
+      <div className="bg-[var(--panel)] p-6 rounded-2xl shadow-sm border border-[var(--border)]">
+        <h3 className="text-base font-bold mb-5 text-[var(--text)]">
           Composição das Operações de Crédito
         </h3>
-        {loading ? (
-          <div className="animate-pulse h-72 bg-slate-50 dark:bg-slate-800 rounded-xl" />
-        ) : composicao.length === 0 ? (
-          <div className="h-72 flex items-center justify-center text-slate-400 dark:text-slate-500 text-sm">
-            Sem dados disponíveis
-          </div>
-        ) : (
-          <div className="h-48 md:h-72">
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={composicao}>
-                <CartesianGrid strokeDasharray="3 3" stroke={ct.grid} />
-                <XAxis dataKey="data_referencia" tick={{ fontSize: 10, fill: ct.tick }} stroke={ct.axis} interval="preserveStartEnd" />
-                <YAxis
-                  tick={{ fontSize: 11, fill: ct.tick }}
-                  stroke={ct.axis}
-                  tickFormatter={(v) =>
-                    `R$ ${(v / 1_000_000).toLocaleString("pt-BR", { maximumFractionDigits: 0 })}M`
-                  }
-                />
-                <Tooltip contentStyle={ct.tooltipStyle} formatter={(v) => [fmtBRL(v)]} />
-                <Legend />
-                <Bar dataKey="emprestimos_titulos_descontados" name="Empréstimos/Títulos Desc." stackId="a" fill="#3b82f6" />
-                <Bar dataKey="financiamentos_gerais" name="Financiamentos Gerais" stackId="a" fill="#10b981" />
-                <Bar dataKey="financiamentos_imobiliarios" name="Financiamentos Imobiliários" stackId="a" fill="#f59e0b" />
-                <Bar dataKey="financiamento_agropecuario" name="Financiamento Agropecuário" stackId="a" fill="#84cc16" />
-                <Bar dataKey="arrendamento_mercantil" name="Arrendamento Mercantil" stackId="a" fill="#8b5cf6" />
-                <Bar dataKey="emprestimos_setor_publico" name="Setor Público" stackId="a" fill="#06b6d4" />
-                <Bar dataKey="outros_creditos" name="Outros Créditos" stackId="a" fill="#94a3b8" radius={[4, 4, 0, 0]} />
-              </BarChart>
-            </ResponsiveContainer>
-          </div>
-        )}
+        <StackedBarChart
+          data={composicao.map((d) => ({
+            label: String(d.data_referencia),
+            "Empréstimos/Títulos": d.emprestimos_titulos_descontados || 0,
+            "Financiamentos Gerais": d.financiamentos_gerais || 0,
+            "Financiamentos Imobiliários": d.financiamentos_imobiliarios || 0,
+            "Financiamento Agropecuário": d.financiamento_agropecuario || 0,
+            "Arrendamento Mercantil": d.arrendamento_mercantil || 0,
+            "Setor Público": d.emprestimos_setor_publico || 0,
+            "Outros Créditos": d.outros_creditos || 0,
+          }))}
+          keys={["Empréstimos/Títulos", "Financiamentos Gerais", "Financiamentos Imobiliários", "Financiamento Agropecuário", "Arrendamento Mercantil", "Setor Público", "Outros Créditos"]}
+          colors={["#3b82f6", "#10b981", "#f59e0b", "#84cc16", "#8b5cf6", "#06b6d4", "#94a3b8"]}
+          height={280}
+          yFmt={(v) => `R$ ${(v / 1_000_000).toLocaleString("pt-BR", { maximumFractionDigits: 0 })}M`}
+          tipFmt={fmtBRL}
+          loading={loading}
+          emptyMessage="Sem dados disponíveis"
+        />
       </div>
 
       {/* Crédito por Instituição */}
       <PlanGate planKey="estban.por_instituicao">
-      <div className="bg-white dark:bg-slate-900 p-6 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-800">
-        <h3 className="text-base font-bold mb-5 text-slate-800 dark:text-white">
+      <div className="bg-[var(--panel)] p-6 rounded-2xl shadow-sm border border-[var(--border)]">
+        <h3 className="text-base font-bold mb-5 text-[var(--text)]">
           Operações de Crédito por Instituição
         </h3>
-        {loading ? (
-          <div className="animate-pulse h-64 bg-slate-50 dark:bg-slate-800 rounded-xl" />
-        ) : porInstituicao.length === 0 ? (
-          <div className="h-64 flex items-center justify-center text-slate-400 dark:text-slate-500 text-sm">
-            Sem dados disponíveis
-          </div>
-        ) : (
-          <div className="h-52 md:h-80">
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart
-                data={porInstituicao.slice(0, 10)}
-                layout="vertical"
-                margin={{ left: 20, right: 20 }}
-              >
-                <CartesianGrid
-                  strokeDasharray="3 3"
-                  stroke={ct.grid}
-                  horizontal={false}
-                />
-                <XAxis
-                  type="number"
-                  tick={{ fontSize: 11, fill: ct.tick }}
-                  stroke={ct.axis}
-                  tickFormatter={(v) =>
-                    `R$ ${(v / 1_000_000).toLocaleString("pt-BR", {
-                      maximumFractionDigits: 0,
-                    })}M`
-                  }
-                />
-                <YAxis
-                  type="category"
-                  dataKey="nome_instituicao"
-                  tick={{ fontSize: 9, fill: ct.tick }}
-                  stroke={ct.axis}
-                  width={140}
-                />
-                <Tooltip contentStyle={ct.tooltipStyle} formatter={(v) => [fmtBRL(v), "Operações de Crédito"]} />
-                <Bar
-                  dataKey="valor_operacoes_credito"
-                  name="Operações de Crédito"
-                  radius={[0, 4, 4, 0]}
-                >
-                  {porInstituicao.slice(0, 10).map((_, i) => (
-                    <Cell key={i} fill={COLORS[i % COLORS.length]} />
-                  ))}
-                </Bar>
-              </BarChart>
-            </ResponsiveContainer>
-          </div>
-        )}
+        <HBarChart
+          data={porInstituicao.slice(0, 10).map((d) => ({ label: d.nome_instituicao, value: d.valor_operacoes_credito || 0 }))}
+          color="var(--accent-1)"
+          fmt={fmtBRL}
+          loading={loading}
+          emptyMessage="Sem dados disponíveis"
+        />
       </div>
 
       {/* Composição do Crédito por Instituição */}
       {!loading && porInstituicao.length > 0 && porInstituicao.some(r => r.financiamentos_gerais > 0 || r.emprestimos_titulos_descontados > 0) && (
-        <div className="bg-white dark:bg-slate-900 p-6 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-800">
-          <h3 className="text-base font-bold mb-5 text-slate-800 dark:text-white">
+        <div className="bg-[var(--panel)] p-6 rounded-2xl shadow-sm border border-[var(--border)]">
+          <h3 className="text-base font-bold mb-5 text-[var(--text)]">
             Composição do Crédito por Instituição
           </h3>
-          <div className="h-52 md:h-80">
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart
-                data={porInstituicao.slice(0, 8)}
-                layout="vertical"
-                margin={{ left: 20, right: 20 }}
-              >
-                <CartesianGrid strokeDasharray="3 3" stroke={ct.grid} horizontal={false} />
-                <XAxis
-                  type="number"
-                  tick={{ fontSize: 11, fill: ct.tick }}
-                  stroke={ct.axis}
-                  tickFormatter={(v) => `R$ ${(v / 1_000_000).toLocaleString("pt-BR", { maximumFractionDigits: 0 })}M`}
-                />
-                <YAxis type="category" dataKey="nome_instituicao" tick={{ fontSize: 9, fill: ct.tick }} stroke={ct.axis} width={140} />
-                <Tooltip contentStyle={ct.tooltipStyle} formatter={(v) => [fmtBRL(v)]} />
-                <Legend />
-                <Bar dataKey="emprestimos_titulos_descontados" name="Empréstimos/Títulos" stackId="a" fill="#3b82f6" />
-                <Bar dataKey="financiamentos_gerais" name="Financiamentos Gerais" stackId="a" fill="#10b981" />
-                <Bar dataKey="financiamentos_imobiliarios" name="Imobiliário" stackId="a" fill="#f59e0b" />
-                <Bar dataKey="financiamento_agropecuario" name="Agropecuário" stackId="a" fill="#84cc16" />
-                <Bar dataKey="arrendamento_mercantil" name="Arrendamento" stackId="a" fill="#8b5cf6" />
-                <Bar dataKey="emprestimos_setor_publico" name="Setor Público" stackId="a" fill="#06b6d4" />
-                <Bar dataKey="outros_creditos" name="Outros" stackId="a" fill="#94a3b8" radius={[0, 4, 4, 0]} />
-              </BarChart>
-            </ResponsiveContainer>
-          </div>
+          <StackedBarChart
+            data={porInstituicao.slice(0, 8).map((d) => ({
+              label: d.nome_instituicao,
+              "Empréstimos/Títulos": d.emprestimos_titulos_descontados || 0,
+              "Financiamentos Gerais": d.financiamentos_gerais || 0,
+              "Imobiliário": d.financiamentos_imobiliarios || 0,
+              "Agropecuário": d.financiamento_agropecuario || 0,
+              "Arrendamento": d.arrendamento_mercantil || 0,
+              "Setor Público": d.emprestimos_setor_publico || 0,
+              "Outros": d.outros_creditos || 0,
+            }))}
+            keys={["Empréstimos/Títulos", "Financiamentos Gerais", "Imobiliário", "Agropecuário", "Arrendamento", "Setor Público", "Outros"]}
+            colors={["#3b82f6", "#10b981", "#f59e0b", "#84cc16", "#8b5cf6", "#06b6d4", "#94a3b8"]}
+            height={280}
+            yFmt={(v) => `R$ ${(v / 1_000_000).toLocaleString("pt-BR", { maximumFractionDigits: 0 })}M`}
+            tipFmt={fmtBRL}
+          />
         </div>
       )}
 
       {/* Tabela de Instituições — still inside PlanGate */}
-      <div className="bg-white dark:bg-slate-900 p-6 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-800">
-        <h3 className="text-base font-bold mb-5 text-slate-800 dark:text-white">
+      <div className="bg-[var(--panel)] p-6 rounded-2xl shadow-sm border border-[var(--border)]">
+        <h3 className="text-base font-bold mb-5 text-[var(--text)]">
           Detalhamento por Instituição
         </h3>
         {loading ? (
-          <div className="animate-pulse h-40 bg-slate-50 dark:bg-slate-800 rounded-xl" />
+          <div className="animate-pulse h-40 bg-slate-50  rounded-xl" />
         ) : porInstituicao.length === 0 ? (
-          <div className="h-32 flex items-center justify-center text-slate-400 dark:text-slate-500 text-sm">
+          <div className="h-32 flex items-center justify-center text-[var(--text-mute)] text-sm">
             Sem dados disponíveis
           </div>
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
-                <tr className="border-b border-slate-100 dark:border-slate-800">
-                  <th className="text-left py-3 px-4 text-xs uppercase tracking-wider text-slate-400 dark:text-slate-500 font-medium">
+                <tr className="border-b border-[var(--border)]">
+                  <th className="text-left py-3 px-4 text-xs uppercase tracking-wider text-[var(--text-mute)] font-medium">
                     Instituição
                   </th>
-                  <th className="text-right py-3 px-4 text-xs uppercase tracking-wider text-slate-400 dark:text-slate-500 font-medium">
+                  <th className="text-right py-3 px-4 text-xs uppercase tracking-wider text-[var(--text-mute)] font-medium">
                     Agências
                   </th>
-                  <th className="text-right py-3 px-4 text-xs uppercase tracking-wider text-slate-400 dark:text-slate-500 font-medium">
+                  <th className="text-right py-3 px-4 text-xs uppercase tracking-wider text-[var(--text-mute)] font-medium">
                     Operações Crédito
                   </th>
-                  <th className="text-right py-3 px-4 text-xs uppercase tracking-wider text-slate-400 dark:text-slate-500 font-medium">
+                  <th className="text-right py-3 px-4 text-xs uppercase tracking-wider text-[var(--text-mute)] font-medium">
                     Depósitos Vista
                   </th>
-                  <th className="text-right py-3 px-4 text-xs uppercase tracking-wider text-slate-400 dark:text-slate-500 font-medium">
+                  <th className="text-right py-3 px-4 text-xs uppercase tracking-wider text-[var(--text-mute)] font-medium">
                     Poupança
                   </th>
-                  <th className="text-right py-3 px-4 text-xs uppercase tracking-wider text-slate-400 dark:text-slate-500 font-medium">
+                  <th className="text-right py-3 px-4 text-xs uppercase tracking-wider text-[var(--text-mute)] font-medium">
                     Dep. Prazo
                   </th>
                 </tr>
@@ -489,24 +313,24 @@ export default function EstbanPage() {
                 {porInstituicao.map((row, i) => (
                   <tr
                     key={i}
-                    className="border-b border-slate-50 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors"
+                    className="border-b border-slate-50  hover:bg-[var(--panel-2)] transition-colors"
                   >
-                    <td className="py-3 px-4 text-slate-800 dark:text-white font-medium">
+                    <td className="py-3 px-4 text-[var(--text)] font-medium">
                       {row.nome_instituicao}
                     </td>
-                    <td className="py-3 px-4 text-right text-slate-600 dark:text-slate-300">
+                    <td className="py-3 px-4 text-right text-[var(--text-dim)]">
                       {fmtNum(row.qtd_agencias)}
                     </td>
-                    <td className="py-3 px-4 text-right text-slate-800 dark:text-white font-medium">
+                    <td className="py-3 px-4 text-right text-[var(--text)] font-medium">
                       {fmtBRL(row.valor_operacoes_credito)}
                     </td>
-                    <td className="py-3 px-4 text-right text-slate-600 dark:text-slate-300">
+                    <td className="py-3 px-4 text-right text-[var(--text-dim)]">
                       {fmtBRL(row.valor_depositos_vista)}
                     </td>
-                    <td className="py-3 px-4 text-right text-slate-600 dark:text-slate-300">
+                    <td className="py-3 px-4 text-right text-[var(--text-dim)]">
                       {fmtBRL(row.valor_poupanca)}
                     </td>
-                    <td className="py-3 px-4 text-right text-slate-600 dark:text-slate-300">
+                    <td className="py-3 px-4 text-right text-[var(--text-dim)]">
                       {fmtBRL(row.valor_depositos_prazo)}
                     </td>
                   </tr>

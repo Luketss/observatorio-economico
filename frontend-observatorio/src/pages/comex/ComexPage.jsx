@@ -1,6 +1,5 @@
 ﻿import { useEffect, useState, useMemo } from "react";
 import api from "../../services/api";
-import { useChartTheme } from "../../hooks/useChartTheme";
 import { motion } from "framer-motion";
 import InsightsPanel from "../../components/InsightsPanel";
 import ReleasesPanel from "../../components/ReleasesPanel";
@@ -10,29 +9,9 @@ import FilterBar, { describeFilter, clearFilter } from "../../components/FilterB
 import KpiCard from "../../components/KpiCard";
 import PlanGate from "../../components/PlanGate";
 import { NidPageHeader } from "../../components/nid/Panel";
-import {
-  ResponsiveContainer,
-  LineChart,
-  Line,
-  BarChart,
-  Bar,
-  CartesianGrid,
-  XAxis,
-  YAxis,
-  Tooltip,
-  Legend,
-  Cell,
-} from "recharts";
+import { MultiLineChart, HBarChart } from "../../components/nid/charts";
 import ChartState from "../../components/nid/ChartState.jsx";
 
-const COLORS = [
-  "#3b82f6",
-  "#10b981",
-  "#f59e0b",
-  "#8b5cf6",
-  "#ef4444",
-  "#06b6d4",
-];
 
 const fmtUSD = (v) =>
   v != null
@@ -40,7 +19,6 @@ const fmtUSD = (v) =>
     : "—";
 
 export default function ComexPage() {
-  const ct = useChartTheme();
   const [serie, setSerie] = useState([]);
   const [resumo, setResumo] = useState(null);
   const [porProduto, setPorProduto] = useState([]);
@@ -169,11 +147,11 @@ export default function ComexPage() {
 
       {anos.length > 0 && (
         <div className="flex items-center gap-2">
-          <label className="text-sm text-slate-500 dark:text-slate-400 font-medium">Ano:</label>
+          <label className="text-sm text-[var(--text-dim)] font-medium">Ano:</label>
           <select
             value={anoSelecionado}
             onChange={(e) => setAnoSelecionado(e.target.value)}
-            className="border border-slate-200 dark:border-slate-700 rounded-lg px-3 py-1.5 text-sm text-slate-700 dark:text-slate-100 bg-white dark:bg-slate-800 shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="border border-[var(--border)] rounded-lg px-3 py-1.5 text-sm text-[var(--text)] bg-[var(--panel)] shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
           >
             {anos.map((ano) => (
               <option key={ano} value={String(ano)}>
@@ -191,7 +169,7 @@ export default function ComexPage() {
       {loading ? (
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           {[...Array(3)].map((_, i) => (
-            <div key={i} className="bg-white dark:bg-slate-900 p-6 rounded-2xl border border-slate-100 dark:border-slate-800">
+            <div key={i} className="bg-[var(--panel)] p-6 rounded-2xl border border-[var(--border)]">
               <ChartState kind="loading" shape="kpi" height={80} />
             </div>
           ))}
@@ -205,263 +183,109 @@ export default function ComexPage() {
       )}
 
       {/* Exportações vs Importações ao longo do tempo */}
-      <div className="bg-white dark:bg-slate-900 p-6 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-800">
-        <h3 className="text-base font-bold mb-5 text-slate-800 dark:text-white">
+      <div className="bg-[var(--panel)] p-6 rounded-2xl shadow-sm border border-[var(--border)]">
+        <h3 className="text-base font-bold mb-5 text-[var(--text)]">
           Exportações vs Importações
         </h3>
-        {loading ? (
-          <div className="animate-pulse h-64 bg-slate-50 dark:bg-slate-800 rounded-xl" />
-        ) : chartSerie.length === 0 ? (
-          <div className="h-64 flex items-center justify-center text-slate-400 dark:text-slate-500 text-sm">
-            Sem dados disponíveis
-          </div>
-        ) : (
-          <div className="h-48 md:h-72">
-            <ResponsiveContainer width="100%" height="100%">
-              <LineChart data={chartSerie}>
-                <CartesianGrid strokeDasharray="3 3" stroke={ct.grid} />
-                <XAxis
-                  dataKey="periodo"
-                  tick={{ fontSize: 10, fill: ct.tick }}
-                  stroke={ct.axis}
-                  interval="preserveStartEnd"
-                />
-                <YAxis
-                  tick={{ fontSize: 11, fill: ct.tick }}
-                  stroke={ct.axis}
-                  tickFormatter={(v) =>
-                    `US$ ${(v / 1_000_000).toLocaleString("pt-BR", {
-                      maximumFractionDigits: 1,
-                    })}M`
-                  }
-                />
-                <Tooltip contentStyle={ct.tooltipStyle} formatter={(v) => [fmtUSD(v)]} />
-                <Legend />
-                <Line
-                  type="monotone"
-                  dataKey="exportacoes"
-                  name="Exportações"
-                  stroke="#10b981"
-                  strokeWidth={2.5}
-                  dot={false}
-                />
-                <Line
-                  type="monotone"
-                  dataKey="importacoes"
-                  name="Importações"
-                  stroke="#f97316"
-                  strokeWidth={2.5}
-                  dot={false}
-                />
-              </LineChart>
-            </ResponsiveContainer>
-          </div>
-        )}
+        <MultiLineChart
+          data={chartSerie.map((d) => ({
+            label: d.periodo,
+            "Exportações": d.exportacoes,
+            "Importações": d.importacoes,
+          }))}
+          series={["Exportações", "Importações"]}
+          colors={["#10b981", "#f97316"]}
+          height={280}
+          yFmt={(v) => `US$ ${(v / 1_000_000).toLocaleString("pt-BR", { maximumFractionDigits: 1 })}M`}
+          tipFmt={fmtUSD}
+          loading={loading}
+          emptyMessage="Sem dados disponíveis"
+        />
       </div>
 
       {/* Saldo — Balança Comercial Mensal */}
       {chartSerie.length > 0 && (
-        <div className="bg-white dark:bg-slate-900 p-6 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-800">
-          <h3 className="text-base font-bold mb-5 text-slate-800 dark:text-white">
+        <div className="bg-[var(--panel)] p-6 rounded-2xl shadow-sm border border-[var(--border)]">
+          <h3 className="text-base font-bold mb-5 text-[var(--text)]">
             Saldo da Balança Comercial (Mensal)
           </h3>
-          <div className="h-60">
-            <ResponsiveContainer width="100%" height="100%">
-              <LineChart data={chartSerie}>
-                <CartesianGrid strokeDasharray="3 3" stroke={ct.grid} />
-                <XAxis dataKey="periodo" tick={{ fontSize: 10, fill: ct.tick }} stroke={ct.axis} interval="preserveStartEnd" />
-                <YAxis
-                  tick={{ fontSize: 11, fill: ct.tick }}
-                  stroke={ct.axis}
-                  tickFormatter={(v) =>
-                    `US$ ${(v / 1_000_000).toLocaleString("pt-BR", { maximumFractionDigits: 1 })}M`
-                  }
-                />
-                <Tooltip contentStyle={ct.tooltipStyle} formatter={(v) => [fmtUSD(v), "Saldo"]} />
-                <Line
-                  type="monotone"
-                  dataKey="saldo"
-                  name="Saldo"
-                  stroke="#8b5cf6"
-                  strokeWidth={2.5}
-                  dot={false}
-                />
-              </LineChart>
-            </ResponsiveContainer>
-          </div>
+          <MultiLineChart
+            data={chartSerie.map((d) => ({ label: d.periodo, "Saldo": d.saldo }))}
+            series={["Saldo"]}
+            colors={["#8b5cf6"]}
+            height={240}
+            yFmt={(v) => `US$ ${(v / 1_000_000).toLocaleString("pt-BR", { maximumFractionDigits: 1 })}M`}
+            tipFmt={fmtUSD}
+          />
         </div>
       )}
 
       {/* Peso Total por Período (kg) */}
       {chartSerie.length > 0 && (chartSerie.some(d => d.peso_export > 0 || d.peso_import > 0)) && (
-        <div className="bg-white dark:bg-slate-900 p-6 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-800">
-          <h3 className="text-base font-bold mb-5 text-slate-800 dark:text-white">
+        <div className="bg-[var(--panel)] p-6 rounded-2xl shadow-sm border border-[var(--border)]">
+          <h3 className="text-base font-bold mb-5 text-[var(--text)]">
             Volume Físico — Peso Exportado vs Importado (kg)
           </h3>
-          <div className="h-48 md:h-64">
-            <ResponsiveContainer width="100%" height="100%">
-              <LineChart data={chartSerie}>
-                <CartesianGrid strokeDasharray="3 3" stroke={ct.grid} />
-                <XAxis dataKey="periodo" tick={{ fontSize: 10, fill: ct.tick }} stroke={ct.axis} interval="preserveStartEnd" />
-                <YAxis
-                  tick={{ fontSize: 11, fill: ct.tick }}
-                  stroke={ct.axis}
-                  tickFormatter={(v) => {
-                    if (v >= 1_000_000) return `${(v / 1_000_000).toFixed(1)}M kg`;
-                    if (v >= 1_000) return `${(v / 1_000).toFixed(0)}t`;
-                    return `${v} kg`;
-                  }}
-                />
-                <Tooltip contentStyle={ct.tooltipStyle} formatter={(v) => [`${Number(v).toLocaleString("pt-BR")} kg`]} />
-                <Legend />
-                <Line type="monotone" dataKey="peso_export" name="Peso Exportado" stroke="#10b981" strokeWidth={2.5} dot={false} />
-                <Line type="monotone" dataKey="peso_import" name="Peso Importado" stroke="#f97316" strokeWidth={2.5} dot={false} />
-              </LineChart>
-            </ResponsiveContainer>
-          </div>
+          <MultiLineChart
+            data={chartSerie.map((d) => ({
+              label: d.periodo,
+              "Peso Exportado": d.peso_export,
+              "Peso Importado": d.peso_import,
+            }))}
+            series={["Peso Exportado", "Peso Importado"]}
+            colors={["#10b981", "#f97316"]}
+            height={240}
+            yFmt={(v) => v >= 1_000_000 ? `${(v / 1_000_000).toFixed(1)}M kg` : v >= 1_000 ? `${(v / 1_000).toFixed(0)}t` : `${v} kg`}
+            tipFmt={(v) => `${Number(v).toLocaleString("pt-BR")} kg`}
+          />
         </div>
       )}
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Top Produtos */}
         <PlanGate planKey="comex.por_produto">
-        <div className="bg-white dark:bg-slate-900 p-6 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-800">
-          <h3 className="text-base font-bold mb-1 text-slate-800 dark:text-white">
+        <div className="bg-[var(--panel)] p-6 rounded-2xl shadow-sm border border-[var(--border)]">
+          <h3 className="text-base font-bold mb-1 text-[var(--text)]">
             Top 10 Produtos
           </h3>
-          <p className="text-xs text-slate-400 dark:text-slate-500 mb-5">Ano: {anoSelecionado}</p>
-          {loading || loadingFilters ? (
-            <div className="animate-pulse h-64 bg-slate-50 dark:bg-slate-800 rounded-xl" />
-          ) : porProduto.length === 0 ? (
-            <div className="h-64 flex items-center justify-center text-slate-400 dark:text-slate-500 text-sm">
-              Sem dados disponíveis
-            </div>
-          ) : (
-            <div className="h-52 md:h-80">
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart
-                  data={porProduto}
-                  layout="vertical"
-                  margin={{ left: 10, right: 20 }}
-                >
-                  <CartesianGrid
-                    strokeDasharray="3 3"
-                    stroke={ct.grid}
-                    horizontal={false}
-                  />
-                  <XAxis
-                    type="number"
-                    tick={{ fontSize: 11, fill: ct.tick }}
-                    stroke={ct.axis}
-                    tickFormatter={(v) =>
-                      `US$ ${(v / 1_000).toLocaleString("pt-BR", {
-                        maximumFractionDigits: 0,
-                      })}k`
-                    }
-                  />
-                  <YAxis
-                    type="category"
-                    dataKey="produto"
-                    tick={{ fontSize: 9, fill: ct.tick }}
-                    stroke={ct.axis}
-                    width={130}
-                  />
-                  <Tooltip contentStyle={ct.tooltipStyle} formatter={(v) => [fmtUSD(v), "Valor USD"]} />
-                  <Bar dataKey="valor_usd" name="Valor USD" radius={[0, 4, 4, 0]}>
-                    {porProduto.map((_, i) => (
-                      <Cell key={i} fill={COLORS[i % COLORS.length]} />
-                    ))}
-                  </Bar>
-                </BarChart>
-              </ResponsiveContainer>
-            </div>
-          )}
+          <p className="text-xs text-[var(--text-mute)] mb-5">Ano: {anoSelecionado}</p>
+          <HBarChart
+            data={porProduto.map((d) => ({ label: d.produto, value: d.valor_usd || 0 }))}
+            color="var(--accent-4)"
+            fmt={fmtUSD}
+            loading={loading || loadingFilters}
+            emptyMessage="Sem dados disponíveis"
+          />
         </div>
 
         {/* Top Produtos por Peso */}
         {!loading && !loadingFilters && porProduto.length > 0 && porProduto.some(p => p.peso_kg > 0) && (
-          <div className="bg-white dark:bg-slate-900 p-6 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-800">
-            <h3 className="text-base font-bold mb-1 text-slate-800 dark:text-white">Top Produtos por Peso</h3>
-            <p className="text-xs text-slate-400 dark:text-slate-500 mb-5">Ano: {anoSelecionado}</p>
-            <div className="h-52 md:h-80">
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart
-                  data={[...porProduto].sort((a, b) => (b.peso_kg ?? 0) - (a.peso_kg ?? 0)).slice(0, 10)}
-                  layout="vertical"
-                  margin={{ left: 10, right: 20 }}
-                >
-                  <CartesianGrid strokeDasharray="3 3" stroke={ct.grid} horizontal={false} />
-                  <XAxis
-                    type="number"
-                    tick={{ fontSize: 11, fill: ct.tick }}
-                    stroke={ct.axis}
-                    tickFormatter={(v) => v >= 1_000_000 ? `${(v / 1_000_000).toFixed(1)}M kg` : `${(v / 1_000).toFixed(0)}t`}
-                  />
-                  <YAxis type="category" dataKey="produto" tick={{ fontSize: 9, fill: ct.tick }} stroke={ct.axis} width={130} />
-                  <Tooltip contentStyle={ct.tooltipStyle} formatter={(v) => [`${Number(v).toLocaleString("pt-BR")} kg`, "Peso"]} />
-                  <Bar dataKey="peso_kg" name="Peso (kg)" radius={[0, 4, 4, 0]}>
-                    {porProduto.map((_, i) => <Cell key={i} fill={COLORS[i % COLORS.length]} />)}
-                  </Bar>
-                </BarChart>
-              </ResponsiveContainer>
-            </div>
+          <div className="bg-[var(--panel)] p-6 rounded-2xl shadow-sm border border-[var(--border)]">
+            <h3 className="text-base font-bold mb-1 text-[var(--text)]">Top Produtos por Peso</h3>
+            <p className="text-xs text-[var(--text-mute)] mb-5">Ano: {anoSelecionado}</p>
+            <HBarChart
+              data={[...porProduto].sort((a, b) => (b.peso_kg ?? 0) - (a.peso_kg ?? 0)).slice(0, 10).map((d) => ({ label: d.produto, value: d.peso_kg || 0 }))}
+              color="var(--accent-4)"
+              fmt={(v) => v >= 1_000_000 ? `${(v / 1_000_000).toFixed(1)}M kg` : `${(v / 1_000).toFixed(0)}t`}
+            />
           </div>
         )}
         </PlanGate>
 
         {/* Top Países */}
         <PlanGate planKey="comex.por_pais">
-        <div className="bg-white dark:bg-slate-900 p-6 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-800">
-          <h3 className="text-base font-bold mb-1 text-slate-800 dark:text-white">
+        <div className="bg-[var(--panel)] p-6 rounded-2xl shadow-sm border border-[var(--border)]">
+          <h3 className="text-base font-bold mb-1 text-[var(--text)]">
             Top 10 Países
           </h3>
-          <p className="text-xs text-slate-400 dark:text-slate-500 mb-5">Ano: {anoSelecionado}</p>
-          {loading || loadingFilters ? (
-            <div className="animate-pulse h-64 bg-slate-50 dark:bg-slate-800 rounded-xl" />
-          ) : porPais.length === 0 ? (
-            <div className="h-64 flex items-center justify-center text-slate-400 dark:text-slate-500 text-sm">
-              Sem dados disponíveis
-            </div>
-          ) : (
-            <div className="h-52 md:h-80">
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart
-                  data={porPais}
-                  layout="vertical"
-                  margin={{ left: 10, right: 20 }}
-                >
-                  <CartesianGrid
-                    strokeDasharray="3 3"
-                    stroke={ct.grid}
-                    horizontal={false}
-                  />
-                  <XAxis
-                    type="number"
-                    tick={{ fontSize: 11, fill: ct.tick }}
-                    stroke={ct.axis}
-                    tickFormatter={(v) =>
-                      `US$ ${(v / 1_000).toLocaleString("pt-BR", {
-                        maximumFractionDigits: 0,
-                      })}k`
-                    }
-                  />
-                  <YAxis
-                    type="category"
-                    dataKey="pais"
-                    tick={{ fontSize: 9, fill: ct.tick }}
-                    stroke={ct.axis}
-                    width={110}
-                  />
-                  <Tooltip contentStyle={ct.tooltipStyle} formatter={(v) => [fmtUSD(v), "Valor USD"]} />
-                  <Bar dataKey="valor_usd" name="Valor USD" radius={[0, 4, 4, 0]}>
-                    {porPais.map((_, i) => (
-                      <Cell key={i} fill={COLORS[i % COLORS.length]} />
-                    ))}
-                  </Bar>
-                </BarChart>
-              </ResponsiveContainer>
-            </div>
-          )}
+          <p className="text-xs text-[var(--text-mute)] mb-5">Ano: {anoSelecionado}</p>
+          <HBarChart
+            data={porPais.map((d) => ({ label: d.pais, value: d.valor_usd || 0 }))}
+            color="var(--accent-4)"
+            fmt={fmtUSD}
+            loading={loading || loadingFilters}
+            emptyMessage="Sem dados disponíveis"
+          />
         </div>
         </PlanGate>
       </div>

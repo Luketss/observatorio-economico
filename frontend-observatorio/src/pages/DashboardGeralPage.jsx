@@ -35,12 +35,12 @@ const CUSTOM_ICON_MAP = {
   TruckIcon, ChartBarIcon, BuildingOfficeIcon, BoltIcon, GlobeAltIcon,
 };
 const CUSTOM_COLOR_MAP = {
-  blue:   { bg: "bg-blue-50 dark:bg-blue-950/30",     text: "text-blue-600" },
-  green:  { bg: "bg-green-50 dark:bg-green-950/30",   text: "text-green-600" },
-  purple: { bg: "bg-purple-50 dark:bg-purple-950/30", text: "text-purple-600" },
-  orange: { bg: "bg-orange-50 dark:bg-orange-950/30", text: "text-orange-600" },
-  red:    { bg: "bg-red-50 dark:bg-red-950/30",       text: "text-red-600" },
-  slate:  { bg: "bg-slate-100 dark:bg-slate-800",     text: "text-slate-600 dark:text-slate-300" },
+  blue:   { bg: "bg-[var(--panel-2)]",     text: "text-blue-600" },
+  green:  { bg: "bg-[var(--panel-2)]",   text: "text-green-600" },
+  purple: { bg: "bg-[var(--panel-2)]", text: "text-purple-600" },
+  orange: { bg: "bg-[var(--panel-2)]", text: "text-orange-600" },
+  red:    { bg: "bg-[var(--panel-2)]",       text: "text-red-600" },
+  slate:  { bg: "bg-[var(--panel-2)]",     text: "text-[var(--text-dim)]" },
 };
 
 const A1 = "var(--accent-1)";

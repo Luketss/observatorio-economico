@@ -1,12 +1,13 @@
 import { useState } from "react";
 import { motion } from "framer-motion";
-import { FolderOpenIcon, BookOpenIcon, ClipboardDocumentListIcon } from "@heroicons/react/24/outline";
+import { FolderOpenIcon } from "@heroicons/react/24/outline";
 import AcervoTab from "./AcervoTab";
 import AcompanhamentoTab from "./AcompanhamentoTab";
+import NidTabBar from "../../components/nid/NidTabBar";
 
 const TABS = [
-  { id: "acervo", label: "Acervo de Projetos", icon: BookOpenIcon },
-  { id: "acompanhamento", label: "Acompanhamento", icon: ClipboardDocumentListIcon },
+  { key: "acervo",         label: "Acervo de Projetos" },
+  { key: "acompanhamento", label: "Acompanhamento" },
 ];
 
 export default function ProjetosPage() {
@@ -20,39 +21,25 @@ export default function ProjetosPage() {
       className="space-y-6"
     >
       {/* Header */}
-      <div className="flex items-center gap-3">
-        <FolderOpenIcon className="w-7 h-7 text-blue-600" />
+      <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+        <FolderOpenIcon style={{ width: 28, height: 28, color: "var(--accent-1)" }} />
         <div>
-          <h1 className="text-2xl font-extrabold tracking-tight text-slate-800 dark:text-slate-100">
+          <h1 style={{ fontSize: 22, fontWeight: 800, letterSpacing: "-0.02em", color: "var(--text)", margin: 0 }}>
             Projetos
           </h1>
-          <p className="text-sm text-slate-400 mt-0.5">
+          <p style={{ fontSize: 13, color: "var(--text-dim)", marginTop: 2 }}>
             Acervo de modelos e acompanhamento de projetos municipais.
           </p>
         </div>
       </div>
 
-      {/* Tab bar */}
-      <div className="flex gap-1 bg-slate-100 dark:bg-slate-800 p-1 rounded-xl w-fit">
-        {TABS.map((tab) => {
-          const Icon = tab.icon;
-          const active = activeTab === tab.id;
-          return (
-            <button
-              key={tab.id}
-              onClick={() => setActiveTab(tab.id)}
-              className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all cursor-pointer ${
-                active
-                  ? "bg-white dark:bg-slate-700 text-slate-800 dark:text-white shadow-sm"
-                  : "text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200"
-              }`}
-            >
-              <Icon className="w-4 h-4" />
-              {tab.label}
-            </button>
-          );
-        })}
-      </div>
+      {/* Top-level tab bar */}
+      <NidTabBar
+        tabs={TABS}
+        value={activeTab}
+        onChange={setActiveTab}
+        ariaLabel="Seção de projetos"
+      />
 
       {/* Tab content */}
       {activeTab === "acervo" ? (

@@ -1,42 +1,19 @@
 ﻿import { useEffect, useState } from "react";
 import api from "../../services/api";
-import { useChartTheme } from "../../hooks/useChartTheme";
 import { motion } from "framer-motion";
 import InsightsPanel from "../../components/InsightsPanel";
 import ReleasesPanel from "../../components/ReleasesPanel";
 import InfoTooltip from "../../components/InfoTooltip";
 import KpiCard from "../../components/KpiCard";
 import PlanGate from "../../components/PlanGate";
-import {
-  ResponsiveContainer,
-  BarChart,
-  Bar,
-  PieChart,
-  Pie,
-  Cell,
-  CartesianGrid,
-  XAxis,
-  YAxis,
-  Tooltip,
-  Legend,
-} from "recharts";
+import { DonutChart, HBarChart, StackedBarChart, AreaLineChart, fmtMoneyShort, fmtMoneyFull } from "../../components/nid/charts";
 
-const COLORS = [
-  "#3b82f6",
-  "#10b981",
-  "#f59e0b",
-  "#8b5cf6",
-  "#ef4444",
-  "#06b6d4",
-  "#f97316",
-  "#a855f7",
-];
 
 function MiniStat({ label, value, color }) {
   return (
-    <div className="flex items-center justify-between py-2 border-b border-slate-50 dark:border-slate-800 last:border-0">
-      <span className="text-sm text-slate-500 dark:text-slate-400">{label}</span>
-      <span className={`text-sm font-bold ${color || "text-slate-800 dark:text-white"}`}>
+    <div className="flex items-center justify-between py-2 border-b border-slate-50  last:border-0">
+      <span className="text-sm text-[var(--text-dim)]">{label}</span>
+      <span className={`text-sm font-bold ${color || "text-[var(--text)]"}`}>
         {value}
       </span>
     </div>
@@ -52,7 +29,6 @@ const fmtPct = (num, total) => {
 };
 
 export default function EmpresasPage() {
-  const ct = useChartTheme();
   const [resumo, setResumo] = useState(null);
   const [porPorte, setPorPorte] = useState([]);
   const [porSituacao, setPorSituacao] = useState([]);
@@ -131,12 +107,12 @@ export default function EmpresasPage() {
     >
       <div>
         <div className="flex items-center gap-2">
-          <h1 className="text-2xl font-extrabold tracking-tight text-slate-800 dark:text-white">
+          <h1 className="text-2xl font-extrabold tracking-tight text-[var(--text)]">
             Empresas — CNPJ
           </h1>
           <InfoTooltip dataset="empresas" />
         </div>
-        <p className="text-sm text-slate-400 dark:text-slate-500 mt-1">
+        <p className="text-sm text-[var(--text-mute)] mt-1">
           Perfil e composição do tecido empresarial local.
         </p>
       </div>
@@ -149,7 +125,7 @@ export default function EmpresasPage() {
           {[...Array(4)].map((_, i) => (
             <div
               key={i}
-              className="bg-white dark:bg-slate-900 p-6 rounded-2xl border border-slate-100 dark:border-slate-800 animate-pulse h-28"
+              className="bg-[var(--panel)] p-6 rounded-2xl border border-[var(--border)] animate-pulse h-28"
             />
           ))}
         </div>
@@ -165,167 +141,81 @@ export default function EmpresasPage() {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Pie — porte */}
         <PlanGate planKey="empresas.por_porte">
-        <div className="bg-white dark:bg-slate-900 p-6 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-800">
-          <h3 className="text-base font-bold mb-5 text-slate-800 dark:text-white">
+        <div className="bg-[var(--panel)] p-6 rounded-2xl shadow-sm border border-[var(--border)]">
+          <h3 className="text-base font-bold mb-5 text-[var(--text)]">
             Distribuição por Porte
           </h3>
-          {loading ? (
-            <div className="animate-pulse h-64 bg-slate-50 dark:bg-slate-800 rounded-xl" />
-          ) : porPorte.length === 0 ? (
-            <div className="h-64 flex items-center justify-center text-slate-400 dark:text-slate-500 text-sm">
-              Sem dados disponíveis
-            </div>
-          ) : (
-            <div className="h-44 md:h-64">
-              <ResponsiveContainer width="100%" height="100%">
-                <PieChart>
-                  <Pie
-                    data={porPorte}
-                    dataKey="value"
-                    nameKey="name"
-                    cx="50%"
-                    cy="50%"
-                    outerRadius={90}
-                    label={({ name, percent }) =>
-                      `${name} ${(percent * 100).toFixed(1)}%`
-                    }
-                    labelLine={false}
-                  >
-                    {porPorte.map((_, i) => (
-                      <Cell key={i} fill={COLORS[i % COLORS.length]} />
-                    ))}
-                  </Pie>
-                  <Tooltip contentStyle={ct.tooltipStyle} formatter={(v) => [fmtNum(v), "Empresas"]} />
-                </PieChart>
-              </ResponsiveContainer>
-            </div>
-          )}
+          <DonutChart
+            data={porPorte.map((d) => ({ label: d.name, value: d.value }))}
+            baseColor="var(--accent-1)"
+            height={220}
+            loading={loading}
+            emptyMessage="Sem dados disponíveis"
+          />
         </div>
 
         </PlanGate>
 
         {/* Situação cadastral */}
-        <div className="bg-white dark:bg-slate-900 p-6 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-800">
-          <h3 className="text-base font-bold mb-5 text-slate-800 dark:text-white">
+        <div className="bg-[var(--panel)] p-6 rounded-2xl shadow-sm border border-[var(--border)]">
+          <h3 className="text-base font-bold mb-5 text-[var(--text)]">
             Empresas por Situação Cadastral
           </h3>
-          {loading ? (
-            <div className="animate-pulse h-64 bg-slate-50 dark:bg-slate-800 rounded-xl" />
-          ) : porSituacao.length === 0 ? (
-            <div className="h-64 flex items-center justify-center text-slate-400 dark:text-slate-500 text-sm">
-              Sem dados disponíveis
-            </div>
-          ) : (
-            <div className="h-44 md:h-64">
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart
-                  data={porSituacao}
-                  layout="vertical"
-                  margin={{ left: 10, right: 20 }}
-                >
-                  <CartesianGrid strokeDasharray="3 3" stroke={ct.grid} horizontal={false} />
-                  <XAxis type="number" tick={{ fontSize: 11, fill: ct.tick }} stroke={ct.axis} />
-                  <YAxis
-                    type="category"
-                    dataKey="label"
-                    tick={{ fontSize: 10, fill: ct.tick }}
-                    stroke={ct.axis}
-                    width={120}
-                  />
-                  <Tooltip contentStyle={ct.tooltipStyle} formatter={(v) => [fmtNum(v), "Empresas"]} />
-                  <Bar dataKey="total" name="Empresas" radius={[0, 4, 4, 0]}>
-                    {porSituacao.map((d, i) => (
-                      <Cell
-                        key={i}
-                        fill={d.situacao === "02" ? "#10b981" : "#ef4444"}
-                      />
-                    ))}
-                  </Bar>
-                </BarChart>
-              </ResponsiveContainer>
-            </div>
-          )}
+          <HBarChart
+            data={porSituacao.map((d) => ({ label: d.label, value: d.total || 0 }))}
+            color="var(--accent-1)"
+            fmt={fmtNum}
+            loading={loading}
+            emptyMessage="Sem dados disponíveis"
+          />
         </div>
       </div>
 
       {/* Ativas vs Fechadas por Porte (Saldo) */}
-      <div className="bg-white dark:bg-slate-900 p-6 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-800">
-        <h3 className="text-base font-bold mb-5 text-slate-800 dark:text-white">
+      <div className="bg-[var(--panel)] p-6 rounded-2xl shadow-sm border border-[var(--border)]">
+        <h3 className="text-base font-bold mb-5 text-[var(--text)]">
           Ativas vs. Fechadas por Porte
         </h3>
-        {loading ? (
-          <div className="animate-pulse h-72 bg-slate-50 dark:bg-slate-800 rounded-xl" />
-        ) : situacaoPorPorte.length === 0 ? (
-          <div className="h-64 flex items-center justify-center text-slate-400 dark:text-slate-500 text-sm">
-            Sem dados disponíveis
-          </div>
-        ) : (
-          <div className="h-48 md:h-72">
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={situacaoPorPorte} margin={{ left: 10, right: 10 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke={ct.grid} />
-                <XAxis dataKey="porte" tick={{ fontSize: 11, fill: ct.tick }} stroke={ct.axis} />
-                <YAxis tick={{ fontSize: 11, fill: ct.tick }} stroke={ct.axis} />
-                <Tooltip contentStyle={ct.tooltipStyle} formatter={(v) => fmtNum(v)} />
-                <Legend />
-                <Bar dataKey="ativas" name="Ativas" fill="#10b981" radius={[4, 4, 0, 0]} />
-                <Bar dataKey="fechadas" name="Fechadas/Baixadas" fill="#ef4444" radius={[4, 4, 0, 0]} />
-              </BarChart>
-            </ResponsiveContainer>
-          </div>
-        )}
+        <StackedBarChart
+          data={situacaoPorPorte.map((d) => ({
+            label: d.porte,
+            "Ativas": d.ativas || 0,
+            "Fechadas/Baixadas": d.fechadas || 0,
+          }))}
+          keys={["Ativas", "Fechadas/Baixadas"]}
+          colors={["#10b981", "#ef4444"]}
+          height={280}
+          yFmt={(v) => Number(v).toLocaleString("pt-BR")}
+          tipFmt={(v) => Number(v).toLocaleString("pt-BR")}
+          loading={loading}
+          emptyMessage="Sem dados disponíveis"
+        />
       </div>
 
       {/* Empresas por Setor CNAE */}
       <PlanGate planKey="empresas.por_cnae">
-      <div className="bg-white dark:bg-slate-900 p-6 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-800">
-        <h3 className="text-base font-bold mb-5 text-slate-800 dark:text-white">
+      <div className="bg-[var(--panel)] p-6 rounded-2xl shadow-sm border border-[var(--border)]">
+        <h3 className="text-base font-bold mb-5 text-[var(--text)]">
           Empresas por Setor de Atividade (CNAE — Seção)
         </h3>
-        {loading ? (
-          <div className="animate-pulse h-96 bg-slate-50 dark:bg-slate-800 rounded-xl" />
-        ) : porCnaeSecao.length === 0 ? (
-          <div className="h-64 flex items-center justify-center text-slate-400 dark:text-slate-500 text-sm">
-            Sem dados disponíveis
-          </div>
-        ) : (
-          <div className="h-96">
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart
-                data={porCnaeSecao}
-                layout="vertical"
-                margin={{ left: 20, right: 20 }}
-              >
-                <CartesianGrid strokeDasharray="3 3" stroke={ct.grid} horizontal={false} />
-                <XAxis type="number" tick={{ fontSize: 11, fill: ct.tick }} stroke={ct.axis} />
-                <YAxis
-                  type="category"
-                  dataKey="descricao"
-                  tick={{ fontSize: 9, fill: ct.tick }}
-                  stroke={ct.axis}
-                  width={220}
-                />
-                <Tooltip contentStyle={ct.tooltipStyle} formatter={(v) => [fmtNum(v), "Empresas"]} />
-                <Bar dataKey="total_vinculos" name="Empresas" radius={[0, 4, 4, 0]}>
-                  {porCnaeSecao.map((_, i) => (
-                    <Cell key={i} fill={COLORS[i % COLORS.length]} />
-                  ))}
-                </Bar>
-              </BarChart>
-            </ResponsiveContainer>
-          </div>
-        )}
+        <HBarChart
+          data={porCnaeSecao.map((d) => ({ label: d.descricao, value: d.total_vinculos || 0 }))}
+          color="var(--accent-1)"
+          fmt={fmtNum}
+          loading={loading}
+          emptyMessage="Sem dados disponíveis"
+        />
       </div>
 
       </PlanGate>
 
       {/* Composição Adicional */}
-      <div className="bg-white dark:bg-slate-900 p-6 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-800">
-        <h3 className="text-base font-bold mb-5 text-slate-800 dark:text-white">
+      <div className="bg-[var(--panel)] p-6 rounded-2xl shadow-sm border border-[var(--border)]">
+        <h3 className="text-base font-bold mb-5 text-[var(--text)]">
           Indicadores de Composição
         </h3>
         {loading ? (
-          <div className="animate-pulse h-48 bg-slate-50 dark:bg-slate-800 rounded-xl" />
+          <div className="animate-pulse h-48 bg-slate-50  rounded-xl" />
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-x-12">
             <div>
@@ -343,37 +233,18 @@ export default function EmpresasPage() {
       </div>
       {/* Capital Social por Porte */}
       {!loading && capitalPorPorte.length > 0 && (
-        <div className="bg-white dark:bg-slate-900 p-6 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-800">
-          <h3 className="text-base font-bold mb-1 text-slate-800 dark:text-white">
+        <div className="bg-[var(--panel)] p-6 rounded-2xl shadow-sm border border-[var(--border)]">
+          <h3 className="text-base font-bold mb-1 text-[var(--text)]">
             Capital Social por Porte de Empresa
           </h3>
-          <p className="text-xs text-slate-400 dark:text-slate-500 mb-5">
+          <p className="text-xs text-[var(--text-mute)] mb-5">
             Capital médio declarado por empresas com registro ativo
           </p>
-          <div className="h-48 md:h-72">
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={capitalPorPorte} margin={{ left: 10, right: 20 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke={ct.grid} />
-                <XAxis dataKey="porte" tick={{ fontSize: 11, fill: ct.tick }} stroke={ct.axis} />
-                <YAxis
-                  tick={{ fontSize: 11, fill: ct.tick }}
-                  stroke={ct.axis}
-                  tickFormatter={(v) => {
-                    if (v >= 1_000_000) return `R$ ${(v / 1_000_000).toFixed(1)}M`;
-                    if (v >= 1_000) return `R$ ${(v / 1_000).toFixed(0)}k`;
-                    return `R$ ${v}`;
-                  }}
-                />
-                <Tooltip contentStyle={ct.tooltipStyle} formatter={(v) => [fmtBRL(v)]} />
-                <Legend />
-                <Bar dataKey="capital_medio" name="Capital Médio" fill="#3b82f6" radius={[4, 4, 0, 0]}>
-                  {capitalPorPorte.map((_, i) => (
-                    <Cell key={i} fill={COLORS[i % COLORS.length]} />
-                  ))}
-                </Bar>
-              </BarChart>
-            </ResponsiveContainer>
-          </div>
+          <HBarChart
+            data={capitalPorPorte.map((d) => ({ label: d.porte, value: d.capital_medio || 0 }))}
+            color="var(--accent-1)"
+            fmt={fmtBRL}
+          />
         </div>
       )}
 

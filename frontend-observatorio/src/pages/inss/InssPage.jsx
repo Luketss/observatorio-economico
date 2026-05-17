@@ -1,6 +1,5 @@
 ﻿import { useEffect, useMemo, useState } from "react";
 import api from "../../services/api";
-import { useChartTheme } from "../../hooks/useChartTheme";
 import { motion } from "framer-motion";
 import InsightsPanel from "../../components/InsightsPanel";
 import ReleasesPanel from "../../components/ReleasesPanel";
@@ -9,31 +8,10 @@ import InfoTooltip from "../../components/InfoTooltip";
 import FilterBar, { describeFilter, clearFilter } from "../../components/FilterBar";
 import KpiCard from "../../components/KpiCard";
 import { NidPanel, NidPageHeader } from "../../components/nid/Panel";
-import { fmtMoneyShort } from "../../components/nid/charts";
+import { HBarChart, AreaLineChart, fmtMoneyShort } from "../../components/nid/charts";
 import DataTable from "../../components/nid/DataTable";
-import {
-  ResponsiveContainer,
-  BarChart,
-  Bar,
-  LineChart,
-  Line,
-  CartesianGrid,
-  XAxis,
-  YAxis,
-  Tooltip,
-  Legend,
-  Cell,
-} from "recharts";
 import ChartState from "../../components/nid/ChartState.jsx";
 
-const COLORS = [
-  "#3b82f6",
-  "#10b981",
-  "#f59e0b",
-  "#8b5cf6",
-  "#ef4444",
-  "#06b6d4",
-];
 
 const fmtBRL = (v) =>
   v != null
@@ -43,7 +21,6 @@ const fmtBRL = (v) =>
 const fmtNum = (v) => (v != null ? Number(v).toLocaleString("pt-BR") : "—");
 
 export default function InssPage() {
-  const ct = useChartTheme();
   const [rawSerie, setRawSerie] = useState([]);
   const [resumo, setResumo] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -142,7 +119,7 @@ export default function InssPage() {
       {loading ? (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           {[...Array(2)].map((_, i) => (
-            <div key={i} className="bg-white dark:bg-slate-900 p-6 rounded-2xl border border-slate-100 dark:border-slate-800">
+            <div key={i} className="bg-[var(--panel)] p-6 rounded-2xl border border-[var(--border)]">
               <ChartState kind="loading" shape="kpi" height={80} />
             </div>
           ))}
@@ -157,99 +134,34 @@ export default function InssPage() {
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Top Categorias */}
-        <div className="bg-white dark:bg-slate-900 p-6 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-800">
-          <h3 className="text-base font-bold mb-5 text-slate-800 dark:text-white">
+        <div className="bg-[var(--panel)] p-6 rounded-2xl shadow-sm border border-[var(--border)]">
+          <h3 className="text-base font-bold mb-5 text-[var(--text)]">
             Top Categorias de Benefícios
           </h3>
-          {loading ? (
-            <div className="animate-pulse h-64 bg-slate-50 dark:bg-slate-800 rounded-xl" />
-          ) : topCategorias.length === 0 ? (
-            <div className="h-64 flex items-center justify-center text-slate-400 dark:text-slate-500 text-sm">
-              Sem dados disponíveis
-            </div>
-          ) : (
-            <div className="h-52 md:h-80">
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart
-                  data={topCategorias}
-                  layout="vertical"
-                  margin={{ left: 10, right: 20 }}
-                >
-                  <CartesianGrid
-                    strokeDasharray="3 3"
-                    stroke={ct.grid}
-                    horizontal={false}
-                  />
-                  <XAxis type="number" tick={{ fontSize: 11, fill: ct.tick }} stroke={ct.axis} />
-                  <YAxis
-                    type="category"
-                    dataKey="categoria"
-                    tick={{ fontSize: 9, fill: ct.tick }}
-                    stroke={ct.axis}
-                    width={130}
-                  />
-                  <Tooltip
-                    formatter={(v) => [
-                      Number(v).toLocaleString("pt-BR"),
-                      "Benefícios",
-                    ]}
-                  />
-                  <Bar
-                    dataKey="quantidade_beneficios"
-                    name="Benefícios"
-                    radius={[0, 4, 4, 0]}
-                  >
-                    {topCategorias.map((_, i) => (
-                      <Cell key={i} fill={COLORS[i % COLORS.length]} />
-                    ))}
-                  </Bar>
-                </BarChart>
-              </ResponsiveContainer>
-            </div>
-          )}
+          <HBarChart
+            data={topCategorias.map((d) => ({ label: d.categoria, value: d.quantidade_beneficios || 0 }))}
+            color="var(--accent-3)"
+            fmt={(v) => Number(v).toLocaleString("pt-BR")}
+            loading={loading}
+            emptyMessage="Sem dados disponíveis"
+          />
         </div>
 
         {/* Evolução Anual */}
-        <div className="bg-white dark:bg-slate-900 p-6 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-800">
-          <h3 className="text-base font-bold mb-5 text-slate-800 dark:text-white">
+        <div className="bg-[var(--panel)] p-6 rounded-2xl shadow-sm border border-[var(--border)]">
+          <h3 className="text-base font-bold mb-5 text-[var(--text)]">
             Evolução Anual de Benefícios
           </h3>
-          {loading ? (
-            <div className="animate-pulse h-64 bg-slate-50 dark:bg-slate-800 rounded-xl" />
-          ) : evolucaoAnual.length === 0 ? (
-            <div className="h-64 flex items-center justify-center text-slate-400 dark:text-slate-500 text-sm">
-              Sem dados disponíveis
-            </div>
-          ) : (
-            <div className="h-52 md:h-80">
-              <ResponsiveContainer width="100%" height="100%">
-                <LineChart data={evolucaoAnual}>
-                  <CartesianGrid strokeDasharray="3 3" stroke={ct.grid} />
-                  <XAxis
-                    dataKey="ano"
-                    tick={{ fontSize: 11, fill: ct.tick }}
-                    stroke={ct.axis}
-                  />
-                  <YAxis tick={{ fontSize: 11, fill: ct.tick }} stroke={ct.axis} />
-                  <Tooltip
-                    formatter={(v) => [
-                      Number(v).toLocaleString("pt-BR"),
-                      "Benefícios",
-                    ]}
-                  />
-                  <Legend />
-                  <Line
-                    type="monotone"
-                    dataKey="quantidade_beneficios"
-                    name="Benefícios"
-                    stroke="#3b82f6"
-                    strokeWidth={2.5}
-                    dot={{ r: 4 }}
-                  />
-                </LineChart>
-              </ResponsiveContainer>
-            </div>
-          )}
+          <AreaLineChart
+            data={evolucaoAnual.map((d) => ({ label: String(d.ano), value: d.quantidade_beneficios || 0 }))}
+            height={280}
+            color="var(--accent-3)"
+            label="Benefícios"
+            yFmt={(v) => Number(v).toLocaleString("pt-BR")}
+            tipFmt={(v) => Number(v).toLocaleString("pt-BR")}
+            loading={loading}
+            emptyMessage="Sem dados disponíveis"
+          />
         </div>
       </div>
 

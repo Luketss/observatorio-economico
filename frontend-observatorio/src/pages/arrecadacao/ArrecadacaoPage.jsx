@@ -1,6 +1,5 @@
 ﻿import { useEffect, useMemo, useState } from "react";
 import api from "../../services/api";
-import { useChartTheme } from "../../hooks/useChartTheme";
 import { motion } from "framer-motion";
 import InsightsPanel from "../../components/InsightsPanel";
 import ReleasesPanel from "../../components/ReleasesPanel";
@@ -9,24 +8,13 @@ import FilterBar, { describeFilter, clearFilter } from "../../components/FilterB
 import KpiCard from "../../components/KpiCard";
 import { NidPanel, NidPageHeader } from "../../components/nid/Panel";
 import ChartState from "../../components/nid/ChartState.jsx";
-import { AreaLineChart, fmtMoneyShort, fmtMoneyFull } from "../../components/nid/charts";
+import { AreaLineChart, StackedBarChart, fmtMoneyShort, fmtMoneyFull } from "../../components/nid/charts";
 import DataTable from "../../components/nid/DataTable";
-import {
-  ResponsiveContainer,
-  BarChart,
-  Bar,
-  CartesianGrid,
-  XAxis,
-  YAxis,
-  Tooltip,
-  Legend,
-} from "recharts";
 
 const fmtBRL = (v) =>
   `R$ ${Number(v).toLocaleString("pt-BR", { maximumFractionDigits: 0 })}`;
 
 export default function ArrecadacaoPage() {
-  const ct = useChartTheme();
   const [rawSerie, setRawSerie] = useState([]);
   const [resumo, setResumo] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -122,7 +110,7 @@ export default function ArrecadacaoPage() {
       {loading ? (
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6">
           {[...Array(4)].map((_, i) => (
-            <div key={i} className="bg-white dark:bg-slate-900 p-6 rounded-2xl border border-slate-100 dark:border-slate-800">
+            <div key={i} className="bg-[var(--panel)] p-6 rounded-2xl border border-[var(--border)]">
               <ChartState kind="loading" shape="kpi" height={80} />
             </div>
           ))}
@@ -149,29 +137,23 @@ export default function ArrecadacaoPage() {
 
       {/* ICMS / IPVA / IPI Breakdown */}
       {serie.length > 0 && (
-        <div className="bg-white dark:bg-slate-900 p-6 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-800">
-          <h3 className="text-base font-bold mb-5 text-slate-800 dark:text-white">
+        <div className="bg-[var(--panel)] p-6 rounded-2xl shadow-sm border border-[var(--border)]">
+          <h3 className="text-base font-bold mb-5 text-[var(--text)]">
             Composição por Tipo de Imposto (ICMS / IPVA / IPI)
           </h3>
-          <div className="h-48 md:h-72">
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={serie.slice(-24)} margin={{ left: 10, right: 10 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke={ct.grid} vertical={false} />
-                <XAxis dataKey="periodo" tick={{ fontSize: 10, fill: ct.tick }} stroke={ct.axis} />
-                <YAxis
-                  tick={{ fontSize: 11, fill: ct.tick }}
-                  stroke={ct.axis}
-                  width={70}
-                  tickFormatter={(v) => `${(v / 1_000_000).toFixed(0)}M`}
-                />
-                <Tooltip contentStyle={ct.tooltipStyle} formatter={(v) => [fmtBRL(v)]} />
-                <Legend />
-                <Bar dataKey="icms" name="ICMS" stackId="a" fill="#6366f1" />
-                <Bar dataKey="ipva" name="IPVA" stackId="a" fill="#10b981" />
-                <Bar dataKey="ipi" name="IPI" stackId="a" fill="#f59e0b" radius={[4, 4, 0, 0]} />
-              </BarChart>
-            </ResponsiveContainer>
-          </div>
+          <StackedBarChart
+            data={serie.slice(-24).map((d) => ({
+              label: String(d.periodo),
+              icms: d.icms || 0,
+              ipva: d.ipva || 0,
+              ipi: d.ipi || 0,
+            }))}
+            keys={["icms", "ipva", "ipi"]}
+            colors={["#6366f1", "#10b981", "#f59e0b"]}
+            height={280}
+            yFmt={fmtMoneyShort}
+            tipFmt={fmtMoneyFull}
+          />
         </div>
       )}
 

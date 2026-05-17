@@ -1,6 +1,5 @@
 ﻿import { useEffect, useMemo, useState } from "react";
 import api from "../../services/api";
-import { useChartTheme } from "../../hooks/useChartTheme";
 import { motion } from "framer-motion";
 import InsightsPanel from "../../components/InsightsPanel";
 import ReleasesPanel from "../../components/ReleasesPanel";
@@ -10,26 +9,15 @@ import FilterBar, { describeFilter, clearFilter } from "../../components/FilterB
 import KpiCard from "../../components/KpiCard";
 import PlanGate from "../../components/PlanGate";
 import { NidPageHeader } from "../../components/nid/Panel";
-import {
-  ResponsiveContainer,
-  LineChart,
-  Line,
-  BarChart,
-  Bar,
-  CartesianGrid,
-  XAxis,
-  YAxis,
-  Tooltip,
-  Legend,
-} from "recharts";
+import { MultiLineChart, StackedBarChart } from "../../components/nid/charts";
 import ChartState from "../../components/nid/ChartState.jsx";
 
 function ChartCard({ title, children, empty }) {
   return (
-    <div className="bg-white dark:bg-slate-900 p-6 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-800">
-      <h3 className="text-base font-bold mb-5 text-slate-800 dark:text-white">{title}</h3>
+    <div className="bg-[var(--panel)] p-6 rounded-2xl shadow-sm border border-[var(--border)]">
+      <h3 className="text-base font-bold mb-5 text-[var(--text)]">{title}</h3>
       {empty ? (
-        <div className="h-60 flex items-center justify-center text-slate-400 dark:text-slate-500 text-sm">
+        <div className="h-60 flex items-center justify-center text-[var(--text-mute)] text-sm">
           Sem dados disponíveis
         </div>
       ) : (
@@ -47,7 +35,6 @@ const fmtBRL = (v) =>
 const fmtNum = (v) => (v != null ? Number(v).toLocaleString("pt-BR") : "—");
 
 export default function PixPage() {
-  const ct = useChartTheme();
   const [rawSerie, setRawSerie] = useState([]);
   const [resumo, setResumo] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -137,7 +124,7 @@ export default function PixPage() {
       {loading ? (
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           {[...Array(3)].map((_, i) => (
-            <div key={i} className="bg-white dark:bg-slate-900 p-6 rounded-2xl border border-slate-100 dark:border-slate-800">
+            <div key={i} className="bg-[var(--panel)] p-6 rounded-2xl border border-[var(--border)]">
               <ChartState kind="loading" shape="kpi" height={80} />
             </div>
           ))}
@@ -151,99 +138,62 @@ export default function PixPage() {
       {/* Volume PF vs PJ — Pagamentos */}
       <PlanGate planKey="pix.detalhado">
       <ChartCard title="Volume de Pagamentos — PF vs PJ" empty={serie.length === 0}>
-        <div className="h-48 md:h-72">
-          <ResponsiveContainer width="100%" height="100%">
-            <LineChart data={serie}>
-              <CartesianGrid strokeDasharray="3 3" stroke={ct.grid} />
-              <XAxis dataKey="periodo" tick={{ fontSize: 10, fill: ct.tick }} stroke={ct.axis} interval="preserveStartEnd" />
-              <YAxis
-                tick={{ fontSize: 11, fill: ct.tick }}
-                stroke={ct.axis}
-                tickFormatter={(v) =>
-                  `R$ ${(v / 1_000_000).toLocaleString("pt-BR", { maximumFractionDigits: 0 })}M`
-                }
-              />
-              <Tooltip contentStyle={ct.tooltipStyle} formatter={(v) => [fmtBRL(v)]} />
-              <Legend />
-              <Line type="monotone" dataKey="vl_pagador_pf" name="Volume PF" stroke="#3b82f6" strokeWidth={2.5} dot={false} />
-              <Line type="monotone" dataKey="vl_pagador_pj" name="Volume PJ" stroke="#10b981" strokeWidth={2.5} dot={false} />
-            </LineChart>
-          </ResponsiveContainer>
-        </div>
+        <MultiLineChart
+          data={serie.map((d) => ({ label: d.periodo, "Volume PF": d.vl_pagador_pf || 0, "Volume PJ": d.vl_pagador_pj || 0 }))}
+          series={["Volume PF", "Volume PJ"]}
+          colors={["#3b82f6", "#10b981"]}
+          height={280}
+          yFmt={(v) => `R$ ${(v / 1_000_000).toLocaleString("pt-BR", { maximumFractionDigits: 0 })}M`}
+          tipFmt={fmtBRL}
+        />
       </ChartCard>
 
       {/* Volume Recebimentos — PF vs PJ */}
       <ChartCard title="Volume de Recebimentos — PF vs PJ" empty={serie.length === 0}>
-        <div className="h-44 md:h-64">
-          <ResponsiveContainer width="100%" height="100%">
-            <LineChart data={serie}>
-              <CartesianGrid strokeDasharray="3 3" stroke={ct.grid} />
-              <XAxis dataKey="periodo" tick={{ fontSize: 10, fill: ct.tick }} stroke={ct.axis} interval="preserveStartEnd" />
-              <YAxis
-                tick={{ fontSize: 11, fill: ct.tick }}
-                stroke={ct.axis}
-                tickFormatter={(v) =>
-                  `R$ ${(v / 1_000_000).toLocaleString("pt-BR", { maximumFractionDigits: 0 })}M`
-                }
-              />
-              <Tooltip contentStyle={ct.tooltipStyle} formatter={(v) => [fmtBRL(v)]} />
-              <Legend />
-              <Line type="monotone" dataKey="vl_recebedor_pf" name="Recebimento PF" stroke="#8b5cf6" strokeWidth={2} dot={false} />
-              <Line type="monotone" dataKey="vl_recebedor_pj" name="Recebimento PJ" stroke="#f59e0b" strokeWidth={2} dot={false} />
-            </LineChart>
-          </ResponsiveContainer>
-        </div>
+        <MultiLineChart
+          data={serie.map((d) => ({ label: d.periodo, "Recebimento PF": d.vl_recebedor_pf || 0, "Recebimento PJ": d.vl_recebedor_pj || 0 }))}
+          series={["Recebimento PF", "Recebimento PJ"]}
+          colors={["#8b5cf6", "#f59e0b"]}
+          height={240}
+          yFmt={(v) => `R$ ${(v / 1_000_000).toLocaleString("pt-BR", { maximumFractionDigits: 0 })}M`}
+          tipFmt={fmtBRL}
+        />
       </ChartCard>
 
       {/* Quantidade de Transações */}
       <ChartCard title="Quantidade de Transações (Pagadores)" empty={serie.length === 0}>
-        <div className="h-44 md:h-64">
-          <ResponsiveContainer width="100%" height="100%">
-            <BarChart data={serie} barCategoryGap="20%">
-              <CartesianGrid strokeDasharray="3 3" stroke={ct.grid} vertical={false} />
-              <XAxis dataKey="periodo" tick={{ fontSize: 10, fill: ct.tick }} stroke={ct.axis} interval="preserveStartEnd" />
-              <YAxis tick={{ fontSize: 11, fill: ct.tick }} stroke={ct.axis} tickFormatter={(v) => v.toLocaleString("pt-BR")} />
-              <Tooltip contentStyle={ct.tooltipStyle} formatter={(v) => [fmtNum(v)]} />
-              <Legend />
-              <Bar dataKey="qt_pagador_pf" name="Transações PF" fill="#3b82f6" radius={[2, 2, 0, 0]} />
-              <Bar dataKey="qt_pagador_pj" name="Transações PJ" fill="#10b981" radius={[2, 2, 0, 0]} />
-            </BarChart>
-          </ResponsiveContainer>
-        </div>
+        <StackedBarChart
+          data={serie.map((d) => ({ label: d.periodo, "Transações PF": d.qt_pagador_pf || 0, "Transações PJ": d.qt_pagador_pj || 0 }))}
+          keys={["Transações PF", "Transações PJ"]}
+          colors={["#3b82f6", "#10b981"]}
+          height={240}
+          yFmt={(v) => Number(v).toLocaleString("pt-BR")}
+          tipFmt={(v) => Number(v).toLocaleString("pt-BR")}
+        />
       </ChartCard>
 
       {/* Pessoas Únicas Pagadoras */}
       <ChartCard title="Pessoas Únicas Pagadoras" empty={serie.length === 0}>
-        <div className="h-44 md:h-64">
-          <ResponsiveContainer width="100%" height="100%">
-            <LineChart data={serie}>
-              <CartesianGrid strokeDasharray="3 3" stroke={ct.grid} />
-              <XAxis dataKey="periodo" tick={{ fontSize: 10, fill: ct.tick }} stroke={ct.axis} interval="preserveStartEnd" />
-              <YAxis tick={{ fontSize: 11, fill: ct.tick }} stroke={ct.axis} tickFormatter={(v) => v.toLocaleString("pt-BR")} />
-              <Tooltip contentStyle={ct.tooltipStyle} formatter={(v) => [fmtNum(v)]} />
-              <Legend />
-              <Line type="monotone" dataKey="qt_pes_pagador_pf" name="Pessoas PF" stroke="#8b5cf6" strokeWidth={2} dot={false} />
-              <Line type="monotone" dataKey="qt_pes_pagador_pj" name="Pessoas PJ" stroke="#f97316" strokeWidth={2} dot={false} />
-            </LineChart>
-          </ResponsiveContainer>
-        </div>
+        <MultiLineChart
+          data={serie.map((d) => ({ label: d.periodo, "Pessoas PF": d.qt_pes_pagador_pf || 0, "Pessoas PJ": d.qt_pes_pagador_pj || 0 }))}
+          series={["Pessoas PF", "Pessoas PJ"]}
+          colors={["#8b5cf6", "#f97316"]}
+          height={240}
+          yFmt={(v) => Number(v).toLocaleString("pt-BR")}
+          tipFmt={(v) => Number(v).toLocaleString("pt-BR")}
+        />
       </ChartCard>
 
       {/* Pessoas Únicas Recebedoras */}
       <ChartCard title="Pessoas Únicas Recebedoras" empty={serie.length === 0}>
-        <div className="h-44 md:h-64">
-          <ResponsiveContainer width="100%" height="100%">
-            <LineChart data={serie}>
-              <CartesianGrid strokeDasharray="3 3" stroke={ct.grid} />
-              <XAxis dataKey="periodo" tick={{ fontSize: 10, fill: ct.tick }} stroke={ct.axis} interval="preserveStartEnd" />
-              <YAxis tick={{ fontSize: 11, fill: ct.tick }} stroke={ct.axis} tickFormatter={(v) => v.toLocaleString("pt-BR")} />
-              <Tooltip contentStyle={ct.tooltipStyle} formatter={(v) => [fmtNum(v)]} />
-              <Legend />
-              <Line type="monotone" dataKey="qt_pes_recebedor_pf" name="Recebedores PF" stroke="#06b6d4" strokeWidth={2} dot={false} />
-              <Line type="monotone" dataKey="qt_pes_recebedor_pj" name="Recebedores PJ" stroke="#f43f5e" strokeWidth={2} dot={false} />
-            </LineChart>
-          </ResponsiveContainer>
-        </div>
+        <MultiLineChart
+          data={serie.map((d) => ({ label: d.periodo, "Recebedores PF": d.qt_pes_recebedor_pf || 0, "Recebedores PJ": d.qt_pes_recebedor_pj || 0 }))}
+          series={["Recebedores PF", "Recebedores PJ"]}
+          colors={["#06b6d4", "#f43f5e"]}
+          height={240}
+          yFmt={(v) => Number(v).toLocaleString("pt-BR")}
+          tipFmt={(v) => Number(v).toLocaleString("pt-BR")}
+        />
       </ChartCard>
       </PlanGate>
       <NidComparativoPanel
