@@ -5,12 +5,14 @@ import { motion } from "framer-motion";
 import InsightsPanel from "../../components/InsightsPanel";
 import ReleasesPanel from "../../components/ReleasesPanel";
 import InfoTooltip from "../../components/InfoTooltip";
-import FilterBar from "../../components/FilterBar";
+import FilterBar, { describeFilter, clearFilter } from "../../components/FilterBar";
 import KpiCard from "../../components/KpiCard";
+import { NidPanel, NidPageHeader } from "../../components/nid/Panel";
+import ChartState from "../../components/nid/ChartState.jsx";
+import { AreaLineChart, fmtMoneyShort, fmtMoneyFull } from "../../components/nid/charts";
+import DataTable from "../../components/nid/DataTable";
 import {
   ResponsiveContainer,
-  AreaChart,
-  Area,
   BarChart,
   Bar,
   CartesianGrid,
@@ -55,6 +57,12 @@ export default function ArrecadacaoPage() {
     });
   }, [rawSerie, filters]);
 
+  // NID chart shape for AreaLineChart
+  const areaData = useMemo(
+    () => serie.map((d) => ({ label: String(d.periodo), value: d.total || 0 })),
+    [serie]
+  );
+
   const cards = [
     {
       label: "Total Arrecadado",
@@ -96,26 +104,27 @@ export default function ArrecadacaoPage() {
       transition={{ duration: 0.3 }}
       className="space-y-8"
     >
-      <div>
-        <div className="flex items-center gap-2">
-          <h1 className="text-2xl font-extrabold tracking-tight text-slate-800 dark:text-white">
-            Arrecadação Municipal
-          </h1>
-          <InfoTooltip dataset="arrecadacao" />
-        </div>
-        <p className="text-sm text-slate-400 dark:text-slate-500 mt-1">
-          Evolução das receitas municipais por período.
-        </p>
-      </div>
+      <NidPageHeader
+        title={<>Arrecadação Municipal <InfoTooltip dataset="arrecadacao" /></>}
+        sub="Evolução das receitas municipais por período."
+        chips={describeFilter(filters) ? [{
+          label: describeFilter(filters),
+          active: true,
+          onClick: () => document.getElementById("filter-bar-arrecadacao")?.scrollIntoView({ block: "center", behavior: "smooth" }),
+          onClear: () => setFilters(clearFilter()),
+        }] : null}
+      />
 
       <InsightsPanel dataset="arrecadacao" />
 
-      <FilterBar years={years} value={filters} onChange={setFilters} />
+      <FilterBar id="filter-bar-arrecadacao" years={years} value={filters} onChange={setFilters} />
 
       {loading ? (
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6">
           {[...Array(4)].map((_, i) => (
-            <div key={i} className="bg-white dark:bg-slate-900 p-6 rounded-2xl border border-slate-100 dark:border-slate-800 animate-pulse h-28" />
+            <div key={i} className="bg-white dark:bg-slate-900 p-6 rounded-2xl border border-slate-100 dark:border-slate-800">
+              <ChartState kind="loading" shape="kpi" height={80} />
+            </div>
           ))}
         </div>
       ) : (
@@ -126,47 +135,17 @@ export default function ArrecadacaoPage() {
         </div>
       )}
 
-      <div className="bg-white dark:bg-slate-900 p-6 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-800">
-        <h3 className="text-base font-bold mb-5 text-slate-800 dark:text-white">
-          Série Histórica Mensal
-        </h3>
-        {serie.length === 0 ? (
-          <div className="h-64 flex items-center justify-center text-slate-400 dark:text-slate-500 text-sm">
-            Sem dados disponíveis
-          </div>
-        ) : (
-          <div className="h-44 md:h-64">
-            <ResponsiveContainer width="100%" height="100%">
-              <AreaChart data={serie}>
-                <defs>
-                  <linearGradient id="gradArrecadacao" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#6366f1" stopOpacity={0.15} />
-                    <stop offset="95%" stopColor="#6366f1" stopOpacity={0} />
-                  </linearGradient>
-                </defs>
-                <CartesianGrid strokeDasharray="3 3" stroke={ct.grid} />
-                <XAxis dataKey="periodo" tick={{ fontSize: 11, fill: ct.tick }} stroke={ct.axis} />
-                <YAxis tick={{ fontSize: 11, fill: ct.tick }} stroke={ct.axis} width={70}
-                  tickFormatter={(v) =>
-                    `${(v / 1_000_000).toFixed(0)}M`
-                  }
-                />
-                <Tooltip
-                  formatter={(v) => [fmtBRL(v), "Total"]}
-                  labelFormatter={(l) => `Período: ${l}`}
-                />
-                <Area
-                  type="monotone"
-                  dataKey="total"
-                  stroke="#6366f1"
-                  strokeWidth={2.5}
-                  fill="url(#gradArrecadacao)"
-                />
-              </AreaChart>
-            </ResponsiveContainer>
-          </div>
-        )}
-      </div>
+      <NidPanel title="Série Histórica Mensal" sub="receita total por período">
+        <AreaLineChart
+          data={areaData}
+          height={280}
+          color="var(--accent-3)"
+          label="Total Arrecadado"
+          yFmt={fmtMoneyShort}
+          tipFmt={fmtMoneyFull}
+          forecast={{ steps: 2, method: "linear-6" }}
+        />
+      </NidPanel>
 
       {/* ICMS / IPVA / IPI Breakdown */}
       {serie.length > 0 && (
@@ -198,35 +177,20 @@ export default function ArrecadacaoPage() {
 
       {/* Breakdown table */}
       {serie.length > 0 && (
-        <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-800 overflow-hidden">
-          <div className="px-6 py-4 border-b border-slate-100 dark:border-slate-800">
-            <h3 className="text-base font-bold text-slate-800 dark:text-white">Detalhamento por Período</h3>
-          </div>
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="bg-slate-50 dark:bg-slate-800 text-left text-xs uppercase text-slate-400 dark:text-slate-500 tracking-wider">
-                  <th className="px-6 py-3">Período</th>
-                  <th className="px-6 py-3 text-right">Total</th>
-                  <th className="px-6 py-3 text-right">ICMS</th>
-                  <th className="px-6 py-3 text-right">IPVA</th>
-                  <th className="px-6 py-3 text-right">IPI</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-50 dark:divide-slate-800">
-                {serie.slice().reverse().map((item, i) => (
-                  <tr key={i} className="hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors">
-                    <td className="px-6 py-3 font-medium text-slate-700 dark:text-slate-200">{item.periodo}</td>
-                    <td className="px-6 py-3 text-right text-slate-800 dark:text-white font-semibold">{fmtBRL(item.total)}</td>
-                    <td className="px-6 py-3 text-right text-slate-500 dark:text-slate-400">{fmtBRL(item.icms)}</td>
-                    <td className="px-6 py-3 text-right text-slate-500 dark:text-slate-400">{fmtBRL(item.ipva)}</td>
-                    <td className="px-6 py-3 text-right text-slate-500 dark:text-slate-400">{fmtBRL(item.ipi)}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </div>
+        <NidPanel title="Detalhamento por Período" sub="arrecadação mensal">
+          <DataTable
+            columns={[
+              { key: "periodo", label: "Período",    width: 100 },
+              { key: "total",   label: "Total",      align: "right", fmt: fmtMoneyShort, mono: true, heatmap: true },
+              { key: "__delta", label: "YoY",        align: "right", kind: "delta" },
+              { key: "__trend", label: "Tendência",  kind: "spark",  width: 120 },
+              { key: "icms",    label: "ICMS",       align: "right", fmt: fmtMoneyShort, mono: true },
+              { key: "ipva",    label: "IPVA",       align: "right", fmt: fmtMoneyShort, mono: true },
+              { key: "ipi",     label: "IPI",        align: "right", fmt: fmtMoneyShort, mono: true },
+            ]}
+            data={serie.slice().reverse()}
+          />
+        </NidPanel>
       )}
       <ReleasesPanel dataset="arrecadacao" />
 

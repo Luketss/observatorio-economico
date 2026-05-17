@@ -6,9 +6,10 @@ import InsightsPanel from "../../components/InsightsPanel";
 import ReleasesPanel from "../../components/ReleasesPanel";
 import NidComparativoPanel from "../../components/nid/ComparativoPanel";
 import InfoTooltip from "../../components/InfoTooltip";
-import FilterBar from "../../components/FilterBar";
+import FilterBar, { describeFilter, clearFilter } from "../../components/FilterBar";
 import KpiCard from "../../components/KpiCard";
 import PlanGate from "../../components/PlanGate";
+import { NidPageHeader } from "../../components/nid/Panel";
 import {
   ResponsiveContainer,
   LineChart,
@@ -22,6 +23,7 @@ import {
   Legend,
   Cell,
 } from "recharts";
+import ChartState from "../../components/nid/ChartState.jsx";
 
 const COLORS = [
   "#3b82f6",
@@ -152,47 +154,46 @@ export default function ComexPage() {
       transition={{ duration: 0.3 }}
       className="space-y-8"
     >
-      <div className="flex items-start justify-between gap-4 flex-wrap">
-        <div>
-          <div className="flex items-center gap-2">
-            <h1 className="text-2xl font-extrabold tracking-tight text-slate-800 dark:text-white">
-              Comércio Exterior
-            </h1>
-            <InfoTooltip dataset="comex" />
-          </div>
-          <p className="text-sm text-slate-400 dark:text-slate-500 mt-1">
-            Exportações, importações e balança comercial.
-          </p>
+      <NidPageHeader
+        title={<>Comércio Exterior <InfoTooltip dataset="comex" /></>}
+        sub="Exportações, importações e balança comercial."
+        chips={[
+          describeFilter(filters) ? {
+            label: describeFilter(filters),
+            active: true,
+            onClick: () => document.getElementById("filter-bar-comex")?.scrollIntoView({ block: "center", behavior: "smooth" }),
+            onClear: () => setFilters(clearFilter()),
+          } : null,
+        ].filter(Boolean)}
+      />
+
+      {anos.length > 0 && (
+        <div className="flex items-center gap-2">
+          <label className="text-sm text-slate-500 dark:text-slate-400 font-medium">Ano:</label>
+          <select
+            value={anoSelecionado}
+            onChange={(e) => setAnoSelecionado(e.target.value)}
+            className="border border-slate-200 dark:border-slate-700 rounded-lg px-3 py-1.5 text-sm text-slate-700 dark:text-slate-100 bg-white dark:bg-slate-800 shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+          >
+            {anos.map((ano) => (
+              <option key={ano} value={String(ano)}>
+                {ano}
+              </option>
+            ))}
+          </select>
         </div>
-        {anos.length > 0 && (
-          <div className="flex items-center gap-2">
-            <label className="text-sm text-slate-500 dark:text-slate-400 font-medium">Ano:</label>
-            <select
-              value={anoSelecionado}
-              onChange={(e) => setAnoSelecionado(e.target.value)}
-              className="border border-slate-200 dark:border-slate-700 rounded-lg px-3 py-1.5 text-sm text-slate-700 dark:text-slate-100 bg-white dark:bg-slate-800 shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-            >
-              {anos.map((ano) => (
-                <option key={ano} value={String(ano)}>
-                  {ano}
-                </option>
-              ))}
-            </select>
-          </div>
-        )}
-      </div>
+      )}
 
       <InsightsPanel dataset="comex" />
 
-      <FilterBar years={anos.slice().sort()} showMonths value={filters} onChange={setFilters} />
+      <FilterBar id="filter-bar-comex" years={anos.slice().sort()} showMonths value={filters} onChange={setFilters} />
 
       {loading ? (
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           {[...Array(3)].map((_, i) => (
-            <div
-              key={i}
-              className="bg-white dark:bg-slate-900 p-6 rounded-2xl border border-slate-100 dark:border-slate-800 animate-pulse h-28"
-            />
+            <div key={i} className="bg-white dark:bg-slate-900 p-6 rounded-2xl border border-slate-100 dark:border-slate-800">
+              <ChartState kind="loading" shape="kpi" height={80} />
+            </div>
           ))}
         </div>
       ) : (

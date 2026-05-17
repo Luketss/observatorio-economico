@@ -1,3 +1,23 @@
+/**
+ * Returns a human-readable period label from a filter object.
+ * Returns null when no year filter is set (no chip should be shown).
+ */
+export function describeFilter(filter) {
+  if (!filter) return null;
+  const { yearFrom, yearTo } = filter;
+  if (!yearFrom && !yearTo) return null;
+  if (yearFrom && yearTo) return `${yearFrom}–${yearTo}`;
+  if (yearFrom) return `desde ${yearFrom}`;
+  return `até ${yearTo}`;
+}
+
+/**
+ * Returns a cleared filter object with all year/month fields reset.
+ */
+export function clearFilter() {
+  return { yearFrom: "", yearTo: "" };
+}
+
 const MONTHS = [
   { value: 1, label: "Jan" }, { value: 2, label: "Fev" },
   { value: 3, label: "Mar" }, { value: 4, label: "Abr" },
@@ -19,7 +39,7 @@ const selectCls =
  *  value      – { yearFrom, yearTo, monthFrom, monthTo } (all strings or "")
  *  onChange   – (newValue) => void
  */
-export default function FilterBar({ years = [], showMonths = false, value, onChange }) {
+export default function FilterBar({ years = [], showMonths = false, value, onChange, id }) {
   const { yearFrom = "", yearTo = "", monthFrom = "", monthTo = "" } = value || {};
 
   const hasFilter = yearFrom || yearTo || monthFrom || monthTo;
@@ -31,7 +51,7 @@ export default function FilterBar({ years = [], showMonths = false, value, onCha
   if (years.length === 0) return null;
 
   return (
-    <div className="flex flex-wrap items-center gap-3 bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-3">
+    <div id={id} className="flex flex-wrap items-center gap-3 bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-3">
       <span className="text-xs font-semibold text-slate-400 dark:text-slate-500 uppercase tracking-wider shrink-0">
         Filtros
       </span>

@@ -1,9 +1,9 @@
 import { useState } from "react";
 import { Sparkline } from "./charts";
 
-export function NidPageHeader({ title, sub, badge }) {
+export function NidPageHeader({ title, sub, badge, chips }) {
   return (
-    <div style={{ marginBottom: 22, display: "flex", alignItems: "flex-end", gap: 14 }}>
+    <div style={{ marginBottom: 22, display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 16 }}>
       <div>
         <h1 style={{
           fontFamily: "var(--font-display)", fontSize: 24, fontWeight: 700,
@@ -15,7 +15,35 @@ export function NidPageHeader({ title, sub, badge }) {
           <div style={{ color: "var(--text-dim)", fontSize: 13, marginTop: 3 }}>{sub}</div>
         )}
       </div>
-      {badge && <span className="nid-pill" style={{ marginBottom: 4 }}>{badge}</span>}
+      <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap", paddingTop: 2 }}>
+        {badge && <span className="nid-pill">{badge}</span>}
+        {chips && chips.length > 0 && chips.map((c, i) => (
+          <span
+            key={i}
+            className={`nid-pill nid-pill--inner${c.active ? " nid-pill--active" : ""}`}
+            style={{ cursor: c.onClick ? "pointer" : "default" }}
+            onClick={c.onClick}
+            role={c.onClick ? "button" : undefined}
+            tabIndex={c.onClick ? 0 : undefined}
+            aria-label={c.onClick ? `Ir para filtros de período` : undefined}
+            onKeyDown={c.onClick ? (e) => { if (e.key === "Enter" || e.key === " ") c.onClick(e); } : undefined}
+          >
+            {c.label}
+            {c.onClear && (
+              <span
+                className="nid-pill-x"
+                role="button"
+                aria-label={`Remover filtro ${c.label}`}
+                tabIndex={0}
+                onClick={(e) => { e.stopPropagation(); c.onClear(); }}
+                onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); e.stopPropagation(); c.onClear(); } }}
+              >
+                ✕
+              </span>
+            )}
+          </span>
+        ))}
+      </div>
     </div>
   );
 }

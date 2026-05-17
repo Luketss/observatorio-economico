@@ -6,9 +6,10 @@ import InsightsPanel from "../../components/InsightsPanel";
 import ReleasesPanel from "../../components/ReleasesPanel";
 import NidComparativoPanel from "../../components/nid/ComparativoPanel";
 import InfoTooltip from "../../components/InfoTooltip";
-import FilterBar from "../../components/FilterBar";
+import FilterBar, { describeFilter, clearFilter } from "../../components/FilterBar";
 import KpiCard from "../../components/KpiCard";
 import PlanGate from "../../components/PlanGate";
+import { NidPageHeader } from "../../components/nid/Panel";
 import {
   ResponsiveContainer,
   LineChart,
@@ -21,6 +22,7 @@ import {
   Tooltip,
   Legend,
 } from "recharts";
+import ChartState from "../../components/nid/ChartState.jsx";
 
 function ChartCard({ title, children, empty }) {
   return (
@@ -117,26 +119,27 @@ export default function PixPage() {
       transition={{ duration: 0.3 }}
       className="space-y-8"
     >
-      <div>
-        <div className="flex items-center gap-2">
-          <h1 className="text-2xl font-extrabold tracking-tight text-slate-800 dark:text-white">
-            PIX — Transações Instantâneas
-          </h1>
-          <InfoTooltip dataset="pix" />
-        </div>
-        <p className="text-sm text-slate-400 dark:text-slate-500 mt-1">
-          Volumes e quantidade de transações PIX por mês (Banco Central do Brasil).
-        </p>
-      </div>
+      <NidPageHeader
+        title={<>PIX — Transações Instantâneas <InfoTooltip dataset="pix" /></>}
+        sub="Volumes e quantidade de transações PIX por mês (Banco Central do Brasil)."
+        chips={describeFilter(filters) ? [{
+          label: describeFilter(filters),
+          active: true,
+          onClick: () => document.getElementById("filter-bar-pix")?.scrollIntoView({ block: "center", behavior: "smooth" }),
+          onClear: () => setFilters(clearFilter()),
+        }] : null}
+      />
 
       <InsightsPanel dataset="pix" />
 
-      <FilterBar years={years} showMonths value={filters} onChange={setFilters} />
+      <FilterBar id="filter-bar-pix" years={years} showMonths value={filters} onChange={setFilters} />
 
       {loading ? (
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           {[...Array(3)].map((_, i) => (
-            <div key={i} className="bg-white dark:bg-slate-900 p-6 rounded-2xl border border-slate-100 dark:border-slate-800 animate-pulse h-28" />
+            <div key={i} className="bg-white dark:bg-slate-900 p-6 rounded-2xl border border-slate-100 dark:border-slate-800">
+              <ChartState kind="loading" shape="kpi" height={80} />
+            </div>
           ))}
         </div>
       ) : (

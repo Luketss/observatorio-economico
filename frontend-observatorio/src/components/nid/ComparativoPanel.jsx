@@ -2,6 +2,7 @@ import { useEffect, useState, useMemo } from "react";
 import api from "../../services/api";
 import { useAuth } from "../../context/AuthContext";
 import { NidPanel } from "./Panel";
+import { HBarChart } from "./charts";
 
 /**
  * Themed ranking/comparativo panel for any dataset.
@@ -49,17 +50,18 @@ export default function NidComparativoPanel({
   }, [endpoint, ano, estadoFilter, user?.estado]);
 
   const myId = user?.municipio_id;
+  const myName = user?.municipio?.nome ?? null;
 
   const display = useMemo(() => {
-    if (!rows.length) return { items: [], myRank: null, max: 0 };
+    if (!rows.length) return { items: [], myRank: null, chartData: [] };
     const sorted = [...rows].sort((a, b) => (b[metric] || 0) - (a[metric] || 0));
     const myRank = myId ? sorted.findIndex((r) => r.municipio_id === myId) : -1;
     let items = sorted.slice(0, limit);
     if (myRank >= limit) {
       items = [...items, sorted[myRank]];
     }
-    const max = sorted[0]?.[metric] || 0;
-    return { items, myRank: myRank >= 0 ? myRank + 1 : null, total: sorted.length, max };
+    const chartData = items.map((r) => ({ label: r.municipio, value: r[metric] || 0 }));
+    return { items, myRank: myRank >= 0 ? myRank + 1 : null, total: sorted.length, chartData };
   }, [rows, metric, myId, limit]);
 
   return (
@@ -104,73 +106,14 @@ export default function NidComparativoPanel({
               {display.total ? <> de {display.total}</> : null}
             </div>
           )}
-          <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-            {display.items.map((r, i) => {
-              const isMe = r.municipio_id === myId;
-              const pct = display.max > 0 ? ((r[metric] || 0) / display.max) * 100 : 0;
-              const rank = i < limit ? i + 1 : display.myRank;
-              return (
-                <div
-                  key={r.municipio_id}
-                  style={{
-                    position: "relative",
-                    display: "grid",
-                    gridTemplateColumns: "32px 1fr auto",
-                    alignItems: "center",
-                    gap: 10,
-                    padding: "8px 12px",
-                    borderRadius: 9,
-                    background: isMe
-                      ? "color-mix(in oklab, var(--accent-1) 14%, transparent)"
-                      : "var(--panel-2)",
-                    border: isMe
-                      ? "1px solid var(--border-strong)"
-                      : "1px solid transparent",
-                    overflow: "hidden",
-                  }}
-                >
-                  {/* bar background */}
-                  <div style={{
-                    position: "absolute",
-                    inset: 0,
-                    width: `${pct}%`,
-                    background: `linear-gradient(90deg, ${isMe ? "color-mix(in oklab, var(--accent-1) 22%, transparent)" : `color-mix(in oklab, ${color} 8%, transparent)`}, transparent)`,
-                    pointerEvents: "none",
-                  }} />
-                  <span style={{
-                    fontFamily: "var(--font-mono)",
-                    fontSize: 11,
-                    fontWeight: 700,
-                    color: isMe ? "var(--accent-1)" : "var(--text-mute)",
-                    textAlign: "center",
-                    position: "relative",
-                  }}>
-                    #{rank}
-                  </span>
-                  <span style={{
-                    fontSize: 13,
-                    fontWeight: isMe ? 700 : 500,
-                    color: isMe ? "var(--text)" : "var(--text-dim)",
-                    overflow: "hidden",
-                    textOverflow: "ellipsis",
-                    whiteSpace: "nowrap",
-                    position: "relative",
-                  }}>
-                    {r.municipio} <span style={{ color: "var(--text-mute)", fontSize: 11, fontFamily: "var(--font-mono)" }}>· {r.estado}</span>
-                  </span>
-                  <span style={{
-                    fontFamily: "var(--font-mono)",
-                    fontSize: 12,
-                    fontWeight: 600,
-                    color: "var(--text)",
-                    position: "relative",
-                  }}>
-                    {fmt(r[metric] || 0)}
-                  </span>
-                </div>
-              );
-            })}
-          </div>
+          <HBarChart
+            data={display.chartData}
+            highlight={myName}
+            showPosition
+            positionOffset={0}
+            fmt={fmt}
+            color={color}
+          />
         </>
       )}
     </NidPanel>

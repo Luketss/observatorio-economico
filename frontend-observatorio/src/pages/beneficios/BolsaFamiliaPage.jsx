@@ -6,8 +6,9 @@ import InsightsPanel from "../../components/InsightsPanel";
 import ReleasesPanel from "../../components/ReleasesPanel";
 import NidComparativoPanel from "../../components/nid/ComparativoPanel";
 import InfoTooltip from "../../components/InfoTooltip";
-import FilterBar from "../../components/FilterBar";
+import FilterBar, { describeFilter, clearFilter } from "../../components/FilterBar";
 import KpiCard from "../../components/KpiCard";
+import { NidPageHeader } from "../../components/nid/Panel";
 import {
   ResponsiveContainer,
   AreaChart,
@@ -102,21 +103,20 @@ export default function BolsaFamiliaPage() {
       transition={{ duration: 0.3 }}
       className="space-y-8"
     >
-      <div>
-        <div className="flex items-center gap-2">
-          <h1 className="text-2xl font-extrabold tracking-tight text-slate-800 dark:text-white">
-            Bolsa Família
-          </h1>
-          <InfoTooltip dataset="bolsa_familia" />
-        </div>
-        <p className="text-sm text-slate-400 dark:text-slate-500 mt-1">
-          Beneficiários e repasses do Programa Bolsa Família.
-        </p>
-      </div>
+      <NidPageHeader
+        title={<>Bolsa Família <InfoTooltip dataset="bolsa_familia" /></>}
+        sub="Beneficiários e repasses do Programa Bolsa Família."
+        chips={describeFilter(filters) ? [{
+          label: describeFilter(filters),
+          active: true,
+          onClick: () => document.getElementById("filter-bar-bolsafamilia")?.scrollIntoView({ block: "center", behavior: "smooth" }),
+          onClear: () => setFilters(clearFilter()),
+        }] : null}
+      />
 
       <InsightsPanel dataset="bolsa_familia" />
 
-      <FilterBar years={years} showMonths value={filters} onChange={setFilters} />
+      <FilterBar id="filter-bar-bolsafamilia" years={years} showMonths value={filters} onChange={setFilters} />
 
       {loading ? (
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">

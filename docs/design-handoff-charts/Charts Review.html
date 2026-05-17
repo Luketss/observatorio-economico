@@ -1,0 +1,1706 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<title>Charts &amp; Data Display — Review</title>
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+/* Tokens copied from themes.css → theme-neon (the default). */
+:root{
+  --bg:#050610;
+  --bg-grad: radial-gradient(ellipse 1200px 600px at 20% -10%, #0d1230 0%, transparent 60%),
+             radial-gradient(ellipse 900px 500px at 95% 0%, #1a0830 0%, transparent 55%), #050610;
+  --panel: rgba(13,17,35,.72);
+  --panel-2: rgba(20,24,45,.55);
+  --panel-solid:#0c1024;
+  --border: rgba(120,145,255,.10);
+  --border-strong: rgba(120,145,255,.22);
+  --text:#eef0ff;
+  --text-dim:#7c87b3;
+  --text-mute:#4c5378;
+  --accent-1:#00e5ff;     /* cyan */
+  --accent-2:#ff3d92;     /* pink */
+  --accent-3:#b97cff;     /* purple */
+  --accent-4:#ffd23f;     /* yellow */
+  --accent-5:#4ade80;     /* green */
+  --grid: rgba(120,145,255,.08);
+  --grid-strong: rgba(120,145,255,.18);
+  --font-display:"Geist","Inter",-apple-system,sans-serif;
+  --font-mono:"JetBrains Mono","SF Mono",ui-monospace,Menlo,monospace;
+  --shadow-card: 0 24px 60px -20px rgba(0,30,80,.6), inset 0 1px 0 rgba(255,255,255,.04);
+}
+*{box-sizing:border-box}
+html,body{margin:0;padding:0}
+body{
+  background:var(--bg); background-image:var(--bg-grad); background-attachment:fixed;
+  color:var(--text); font-family:var(--font-display);
+  -webkit-font-smoothing:antialiased; min-height:100vh;
+}
+a{color:inherit}
+
+/* ── document chrome ───────────────────────────────── */
+.doc{ max-width:1280px; margin:0 auto; padding:56px 48px 96px; }
+.eyebrow{
+  font-family:var(--font-mono); font-size:11px; letter-spacing:.22em;
+  text-transform:uppercase; color:var(--accent-1);
+}
+.h1{
+  font-size:46px; font-weight:800; letter-spacing:-.025em; line-height:1.05; margin:14px 0 6px;
+  text-wrap:balance;
+}
+.h1 em{ font-style:normal; color:var(--text-dim); font-weight:500;}
+.deck{ color:var(--text-dim); font-size:16px; max-width:780px; line-height:1.55;}
+.toc{
+  margin:36px 0 0; display:grid; grid-template-columns:repeat(3,1fr); gap:14px;
+}
+.toc a{
+  display:flex; align-items:baseline; gap:10px; padding:14px 16px;
+  border:1px solid var(--border); border-radius:12px; text-decoration:none;
+  background:var(--panel-2); transition:.15s;
+}
+.toc a:hover{ border-color:var(--border-strong); background:var(--panel);}
+.toc .n{ font-family:var(--font-mono); font-size:11px; color:var(--accent-1); letter-spacing:.1em;}
+.toc .t{ font-size:13.5px; font-weight:600;}
+
+/* section */
+section{ margin-top:88px; }
+.sec-head{ display:flex; align-items:baseline; gap:14px; margin-bottom:6px;}
+.sec-num{
+  font-family:var(--font-mono); font-size:12px; color:var(--text-mute);
+  letter-spacing:.18em;
+}
+.sec-title{
+  font-size:30px; font-weight:700; letter-spacing:-.02em; margin:0; line-height:1.1;
+}
+.sec-sub{ color:var(--text-dim); font-size:14.5px; line-height:1.55; max-width:820px; margin:8px 0 28px;}
+
+/* compare grid */
+.compare{ display:grid; grid-template-columns:1fr 1fr; gap:18px; align-items:stretch;}
+.compare.single{ grid-template-columns:1fr; }
+.compare.triple{ grid-template-columns:1fr 1fr 1fr; gap:14px;}
+
+.card{
+  background:var(--panel); border:1px solid var(--border); border-radius:18px;
+  padding:18px 20px; box-shadow:var(--shadow-card); backdrop-filter:blur(10px);
+  position:relative; display:flex; flex-direction:column;
+}
+.card.bad::before, .card.good::before{
+  content:""; position:absolute; left:20px; top:-1px; height:2px; width:48px; border-radius:2px;
+}
+.card.bad::before{ background:var(--accent-2); }
+.card.good::before{ background:var(--accent-5); }
+.card-tag{
+  font-family:var(--font-mono); font-size:10.5px; letter-spacing:.16em; text-transform:uppercase;
+  color:var(--text-mute); margin-bottom:10px; display:flex; align-items:center; gap:8px;
+}
+.card.bad .card-tag{ color:var(--accent-2); }
+.card.good .card-tag{ color:var(--accent-5); }
+.card-tag .dot{ width:6px; height:6px; border-radius:50%; background:currentColor;}
+.card-title{ font-size:15px; font-weight:700; letter-spacing:-.005em; margin:0 0 4px;}
+.card-sub{ color:var(--text-dim); font-size:12px; font-family:var(--font-mono); letter-spacing:.02em; margin-bottom:14px;}
+
+.notes{
+  margin-top:14px; padding-top:14px; border-top:1px dashed var(--border);
+  display:grid; gap:8px;
+}
+.notes li{ list-style:none; font-size:12.5px; color:var(--text-dim); line-height:1.5; padding-left:18px; position:relative;}
+.notes li::before{
+  content:""; position:absolute; left:0; top:8px; width:8px; height:2px; background:var(--text-mute);
+}
+.notes.good li::before{ background:var(--accent-5);}
+.notes.bad li::before{ background:var(--accent-2);}
+.notes b{ color:var(--text); font-weight:600;}
+ul.notes{ margin:14px 0 0; padding:14px 0 0;}
+
+/* ── reusable chart helpers ────────────────────────── */
+.axis-text{ font-family:var(--font-mono); font-size:10.5px; fill:var(--text-mute); letter-spacing:.04em;}
+.axis-text.bright{ fill:var(--text-dim);}
+.axis-cap{
+  font-family:var(--font-mono); font-size:10px; fill:var(--text-mute);
+  letter-spacing:.14em; text-transform:uppercase;
+}
+.grid-line{ stroke:var(--grid); stroke-dasharray:3 4; stroke-width:1;}
+.zero-line{ stroke:var(--text-mute); stroke-width:1; opacity:.6;}
+
+/* KPI styling for the demo cards */
+.kpi{
+  background:linear-gradient(160deg, rgba(20,24,45,.85) 0%, rgba(8,10,22,.85) 100%);
+  border:1px solid var(--border); border-radius:18px; padding:18px 18px 0;
+  position:relative; overflow:hidden;
+}
+.kpi::before{
+  content:""; position:absolute; inset:-1px; border-radius:18px; padding:1px;
+  background:linear-gradient(135deg, rgba(0,229,255,.35), rgba(185,124,255,.25) 50%, rgba(255,61,146,.30));
+  -webkit-mask:linear-gradient(#000 0 0) content-box,linear-gradient(#000 0 0);
+  -webkit-mask-composite:xor; mask-composite:exclude;
+  opacity:.7; pointer-events:none;
+}
+.kpi-label{
+  font:600 10.5px/1 var(--font-mono); text-transform:uppercase; letter-spacing:.1em;
+  color:var(--text-dim); display:flex; align-items:center; justify-content:space-between; gap:8px;
+}
+.kpi-value{
+  font:700 30px/1 var(--font-display); letter-spacing:-.025em; margin-top:14px;
+  font-feature-settings:"tnum"; color:var(--text);
+}
+.kpi-value .unit{ font-size:14px; font-weight:500; color:var(--text-dim); margin-left:3px;}
+.kpi-foot{ margin-top:10px; display:flex; align-items:center; gap:10px;
+  font:500 11.5px/1 var(--font-mono); color:var(--text-dim); letter-spacing:.02em;}
+.delta{
+  display:inline-flex; align-items:center; gap:3px; font:600 11px/1 var(--font-mono);
+  padding:3px 7px; border-radius:5px;
+}
+.delta.up{ color:var(--accent-5); background:color-mix(in oklab, var(--accent-5) 14%, transparent);}
+.delta.down{ color:var(--accent-2); background:color-mix(in oklab, var(--accent-2) 14%, transparent);}
+.delta.flat{ color:var(--text-dim); background:var(--panel-2);}
+.kpi-spark{ margin:14px -18px 0; height:42px;}
+.kpi-spark svg{ display:block; width:100%; height:100%;}
+.icon-i{
+  width:22px; height:22px; border-radius:6px; display:inline-grid; place-items:center;
+  background:var(--panel-2); color:var(--text-mute); font:700 11px/1 var(--font-mono);
+}
+
+/* ── annotation pills inside charts ────────────────── */
+.pin{
+  position:absolute; font:600 10.5px/1 var(--font-mono); letter-spacing:.06em;
+  background:var(--accent-2); color:#fff; padding:5px 8px; border-radius:6px;
+  white-space:nowrap; box-shadow:0 8px 18px -8px rgba(0,0,0,.6);
+  transform:translate(-50%,-100%); pointer-events:none;
+}
+.pin.good{ background:var(--accent-5); color:#03130a;}
+.pin.info{ background:var(--accent-1); color:#03191e;}
+.pin::after{
+  content:""; position:absolute; left:50%; bottom:-5px; transform:translateX(-50%);
+  border:5px solid transparent; border-top-color:currentColor; color:inherit;
+  width:0; height:0;
+}
+.pos{ position:relative; }
+
+/* ── legend chip ───────────────────────────────────── */
+.legend{ display:flex; flex-wrap:wrap; gap:14px; font:500 11.5px/1 var(--font-mono); color:var(--text-dim); margin-top:12px; letter-spacing:.02em;}
+.legend .sw{ display:inline-block; width:10px; height:10px; border-radius:3px; margin-right:7px; vertical-align:-1px;}
+
+/* ── benchmark / forecast in svg ───────────────────── */
+.bench-line{ stroke:var(--text-dim); stroke-dasharray:6 5; stroke-width:1.2; opacity:.55;}
+.bench-label{ fill:var(--text-dim); font:600 10px/1 var(--font-mono); letter-spacing:.06em;}
+
+/* ── filter / period chip example ──────────────────── */
+.chip-row{
+  display:flex; flex-wrap:wrap; gap:8px; align-items:center; margin-bottom:14px;
+}
+.chip{
+  font:600 11px/1 var(--font-mono); letter-spacing:.06em; text-transform:uppercase;
+  padding:6px 10px; border-radius:999px; background:var(--panel-2);
+  border:1px solid var(--border); color:var(--text-dim);
+}
+.chip.active{ background:color-mix(in oklab, var(--accent-1) 14%, transparent); border-color:color-mix(in oklab,var(--accent-1) 35%, transparent); color:var(--text);}
+.chip .x{ margin-left:6px; color:var(--text-mute);}
+
+/* ── ranking row ───────────────────────────────────── */
+.rank{ display:grid; grid-template-columns:24px 1fr 90px; align-items:center; gap:10px;
+  padding:8px 0; border-bottom:1px solid var(--border); }
+.rank:last-child{ border-bottom:none;}
+.rank .pos-num{ font:700 11px/1 var(--font-mono); color:var(--text-mute); text-align:right; }
+.rank .bar-wrap{ position:relative; height:22px; background:transparent;}
+.rank .bar{
+  position:absolute; left:0; top:0; height:22px; border-radius:5px;
+  background:linear-gradient(90deg, color-mix(in oklab,var(--accent-1) 55%, transparent), color-mix(in oklab,var(--accent-1) 12%, transparent));
+  border-left:2px solid var(--accent-1);
+}
+.rank .bar.self{
+  background:linear-gradient(90deg, color-mix(in oklab,var(--accent-2) 60%, transparent), color-mix(in oklab,var(--accent-2) 12%, transparent));
+  border-left-color:var(--accent-2);
+}
+.rank .bar.muted{
+  background:linear-gradient(90deg, rgba(120,145,255,.18), rgba(120,145,255,.04));
+  border-left:2px solid rgba(120,145,255,.35);
+}
+.rank .city{
+  position:absolute; left:10px; top:50%; transform:translateY(-50%);
+  font:600 12px/1 var(--font-display); color:var(--text);
+  white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:75%;
+  text-shadow:0 1px 2px rgba(0,0,0,.4);
+}
+.rank .city.self::after{
+  content:"você"; margin-left:8px; font:600 9px/1 var(--font-mono); letter-spacing:.1em;
+  text-transform:uppercase; color:var(--accent-2); background:color-mix(in oklab,var(--accent-2) 15%, transparent);
+  padding:2px 5px; border-radius:3px; vertical-align:1px;
+}
+.rank .val{ text-align:right; font:600 12px/1 var(--font-mono); color:var(--text-dim);}
+
+/* ── stat strip / hero KPI ─────────────────────────── */
+.hero-strip{
+  display:grid; grid-template-columns:1.4fr 1fr 1fr 1fr; gap:1px; background:var(--border);
+  border:1px solid var(--border); border-radius:16px; overflow:hidden;
+}
+.hero-strip > div{ background:var(--panel-solid); padding:18px 20px;}
+.hero-strip .big{ font:700 38px/1 var(--font-display); letter-spacing:-.025em; color:var(--text); margin-top:8px;}
+.hero-strip .big .unit{ font-size:18px; font-weight:500; color:var(--text-dim); margin-left:2px;}
+.hero-strip .lbl{ font:600 10.5px/1 var(--font-mono); letter-spacing:.1em; text-transform:uppercase; color:var(--text-dim);}
+.hero-strip .num{ font:600 18px/1 var(--font-display); letter-spacing:-.01em; color:var(--text); margin-top:6px;}
+.hero-strip .vs{ display:flex; gap:8px; align-items:center; margin-top:6px; font:500 11px/1 var(--font-mono); color:var(--text-dim);}
+
+/* ── system-wide opportunities table ───────────────── */
+.opps{
+  border:1px solid var(--border); border-radius:14px; overflow:hidden;
+  background:var(--panel);
+}
+.opps .row{
+  display:grid; grid-template-columns:38px 1.2fr 2fr 110px 110px;
+  gap:16px; padding:14px 18px; border-bottom:1px solid var(--border); align-items:start;
+}
+.opps .row:last-child{ border-bottom:none;}
+.opps .row.head{
+  background:var(--panel-2);
+  font:600 10px/1 var(--font-mono); text-transform:uppercase; letter-spacing:.12em; color:var(--text-mute);
+  padding:10px 18px;
+}
+.opps .id{ font:700 11px/1 var(--font-mono); color:var(--accent-1); letter-spacing:.06em;}
+.opps .what{ font:600 13px/1.35 var(--font-display); color:var(--text);}
+.opps .why{ font:400 12.5px/1.5 var(--font-display); color:var(--text-dim);}
+.tag{ font:600 9.5px/1 var(--font-mono); letter-spacing:.1em; text-transform:uppercase;
+  padding:4px 7px; border-radius:5px; display:inline-block;}
+.tag.high{ color:var(--accent-5); background:color-mix(in oklab,var(--accent-5) 14%, transparent);}
+.tag.med{  color:var(--accent-4); background:color-mix(in oklab,var(--accent-4) 14%, transparent);}
+.tag.low{  color:var(--text-dim); background:var(--panel-2);}
+.tag.s{ color:var(--accent-1); background:color-mix(in oklab,var(--accent-1) 14%, transparent);}
+.tag.m{ color:var(--accent-3); background:color-mix(in oklab,var(--accent-3) 14%, transparent);}
+.tag.l{ color:var(--accent-2); background:color-mix(in oklab,var(--accent-2) 14%, transparent);}
+
+/* ── empty / loading ───────────────────────────────── */
+.empty{
+  height:200px; border:1px dashed var(--border-strong); border-radius:12px;
+  display:flex; flex-direction:column; align-items:center; justify-content:center; gap:8px;
+  background: repeating-linear-gradient(135deg, transparent 0 10px, rgba(120,145,255,.03) 10px 20px);
+}
+.empty .eyebrow-sm{ font:600 10px/1 var(--font-mono); letter-spacing:.16em; text-transform:uppercase; color:var(--text-mute);}
+.empty h4{ margin:2px 0 0; font:600 14px/1.3 var(--font-display); color:var(--text-dim);}
+.empty p{ margin:0; max-width:280px; text-align:center; font:400 12px/1.45 var(--font-display); color:var(--text-mute);}
+.empty .btn{
+  margin-top:6px; font:600 11px/1 var(--font-mono); letter-spacing:.06em; text-transform:uppercase;
+  color:var(--accent-1); background:color-mix(in oklab,var(--accent-1) 10%, transparent);
+  border:1px solid color-mix(in oklab,var(--accent-1) 35%, transparent);
+  padding:7px 12px; border-radius:7px;
+}
+
+.skel{ background:linear-gradient(90deg, var(--panel-2) 0%, rgba(120,145,255,.06) 50%, var(--panel-2) 100%); border-radius:6px;
+  animation: shimmer 1.8s linear infinite; background-size:200% 100%;}
+@keyframes shimmer{ to{ background-position:-200% 0;}}
+
+/* ── side label inside chart ───────────────────────── */
+.chart-meta{
+  display:flex; justify-content:space-between; align-items:baseline; gap:12px; margin-bottom:8px;
+}
+.chart-meta h3{ margin:0; font:700 14px/1.2 var(--font-display); letter-spacing:-.005em;}
+.chart-meta .sub{ font:500 11px/1 var(--font-mono); color:var(--text-mute); letter-spacing:.04em;}
+.tabbar{ display:flex; gap:4px;}
+.tabbar .tab{
+  font:600 10.5px/1 var(--font-mono); letter-spacing:.06em; text-transform:uppercase;
+  padding:5px 8px; border-radius:6px; background:transparent; color:var(--text-mute);
+  border:1px solid transparent; cursor:default;
+}
+.tabbar .tab.active{ background:var(--panel-2); color:var(--text); border-color:var(--border-strong);}
+
+/* tooltip mock */
+.tt{
+  position:absolute; pointer-events:none; background:var(--panel-solid);
+  border:1px solid var(--border-strong); border-radius:10px; padding:10px 12px;
+  box-shadow:0 20px 40px -10px rgba(0,0,0,.6); min-width:160px;
+}
+.tt .l{ font:600 10.5px/1 var(--font-mono); text-transform:uppercase; letter-spacing:.08em; color:var(--text-mute); margin-bottom:6px;}
+.tt .r{ display:flex; justify-content:space-between; gap:14px; font:600 12px/1.3 var(--font-mono); color:var(--text);}
+.tt .r .n{ color:var(--text-dim); font-weight:500; display:flex; align-items:center; gap:6px;}
+.tt .r .sw{ width:8px; height:8px; border-radius:2px;}
+.tt .rule{ height:1px; background:var(--border); margin:6px 0;}
+.tt .small{ font:500 11px/1.3 var(--font-mono); color:var(--text-dim);}
+
+/* footer */
+footer{ margin-top:96px; padding-top:32px; border-top:1px solid var(--border); color:var(--text-mute); font-size:12px; font-family:var(--font-mono); letter-spacing:.04em;}
+
+@media (max-width:980px){
+  .compare, .compare.triple{ grid-template-columns:1fr;}
+  .toc{ grid-template-columns:1fr;}
+  .doc{ padding:36px 22px 72px;}
+  .h1{ font-size:34px;}
+  .hero-strip{ grid-template-columns:1fr 1fr;}
+  .opps .row{ grid-template-columns:1fr; }
+}
+</style>
+</head>
+<body>
+<div class="doc">
+
+<!-- ════════════════ HEADER ════════════════ -->
+<header data-screen-label="00 Cover">
+  <div class="eyebrow">Observatório Econômico Municipal · Design review · 17 mai 2026</div>
+  <h1 class="h1">Charts &amp; data display, <em>reviewed.</em></h1>
+  <p class="deck">
+    A pass over every chart family the dashboard uses today — KPI cards, time series, stacked compositions,
+    twin bars, donut, rankings, and tables — with concrete proposals for hierarchy, encoding, and consistency.
+    Everything below uses your existing NID tokens (theme-neon) so it can be lifted straight into the codebase.
+  </p>
+
+  <div class="toc">
+    <a href="#findings"><span class="n">00</span><span class="t">Five findings, up top</span></a>
+    <a href="#kpi"><span class="n">01</span><span class="t">KPI cards &amp; the hero strip</span></a>
+    <a href="#timeseries"><span class="n">02</span><span class="t">Time series — PIB, Arrecadação</span></a>
+    <a href="#stacks"><span class="n">03</span><span class="t">Stacked composition — VA por setor</span></a>
+    <a href="#twin"><span class="n">04</span><span class="t">CAGED — admissões vs. desligamentos</span></a>
+    <a href="#compare"><span class="n">05</span><span class="t">Multi-município comparison</span></a>
+    <a href="#donut"><span class="n">06</span><span class="t">Donut → part-to-whole</span></a>
+    <a href="#ranking"><span class="n">07</span><span class="t">Ranking / horizontal bar</span></a>
+    <a href="#table"><span class="n">08</span><span class="t">Tables, empty &amp; loading states</span></a>
+    <a href="#system"><span class="n">09</span><span class="t">System-wide opportunities</span></a>
+  </div>
+</header>
+
+
+<!-- ════════════════ FINDINGS ════════════════ -->
+<section id="findings" data-screen-label="01 Findings">
+  <div class="sec-head"><span class="sec-num">00 · DIAGNOSIS</span></div>
+  <h2 class="sec-title">Five things showing up everywhere.</h2>
+  <p class="sec-sub">
+    Before we get to chart-by-chart redesigns, these themes recur across <code style="font-family:var(--font-mono); color:var(--text)">PibPage</code>,
+    <code style="font-family:var(--font-mono); color:var(--text)">CagedPage</code>, <code style="font-family:var(--font-mono); color:var(--text)">DashboardGeralPage</code> and the rest.
+    Fixing them once at the chart-component level fixes them everywhere.
+  </p>
+
+  <div class="opps">
+    <div class="row head"><div>#</div><div>What</div><div>Why it matters</div><div>Where</div><div>Impact</div></div>
+
+    <div class="row">
+      <div class="id">A</div>
+      <div class="what">Two chart libraries in parallel</div>
+      <div class="why"><b>Recharts</b> still lives in <code style="font-family:var(--font-mono)">PibPage</code> (and a few others), while everything new uses the custom <code style="font-family:var(--font-mono)">charts.jsx</code>. They render differently — different padding, axis density, tooltip shape, hover behavior. Pick one and migrate.</div>
+      <div><span class="tag low">consistency</span></div>
+      <div><span class="tag high">high</span></div>
+    </div>
+
+    <div class="row">
+      <div class="id">B</div>
+      <div class="what">Glow on everything dilutes the signal</div>
+      <div class="why">Glow currently fires on lines, areas, bars, dots, donut slices, hover halos. When everything glows, nothing does. Reserve glow for <b>focused</b> or <b>hovered</b> elements, mute the rest. Especially important in dense screens like <code style="font-family:var(--font-mono)">DashboardGeralPage</code>.</div>
+      <div><span class="tag low">visual hierarchy</span></div>
+      <div><span class="tag high">high</span></div>
+    </div>
+
+    <div class="row">
+      <div class="id">C</div>
+      <div class="what">Every KPI is "value + sub", never a trend</div>
+      <div class="why">You already ship <code style="font-family:var(--font-mono)">Sparkline</code> and <code style="font-family:var(--font-mono)">.nid-delta</code>, but <code style="font-family:var(--font-mono)">KpiCard</code> doesn't render them. A prefeito wants to know <b>"is this up or down vs last year"</b> in 1 glance, not 3 mental steps.</div>
+      <div><span class="tag low">scanability</span></div>
+      <div><span class="tag high">high</span></div>
+    </div>
+
+    <div class="row">
+      <div class="id">D</div>
+      <div class="what">Numbers without context</div>
+      <div class="why">"R$ 1,2 Bi" means nothing without <b>vs. when</b>, <b>vs. who</b>, and <b>vs. trend</b>. The IDEAS.md backlog already calls for benchmark lines and forecast tails — both deserve to be first-class in the chart components, not optional decoration.</div>
+      <div><span class="tag low">interpretation</span></div>
+      <div><span class="tag med">medium</span></div>
+    </div>
+
+    <div class="row">
+      <div class="id">E</div>
+      <div class="what">Comparison-by-color breaks past 3 cities</div>
+      <div class="why">In <code style="font-family:var(--font-mono)">/comparativo</code> and <code style="font-family:var(--font-mono)">PibPage</code>, every município gets its own color from a 6-color palette. Past 3 lines, legends become a chore and color stops carrying meaning. Switch to <b>focus + context</b>: own município highlighted, peers in muted grey, hover to call out.</div>
+      <div><span class="tag low">encoding</span></div>
+      <div><span class="tag med">medium</span></div>
+    </div>
+  </div>
+</section>
+
+
+<!-- ════════════════ 01 · KPI ════════════════ -->
+<section id="kpi" data-screen-label="02 KPI cards">
+  <div class="sec-head"><span class="sec-num">01 · KPI</span></div>
+  <h2 class="sec-title">KPI cards &amp; the hero strip.</h2>
+  <p class="sec-sub">
+    <code style="font-family:var(--font-mono)">KpiCard</code> currently renders label + value + sub + ⓘ. Three small additions turn it from a labelled number into a fast-readable indicator: an <b>inline delta chip</b>, a <b>sparkline</b> under the value, and a <b>scale unit</b> separate from the value so the typography doesn't collapse.
+  </p>
+
+  <div class="compare">
+
+    <!-- CURRENT KPI -->
+    <div class="card bad">
+      <div class="card-tag"><span class="dot"></span>Current · KpiCard.jsx</div>
+      <h3 class="card-title">PIB Último Ano</h3>
+      <div class="card-sub">DashboardGeralPage → cards[0]</div>
+
+      <div class="kpi" style="margin-top:6px;">
+        <div class="kpi-label"><span>PIB Último Ano</span><span class="icon-i">i</span></div>
+        <div class="kpi-value">R$ 1.247.832.450</div>
+        <div class="kpi-foot"><span>Ano 2023</span></div>
+        <div style="height:14px"></div>
+      </div>
+
+      <ul class="notes bad">
+        <li>Value runs to <b>15 characters</b>; the eye can't compare it to other cards. Use short notation (R$ 1.25 Bi) by default with the long form on hover.</li>
+        <li>No <b>direction</b> — is this up or down vs 2022? The page has the data (<code style="font-family:var(--font-mono)">resumo.crescimento_percentual</code>) but it's hidden in a separate card.</li>
+        <li>"Ano 2023" steals the "sub" slot. That's a <b>period</b>, not a footnote — belongs in the chip row at the top of the page, not on every card.</li>
+        <li>The ⓘ is the only colored thing, so the eye lands there first.</li>
+      </ul>
+    </div>
+
+    <!-- PROPOSED KPI -->
+    <div class="card good">
+      <div class="card-tag"><span class="dot"></span>Proposed · KpiCard v2</div>
+      <h3 class="card-title">PIB Último Ano</h3>
+      <div class="card-sub">label · value(unit) · delta · spark · period</div>
+
+      <div class="kpi" style="margin-top:6px;">
+        <div class="kpi-label"><span>PIB Último Ano · 2023</span><span class="icon-i" style="opacity:.5">i</span></div>
+        <div class="kpi-value">R$ 1.25 <span class="unit">Bi</span></div>
+        <div class="kpi-foot">
+          <span class="delta up">▲ +8.4%</span>
+          <span>vs 2022</span>
+          <span style="margin-left:auto; color:var(--text-mute);">série 2010–2023</span>
+        </div>
+        <div class="kpi-spark">
+          <svg viewBox="0 0 240 42" preserveAspectRatio="none">
+            <defs>
+              <linearGradient id="sp1" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stop-color="var(--accent-1)" stop-opacity=".45"/>
+                <stop offset="100%" stop-color="var(--accent-1)" stop-opacity="0"/>
+              </linearGradient>
+            </defs>
+            <path d="M6 30 C 30 28, 40 32, 55 26 S 90 18, 110 22 S 150 12, 175 14 S 210 8, 234 6 L 234 42 L 6 42 Z" fill="url(#sp1)"/>
+            <path d="M6 30 C 30 28, 40 32, 55 26 S 90 18, 110 22 S 150 12, 175 14 S 210 8, 234 6"
+                  stroke="var(--accent-1)" stroke-width="1.6" fill="none" stroke-linecap="round"/>
+            <circle cx="234" cy="6" r="3" fill="var(--bg)" stroke="var(--accent-1)" stroke-width="1.8"/>
+          </svg>
+        </div>
+      </div>
+
+      <ul class="notes good">
+        <li><b>Unit is a sub-element</b> ("Bi") in lighter weight — the eye reads "1.25" as one token, which is the right granularity for comparison across cards.</li>
+        <li><b>Delta chip</b> reuses existing <code style="font-family:var(--font-mono)">.nid-delta</code> — finally has a job.</li>
+        <li><b>Sparkline</b> reuses your existing <code style="font-family:var(--font-mono)">Sparkline</code> component — pass <code style="font-family:var(--font-mono)">serie</code> as a prop on the page.</li>
+        <li>Period merges into the eyebrow ("PIB Último Ano · 2023") so the foot row is reserved for <i>delta + context</i>, never duplicates of the label.</li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- HERO STRIP variant -->
+  <h3 style="margin:36px 0 6px; font-size:18px; letter-spacing:-.01em;">Variant — a single "hero" strip for landing pages</h3>
+  <p class="sec-sub" style="margin-top:0;">
+    On <code style="font-family:var(--font-mono)">DashboardGeralPage</code> the first row is 3-4 cards of equal weight. There's one number that actually matters most (the indicator the page is built around). Promote it; demote the rest into a connected strip.
+  </p>
+
+  <div class="compare single">
+    <div class="card good">
+      <div class="card-tag"><span class="dot"></span>Proposed · hero strip</div>
+      <div class="hero-strip">
+        <div>
+          <div class="lbl">PIB Total · 2023</div>
+          <div class="big">R$ 1.25 <span class="unit">Bi</span></div>
+          <div class="vs"><span class="delta up">▲ +8.4%</span> vs 2022 · <span style="color:var(--accent-1)">acima da média estadual</span></div>
+        </div>
+        <div>
+          <div class="lbl">Per capita</div>
+          <div class="num">R$ 28.4k</div>
+          <div class="vs"><span class="delta up">▲ +5.1%</span></div>
+        </div>
+        <div>
+          <div class="lbl">Posição estadual</div>
+          <div class="num">#12 / 245</div>
+          <div class="vs"><span class="delta flat">— sem alteração</span></div>
+        </div>
+        <div>
+          <div class="lbl">Anos na série</div>
+          <div class="num">14 anos</div>
+          <div class="vs">2010 — 2023</div>
+        </div>
+      </div>
+      <ul class="notes good" style="grid-template-columns:1fr 1fr; display:grid;">
+        <li>Hero number gets 38px; satellites get 18px. The eye now has a clear order to read in.</li>
+        <li>Joined by a 1px divider line — visually one component, not four cards floating in a grid.</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+
+<!-- ════════════════ 02 · TIME SERIES ════════════════ -->
+<section id="timeseries" data-screen-label="03 Time series">
+  <div class="sec-head"><span class="sec-num">02 · TIME SERIES</span></div>
+  <h2 class="sec-title">Time series — make the axis disappear, make the story appear.</h2>
+  <p class="sec-sub">
+    The <code style="font-family:var(--font-mono)">AreaLineChart</code> is solid. The biggest wins are <b>axis quieting</b> (one unit caption instead of 5 R$-prefixed labels), <b>benchmark + forecast</b> (already in your backlog), and <b>annotating the events that matter</b> (worst month, new peak, COVID dip) rather than relying on the user to spot them.
+  </p>
+
+  <div class="compare">
+
+    <!-- CURRENT line -->
+    <div class="card bad">
+      <div class="card-tag"><span class="dot"></span>Current · AreaLineChart</div>
+      <div class="chart-meta"><h3>Evolução Anual do PIB</h3><span class="sub">2010 — 2023</span></div>
+      <div class="pos">
+        <svg viewBox="0 0 560 240" style="width:100%; height:auto;">
+          <!-- gridlines + Y labels (current: R$ on every tick) -->
+          <g>
+            <line class="grid-line" x1="70" x2="544" y1="40" y2="40"/><text class="axis-text" x="60" y="44" text-anchor="end">R$ 1.4B</text>
+            <line class="grid-line" x1="70" x2="544" y1="90" y2="90"/><text class="axis-text" x="60" y="94" text-anchor="end">R$ 1.0B</text>
+            <line class="grid-line" x1="70" x2="544" y1="140" y2="140"/><text class="axis-text" x="60" y="144" text-anchor="end">R$ 700M</text>
+            <line class="grid-line" x1="70" x2="544" y1="190" y2="190"/><text class="axis-text" x="60" y="194" text-anchor="end">R$ 400M</text>
+            <line class="grid-line" x1="70" x2="544" y1="210" y2="210"/><text class="axis-text" x="60" y="214" text-anchor="end">R$ 100M</text>
+          </g>
+          <!-- area + glow line + dots (current style with heavy glow) -->
+          <defs>
+            <linearGradient id="a1cur" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stop-color="var(--accent-1)" stop-opacity=".45"/>
+              <stop offset="100%" stop-color="var(--accent-1)" stop-opacity="0"/>
+            </linearGradient>
+            <filter id="glowCur" x="-50%" y="-50%" width="200%" height="200%">
+              <feGaussianBlur stdDeviation="4"/>
+            </filter>
+          </defs>
+          <path d="M76 200 L112 195 L146 188 L180 180 L214 170 L250 160 L284 145 L320 138 L354 130 L388 110 L422 95 L456 84 L490 70 L526 56 L526 215 L76 215 Z" fill="url(#a1cur)"/>
+          <path d="M76 200 L112 195 L146 188 L180 180 L214 170 L250 160 L284 145 L320 138 L354 130 L388 110 L422 95 L456 84 L490 70 L526 56"
+                stroke="var(--accent-1)" stroke-width="6" fill="none" opacity=".5" filter="url(#glowCur)"/>
+          <path d="M76 200 L112 195 L146 188 L180 180 L214 170 L250 160 L284 145 L320 138 L354 130 L388 110 L422 95 L456 84 L490 70 L526 56"
+                stroke="var(--accent-1)" stroke-width="2.25" fill="none"/>
+          <!-- X labels every year -->
+          <g>
+            <text class="axis-text" x="76" y="232" text-anchor="middle">2010</text>
+            <text class="axis-text" x="146" y="232" text-anchor="middle">2012</text>
+            <text class="axis-text" x="214" y="232" text-anchor="middle">2014</text>
+            <text class="axis-text" x="284" y="232" text-anchor="middle">2016</text>
+            <text class="axis-text" x="354" y="232" text-anchor="middle">2018</text>
+            <text class="axis-text" x="422" y="232" text-anchor="middle">2020</text>
+            <text class="axis-text" x="490" y="232" text-anchor="middle">2022</text>
+          </g>
+          <!-- glowed dots -->
+          <g>
+            <circle cx="76" cy="200" r="5" fill="var(--accent-1)" opacity=".3" filter="url(#glowCur)"/>
+            <circle cx="76" cy="200" r="2.5" fill="var(--bg)" stroke="var(--accent-1)" stroke-width="2"/>
+            <circle cx="146" cy="188" r="5" fill="var(--accent-1)" opacity=".3" filter="url(#glowCur)"/>
+            <circle cx="146" cy="188" r="2.5" fill="var(--bg)" stroke="var(--accent-1)" stroke-width="2"/>
+            <circle cx="214" cy="170" r="5" fill="var(--accent-1)" opacity=".3" filter="url(#glowCur)"/>
+            <circle cx="214" cy="170" r="2.5" fill="var(--bg)" stroke="var(--accent-1)" stroke-width="2"/>
+            <circle cx="284" cy="145" r="5" fill="var(--accent-1)" opacity=".3" filter="url(#glowCur)"/>
+            <circle cx="284" cy="145" r="2.5" fill="var(--bg)" stroke="var(--accent-1)" stroke-width="2"/>
+            <circle cx="354" cy="130" r="5" fill="var(--accent-1)" opacity=".3" filter="url(#glowCur)"/>
+            <circle cx="354" cy="130" r="2.5" fill="var(--bg)" stroke="var(--accent-1)" stroke-width="2"/>
+            <circle cx="422" cy="95" r="5" fill="var(--accent-1)" opacity=".3" filter="url(#glowCur)"/>
+            <circle cx="422" cy="95" r="2.5" fill="var(--bg)" stroke="var(--accent-1)" stroke-width="2"/>
+            <circle cx="490" cy="70" r="5" fill="var(--accent-1)" opacity=".3" filter="url(#glowCur)"/>
+            <circle cx="490" cy="70" r="2.5" fill="var(--bg)" stroke="var(--accent-1)" stroke-width="2"/>
+            <circle cx="526" cy="56" r="5" fill="var(--accent-1)" opacity=".3" filter="url(#glowCur)"/>
+            <circle cx="526" cy="56" r="2.5" fill="var(--bg)" stroke="var(--accent-1)" stroke-width="2"/>
+          </g>
+        </svg>
+      </div>
+      <ul class="notes bad">
+        <li>"R$" repeated 5 times on the Y axis. Reads as 5 currencies, not 5 numbers.</li>
+        <li>Every point gets a dot + glow halo, including 12 unimportant ones. The eye doesn't know where to land.</li>
+        <li>No <b>benchmark</b>, no <b>peak/trough callouts</b>, no <b>forecast</b>. A prefeito has to mentally compute "is this trajectory good".</li>
+        <li>X-axis stops at the last data point — looks like the chart ended, not the data.</li>
+      </ul>
+    </div>
+
+    <!-- PROPOSED line -->
+    <div class="card good">
+      <div class="card-tag"><span class="dot"></span>Proposed · AreaLineChart v2</div>
+      <div class="chart-meta">
+        <div>
+          <h3>Evolução Anual do PIB</h3>
+          <span class="sub">PIB total · R$ milhões · 2010 — 2023 + projeção 24'</span>
+        </div>
+        <div class="tabbar">
+          <button class="tab">12m</button>
+          <button class="tab">5a</button>
+          <button class="tab active">Tudo</button>
+        </div>
+      </div>
+      <div class="pos">
+        <svg viewBox="0 0 560 240" style="width:100%; height:auto;">
+          <!-- Y caption + 3 ticks (clean) -->
+          <text class="axis-cap" x="14" y="40" transform="rotate(-90 14 40)" text-anchor="end">R$ MILHÕES</text>
+          <g>
+            <line class="grid-line" x1="56" x2="544" y1="50" y2="50"/><text class="axis-text bright" x="50" y="54" text-anchor="end">1 400</text>
+            <line class="grid-line" x1="56" x2="544" y1="115" y2="115"/><text class="axis-text bright" x="50" y="119" text-anchor="end">800</text>
+            <line class="grid-line" x1="56" x2="544" y1="200" y2="200"/><text class="axis-text bright" x="50" y="204" text-anchor="end">200</text>
+          </g>
+
+          <!-- benchmark line (state avg) -->
+          <line class="bench-line" x1="56" x2="544" y1="148" y2="148"/>
+          <text class="bench-label" x="540" y="143" text-anchor="end">média estadual · 600M</text>
+
+          <!-- area -->
+          <defs>
+            <linearGradient id="a1new" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stop-color="var(--accent-1)" stop-opacity=".30"/>
+              <stop offset="100%" stop-color="var(--accent-1)" stop-opacity="0"/>
+            </linearGradient>
+            <linearGradient id="forecast-g" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stop-color="var(--accent-3)" stop-opacity=".20"/>
+              <stop offset="100%" stop-color="var(--accent-3)" stop-opacity="0"/>
+            </linearGradient>
+          </defs>
+
+          <!-- historical area -->
+          <path d="M62 200 L96 195 L130 188 L164 180 L198 170 L232 160 L266 145 L300 138 L334 130 L368 110 L402 95 L436 84 L470 70 L504 56 L504 215 L62 215 Z" fill="url(#a1new)"/>
+
+          <!-- COVID dip annotation band -->
+          <rect x="385" y="32" width="34" height="183" fill="rgba(255,61,146,.06)" stroke="rgba(255,61,146,.15)"/>
+
+          <!-- main line (no glow, single weight) -->
+          <path d="M62 200 L96 195 L130 188 L164 180 L198 170 L232 160 L266 145 L300 138 L334 130 L368 110 L402 95 L436 84 L470 70 L504 56"
+                stroke="var(--accent-1)" stroke-width="2" fill="none" stroke-linecap="round"/>
+
+          <!-- forecast continuation (dashed) -->
+          <path d="M504 56 L540 46" stroke="var(--accent-3)" stroke-width="2" stroke-dasharray="3 4" fill="none"/>
+          <path d="M504 56 L540 46 L540 90 L504 90 Z" fill="url(#forecast-g)" opacity=".4"/>
+
+          <!-- only callout dots: first, dip, current -->
+          <circle cx="62" cy="200" r="3.5" fill="var(--bg)" stroke="var(--accent-1)" stroke-width="2"/>
+          <circle cx="402" cy="95" r="3.5" fill="var(--bg)" stroke="var(--accent-2)" stroke-width="2"/>
+          <circle cx="504" cy="56" r="4" fill="var(--accent-1)"/>
+
+          <!-- X labels (sparse) -->
+          <g>
+            <text class="axis-text" x="62" y="232" text-anchor="middle">2010</text>
+            <text class="axis-text" x="232" y="232" text-anchor="middle">2014</text>
+            <text class="axis-text" x="402" y="232" text-anchor="middle">2020</text>
+            <text class="axis-text" x="504" y="232" text-anchor="middle">2023</text>
+            <text class="axis-text" x="540" y="232" text-anchor="middle" fill="var(--accent-3)">'24 P</text>
+          </g>
+        </svg>
+
+        <div class="pin good" style="left:11.7%; top:15%;">Início da série</div>
+        <div class="pin info" style="left:73.5%; top:30%;">Recuperação pós-2020</div>
+        <div class="pin" style="left:91%; top:18%; background:var(--accent-3); color:#fff;">Projeção +6%</div>
+      </div>
+
+      <div class="legend">
+        <span><span class="sw" style="background:var(--accent-1)"></span>PIB Total</span>
+        <span><span class="sw" style="background:var(--accent-3); opacity:.4"></span>Projeção (regressão 6 pts)</span>
+        <span><span class="sw" style="background:var(--text-dim); height:2px; width:14px; border-radius:0;"></span>Média estadual</span>
+      </div>
+
+      <ul class="notes good">
+        <li>Y axis becomes <b>a caption ("R$ MILHÕES") + 3 ticks</b>. Quieter, less ink, more scannable.</li>
+        <li><b>Benchmark line</b> at "média estadual" gives every absolute number a relative reading.</li>
+        <li><b>Forecast tail</b> (dashed, accent-3) extends past the last point — same regression idea already in IDEAS.md.</li>
+        <li>Dots only on <b>moments worth pointing at</b>: first point, COVID trough, current value.</li>
+        <li>Annotation pins replace the "you have to hover to see what happened" model.</li>
+      </ul>
+    </div>
+
+  </div>
+</section>
+
+
+<!-- ════════════════ 03 · STACKED ════════════════ -->
+<section id="stacks" data-screen-label="04 Stacked composition">
+  <div class="sec-head"><span class="sec-num">03 · STACKED</span></div>
+  <h2 class="sec-title">Stacked composition is two questions, not one.</h2>
+  <p class="sec-sub">
+    "Valor Adicionado por Setor" is doing double duty: <b>how big is the total</b> and <b>how big is each setor</b>. A stack on absolute values answers #1 well and #2 badly (you can't compare the middle slices across years). Show both: a stacked-totals chart <i>and</i> a 100% small-multiple share view, toggled.
+  </p>
+
+  <div class="compare">
+
+    <!-- CURRENT stacked -->
+    <div class="card bad">
+      <div class="card-tag"><span class="dot"></span>Current · StackedBarChart</div>
+      <div class="chart-meta"><h3>Valor Adicionado por Setor</h3><span class="sub">PIB · 2019 — 2023</span></div>
+      <div class="pos">
+        <svg viewBox="0 0 560 240" style="width:100%; height:auto;">
+          <g>
+            <line class="grid-line" x1="60" x2="544" y1="40" y2="40"/><text class="axis-text" x="52" y="44" text-anchor="end">R$ 1.2B</text>
+            <line class="grid-line" x1="60" x2="544" y1="100" y2="100"/><text class="axis-text" x="52" y="104" text-anchor="end">R$ 800M</text>
+            <line class="grid-line" x1="60" x2="544" y1="160" y2="160"/><text class="axis-text" x="52" y="164" text-anchor="end">R$ 400M</text>
+            <line class="grid-line" x1="60" x2="544" y1="210" y2="210"/><text class="axis-text" x="52" y="214" text-anchor="end">R$ 0</text>
+          </g>
+          <!-- 5 stacked bars with all 4 segments + heavy gradients -->
+          <g>
+            <!-- 2019 -->
+            <rect x="100" y="160" width="60" height="50" fill="var(--accent-5)" opacity=".85"/>
+            <rect x="100" y="120" width="60" height="40" fill="var(--accent-1)" opacity=".85"/>
+            <rect x="100" y="80"  width="60" height="40" fill="var(--accent-4)" opacity=".85"/>
+            <rect x="100" y="60"  width="60" height="20" rx="5" fill="var(--accent-3)" opacity=".85"/>
+            <text class="axis-text" x="130" y="228" text-anchor="middle">2019</text>
+            <!-- 2020 -->
+            <rect x="190" y="170" width="60" height="40" fill="var(--accent-5)" opacity=".85"/>
+            <rect x="190" y="130" width="60" height="40" fill="var(--accent-1)" opacity=".85"/>
+            <rect x="190" y="92"  width="60" height="38" fill="var(--accent-4)" opacity=".85"/>
+            <rect x="190" y="72"  width="60" height="20" rx="5" fill="var(--accent-3)" opacity=".85"/>
+            <text class="axis-text" x="220" y="228" text-anchor="middle">2020</text>
+            <!-- 2021 -->
+            <rect x="280" y="155" width="60" height="55" fill="var(--accent-5)" opacity=".85"/>
+            <rect x="280" y="110" width="60" height="45" fill="var(--accent-1)" opacity=".85"/>
+            <rect x="280" y="65"  width="60" height="45" fill="var(--accent-4)" opacity=".85"/>
+            <rect x="280" y="45"  width="60" height="20" rx="5" fill="var(--accent-3)" opacity=".85"/>
+            <text class="axis-text" x="310" y="228" text-anchor="middle">2021</text>
+            <!-- 2022 -->
+            <rect x="370" y="148" width="60" height="62" fill="var(--accent-5)" opacity=".85"/>
+            <rect x="370" y="100" width="60" height="48" fill="var(--accent-1)" opacity=".85"/>
+            <rect x="370" y="52"  width="60" height="48" fill="var(--accent-4)" opacity=".85"/>
+            <rect x="370" y="32"  width="60" height="20" rx="5" fill="var(--accent-3)" opacity=".85"/>
+            <text class="axis-text" x="400" y="228" text-anchor="middle">2022</text>
+            <!-- 2023 -->
+            <rect x="460" y="140" width="60" height="70" fill="var(--accent-5)" opacity=".85"/>
+            <rect x="460" y="92"  width="60" height="48" fill="var(--accent-1)" opacity=".85"/>
+            <rect x="460" y="44"  width="60" height="48" fill="var(--accent-4)" opacity=".85"/>
+            <rect x="460" y="24"  width="60" height="20" rx="5" fill="var(--accent-3)" opacity=".85"/>
+            <text class="axis-text" x="490" y="228" text-anchor="middle">2023</text>
+          </g>
+        </svg>
+      </div>
+
+      <div class="legend">
+        <span><span class="sw" style="background:var(--accent-5)"></span>Agropecuária</span>
+        <span><span class="sw" style="background:var(--accent-1)"></span>Indústria</span>
+        <span><span class="sw" style="background:var(--accent-4)"></span>Serviços</span>
+        <span><span class="sw" style="background:var(--accent-3)"></span>Governo</span>
+      </div>
+
+      <ul class="notes bad">
+        <li>Middle segments float — try to answer <i>"did Indústria grow from 2019 to 2023?"</i> by eye. You can't.</li>
+        <li>4 saturated colors all competing for attention. There's no <b>focus</b>.</li>
+        <li>Top-segment radius-5 on every bar is a small but noticeable inconsistency — only the top setor reads as a "real" bar.</li>
+      </ul>
+    </div>
+
+    <!-- PROPOSED stacked -->
+    <div class="card good">
+      <div class="card-tag"><span class="dot"></span>Proposed · totals + share toggle</div>
+      <div class="chart-meta">
+        <div>
+          <h3>Valor Adicionado por Setor</h3>
+          <span class="sub">stacked total · clique para alternar para % composição</span>
+        </div>
+        <div class="tabbar">
+          <button class="tab active">Total (R$)</button>
+          <button class="tab">% Comp.</button>
+        </div>
+      </div>
+
+      <!-- Same data but lined-up baselines via small lines + total on top -->
+      <div class="pos">
+        <svg viewBox="0 0 560 240" style="width:100%; height:auto;">
+          <text class="axis-cap" x="14" y="40" transform="rotate(-90 14 40)" text-anchor="end">R$ MILHÕES</text>
+          <g>
+            <line class="grid-line" x1="48" x2="544" y1="50" y2="50"/><text class="axis-text bright" x="42" y="54" text-anchor="end">1 200</text>
+            <line class="grid-line" x1="48" x2="544" y1="130" y2="130"/><text class="axis-text bright" x="42" y="134" text-anchor="end">600</text>
+            <line class="grid-line" x1="48" x2="544" y1="210" y2="210"/><text class="axis-text bright" x="42" y="214" text-anchor="end">0</text>
+          </g>
+          <!-- 5 stacks, but each layer in same color family, growing lighter; total label on top -->
+          <g>
+            <!-- 2019 -->
+            <rect x="92" y="160" width="64" height="50" fill="var(--accent-1)" opacity=".95"/>
+            <rect x="92" y="120" width="64" height="40" fill="var(--accent-1)" opacity=".7"/>
+            <rect x="92" y="80"  width="64" height="40" fill="var(--accent-1)" opacity=".45"/>
+            <rect x="92" y="60"  width="64" height="20" fill="var(--accent-1)" opacity=".25"/>
+            <text class="axis-text" x="124" y="50" text-anchor="middle" style="fill:var(--text);">R$ 750M</text>
+            <text class="axis-text" x="124" y="228" text-anchor="middle">2019</text>
+            <!-- 2020 -->
+            <rect x="182" y="170" width="64" height="40" fill="var(--accent-1)" opacity=".95"/>
+            <rect x="182" y="130" width="64" height="40" fill="var(--accent-1)" opacity=".7"/>
+            <rect x="182" y="92"  width="64" height="38" fill="var(--accent-1)" opacity=".45"/>
+            <rect x="182" y="72"  width="64" height="20" fill="var(--accent-1)" opacity=".25"/>
+            <text class="axis-text" x="214" y="62" text-anchor="middle" style="fill:var(--text);">R$ 690M</text>
+            <text class="axis-text" x="214" y="228" text-anchor="middle">2020</text>
+            <!-- 2021 -->
+            <rect x="272" y="155" width="64" height="55" fill="var(--accent-1)" opacity=".95"/>
+            <rect x="272" y="110" width="64" height="45" fill="var(--accent-1)" opacity=".7"/>
+            <rect x="272" y="65"  width="64" height="45" fill="var(--accent-1)" opacity=".45"/>
+            <rect x="272" y="45"  width="64" height="20" fill="var(--accent-1)" opacity=".25"/>
+            <text class="axis-text" x="304" y="35" text-anchor="middle" style="fill:var(--text);">R$ 900M</text>
+            <text class="axis-text" x="304" y="228" text-anchor="middle">2021</text>
+            <!-- 2022 (highlighted) -->
+            <rect x="362" y="148" width="64" height="62" fill="var(--accent-1)" opacity=".95"/>
+            <rect x="362" y="100" width="64" height="48" fill="var(--accent-1)" opacity=".7"/>
+            <rect x="362" y="52"  width="64" height="48" fill="var(--accent-1)" opacity=".45"/>
+            <rect x="362" y="32"  width="64" height="20" fill="var(--accent-1)" opacity=".25"/>
+            <text class="axis-text" x="394" y="22" text-anchor="middle" style="fill:var(--text);">R$ 1.05B</text>
+            <text class="axis-text" x="394" y="228" text-anchor="middle">2022</text>
+            <!-- 2023 (latest, accent-2 outline) -->
+            <rect x="452" y="140" width="64" height="70" fill="var(--accent-1)" opacity=".95"/>
+            <rect x="452" y="92"  width="64" height="48" fill="var(--accent-1)" opacity=".7"/>
+            <rect x="452" y="44"  width="64" height="48" fill="var(--accent-1)" opacity=".45"/>
+            <rect x="452" y="24"  width="64" height="20" fill="var(--accent-1)" opacity=".25"/>
+            <rect x="450" y="22" width="68" height="190" fill="none" stroke="var(--accent-2)" stroke-width="1.5" rx="3"/>
+            <text class="axis-text" x="484" y="14" text-anchor="middle" style="fill:var(--accent-2);">R$ 1.25B · +19%</text>
+            <text class="axis-text" x="484" y="228" text-anchor="middle" style="fill:var(--text);">2023</text>
+          </g>
+        </svg>
+      </div>
+
+      <div class="legend">
+        <span><span class="sw" style="background:var(--accent-1); opacity:.95"></span>Agropecuária</span>
+        <span><span class="sw" style="background:var(--accent-1); opacity:.7"></span>Indústria</span>
+        <span><span class="sw" style="background:var(--accent-1); opacity:.45"></span>Serviços</span>
+        <span><span class="sw" style="background:var(--accent-1); opacity:.25"></span>Governo</span>
+      </div>
+
+      <ul class="notes good">
+        <li><b>Total label above each bar</b> answers "how big is the year" without forcing a Y-axis lookup.</li>
+        <li><b>Single hue, varying opacity</b> for setors — color stops competing, the legend now describes a scale not a rainbow.</li>
+        <li><b>Latest year framed</b> in accent-2 + delta in the label — "what changed this year" is the first thing the eye finds.</li>
+        <li><b>Toggle to % composição</b> for the "share over time" question (small multiples in next card).</li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- small multiples for share -->
+  <h3 style="margin:36px 0 6px; font-size:18px; letter-spacing:-.01em;">Small multiples — one setor at a time, share view</h3>
+  <p class="sec-sub" style="margin-top:0;">
+    When the question is "is Indústria losing share?", four tiny aligned charts beat one stacked chart every time. Same data, drastically more legible.
+  </p>
+
+  <div class="compare triple" style="grid-template-columns:repeat(4,1fr);">
+    <div class="card good" style="padding:14px 16px;">
+      <div class="kpi-label" style="margin-bottom:6px;">Agropecuária <span class="delta down" style="margin-left:auto">▼ 2.1%</span></div>
+      <div style="font:700 22px/1 var(--font-display); color:var(--text);">22% <span style="color:var(--text-dim); font-size:12px;">de 2023</span></div>
+      <svg viewBox="0 0 200 60" style="width:100%; height:60px; margin-top:8px;">
+        <path d="M6 18 L40 16 L74 20 L108 24 L142 30 L176 36 L194 38" stroke="var(--accent-5)" stroke-width="2" fill="none"/>
+        <line x1="6" x2="194" y1="30" y2="30" class="bench-line" stroke-dasharray="4 4"/>
+      </svg>
+    </div>
+    <div class="card good" style="padding:14px 16px;">
+      <div class="kpi-label" style="margin-bottom:6px;">Indústria <span class="delta down" style="margin-left:auto">▼ 4.7%</span></div>
+      <div style="font:700 22px/1 var(--font-display); color:var(--text);">18% <span style="color:var(--text-dim); font-size:12px;">de 2023</span></div>
+      <svg viewBox="0 0 200 60" style="width:100%; height:60px; margin-top:8px;">
+        <path d="M6 14 L40 18 L74 22 L108 28 L142 34 L176 40 L194 44" stroke="var(--accent-1)" stroke-width="2" fill="none"/>
+        <line x1="6" x2="194" y1="28" y2="28" class="bench-line" stroke-dasharray="4 4"/>
+      </svg>
+    </div>
+    <div class="card good" style="padding:14px 16px;">
+      <div class="kpi-label" style="margin-bottom:6px;">Serviços <span class="delta up" style="margin-left:auto">▲ 5.8%</span></div>
+      <div style="font:700 22px/1 var(--font-display); color:var(--text);">42% <span style="color:var(--text-dim); font-size:12px;">de 2023</span></div>
+      <svg viewBox="0 0 200 60" style="width:100%; height:60px; margin-top:8px;">
+        <path d="M6 38 L40 34 L74 30 L108 24 L142 20 L176 14 L194 10" stroke="var(--accent-4)" stroke-width="2" fill="none"/>
+        <line x1="6" x2="194" y1="30" y2="30" class="bench-line" stroke-dasharray="4 4"/>
+      </svg>
+    </div>
+    <div class="card good" style="padding:14px 16px;">
+      <div class="kpi-label" style="margin-bottom:6px;">Governo <span class="delta flat" style="margin-left:auto">— 0.1%</span></div>
+      <div style="font:700 22px/1 var(--font-display); color:var(--text);">18% <span style="color:var(--text-dim); font-size:12px;">de 2023</span></div>
+      <svg viewBox="0 0 200 60" style="width:100%; height:60px; margin-top:8px;">
+        <path d="M6 22 L40 22 L74 24 L108 22 L142 20 L176 22 L194 22" stroke="var(--accent-3)" stroke-width="2" fill="none"/>
+        <line x1="6" x2="194" y1="22" y2="22" class="bench-line" stroke-dasharray="4 4"/>
+      </svg>
+    </div>
+  </div>
+</section>
+
+
+<!-- ════════════════ 04 · TWIN (CAGED) ════════════════ -->
+<section id="twin" data-screen-label="05 Twin bars">
+  <div class="sec-head"><span class="sec-num">04 · TWIN / CAGED</span></div>
+  <h2 class="sec-title">CAGED twin bars hide the only number that matters: <em style="font-style:normal; color:var(--accent-5);">o saldo</em>.</h2>
+  <p class="sec-sub">
+    The current chart asks the eye to subtract the red bar from the green bar, every month. The chart already has all the data — show the saldo directly, with a 0 line, and use the twin bars as <b>context</b> below the headline.
+  </p>
+
+  <div class="compare">
+
+    <!-- CURRENT twin -->
+    <div class="card bad">
+      <div class="card-tag"><span class="dot"></span>Current · TwinBarChart</div>
+      <div class="chart-meta"><h3>Admissões vs. Desligamentos</h3><span class="sub">2024 · mensal</span></div>
+      <div class="pos">
+        <svg viewBox="0 0 560 220" style="width:100%; height:auto;">
+          <g>
+            <line class="grid-line" x1="50" x2="544" y1="30" y2="30"/><text class="axis-text" x="44" y="34" text-anchor="end">600</text>
+            <line class="grid-line" x1="50" x2="544" y1="90" y2="90"/><text class="axis-text" x="44" y="94" text-anchor="end">400</text>
+            <line class="grid-line" x1="50" x2="544" y1="150" y2="150"/><text class="axis-text" x="44" y="154" text-anchor="end">200</text>
+            <line class="grid-line" x1="50" x2="544" y1="190" y2="190"/><text class="axis-text" x="44" y="194" text-anchor="end">0</text>
+          </g>
+          <!-- 12 pairs of bars -->
+          <g>
+            <!-- months bar height pattern -->
+            <!-- Jan -->
+            <rect x="70" y="60" width="14" height="130" rx="3" fill="var(--accent-5)" opacity=".85"/>
+            <rect x="86" y="80" width="14" height="110" rx="3" fill="var(--accent-2)" opacity=".85"/>
+            <text class="axis-text" x="85" y="210" text-anchor="middle">Jan</text>
+            <!-- Feb -->
+            <rect x="110" y="70" width="14" height="120" rx="3" fill="var(--accent-5)" opacity=".85"/>
+            <rect x="126" y="100" width="14" height="90" rx="3" fill="var(--accent-2)" opacity=".85"/>
+            <text class="axis-text" x="125" y="210" text-anchor="middle">Fev</text>
+            <!-- Mar -->
+            <rect x="150" y="55" width="14" height="135" rx="3" fill="var(--accent-5)" opacity=".85"/>
+            <rect x="166" y="90" width="14" height="100" rx="3" fill="var(--accent-2)" opacity=".85"/>
+            <text class="axis-text" x="165" y="210" text-anchor="middle">Mar</text>
+            <!-- Apr -->
+            <rect x="190" y="78" width="14" height="112" rx="3" fill="var(--accent-5)" opacity=".85"/>
+            <rect x="206" y="65" width="14" height="125" rx="3" fill="var(--accent-2)" opacity=".85"/>
+            <text class="axis-text" x="205" y="210" text-anchor="middle">Abr</text>
+            <!-- May -->
+            <rect x="230" y="50" width="14" height="140" rx="3" fill="var(--accent-5)" opacity=".85"/>
+            <rect x="246" y="100" width="14" height="90" rx="3" fill="var(--accent-2)" opacity=".85"/>
+            <text class="axis-text" x="245" y="210" text-anchor="middle">Mai</text>
+            <!-- Jun -->
+            <rect x="270" y="60" width="14" height="130" rx="3" fill="var(--accent-5)" opacity=".85"/>
+            <rect x="286" y="80" width="14" height="110" rx="3" fill="var(--accent-2)" opacity=".85"/>
+            <text class="axis-text" x="285" y="210" text-anchor="middle">Jun</text>
+            <!-- Jul -->
+            <rect x="310" y="40" width="14" height="150" rx="3" fill="var(--accent-5)" opacity=".85"/>
+            <rect x="326" y="95" width="14" height="95" rx="3" fill="var(--accent-2)" opacity=".85"/>
+            <text class="axis-text" x="325" y="210" text-anchor="middle">Jul</text>
+            <!-- Aug -->
+            <rect x="350" y="55" width="14" height="135" rx="3" fill="var(--accent-5)" opacity=".85"/>
+            <rect x="366" y="85" width="14" height="105" rx="3" fill="var(--accent-2)" opacity=".85"/>
+            <text class="axis-text" x="365" y="210" text-anchor="middle">Ago</text>
+            <!-- Sep -->
+            <rect x="390" y="70" width="14" height="120" rx="3" fill="var(--accent-5)" opacity=".85"/>
+            <rect x="406" y="50" width="14" height="140" rx="3" fill="var(--accent-2)" opacity=".85"/>
+            <text class="axis-text" x="405" y="210" text-anchor="middle">Set</text>
+            <!-- Oct -->
+            <rect x="430" y="45" width="14" height="145" rx="3" fill="var(--accent-5)" opacity=".85"/>
+            <rect x="446" y="75" width="14" height="115" rx="3" fill="var(--accent-2)" opacity=".85"/>
+            <text class="axis-text" x="445" y="210" text-anchor="middle">Out</text>
+            <!-- Nov -->
+            <rect x="470" y="80" width="14" height="110" rx="3" fill="var(--accent-5)" opacity=".85"/>
+            <rect x="486" y="105" width="14" height="85" rx="3" fill="var(--accent-2)" opacity=".85"/>
+            <text class="axis-text" x="485" y="210" text-anchor="middle">Nov</text>
+            <!-- Dec -->
+            <rect x="510" y="100" width="14" height="90" rx="3" fill="var(--accent-5)" opacity=".85"/>
+            <rect x="526" y="55" width="14" height="135" rx="3" fill="var(--accent-2)" opacity=".85"/>
+            <text class="axis-text" x="525" y="210" text-anchor="middle">Dez</text>
+          </g>
+        </svg>
+      </div>
+      <div class="legend">
+        <span><span class="sw" style="background:var(--accent-5)"></span>Admissões</span>
+        <span><span class="sw" style="background:var(--accent-2)"></span>Desligamentos</span>
+      </div>
+      <ul class="notes bad">
+        <li>The actionable number is the <b>saldo</b>: was the month net-positive? The eye can't compute that across 12 months by subtraction.</li>
+        <li>"Saldo" only appears in the hover tooltip — the chart's most important variable is hidden behind interaction.</li>
+        <li>24 bars at near-equal heights is just visual noise.</li>
+      </ul>
+    </div>
+
+    <!-- PROPOSED twin -->
+    <div class="card good">
+      <div class="card-tag"><span class="dot"></span>Proposed · saldo + diverging context</div>
+      <div class="chart-meta">
+        <div>
+          <h3>Movimentação CAGED — 2024</h3>
+          <span class="sub">saldo mensal · barras de admissões/desligamentos no fundo</span>
+        </div>
+        <div class="tabbar">
+          <button class="tab active">Saldo</button>
+          <button class="tab">Bruto</button>
+        </div>
+      </div>
+
+      <div class="pos">
+        <svg viewBox="0 0 560 220" style="width:100%; height:auto;">
+          <!-- Top half: saldo zero baseline -->
+          <text class="axis-cap" x="14" y="40" transform="rotate(-90 14 40)" text-anchor="end">SALDO (PESSOAS)</text>
+          <g>
+            <line class="grid-line" x1="48" x2="544" y1="30" y2="30"/><text class="axis-text bright" x="42" y="34" text-anchor="end">+200</text>
+            <line class="grid-line" x1="48" x2="544" y1="100" y2="100"/><text class="axis-text bright" x="42" y="104" text-anchor="end">0</text>
+            <line class="zero-line" x1="48" x2="544" y1="100" y2="100"/>
+            <line class="grid-line" x1="48" x2="544" y1="170" y2="170"/><text class="axis-text bright" x="42" y="174" text-anchor="end">−200</text>
+          </g>
+
+          <!-- Saldo bars: above/below 0 line, color encodes sign -->
+          <g>
+            <!-- positive months green, negative pink -->
+            <rect x="78" y="60" width="24" height="40" rx="2" fill="var(--accent-5)" opacity=".9"/>     <!-- Jan +120 -->
+            <rect x="118" y="70" width="24" height="30" rx="2" fill="var(--accent-5)" opacity=".9"/>    <!-- Fev +90 -->
+            <rect x="158" y="45" width="24" height="55" rx="2" fill="var(--accent-5)" opacity=".9"/>    <!-- Mar +165 -->
+            <rect x="198" y="100" width="24" height="20" rx="2" fill="var(--accent-2)" opacity=".9"/>   <!-- Abr -60 -->
+            <rect x="238" y="40" width="24" height="60" rx="2" fill="var(--accent-5)" opacity=".9"/>    <!-- Mai +180 -->
+            <rect x="278" y="62" width="24" height="38" rx="2" fill="var(--accent-5)" opacity=".9"/>    <!-- Jun +115 -->
+            <rect x="318" y="35" width="24" height="65" rx="2" fill="var(--accent-5)" opacity=".9"/>    <!-- Jul +195 -->
+            <rect x="358" y="55" width="24" height="45" rx="2" fill="var(--accent-5)" opacity=".9"/>    <!-- Ago +135 -->
+            <rect x="398" y="100" width="24" height="38" rx="2" fill="var(--accent-2)" opacity=".9"/>   <!-- Set -110 -->
+            <rect x="438" y="48" width="24" height="52" rx="2" fill="var(--accent-5)" opacity=".9"/>    <!-- Out +155 -->
+            <rect x="478" y="78" width="24" height="22" rx="2" fill="var(--accent-5)" opacity=".9"/>    <!-- Nov +60 -->
+            <rect x="518" y="100" width="24" height="55" rx="2" fill="var(--accent-2)" opacity=".9"/>   <!-- Dez -160 -->
+          </g>
+
+          <!-- Cumulative line (year-to-date saldo) -->
+          <path d="M90 90 L130 84 L170 73 L210 80 L250 67 L290 60 L330 47 L370 38 L410 47 L450 36 L490 32 L530 44"
+                stroke="var(--accent-1)" stroke-width="2" fill="none" stroke-dasharray="0"/>
+          <circle cx="530" cy="44" r="4" fill="var(--accent-1)"/>
+          <text class="bench-label" x="535" y="40" fill="var(--accent-1)">acumulado 24'</text>
+
+          <!-- X labels -->
+          <g>
+            <text class="axis-text" x="90" y="195" text-anchor="middle">Jan</text>
+            <text class="axis-text" x="130" y="195" text-anchor="middle">Fev</text>
+            <text class="axis-text" x="170" y="195" text-anchor="middle">Mar</text>
+            <text class="axis-text" x="210" y="195" text-anchor="middle">Abr</text>
+            <text class="axis-text" x="250" y="195" text-anchor="middle">Mai</text>
+            <text class="axis-text" x="290" y="195" text-anchor="middle">Jun</text>
+            <text class="axis-text" x="330" y="195" text-anchor="middle">Jul</text>
+            <text class="axis-text" x="370" y="195" text-anchor="middle">Ago</text>
+            <text class="axis-text" x="410" y="195" text-anchor="middle">Set</text>
+            <text class="axis-text" x="450" y="195" text-anchor="middle">Out</text>
+            <text class="axis-text" x="490" y="195" text-anchor="middle">Nov</text>
+            <text class="axis-text" x="530" y="195" text-anchor="middle">Dez</text>
+          </g>
+        </svg>
+
+        <div class="pin good" style="left:60%; top:18%;">melhor mês: +195</div>
+        <div class="pin" style="left:94%; top:72%;">queda sazonal de dezembro</div>
+      </div>
+
+      <div class="legend">
+        <span><span class="sw" style="background:var(--accent-5)"></span>Saldo positivo</span>
+        <span><span class="sw" style="background:var(--accent-2)"></span>Saldo negativo</span>
+        <span><span class="sw" style="background:var(--accent-1)"></span>Acumulado YTD</span>
+      </div>
+
+      <ul class="notes good">
+        <li>Saldo is the chart now. Green / pink encodes sign directly — <b>red months pop in 0.1s</b>.</li>
+        <li><b>Acumulado YTD</b> line answers "are we ahead for the year" without a second card.</li>
+        <li>"Bruto" toggle keeps the existing twin-bar view available when you actually need both volumes.</li>
+        <li>One zero line is more useful than five money lines.</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+
+<!-- ════════════════ 05 · COMPARISON ════════════════ -->
+<section id="compare" data-screen-label="06 Comparison">
+  <div class="sec-head"><span class="sec-num">05 · COMPARISON</span></div>
+  <h2 class="sec-title">Comparing 6 municípios is comparing one + 5 — use focus + context.</h2>
+  <p class="sec-sub">
+    The current pattern (one color per município, COMP_COLORS) hits a wall fast. The municipal user has <i>one</i> município they care about. Show theirs in full color, peers in muted grey, with the peer median as a benchmark. Hover restores any city. It scales effortlessly to 20 lines.
+  </p>
+
+  <div class="compare">
+
+    <!-- CURRENT multiline -->
+    <div class="card bad">
+      <div class="card-tag"><span class="dot"></span>Current · MultiLineChart</div>
+      <div class="chart-meta"><h3>PIB Comparativo — Municípios</h3><span class="sub">6 cidades · 2010 — 2023</span></div>
+      <div class="pos">
+        <svg viewBox="0 0 560 220" style="width:100%; height:auto;">
+          <g>
+            <line class="grid-line" x1="56" x2="544" y1="30" y2="30"/><text class="axis-text" x="50" y="34" text-anchor="end">1.6B</text>
+            <line class="grid-line" x1="56" x2="544" y1="100" y2="100"/><text class="axis-text" x="50" y="104" text-anchor="end">800M</text>
+            <line class="grid-line" x1="56" x2="544" y1="190" y2="190"/><text class="axis-text" x="50" y="194" text-anchor="end">0</text>
+          </g>
+          <!-- 6 lines tangled in the middle -->
+          <path d="M62 170 L130 165 L200 158 L270 150 L340 138 L410 125 L478 110 L526 90" stroke="#10b981" stroke-width="2" fill="none"/>
+          <path d="M62 175 L130 168 L200 160 L270 152 L340 142 L410 130 L478 118 L526 108" stroke="#3b82f6" stroke-width="2" fill="none"/>
+          <path d="M62 180 L130 172 L200 165 L270 160 L340 153 L410 148 L478 140 L526 130" stroke="#f59e0b" stroke-width="2" fill="none"/>
+          <path d="M62 178 L130 174 L200 170 L270 165 L340 158 L410 152 L478 145 L526 138" stroke="#8b5cf6" stroke-width="2" fill="none"/>
+          <path d="M62 168 L130 162 L200 155 L270 145 L340 132 L410 118 L478 100 L526 78" stroke="#ef4444" stroke-width="2" fill="none"/>
+          <path d="M62 173 L130 170 L200 167 L270 162 L340 155 L410 148 L478 138 L526 124" stroke="#06b6d4" stroke-width="2" fill="none"/>
+        </svg>
+      </div>
+      <div class="legend">
+        <span><span class="sw" style="background:#10b981"></span>Belo Horizonte</span>
+        <span><span class="sw" style="background:#3b82f6"></span>Uberlândia</span>
+        <span><span class="sw" style="background:#f59e0b"></span>Contagem</span>
+        <span><span class="sw" style="background:#8b5cf6"></span>Juiz de Fora</span>
+        <span><span class="sw" style="background:#ef4444"></span>Betim</span>
+        <span><span class="sw" style="background:#06b6d4"></span>Montes Claros</span>
+      </div>
+      <ul class="notes bad">
+        <li>6 saturated lines + 6 swatches force the eye to switch between chart and legend. By the time you've found Uberlândia, you've forgotten what it does.</li>
+        <li>Colors don't carry meaning beyond identity — green doesn't mean "good" here, it just means "Belo Horizonte".</li>
+        <li>Lines tangle near the median where the interesting story usually lives.</li>
+      </ul>
+    </div>
+
+    <!-- PROPOSED multiline -->
+    <div class="card good">
+      <div class="card-tag"><span class="dot"></span>Proposed · focus + context</div>
+      <div class="chart-meta">
+        <div>
+          <h3>PIB Comparativo — Uberlândia vs. pares</h3>
+          <span class="sub">grupo de 6 municípios · mediana destacada</span>
+        </div>
+        <div class="tabbar">
+          <button class="tab active">vs. Pares</button>
+          <button class="tab">vs. Estado</button>
+          <button class="tab">vs. Brasil</button>
+        </div>
+      </div>
+      <div class="pos">
+        <svg viewBox="0 0 560 220" style="width:100%; height:auto;">
+          <g>
+            <line class="grid-line" x1="56" x2="544" y1="30" y2="30"/><text class="axis-text bright" x="50" y="34" text-anchor="end">1.6B</text>
+            <line class="grid-line" x1="56" x2="544" y1="100" y2="100"/><text class="axis-text bright" x="50" y="104" text-anchor="end">800M</text>
+            <line class="grid-line" x1="56" x2="544" y1="190" y2="190"/><text class="axis-text bright" x="50" y="194" text-anchor="end">0</text>
+          </g>
+          <!-- peer band (range across peers, soft) -->
+          <path d="M62 170 L130 165 L200 158 L270 150 L340 138 L410 125 L478 110 L526 90
+                   L526 138 L478 145 L410 152 L340 158 L270 162 L200 167 L130 172 L62 178 Z"
+                fill="rgba(120,145,255,.06)"/>
+          <!-- peer lines, all muted -->
+          <path d="M62 170 L130 165 L200 158 L270 150 L340 138 L410 125 L478 110 L526 90" stroke="rgba(120,145,255,.28)" stroke-width="1.2" fill="none"/>
+          <path d="M62 180 L130 172 L200 165 L270 160 L340 153 L410 148 L478 140 L526 130" stroke="rgba(120,145,255,.28)" stroke-width="1.2" fill="none"/>
+          <path d="M62 178 L130 174 L200 170 L270 165 L340 158 L410 152 L478 145 L526 138" stroke="rgba(120,145,255,.28)" stroke-width="1.2" fill="none"/>
+          <path d="M62 173 L130 170 L200 167 L270 162 L340 155 L410 148 L478 138 L526 124" stroke="rgba(120,145,255,.28)" stroke-width="1.2" fill="none"/>
+          <path d="M62 168 L130 162 L200 155 L270 145 L340 132 L410 118 L478 100 L526 78" stroke="rgba(120,145,255,.28)" stroke-width="1.2" fill="none"/>
+          <!-- peer median dashed -->
+          <path d="M62 174 L130 169 L200 162 L270 155 L340 145 L410 135 L478 122 L526 105" stroke="var(--text-dim)" stroke-width="1.4" stroke-dasharray="5 4" fill="none"/>
+          <text class="bench-label" x="540" y="105" text-anchor="end" fill="var(--text-dim)">mediana</text>
+          <!-- own city, full color -->
+          <path d="M62 175 L130 168 L200 160 L270 152 L340 142 L410 130 L478 118 L526 108"
+                stroke="var(--accent-2)" stroke-width="2.5" fill="none" stroke-linecap="round"/>
+          <circle cx="526" cy="108" r="5" fill="var(--accent-2)"/>
+          <text class="bench-label" x="540" y="108" text-anchor="end" fill="var(--accent-2)" style="font-size:11px;">Uberlândia</text>
+        </svg>
+      </div>
+      <div class="legend">
+        <span><span class="sw" style="background:var(--accent-2)"></span>Uberlândia (você)</span>
+        <span><span class="sw" style="background:var(--text-dim); height:2px; width:14px; border-radius:0;"></span>Mediana dos pares</span>
+        <span><span class="sw" style="background:rgba(120,145,255,.28)"></span>5 municípios pares</span>
+      </div>
+      <ul class="notes good">
+        <li>One color, one job: <b>accent-2 is "you"</b>. Everything else is context, intentionally desaturated.</li>
+        <li>Adds a <b>peer median</b> dashed line — the single most useful reference for "are we above or below comparable cities".</li>
+        <li>Hover a peer line → it momentarily takes accent-1 + a label appears. Click → swaps focus to that city.</li>
+        <li>Scales to 10, 20, 50 peer cities without legend chaos.</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+
+<!-- ════════════════ 06 · DONUT ════════════════ -->
+<section id="donut" data-screen-label="07 Donut alternative">
+  <div class="sec-head"><span class="sec-num">06 · DONUT</span></div>
+  <h2 class="sec-title">Most donuts want to be a horizontal bar.</h2>
+  <p class="sec-sub">
+    Donuts are great for one comparison ("majority vs minority"). They're hard for 4+ categories, hard to label, hard to compare across cards, and effectively impossible to read on mobile. Keep donut for the 2-slice case; use a labelled 100% bar everywhere else.
+  </p>
+
+  <div class="compare triple">
+
+    <div class="card bad">
+      <div class="card-tag"><span class="dot"></span>Current · DonutChart (6 fatias)</div>
+      <h3 class="card-title">CNAE Top — Empresas</h3>
+      <div class="card-sub">composição por setor econômico</div>
+      <div style="display:grid; place-items:center; margin-top:8px;">
+        <svg viewBox="0 0 200 200" style="width:180px; height:180px;">
+          <!-- 6-slice donut -->
+          <circle cx="100" cy="100" r="78" fill="none" stroke="var(--accent-1)" stroke-width="44" stroke-dasharray="120 460" transform="rotate(-90 100 100)"/>
+          <circle cx="100" cy="100" r="78" fill="none" stroke="var(--accent-2)" stroke-width="44" stroke-dasharray="90 460" stroke-dashoffset="-120" transform="rotate(-90 100 100)"/>
+          <circle cx="100" cy="100" r="78" fill="none" stroke="var(--accent-3)" stroke-width="44" stroke-dasharray="80 460" stroke-dashoffset="-210" transform="rotate(-90 100 100)"/>
+          <circle cx="100" cy="100" r="78" fill="none" stroke="var(--accent-4)" stroke-width="44" stroke-dasharray="60 460" stroke-dashoffset="-290" transform="rotate(-90 100 100)"/>
+          <circle cx="100" cy="100" r="78" fill="none" stroke="var(--accent-5)" stroke-width="44" stroke-dasharray="50 460" stroke-dashoffset="-350" transform="rotate(-90 100 100)"/>
+          <circle cx="100" cy="100" r="78" fill="none" stroke="#7c87b3" stroke-width="44" stroke-dasharray="50 460" stroke-dashoffset="-400" transform="rotate(-90 100 100)"/>
+          <text x="100" y="98" text-anchor="middle" class="axis-text" style="fill:var(--text); font-size:22px; font-weight:700;">3 240</text>
+          <text x="100" y="116" text-anchor="middle" class="axis-text">empresas</text>
+        </svg>
+      </div>
+      <div class="legend" style="margin-top:6px;">
+        <span><span class="sw" style="background:var(--accent-1)"></span>Comércio</span>
+        <span><span class="sw" style="background:var(--accent-2)"></span>Serviços</span>
+        <span><span class="sw" style="background:var(--accent-3)"></span>Construção</span>
+        <span><span class="sw" style="background:var(--accent-4)"></span>Indústria</span>
+        <span><span class="sw" style="background:var(--accent-5)"></span>Transporte</span>
+        <span><span class="sw" style="background:#7c87b3"></span>Outros</span>
+      </div>
+      <ul class="notes bad" style="font-size:11.5px;">
+        <li>6 fatias of similar size → no quick read.</li>
+        <li>Values hidden behind hover; legend below burns vertical space.</li>
+        <li>Center label is "total empresas" — fine, but disconnected from the slices.</li>
+      </ul>
+    </div>
+
+    <div class="card good">
+      <div class="card-tag"><span class="dot"></span>Proposed · stacked 100% bar</div>
+      <h3 class="card-title">CNAE Top — Empresas</h3>
+      <div class="card-sub">composição por setor · 3 240 empresas</div>
+      <div style="margin-top:14px;">
+        <div style="display:flex; height:38px; border-radius:8px; overflow:hidden; border:1px solid var(--border);">
+          <div style="flex:26; background:var(--accent-1); display:flex; align-items:center; padding:0 8px; font:600 11px/1 var(--font-mono); color:#03191e;">26% · 842</div>
+          <div style="flex:20; background:color-mix(in oklab, var(--accent-1) 70%, var(--bg)); display:flex; align-items:center; padding:0 8px; font:600 11px/1 var(--font-mono); color:#03191e;">20%</div>
+          <div style="flex:17; background:color-mix(in oklab, var(--accent-1) 50%, var(--bg)); display:flex; align-items:center; padding:0 8px; font:600 11px/1 var(--font-mono); color:#dceffd;">17%</div>
+          <div style="flex:13; background:color-mix(in oklab, var(--accent-1) 35%, var(--bg));"></div>
+          <div style="flex:11; background:color-mix(in oklab, var(--accent-1) 25%, var(--bg));"></div>
+          <div style="flex:13; background:var(--panel-2);"></div>
+        </div>
+        <div style="display:grid; grid-template-columns:1fr; gap:8px; margin-top:14px;">
+          <div style="display:flex; justify-content:space-between; font:500 12px/1 var(--font-mono); color:var(--text);"><span><span style="display:inline-block; width:8px; height:8px; background:var(--accent-1); border-radius:2px; margin-right:8px;"></span>Comércio</span><span>842 · 26%</span></div>
+          <div style="display:flex; justify-content:space-between; font:500 12px/1 var(--font-mono); color:var(--text-dim);"><span><span style="display:inline-block; width:8px; height:8px; background:color-mix(in oklab, var(--accent-1) 70%, var(--bg)); border-radius:2px; margin-right:8px;"></span>Serviços</span><span>648 · 20%</span></div>
+          <div style="display:flex; justify-content:space-between; font:500 12px/1 var(--font-mono); color:var(--text-dim);"><span><span style="display:inline-block; width:8px; height:8px; background:color-mix(in oklab, var(--accent-1) 50%, var(--bg)); border-radius:2px; margin-right:8px;"></span>Construção</span><span>551 · 17%</span></div>
+          <div style="display:flex; justify-content:space-between; font:500 12px/1 var(--font-mono); color:var(--text-dim);"><span><span style="display:inline-block; width:8px; height:8px; background:color-mix(in oklab, var(--accent-1) 35%, var(--bg)); border-radius:2px; margin-right:8px;"></span>Indústria</span><span>421 · 13%</span></div>
+          <div style="display:flex; justify-content:space-between; font:500 12px/1 var(--font-mono); color:var(--text-dim);"><span><span style="display:inline-block; width:8px; height:8px; background:color-mix(in oklab, var(--accent-1) 25%, var(--bg)); border-radius:2px; margin-right:8px;"></span>Transporte</span><span>356 · 11%</span></div>
+          <div style="display:flex; justify-content:space-between; font:500 12px/1 var(--font-mono); color:var(--text-mute);"><span><span style="display:inline-block; width:8px; height:8px; background:var(--panel-2); border-radius:2px; margin-right:8px;"></span>Outros</span><span>422 · 13%</span></div>
+        </div>
+      </div>
+      <ul class="notes good" style="font-size:11.5px;">
+        <li>One row tells the proportional story; the list below tells the absolute story.</li>
+        <li>Single-hue scale → no color-confetti.</li>
+        <li>Aligns vertically with other panels, unlike a square donut.</li>
+      </ul>
+    </div>
+
+    <div class="card good">
+      <div class="card-tag"><span class="dot"></span>Keep donut for · 2-slice</div>
+      <h3 class="card-title">Empresas ativas</h3>
+      <div class="card-sub">vs. inativas no município</div>
+      <div style="display:grid; place-items:center; margin-top:18px;">
+        <svg viewBox="0 0 200 200" style="width:180px; height:180px;">
+          <circle cx="100" cy="100" r="78" fill="none" stroke="var(--panel-2)" stroke-width="22"/>
+          <circle cx="100" cy="100" r="78" fill="none" stroke="var(--accent-5)" stroke-width="22"
+                  stroke-dasharray="390 490" transform="rotate(-90 100 100)" stroke-linecap="round"/>
+          <text x="100" y="92" text-anchor="middle" style="fill:var(--text); font:700 32px/1 var(--font-display);">79%</text>
+          <text x="100" y="116" text-anchor="middle" class="axis-text">ativas · 3 240</text>
+        </svg>
+      </div>
+      <ul class="notes good" style="font-size:11.5px;">
+        <li>The right donut: 2 slices, big number in the middle, one accent.</li>
+        <li>If you need 3+ categories, switch to the bar variant.</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+
+<!-- ════════════════ 07 · RANKING ════════════════ -->
+<section id="ranking" data-screen-label="08 Ranking">
+  <div class="sec-head"><span class="sec-num">07 · RANKING</span></div>
+  <h2 class="sec-title">The ranking is the chart — labels belong inside it.</h2>
+  <p class="sec-sub">
+    <code style="font-family:var(--font-mono)">HBarChart</code> renders bars in SVG and floats labels in a separate absolute-positioned DOM layer. It works but it's fragile to widths and font changes. A grid-based row with the bar as background is simpler, more accessible, and lets you highlight "you" without z-index gymnastics.
+  </p>
+
+  <div class="compare">
+
+    <!-- CURRENT ranking -->
+    <div class="card bad">
+      <div class="card-tag"><span class="dot"></span>Current · HBarChart (SVG + absolute labels)</div>
+      <div class="chart-meta"><h3>Ranking de PIB Municipal — MG</h3><span class="sub">posição 1 a 8</span></div>
+
+      <div style="position:relative; margin-top:8px;">
+        <svg viewBox="0 0 100 240" preserveAspectRatio="none" style="height:240px; width:100%;">
+          <defs>
+            <linearGradient id="hbcur" x1="0" y1="0" x2="1" y2="0">
+              <stop offset="0%" stop-color="var(--accent-1)" stop-opacity=".7"/>
+              <stop offset="100%" stop-color="var(--accent-1)" stop-opacity=".25"/>
+            </linearGradient>
+          </defs>
+          <rect x="0" y="5" width="100" height="22" rx="3" fill="var(--panel-2)"/>
+          <rect x="0" y="5" width="100" height="22" rx="3" fill="url(#hbcur)"/>
+          <rect x="0" y="34" width="100" height="22" rx="3" fill="var(--panel-2)"/>
+          <rect x="0" y="34" width="82" height="22" rx="3" fill="url(#hbcur)"/>
+          <rect x="0" y="63" width="100" height="22" rx="3" fill="var(--panel-2)"/>
+          <rect x="0" y="63" width="72" height="22" rx="3" fill="url(#hbcur)"/>
+          <rect x="0" y="92" width="100" height="22" rx="3" fill="var(--panel-2)"/>
+          <rect x="0" y="92" width="64" height="22" rx="3" fill="url(#hbcur)"/>
+          <rect x="0" y="121" width="100" height="22" rx="3" fill="var(--panel-2)"/>
+          <rect x="0" y="121" width="56" height="22" rx="3" fill="url(#hbcur)"/>
+          <rect x="0" y="150" width="100" height="22" rx="3" fill="var(--panel-2)"/>
+          <rect x="0" y="150" width="48" height="22" rx="3" fill="url(#hbcur)"/>
+          <rect x="0" y="179" width="100" height="22" rx="3" fill="var(--panel-2)"/>
+          <rect x="0" y="179" width="42" height="22" rx="3" fill="url(#hbcur)"/>
+          <rect x="0" y="208" width="100" height="22" rx="3" fill="var(--panel-2)"/>
+          <rect x="0" y="208" width="38" height="22" rx="3" fill="url(#hbcur)"/>
+        </svg>
+        <div style="position:absolute; inset:0; display:flex; flex-direction:column; justify-content:space-around; padding:5px 12px; pointer-events:none;">
+          <div style="display:flex; justify-content:space-between; font:600 12px/1 var(--font-mono);"><span style="color:var(--text)">Belo Horizonte</span><span style="color:var(--text-dim)">R$ 92.5 Bi</span></div>
+          <div style="display:flex; justify-content:space-between; font:600 12px/1 var(--font-mono);"><span style="color:var(--text)">Uberlândia</span><span style="color:var(--text-dim)">R$ 28.4 Bi</span></div>
+          <div style="display:flex; justify-content:space-between; font:600 12px/1 var(--font-mono);"><span style="color:var(--text)">Contagem</span><span style="color:var(--text-dim)">R$ 24.1 Bi</span></div>
+          <div style="display:flex; justify-content:space-between; font:600 12px/1 var(--font-mono);"><span style="color:var(--text)">Juiz de Fora</span><span style="color:var(--text-dim)">R$ 21.7 Bi</span></div>
+          <div style="display:flex; justify-content:space-between; font:600 12px/1 var(--font-mono);"><span style="color:var(--text)">Betim</span><span style="color:var(--text-dim)">R$ 18.9 Bi</span></div>
+          <div style="display:flex; justify-content:space-between; font:600 12px/1 var(--font-mono);"><span style="color:var(--text)">Montes Claros</span><span style="color:var(--text-dim)">R$ 15.6 Bi</span></div>
+          <div style="display:flex; justify-content:space-between; font:600 12px/1 var(--font-mono);"><span style="color:var(--text)">Ribeirão</span><span style="color:var(--text-dim)">R$ 13.9 Bi</span></div>
+          <div style="display:flex; justify-content:space-between; font:600 12px/1 var(--font-mono);"><span style="color:var(--text)">Sete Lagoas</span><span style="color:var(--text-dim)">R$ 12.4 Bi</span></div>
+        </div>
+      </div>
+
+      <ul class="notes bad">
+        <li>SVG bars + flexbox labels live in two coordinate systems — fragile on resize and breaks when the label is longer than the bar.</li>
+        <li>No <b>position</b> column — but a ranking without "what number am I" misses the point.</li>
+        <li>No callout for the own município. Hard to scan to "where am I".</li>
+        <li>Top bar is full-width by definition; comparing it to #2 needs mental scaling.</li>
+      </ul>
+    </div>
+
+    <!-- PROPOSED ranking -->
+    <div class="card good">
+      <div class="card-tag"><span class="dot"></span>Proposed · grid rows + own-city highlight</div>
+      <div class="chart-meta">
+        <div>
+          <h3>Ranking de PIB Municipal — MG</h3>
+          <span class="sub">Uberlândia em #2 · 245 municípios na série</span>
+        </div>
+        <div class="tabbar">
+          <button class="tab active">Top 8</button>
+          <button class="tab">Vizinhos</button>
+          <button class="tab">Tudo</button>
+        </div>
+      </div>
+
+      <div style="margin-top:6px;">
+        <div class="rank">
+          <span class="pos-num">#1</span>
+          <div class="bar-wrap"><div class="bar" style="width:100%"></div><span class="city">Belo Horizonte</span></div>
+          <span class="val">R$ 92.5 Bi</span>
+        </div>
+        <div class="rank">
+          <span class="pos-num" style="color:var(--accent-2)">#2</span>
+          <div class="bar-wrap"><div class="bar self" style="width:31%"></div><span class="city self">Uberlândia</span></div>
+          <span class="val" style="color:var(--accent-2)">R$ 28.4 Bi</span>
+        </div>
+        <div class="rank">
+          <span class="pos-num">#3</span>
+          <div class="bar-wrap"><div class="bar muted" style="width:26%"></div><span class="city">Contagem</span></div>
+          <span class="val">R$ 24.1 Bi</span>
+        </div>
+        <div class="rank">
+          <span class="pos-num">#4</span>
+          <div class="bar-wrap"><div class="bar muted" style="width:24%"></div><span class="city">Juiz de Fora</span></div>
+          <span class="val">R$ 21.7 Bi</span>
+        </div>
+        <div class="rank">
+          <span class="pos-num">#5</span>
+          <div class="bar-wrap"><div class="bar muted" style="width:20%"></div><span class="city">Betim</span></div>
+          <span class="val">R$ 18.9 Bi</span>
+        </div>
+        <div class="rank">
+          <span class="pos-num">#6</span>
+          <div class="bar-wrap"><div class="bar muted" style="width:17%"></div><span class="city">Montes Claros</span></div>
+          <span class="val">R$ 15.6 Bi</span>
+        </div>
+        <div class="rank">
+          <span class="pos-num">#7</span>
+          <div class="bar-wrap"><div class="bar muted" style="width:15%"></div><span class="city">Ribeirão</span></div>
+          <span class="val">R$ 13.9 Bi</span>
+        </div>
+        <div class="rank">
+          <span class="pos-num">#8</span>
+          <div class="bar-wrap"><div class="bar muted" style="width:13%"></div><span class="city">Sete Lagoas</span></div>
+          <span class="val">R$ 12.4 Bi</span>
+        </div>
+      </div>
+
+      <ul class="notes good">
+        <li>Grid-based row (24 / 1fr / 90), bar as background — one coord system, no overlap bugs.</li>
+        <li><b>Own município highlighted in accent-2</b> with a "você" tag — the user finds themselves instantly.</li>
+        <li>Position column added; values right-aligned in tabular figures so they form a column you can read down.</li>
+        <li>Tabs swap the dataset (Top 8 / Vizinhos / Tudo) instead of asking the user to scroll a long list.</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+
+<!-- ════════════════ 08 · TABLES / EMPTY / LOADING ════════════════ -->
+<section id="table" data-screen-label="09 Tables empty loading">
+  <div class="sec-head"><span class="sec-num">08 · TABLES + STATES</span></div>
+  <h2 class="sec-title">Tables, empty states &amp; loading skeletons.</h2>
+  <p class="sec-sub">
+    The "Série Anual" table at the bottom of each page is a chance to add a sparkline column and conditional formatting — the same row data, three times more legible. Empty and loading states currently fall back to bare text; they should match the chart they're standing in for.
+  </p>
+
+  <!-- TABLE -->
+  <div class="compare">
+    <div class="card bad">
+      <div class="card-tag"><span class="dot"></span>Current · Série Anual</div>
+      <table style="width:100%; font:500 13px/1.4 var(--font-display); border-collapse:collapse;">
+        <thead>
+          <tr style="background:var(--panel-2); text-align:left; font:600 10px/1 var(--font-mono); text-transform:uppercase; letter-spacing:.12em; color:var(--text-mute);">
+            <th style="padding:10px 14px;">Ano</th>
+            <th style="padding:10px 14px; text-align:right;">PIB Total</th>
+            <th style="padding:10px 14px;">Tipo</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr style="border-bottom:1px solid var(--border);"><td style="padding:10px 14px;">2023</td><td style="padding:10px 14px; text-align:right;">R$ 1 247 832 450</td><td style="padding:10px 14px; color:var(--text-dim)">Estimado</td></tr>
+          <tr style="border-bottom:1px solid var(--border);"><td style="padding:10px 14px;">2022</td><td style="padding:10px 14px; text-align:right;">R$ 1 151 094 220</td><td style="padding:10px 14px; color:var(--text-dim)">Definitivo</td></tr>
+          <tr style="border-bottom:1px solid var(--border);"><td style="padding:10px 14px;">2021</td><td style="padding:10px 14px; text-align:right;">R$ 1 058 412 109</td><td style="padding:10px 14px; color:var(--text-dim)">Definitivo</td></tr>
+          <tr style="border-bottom:1px solid var(--border);"><td style="padding:10px 14px;">2020</td><td style="padding:10px 14px; text-align:right;">R$ 962 845 318</td><td style="padding:10px 14px; color:var(--text-dim)">Definitivo</td></tr>
+          <tr><td style="padding:10px 14px;">2019</td><td style="padding:10px 14px; text-align:right;">R$ 911 305 880</td><td style="padding:10px 14px; color:var(--text-dim)">Definitivo</td></tr>
+        </tbody>
+      </table>
+      <ul class="notes bad">
+        <li>Long money strings, no YoY delta, no inline trend.</li>
+        <li>"Tipo" badge fights with the right-aligned value for attention.</li>
+      </ul>
+    </div>
+
+    <div class="card good">
+      <div class="card-tag"><span class="dot"></span>Proposed · sparkline + delta + heat</div>
+      <table style="width:100%; font:500 13px/1.4 var(--font-display); border-collapse:collapse;">
+        <thead>
+          <tr style="background:var(--panel-2); text-align:left; font:600 10px/1 var(--font-mono); text-transform:uppercase; letter-spacing:.12em; color:var(--text-mute);">
+            <th style="padding:10px 14px;">Ano</th>
+            <th style="padding:10px 14px; text-align:right;">PIB</th>
+            <th style="padding:10px 14px; text-align:right;">YoY</th>
+            <th style="padding:10px 14px;">Tendência 5a</th>
+            <th style="padding:10px 14px; text-align:right;">Tipo</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr style="background:color-mix(in oklab, var(--accent-5) 5%, transparent); border-bottom:1px solid var(--border);">
+            <td style="padding:10px 14px; font-weight:600;">2023</td>
+            <td style="padding:10px 14px; text-align:right; font:600 13px/1 var(--font-mono);">R$ 1.25 Bi</td>
+            <td style="padding:10px 14px; text-align:right;"><span class="delta up">▲ 8.4%</span></td>
+            <td style="padding:6px 14px;">
+              <svg viewBox="0 0 120 20" style="width:120px; height:20px;"><path d="M2 16 L26 14 L50 12 L74 10 L98 7 L118 4" stroke="var(--accent-5)" stroke-width="1.6" fill="none"/></svg>
+            </td>
+            <td style="padding:10px 14px; text-align:right; color:var(--text-dim); font:500 11px/1 var(--font-mono); letter-spacing:.06em;">EST</td>
+          </tr>
+          <tr style="border-bottom:1px solid var(--border);">
+            <td style="padding:10px 14px;">2022</td>
+            <td style="padding:10px 14px; text-align:right; font:500 13px/1 var(--font-mono);">R$ 1.15 Bi</td>
+            <td style="padding:10px 14px; text-align:right;"><span class="delta up">▲ 8.8%</span></td>
+            <td style="padding:6px 14px;"><svg viewBox="0 0 120 20" style="width:120px; height:20px;"><path d="M2 16 L26 14 L50 12 L74 10 L98 8 L118 6" stroke="var(--accent-1)" stroke-width="1.6" fill="none" opacity=".6"/></svg></td>
+            <td style="padding:10px 14px; text-align:right; color:var(--text-mute); font:500 11px/1 var(--font-mono); letter-spacing:.06em;">DEF</td>
+          </tr>
+          <tr style="border-bottom:1px solid var(--border);">
+            <td style="padding:10px 14px;">2021</td>
+            <td style="padding:10px 14px; text-align:right; font:500 13px/1 var(--font-mono);">R$ 1.06 Bi</td>
+            <td style="padding:10px 14px; text-align:right;"><span class="delta up">▲ 9.9%</span></td>
+            <td style="padding:6px 14px;"><svg viewBox="0 0 120 20" style="width:120px; height:20px;"><path d="M2 16 L26 16 L50 14 L74 12 L98 10 L118 8" stroke="var(--accent-1)" stroke-width="1.6" fill="none" opacity=".5"/></svg></td>
+            <td style="padding:10px 14px; text-align:right; color:var(--text-mute); font:500 11px/1 var(--font-mono); letter-spacing:.06em;">DEF</td>
+          </tr>
+          <tr style="background:color-mix(in oklab, var(--accent-2) 4%, transparent); border-bottom:1px solid var(--border);">
+            <td style="padding:10px 14px;">2020</td>
+            <td style="padding:10px 14px; text-align:right; font:500 13px/1 var(--font-mono);">R$ 962 M</td>
+            <td style="padding:10px 14px; text-align:right;"><span class="delta down">▼ 5.6%</span></td>
+            <td style="padding:6px 14px;"><svg viewBox="0 0 120 20" style="width:120px; height:20px;"><path d="M2 6 L26 8 L50 10 L74 14 L98 16 L118 18" stroke="var(--accent-2)" stroke-width="1.6" fill="none" opacity=".7"/></svg></td>
+            <td style="padding:10px 14px; text-align:right; color:var(--text-mute); font:500 11px/1 var(--font-mono); letter-spacing:.06em;">DEF</td>
+          </tr>
+          <tr>
+            <td style="padding:10px 14px;">2019</td>
+            <td style="padding:10px 14px; text-align:right; font:500 13px/1 var(--font-mono);">R$ 911 M</td>
+            <td style="padding:10px 14px; text-align:right;"><span class="delta up">▲ 6.1%</span></td>
+            <td style="padding:6px 14px;"><svg viewBox="0 0 120 20" style="width:120px; height:20px;"><path d="M2 14 L26 12 L50 10 L74 8 L98 6 L118 4" stroke="var(--accent-1)" stroke-width="1.6" fill="none" opacity=".4"/></svg></td>
+            <td style="padding:10px 14px; text-align:right; color:var(--text-mute); font:500 11px/1 var(--font-mono); letter-spacing:.06em;">DEF</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <ul class="notes good">
+        <li>YoY delta inline — the most-asked question is answered in the table itself.</li>
+        <li>Tiny "trailing 5a" sparkline per row — same component you already ship.</li>
+        <li>Subtle row-background heatmap: green for the latest, pink for the COVID dip — the table now has the same emotional read as a chart.</li>
+        <li>"Tipo" demoted to a compact mono code on the right — out of the way, still scannable.</li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- EMPTY / LOADING -->
+  <div class="compare" style="margin-top:30px;">
+    <div class="card bad">
+      <div class="card-tag"><span class="dot"></span>Current · empty state</div>
+      <div style="height:200px; display:grid; place-items:center; color:var(--text-mute); font:500 13px/1 var(--font-mono); letter-spacing:.04em;">
+        Sem dados disponíveis
+      </div>
+      <ul class="notes bad">
+        <li>Dead-end message. No next step for the user, no "why".</li>
+      </ul>
+    </div>
+
+    <div class="card good">
+      <div class="card-tag"><span class="dot"></span>Proposed · designed empty state</div>
+      <div class="empty">
+        <span class="eyebrow-sm">Aguardando dados</span>
+        <h4>Esta série ainda não foi carregada para Uberlândia</h4>
+        <p>O ingestor processa o CAGED na primeira quinta-feira do mês. Próxima atualização: 6/jun.</p>
+        <button class="btn">Configurar alerta de atualização</button>
+      </div>
+      <ul class="notes good">
+        <li>Tells the user <b>why</b> there's no data and <b>when</b> there will be.</li>
+        <li>Offers a next step — links into the existing notifications system.</li>
+        <li>Same dashed-stripe pattern in both empty/loading reinforces "this is a chart slot, not a broken page".</li>
+      </ul>
+    </div>
+  </div>
+
+  <h3 style="margin:36px 0 6px; font-size:18px; letter-spacing:-.01em;">Loading skeletons — match the chart shape</h3>
+  <p class="sec-sub" style="margin-top:0;">
+    Currently <code style="font-family:var(--font-mono)">PibPage</code> renders 3 generic <code style="font-family:var(--font-mono)">animate-pulse</code> rectangles. Make them <b>shaped like the thing they're replacing</b> so the layout doesn't shift when data arrives.
+  </p>
+
+  <div class="compare triple">
+    <div class="card good" style="padding:14px 16px;">
+      <div class="card-tag"><span class="dot"></span>KPI skeleton</div>
+      <div class="skel" style="height:10px; width:60%; margin-top:6px;"></div>
+      <div class="skel" style="height:28px; width:50%; margin-top:14px;"></div>
+      <div class="skel" style="height:10px; width:38%; margin-top:10px;"></div>
+      <div class="skel" style="height:42px; width:calc(100% + 28px); margin:14px -16px -14px; border-radius:0;"></div>
+    </div>
+    <div class="card good" style="padding:14px 16px;">
+      <div class="card-tag"><span class="dot"></span>Chart skeleton</div>
+      <div class="skel" style="height:12px; width:48%; margin-top:4px;"></div>
+      <div style="height:140px; margin-top:14px; position:relative;">
+        <div class="skel" style="height:140px; width:100%; border-radius:8px;"></div>
+        <svg viewBox="0 0 200 80" preserveAspectRatio="none" style="position:absolute; inset:20px 10px; width:calc(100% - 20px); height:100px; opacity:.35;">
+          <path d="M2 60 L40 50 L80 55 L120 35 L160 40 L196 20" stroke="var(--text-dim)" stroke-width="2" fill="none"/>
+        </svg>
+      </div>
+    </div>
+    <div class="card good" style="padding:14px 16px;">
+      <div class="card-tag"><span class="dot"></span>Ranking skeleton</div>
+      <div class="skel" style="height:12px; width:55%; margin-top:4px;"></div>
+      <div style="margin-top:14px;">
+        <div class="skel" style="height:22px; width:100%; margin-top:6px;"></div>
+        <div class="skel" style="height:22px; width:78%; margin-top:6px;"></div>
+        <div class="skel" style="height:22px; width:62%; margin-top:6px;"></div>
+        <div class="skel" style="height:22px; width:48%; margin-top:6px;"></div>
+        <div class="skel" style="height:22px; width:34%; margin-top:6px;"></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+
+<!-- ════════════════ 09 · SYSTEM ════════════════ -->
+<section id="system" data-screen-label="10 System opportunities">
+  <div class="sec-head"><span class="sec-num">09 · SYSTEM</span></div>
+  <h2 class="sec-title">System-wide opportunities — ranked.</h2>
+  <p class="sec-sub">
+    Beyond the chart-by-chart redesigns, here's a flat list of opportunities that touch the chart library as a whole. Sorted by impact-over-effort.
+  </p>
+
+  <div class="opps">
+    <div class="row head"><div>#</div><div>Improvement</div><div>What it changes</div><div>Effort</div><div>Impact</div></div>
+
+    <div class="row">
+      <div class="id">01</div>
+      <div class="what">Add <code style="font-family:var(--font-mono)">spark</code> + <code style="font-family:var(--font-mono)">delta</code> props to KpiCard</div>
+      <div class="why">Single biggest improvement to scanability. Reuses two components you already ship. ~50 lines of JSX in <code style="font-family:var(--font-mono)">KpiCard.jsx</code>.</div>
+      <div><span class="tag s">S</span></div>
+      <div><span class="tag high">high</span></div>
+    </div>
+
+    <div class="row">
+      <div class="id">02</div>
+      <div class="what">Migrate <code style="font-family:var(--font-mono)">PibPage</code> off Recharts → NID charts</div>
+      <div class="why">Removes the visual inconsistency where one page looks different from every other page. Once done, Recharts can be dropped from <code style="font-family:var(--font-mono)">package.json</code> (smaller bundle).</div>
+      <div><span class="tag m">M</span></div>
+      <div><span class="tag high">high</span></div>
+    </div>
+
+    <div class="row">
+      <div class="id">03</div>
+      <div class="what">Add <code style="font-family:var(--font-mono)">benchmark</code> + <code style="font-family:var(--font-mono)">forecast</code> props to AreaLineChart / MultiLineChart</div>
+      <div class="why">Both already on the IDEAS.md roadmap. Once they're props, every time-series chart in the app gets them for free. Frontend-only, no new endpoints (forecast = JS regression on the existing serie).</div>
+      <div><span class="tag m">M</span></div>
+      <div><span class="tag high">high</span></div>
+    </div>
+
+    <div class="row">
+      <div class="id">04</div>
+      <div class="what">Move Y-axis "R$" to a single rotated caption</div>
+      <div class="why">~10 lines in each chart component. Removes "R$ R$ R$ R$" stacks. Lets the value labels go into pure numeric form, which can use <code style="font-family:var(--font-mono)">tabular-nums</code>.</div>
+      <div><span class="tag s">S</span></div>
+      <div><span class="tag med">medium</span></div>
+    </div>
+
+    <div class="row">
+      <div class="id">05</div>
+      <div class="what">Glow tokens: reserve glow for hover / focus state</div>
+      <div class="why">Currently glow is on by default. Make <code style="font-family:var(--font-mono)">glow=&quot;hover&quot;</code> the default, <code style="font-family:var(--font-mono)">glow=&quot;always&quot;</code> opt-in. Pages get instantly calmer.</div>
+      <div><span class="tag s">S</span></div>
+      <div><span class="tag med">medium</span></div>
+    </div>
+
+    <div class="row">
+      <div class="id">06</div>
+      <div class="what">Focus + context for MultiLineChart</div>
+      <div class="why">New prop <code style="font-family:var(--font-mono)">focusSeries=&quot;Uberlândia&quot;</code> mutes everything else to a single grey and draws the peer median as a dashed reference. Old behavior remains opt-in.</div>
+      <div><span class="tag m">M</span></div>
+      <div><span class="tag high">high</span></div>
+    </div>
+
+    <div class="row">
+      <div class="id">07</div>
+      <div class="what">Saldo mode for TwinBarChart</div>
+      <div class="why">Add <code style="font-family:var(--font-mono)">mode=&quot;saldo&quot;</code> (default) and <code style="font-family:var(--font-mono)">mode=&quot;bruto&quot;</code>. The saldo view + cumulative YTD line should be the headline; bruto is the secondary tab.</div>
+      <div><span class="tag s">S</span></div>
+      <div><span class="tag high">high</span></div>
+    </div>
+
+    <div class="row">
+      <div class="id">08</div>
+      <div class="what">Stacked bar: total-label-on-top + monochrome scale</div>
+      <div class="why">Use one accent with stepped opacities for the segments. Adds a total label on top of each bar so the eye doesn't have to walk to the Y axis.</div>
+      <div><span class="tag s">S</span></div>
+      <div><span class="tag med">medium</span></div>
+    </div>
+
+    <div class="row">
+      <div class="id">09</div>
+      <div class="what">DonutChart: warn / fallback when <code style="font-family:var(--font-mono)">data.length &gt; 4</code></div>
+      <div class="why">Above 4 slices the donut becomes a lie. Switch automatically (or with a prop) to the 100% horizontal bar variant.</div>
+      <div><span class="tag s">S</span></div>
+      <div><span class="tag med">medium</span></div>
+    </div>
+
+    <div class="row">
+      <div class="id">10</div>
+      <div class="what">HBarChart: rewrite as grid rows, add own-município highlight</div>
+      <div class="why">Drops the SVG + abs-positioned label coordinate-system fragility. Adds <code style="font-family:var(--font-mono)">highlight=&quot;Uberlândia&quot;</code> prop. Position number column added.</div>
+      <div><span class="tag s">S</span></div>
+      <div><span class="tag high">high</span></div>
+    </div>
+
+    <div class="row">
+      <div class="id">11</div>
+      <div class="what">Designed empty &amp; loading states per chart family</div>
+      <div class="why">Replace "Sem dados disponíveis" with shape-matched skeletons + context-aware empty messages. One <code style="font-family:var(--font-mono)">&lt;ChartState kind="empty|loading" shape="line|bar|donut" /&gt;</code> component.</div>
+      <div><span class="tag s">S</span></div>
+      <div><span class="tag med">medium</span></div>
+    </div>
+
+    <div class="row">
+      <div class="id">12</div>
+      <div class="what">Period chip as page-level header</div>
+      <div class="why">Currently the filter sets state inside <code style="font-family:var(--font-mono)">FilterBar</code> but the active period isn't visible afterward. Promote it to a chip next to the page title so the user always knows what they're looking at.</div>
+      <div><span class="tag s">S</span></div>
+      <div><span class="tag med">medium</span></div>
+    </div>
+
+    <div class="row">
+      <div class="id">13</div>
+      <div class="what">Tabular numerals everywhere a number is shown</div>
+      <div class="why">Geist supports <code style="font-family:var(--font-mono)">font-feature-settings:&quot;tnum&quot;</code> — already enabled on <code style="font-family:var(--font-mono)">.nid-kpi-value</code> but not on chart tick text, tables, or tooltips. Adds 1 line in <code style="font-family:var(--font-mono)">global.css</code>; visual stability across the app.</div>
+      <div><span class="tag s">S</span></div>
+      <div><span class="tag low">low</span></div>
+    </div>
+
+    <div class="row">
+      <div class="id">14</div>
+      <div class="what">"Annotated" overlay layer for AreaLineChart</div>
+      <div class="why">Lets you drop a <code style="font-family:var(--font-mono)">&lt;Annotation x={2020} kind="negative"&gt;COVID&lt;/Annotation&gt;</code> child. The chart's story is told even without hover.</div>
+      <div><span class="tag m">M</span></div>
+      <div><span class="tag med">medium</span></div>
+    </div>
+
+    <div class="row">
+      <div class="id">15</div>
+      <div class="what">Hover crosshair sync between sibling charts</div>
+      <div class="why">When the user hovers the PIB chart, sync the cursor on the Arrecadação chart on the same page. Subtle but powerful for narrative pages. Single <code style="font-family:var(--font-mono)">ChartHoverContext</code>.</div>
+      <div><span class="tag m">M</span></div>
+      <div><span class="tag low">low</span></div>
+    </div>
+  </div>
+</section>
+
+
+<!-- ════════════════ NEXT STEPS ════════════════ -->
+<section id="next" data-screen-label="11 Next">
+  <div class="sec-head"><span class="sec-num">10 · NEXT</span></div>
+  <h2 class="sec-title">If we did one sprint of this, where would I start?</h2>
+  <p class="sec-sub">
+    The two highest-leverage tickets are <b>#01 (KpiCard v2 with spark + delta)</b> and <b>#10 (HBar grid rewrite with own-município highlight)</b>. Both are small, both touch every page, and both materially change what the user sees first on every screen. After that, <b>#02 (Recharts → NID migration)</b> and <b>#06 (focus+context for MultiLineChart)</b>.
+  </p>
+
+  <p class="sec-sub" style="margin-top:18px;">
+    Want me to build any of these as a working prototype next? E.g. a side-by-side <i>PibPage</i> with the new KpiCard + AreaLineChart that you can flip between current and proposed?
+  </p>
+</section>
+
+<footer>
+  Review · 17 mai 2026 · uses theme-neon tokens · ready to lift into <span style="color:var(--text-dim)">/components/nid/charts.jsx</span> and <span style="color:var(--text-dim)">/components/KpiCard.jsx</span>
+</footer>
+
+</div>
+</body>
+</html>

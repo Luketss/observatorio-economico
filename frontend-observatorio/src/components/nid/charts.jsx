@@ -1,4 +1,41 @@
 import { useEffect, useId, useRef, useState } from "react";
+import React from "react";
+import ChartState from "./ChartState.jsx";
+import { useChartHover } from "./ChartHoverContext.jsx";
+
+// ────────── glow resolver ──────────
+function resolveGlow(glow) {
+  if (glow === true)  return "hover";   // backward compat
+  if (glow === false) return "off";
+  if (!glow)          return "hover";   // default
+  return glow;                          // "hover" | "always" | "off"
+}
+
+// ────────── linear forecast (ticket 04) ──────────
+function linearForecast(values, steps = 1, n = 6) {
+  const tail = values.slice(-n);
+  const N = tail.length;
+  if (N < 2) return [];
+  const xMean = (N - 1) / 2;
+  const yMean = tail.reduce((s, v) => s + v, 0) / N;
+  let num = 0, den = 0;
+  for (let i = 0; i < N; i++) {
+    num += (i - xMean) * (tail[i] - yMean);
+    den += (i - xMean) ** 2;
+  }
+  const slope = den ? num / den : 0;
+  const intercept = yMean - slope * xMean;
+  const out = [];
+  for (let i = 1; i <= steps; i++) out.push(intercept + slope * (N - 1 + i));
+  return out;
+}
+
+// Parse "linear-N" method string → N points used for regression
+function parseN(method) {
+  if (!method) return 6;
+  const m = String(method).match(/linear-(\d+)/);
+  return m ? parseInt(m[1], 10) : 6;
+}
 
 // ────────── helpers ──────────
 const smoothPath = (pts) => {
@@ -60,8 +97,37 @@ function useContainerWidth(initial = 600) {
   return [ref, w];
 }
 
+// ────────── Declarative annotation shadow components (ticket 15) ──────────
+// These components return null — they exist only to be detected by
+// React.Children.forEach inside AreaLineChart / MultiLineChart.
+export function Annotation(props) { return null; }        // point callout: x, kind, children(label)
+export function AnnotationBand(props) { return null; }    // range band: xRange, kind
+export function Benchmark(props) { return null; }         // horizontal ref line: value, label, color
+
+/**
+ * Partitions React children into the three annotation buckets.
+ * Each bucket item is the child's props object (plus `label` normalized
+ * from React children text when the child has text content).
+ */
+function partitionChildren(children) {
+  const annotations = [], bands = [], benchmarks = [];
+  React.Children.forEach(children, (child) => {
+    if (!React.isValidElement(child)) return;
+    if (child.type === Annotation) {
+      // Normalize: label comes from children text if not set as prop
+      const label = child.props.label ?? (typeof child.props.children === "string" ? child.props.children : undefined);
+      annotations.push({ ...child.props, label });
+    } else if (child.type === AnnotationBand) {
+      bands.push(child.props);
+    } else if (child.type === Benchmark) {
+      benchmarks.push(child.props);
+    }
+  });
+  return { annotations, bands, benchmarks };
+}
+
 // ────────── Sparkline (KPI cards) ──────────
-export function Sparkline({ data, color = "var(--accent-1)", glow = true, height = 42, width = 240 }) {
+export function Sparkline({ data, color = "var(--accent-1)", glow = "hover", height = 42, width = 240 }) {
   const id = useId().replace(/:/g, "");
   if (!data || data.length === 0) return null;
   const pad = 6;
@@ -74,6 +140,7 @@ export function Sparkline({ data, color = "var(--accent-1)", glow = true, height
   const last = pts[pts.length - 1];
   const first = pts[0];
   const area = `${path} L ${last.x} ${height} L ${first.x} ${height} Z`;
+  // Sparklines are tiny — drop ghost glow path entirely for all glow modes
   return (
     <svg viewBox={`0 0 ${width} ${height}`} preserveAspectRatio="none">
       <defs>
@@ -81,14 +148,8 @@ export function Sparkline({ data, color = "var(--accent-1)", glow = true, height
           <stop offset="0%" stopColor={color} stopOpacity="0.45" />
           <stop offset="100%" stopColor={color} stopOpacity="0" />
         </linearGradient>
-        <filter id={`spark-glow-${id}`}>
-          <feGaussianBlur stdDeviation={glow ? 2.5 : 0} />
-        </filter>
       </defs>
       <path d={area} fill={`url(#spark-${id})`} />
-      {glow && (
-        <path d={path} stroke={color} strokeWidth="3" fill="none" opacity="0.7" filter={`url(#spark-glow-${id})`} />
-      )}
       <path d={path} stroke={color} strokeWidth="1.6" fill="none" strokeLinecap="round" />
     </svg>
   );
@@ -96,42 +157,123 @@ export function Sparkline({ data, color = "var(--accent-1)", glow = true, height
 
 // ────────── AreaLineChart (PIB Evolution) ──────────
 export function AreaLineChart({
-  data, height = 280, glow = true, color = "var(--accent-1)",
+  data, height = 280, glow = "hover", color = "var(--accent-1)",
   yFmt = fmtMoneyShort, tipFmt = fmtMoneyFull, label = "PIB Total",
+  yCaption,
+  benchmark,    // { value, label, color? }  — array-form (ticket 04)
+  forecast,     // { steps, method, color?, label? }
+  annotations,  // [{ x, kind, label? } | { xRange:[x1,x2], kind }]  — array-form (ticket 04)
+  children,     // declarative <Annotation/>, <AnnotationBand/>, <Benchmark/> (ticket 15)
+  loading,
+  emptyMessage,
+  emptyAction,
+  syncGroup,    // ticket 14: cross-chart hover sync
 }) {
   const id = useId().replace(/:/g, "");
   const [wrapRef, w] = useContainerWidth(800);
-  const [hover, setHover] = useState(null);
-  if (!data || data.length === 0) return <EmptyChart h={height} />;
+  const [localHover, setLocalHover] = useState(null);
+  const [externalLabel, setExternalLabel] = useChartHover(syncGroup);
+
+  // Resolve external label → index in data (real points only)
+  const externalIdx =
+    externalLabel != null && data
+      ? data.findIndex((d) => String(d.label) === String(externalLabel))
+      : -1;
+
+  // Local hover wins; fall back to external
+  const hover = localHover ?? (externalIdx >= 0 ? externalIdx : null);
+  const isExternalHover = localHover == null && externalIdx >= 0;
+
+  // Broadcast local hover changes to siblings
+  useEffect(() => {
+    if (!syncGroup || !data) return;
+    setExternalLabel(localHover != null ? data[localHover]?.label ?? null : null);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [localHover, syncGroup]);
+  if (loading) return <ChartState kind="loading" shape="line" height={height} />;
+  if (!data || data.length === 0) return <EmptyChart h={height} shape="line" message={emptyMessage} action={emptyAction} />;
+  const glowMode = resolveGlow(glow);
+  const glowAlways = glowMode === "always";
+  const glowHover  = glowMode !== "off";
+
+  // ── ticket 15: merge declarative children with array-form props ───────────
+  const { annotations: childAnnotations, bands: childBands, benchmarks: childBenchmarks } = partitionChildren(children);
+  // Point annotations: array-form first, then child-form (xRange items are bands)
+  const allAnnotations = [
+    ...(annotations || []),
+    ...childAnnotations.map((a) => ({ x: a.x, kind: a.kind, label: a.label })),
+    ...childBands.map((b) => ({ xRange: b.xRange, kind: b.kind })),
+  ];
+  // Benchmark: array-form wins; if not set, use first declarative <Benchmark>
+  const resolvedBenchmark = benchmark ?? (childBenchmarks.length > 0 ? childBenchmarks[0] : undefined);
 
   const padL = 56, padR = 16, padT = 14, padB = 34;
   const innerW = w - padL - padR;
   const innerH = height - padT - padB;
 
+  // ── forecast values ──────────────────────────────────────────────────────
+  const forecastSteps  = forecast?.steps  ?? 1;
+  const forecastN      = parseN(forecast?.method);
+  const forecastColor  = forecast?.color  || "var(--accent-3)";
+  const forecastLabel  = forecast?.label  || "projeção";
+  const forecastVals   = forecast ? linearForecast(data.map((d) => d.value), forecastSteps, forecastN) : [];
+
+  // Extended x domain: real labels + projected labels
+  const lastLabel = data[data.length - 1]?.label ?? "";
+  const projLabels = forecastVals.map((_, i) => {
+    // Try to make a "next period" label.  If label is a 4-digit year, increment it.
+    const base = parseInt(lastLabel, 10);
+    const suffix = "P";
+    return isNaN(base) ? `${lastLabel}+${i + 1}${suffix}` : `${base + i + 1} ${suffix}`;
+  });
+  const allLabels  = [...data.map((d) => d.label), ...projLabels];
+  const totalPts   = allLabels.length;
+
+  // ── Y scale (expand for benchmark / forecast) ─────────────────────────
   const ys = data.map((d) => d.value);
-  const yMax = Math.max(...ys) * 1.12;
-  const ticks = niceTicks(0, yMax, 4);
+  const allYs = [...ys, ...forecastVals, ...(resolvedBenchmark?.value != null ? [resolvedBenchmark.value] : [])];
+  const yMaxRaw = Math.max(...allYs) * 1.12;
+  const ticks = niceTicks(0, yMaxRaw, yCaption ? 3 : 4);
+  const tickFmt = yCaption ? fmtNumberShort : yFmt;
   const yScaleMax = ticks[ticks.length - 1];
-  const sx = (i) => padL + (i / (data.length - 1 || 1)) * innerW;
+
+  // ── Coordinate mappers ────────────────────────────────────────────────
+  // sx maps a global index over allLabels
+  const sx = (i) => padL + (i / (totalPts - 1 || 1)) * innerW;
   const sy = (v) => padT + (1 - v / yScaleMax) * innerH;
 
-  const pts = data.map((d, i) => ({ x: sx(i), y: sy(d.value), v: d.value, label: d.label }));
+  // Real points (indices 0..data.length-1)
+  const pts = data.map((d, i) => ({ x: sx(i), y: sy(d.value), v: d.value, label: d.label, isForecast: false }));
+  // Forecast points (indices data.length..totalPts-1)
+  const fcPts = forecastVals.map((v, i) => ({
+    x: sx(data.length + i),
+    y: sy(v),
+    v,
+    label: projLabels[i],
+    isForecast: true,
+  }));
+
   const path = smoothPath(pts);
   const area = `${path} L ${pts[pts.length - 1].x} ${padT + innerH} L ${pts[0].x} ${padT + innerH} Z`;
+
+  // All hoverable points (real + forecast)
+  const allPts = [...pts, ...fcPts];
 
   const handleMove = (e) => {
     const rect = e.currentTarget.getBoundingClientRect();
     const px = ((e.clientX - rect.left) / rect.width) * w;
     let best = 0, bestD = Infinity;
-    pts.forEach((p, i) => {
+    allPts.forEach((p, i) => {
       const d = Math.abs(p.x - px);
       if (d < bestD) { bestD = d; best = i; }
     });
-    setHover(best);
+    setLocalHover(best);
   };
 
+  const hoveredPt = hover != null ? allPts[hover] : null;
+
   return (
-    <div className="nid-chart-wrap" ref={wrapRef} onMouseLeave={() => setHover(null)}>
+    <div className="nid-chart-wrap" ref={wrapRef} onMouseLeave={() => setLocalHover(null)}>
       <svg viewBox={`0 0 ${w} ${height}`}>
         <defs>
           <linearGradient id={`area-${id}`} x1="0" y1="0" x2="0" y2="1">
@@ -140,7 +282,7 @@ export function AreaLineChart({
             <stop offset="100%" stopColor={color} stopOpacity="0" />
           </linearGradient>
           <filter id={`glow-${id}`} x="-50%" y="-50%" width="200%" height="200%">
-            <feGaussianBlur stdDeviation={glow ? 4 : 0} result="b" />
+            <feGaussianBlur stdDeviation="2.5" result="b" />
             <feMerge><feMergeNode in="b" /><feMergeNode in="SourceGraphic" /></feMerge>
           </filter>
         </defs>
@@ -148,38 +290,165 @@ export function AreaLineChart({
         {ticks.map((t, i) => (
           <g key={i}>
             <line x1={padL} x2={w - padR} y1={sy(t)} y2={sy(t)} stroke="var(--grid)" strokeDasharray="3 4" />
-            <text x={padL - 10} y={sy(t) + 3.5} className="nid-axis-text" textAnchor="end">{yFmt(t)}</text>
+            <text x={padL - 10} y={sy(t) + 3.5} className="nid-axis-text" textAnchor="end">{tickFmt(t)}</text>
           </g>
         ))}
-        {data.map((d, i) =>
-          (i % Math.ceil(data.length / 10) === 0 || i === data.length - 1) && (
-            <text key={i} x={sx(i)} y={height - padB + 18} className="nid-axis-text" textAnchor="middle">{d.label}</text>
-          )
+        {yCaption && (
+          <text className="axis-cap"
+            x={14} y={height / 2}
+            transform={`rotate(-90 14 ${height / 2})`}
+            textAnchor="middle">
+            {yCaption}
+          </text>
         )}
+        {/* X-axis labels — show every ~10th real label + all forecast labels */}
+        {allLabels.map((lbl, i) => {
+          const isReal = i < data.length;
+          if (isReal && !(i % Math.ceil(data.length / 10) === 0 || i === data.length - 1)) return null;
+          return (
+            <text key={i} x={sx(i)} y={height - padB + 18}
+              className="nid-axis-text" textAnchor="middle"
+              style={!isReal ? { fill: forecastColor } : undefined}>
+              {lbl}
+            </text>
+          );
+        })}
+
+        {/* ── Range annotations (behind everything) ── */}
+        {allAnnotations.filter((a) => a.xRange).map((a, i) => {
+          const i0 = data.findIndex((d) => d.label === a.xRange[0]);
+          const i1 = data.findIndex((d) => d.label === a.xRange[1]);
+          if (i0 < 0 || i1 < 0) return null;
+          const fill   = a.kind === "negative" ? "rgba(255,61,146,.06)" : "rgba(0,229,255,.06)";
+          const stroke = a.kind === "negative" ? "rgba(255,61,146,.15)" : "rgba(0,229,255,.15)";
+          return (
+            <rect key={`band-${i}`}
+              x={pts[i0].x} y={padT}
+              width={pts[i1].x - pts[i0].x}
+              height={innerH}
+              fill={fill} stroke={stroke} />
+          );
+        })}
 
         <path d={area} fill={`url(#area-${id})`} />
-        {glow && <path d={path} stroke={color} strokeWidth="6" fill="none" opacity="0.5" filter={`url(#glow-${id})`} />}
+        {/* Resting glow halo: only when glowAlways */}
+        {glowAlways && (
+          <path d={path} stroke={color} strokeWidth="6" fill="none" opacity="0.5" filter={`url(#glow-${id})`} />
+        )}
         <path d={path} stroke={color} strokeWidth="2.25" fill="none" strokeLinecap="round" strokeLinejoin="round" />
 
+        {/* ── Forecast path ── */}
+        {forecast && fcPts.length > 0 && (
+          <path
+            d={`M ${pts[pts.length - 1].x} ${pts[pts.length - 1].y} L ${fcPts.map((p) => `${p.x} ${p.y}`).join(" L ")}`}
+            stroke={forecastColor} strokeWidth="2" strokeDasharray="3 4" fill="none" opacity="0.9"
+          />
+        )}
+
+        {/* ── Benchmark line ── */}
+        {resolvedBenchmark && (
+          <g>
+            <line
+              x1={padL} x2={w - padR}
+              y1={sy(resolvedBenchmark.value)} y2={sy(resolvedBenchmark.value)}
+              stroke={resolvedBenchmark.color || "var(--text-dim)"}
+              strokeDasharray="6 5" strokeWidth="1.2" opacity="0.55"
+            />
+            <text
+              x={w - padR} y={sy(resolvedBenchmark.value) - 5}
+              textAnchor="end"
+              className="nid-axis-text"
+              style={{ fill: resolvedBenchmark.color || "var(--text-dim)", letterSpacing: ".06em" }}
+            >
+              {resolvedBenchmark.label} · {tipFmt(resolvedBenchmark.value)}
+            </text>
+          </g>
+        )}
+
+        {/* ── Real data dots ── */}
         {pts.map((p, i) => (
-          <g key={i} opacity={hover === i ? 1 : 0.6}>
-            {glow && <circle cx={p.x} cy={p.y} r="6" fill={color} opacity="0.3" filter={`url(#glow-${id})`} />}
+          <g key={i}>
+            {glowHover && hover === i && (
+              <circle cx={p.x} cy={p.y} r="8" fill={color} opacity="0.4" filter={`url(#glow-${id})`} />
+            )}
             <circle cx={p.x} cy={p.y} r={hover === i ? 4.5 : 2.5} fill="var(--bg)" stroke={color} strokeWidth="2" />
           </g>
         ))}
-        {hover != null && (
-          <line x1={pts[hover].x} x2={pts[hover].x} y1={padT} y2={padT + innerH} stroke={color} strokeOpacity="0.4" strokeDasharray="2 3" />
+
+        {/* ── Forecast dots ── */}
+        {fcPts.map((p, i) => (
+          <g key={`fc-${i}`}>
+            {glowHover && hover === (pts.length + i) && (
+              <circle cx={p.x} cy={p.y} r="8" fill={forecastColor} opacity="0.4" filter={`url(#glow-${id})`} />
+            )}
+            <circle cx={p.x} cy={p.y}
+              r={hover === (pts.length + i) ? 4.5 : 3}
+              fill="var(--bg)" stroke={forecastColor} strokeWidth="2" strokeDasharray="2 2" />
+          </g>
+        ))}
+
+        {/* Crosshair — dimmer when driven by an external sync peer */}
+        {hoveredPt && (
+          <line x1={hoveredPt.x} x2={hoveredPt.x} y1={padT} y2={padT + innerH}
+            stroke={hoveredPt.isForecast ? forecastColor : color}
+            strokeOpacity={isExternalHover ? 0.2 : 0.4}
+            strokeDasharray={isExternalHover ? "3 5" : "2 3"} />
         )}
+
+        {/* ── Point annotations (on top of lines) ── */}
+        {allAnnotations.filter((a) => a.x != null).map((a, i) => {
+          const idx = data.findIndex((d) => d.label === a.x);
+          if (idx < 0) return null;
+          const p = pts[idx];
+          const fill = a.kind === "negative" ? "var(--accent-2)"
+                     : a.kind === "positive" ? "var(--accent-5)"
+                     : "var(--accent-1)";
+          return (
+            <g key={`ann-${i}`}>
+              <circle cx={p.x} cy={p.y} r="5" fill="var(--bg)" stroke={fill} strokeWidth="2" />
+              {a.label && (
+                <foreignObject x={p.x - 60} y={p.y - 38} width="120" height="22">
+                  <div xmlns="http://www.w3.org/1999/xhtml" className={`nid-pin${a.kind ? ` ${a.kind}` : ""}`}>
+                    {a.label}
+                  </div>
+                </foreignObject>
+              )}
+            </g>
+          );
+        })}
+
         <rect x={padL} y={padT} width={innerW} height={innerH} fill="transparent" onMouseMove={handleMove} />
       </svg>
 
-      {hover != null && (
-        <div className="nid-tip" style={{ left: `${(pts[hover].x / w) * 100}%`, top: `${(pts[hover].y / height) * 100}%` }}>
-          <div className="tip-label">{pts[hover].label}</div>
-          <div className="tip-row">
-            <span className="name"><span className="swatch" style={{ background: color }}></span>{label}</span>
-            <span>{tipFmt(pts[hover].v)}</span>
-          </div>
+      {hoveredPt && (
+        <div
+          className="nid-tip"
+          style={{
+            left: `${(hoveredPt.x / w) * 100}%`,
+            // External hover: anchor to top of chart area; local hover: follow the point
+            top: isExternalHover
+              ? `${((padT + 8) / height) * 100}%`
+              : `${(hoveredPt.y / height) * 100}%`,
+            opacity: isExternalHover ? 0.75 : 1,
+          }}
+        >
+          <div className="tip-label">{hoveredPt.label}</div>
+          {hoveredPt.isForecast ? (
+            <>
+              <div className="tip-row">
+                <span className="name"><span className="swatch" style={{ background: forecastColor }}></span>{forecastLabel.toUpperCase()}</span>
+                <span>{tipFmt(hoveredPt.v)}</span>
+              </div>
+              <div style={{ fontSize: 10, color: "var(--text-mute)", marginTop: 3, fontFamily: "var(--font-mono)" }}>
+                regressão linear, {forecastN} pts
+              </div>
+            </>
+          ) : (
+            <div className="tip-row">
+              <span className="name"><span className="swatch" style={{ background: color }}></span>{label}</span>
+              <span>{tipFmt(hoveredPt.v)}</span>
+            </div>
+          )}
         </div>
       )}
     </div>
@@ -187,35 +456,62 @@ export function AreaLineChart({
 }
 
 // ────────── StackedBarChart ──────────
+const opacityScale = (i) => {
+  const stops = [0.95, 0.70, 0.45, 0.25, 0.15];
+  return stops[i] ?? 0.10;
+};
+
 export function StackedBarChart({
-  data, keys, colors, height = 280, glow = true,
+  data, keys, colors, height = 280, glow = "hover",
   yFmt = fmtMoneyShort, tipFmt = fmtMoneyFull,
+  yCaption,
+  baseColor, showTotalLabel = false, highlightLast = false,
+  loading,
+  emptyMessage,
+  emptyAction,
 }) {
   const id = useId().replace(/:/g, "");
   const [wrapRef, w] = useContainerWidth(800);
   const [hover, setHover] = useState(null);
-  if (!data || data.length === 0) return <EmptyChart h={height} />;
+  if (loading) return <ChartState kind="loading" shape="stacked" height={height} />;
+  if (!data || data.length === 0) return <EmptyChart h={height} shape="stacked" message={emptyMessage} action={emptyAction} />;
+  const glowMode = resolveGlow(glow);
+  const glowHover  = glowMode !== "off";
 
+  const resolvedColors = colors || [];
   const padL = 56, padR = 16, padT = 14, padB = 34;
   const innerW = w - padL - padR;
   const innerH = height - padT - padB;
   const yMax = Math.max(...data.map((d) => keys.reduce((s, k) => s + (d[k] || 0), 0))) * 1.1;
-  const ticks = niceTicks(0, yMax, 4);
+  const ticks = niceTicks(0, yMax, yCaption ? 3 : 4);
+  const tickFmt = yCaption ? fmtNumberShort : yFmt;
   const yScaleMax = ticks[ticks.length - 1];
   const barWidth = (innerW / data.length) * 0.55;
   const sx = (i) => padL + (innerW / data.length) * (i + 0.5);
   const sy = (v) => padT + (1 - v / yScaleMax) * innerH;
 
+  // YoY delta helper for highlightLast
+  const lastIdx = data.length - 1;
+  const prevIdx = data.length - 2;
+  const lastTotal = lastIdx >= 0 ? keys.reduce((s, k) => s + (data[lastIdx][k] || 0), 0) : 0;
+  const prevTotal = prevIdx >= 0 ? keys.reduce((s, k) => s + (data[prevIdx][k] || 0), 0) : 0;
+  const yoyPct = prevTotal > 0 ? ((lastTotal - prevTotal) / prevTotal) * 100 : null;
+
   return (
     <div className="nid-chart-wrap" ref={wrapRef} onMouseLeave={() => setHover(null)}>
       <svg viewBox={`0 0 ${w} ${height}`}>
         <defs>
-          {colors.map((c, i) => (
+          {!baseColor && resolvedColors.map((c, i) => (
             <filter key={i} id={`bglow-${id}-${i}`} x="-50%" y="-50%" width="200%" height="200%">
-              <feGaussianBlur stdDeviation={glow ? 4 : 0} />
+              <feGaussianBlur stdDeviation="3" />
             </filter>
           ))}
-          {colors.map((c, i) => (
+          {baseColor && (
+            <filter id={`bglow-${id}-mono`} x="-50%" y="-50%" width="200%" height="200%">
+              <feGaussianBlur stdDeviation="3" />
+            </filter>
+          )}
+          {!baseColor && resolvedColors.map((c, i) => (
             <linearGradient key={i} id={`bgrad-${id}-${i}`} x1="0" y1="0" x2="0" y2="1">
               <stop offset="0%" stopColor={c} stopOpacity="0.95" />
               <stop offset="100%" stopColor={c} stopOpacity="0.55" />
@@ -225,13 +521,24 @@ export function StackedBarChart({
         {ticks.map((t, i) => (
           <g key={i}>
             <line x1={padL} x2={w - padR} y1={sy(t)} y2={sy(t)} stroke="var(--grid)" strokeDasharray="3 4" />
-            <text x={padL - 10} y={sy(t) + 3.5} className="nid-axis-text" textAnchor="end">{yFmt(t)}</text>
+            <text x={padL - 10} y={sy(t) + 3.5} className="nid-axis-text" textAnchor="end">{tickFmt(t)}</text>
           </g>
         ))}
+        {yCaption && (
+          <text className="axis-cap"
+            x={14} y={height / 2}
+            transform={`rotate(-90 14 ${height / 2})`}
+            textAnchor="middle">
+            {yCaption}
+          </text>
+        )}
         {data.map((d, i) => {
           let acc = 0;
           const x = sx(i) - barWidth / 2;
           const isHover = hover === i;
+          const isLast = i === lastIdx;
+          const total = keys.reduce((s, k) => s + (d[k] || 0), 0);
+          const top = sy(total);
           return (
             <g key={i} onMouseEnter={() => setHover(i)}>
               {keys.map((k, ki) => {
@@ -240,22 +547,45 @@ export function StackedBarChart({
                 const y1 = sy(acc);
                 acc += v;
                 const isTop = ki === keys.length - 1;
+                const segColor = baseColor || resolvedColors[ki];
+                const fillAttr = baseColor
+                  ? baseColor
+                  : `url(#bgrad-${id}-${ki})`;
+                const glowId = baseColor ? `bglow-${id}-mono` : `bglow-${id}-${ki}`;
                 return (
                   <g key={k}>
-                    {glow && isHover && (
+                    {glowHover && isHover && (
                       <rect x={x - 2} y={y0 - 2} width={barWidth + 4} height={y1 - y0 + 4}
-                        rx={isTop ? 6 : 0} fill={colors[ki]} opacity="0.5" filter={`url(#bglow-${id}-${ki})`} />
+                        rx={isTop ? 6 : 0} fill={segColor} opacity="0.5" filter={`url(#${glowId})`} />
                     )}
                     <rect x={x} y={y0} width={barWidth} height={Math.max(0, y1 - y0)}
                       rx={isTop ? 5 : 0}
-                      fill={`url(#bgrad-${id}-${ki})`}
-                      stroke={isTop ? colors[ki] : "transparent"}
+                      fill={fillAttr}
+                      opacity={baseColor ? opacityScale(ki) : 1}
+                      stroke={isTop ? segColor : "transparent"}
                       strokeWidth={isTop ? 1 : 0}
-                      style={{ transition: "opacity 0.15s", opacity: hover != null && hover !== i ? 0.35 : 1 }}
+                      style={{ transition: "opacity 0.15s", opacity: baseColor ? (hover != null && hover !== i ? opacityScale(ki) * 0.4 : opacityScale(ki)) : (hover != null && hover !== i ? 0.35 : 1) }}
                     />
                   </g>
                 );
               })}
+              {showTotalLabel && (
+                <text x={sx(i)} y={top - 8} className="nid-axis-text"
+                  textAnchor="middle"
+                  style={{
+                    fill: highlightLast && isLast ? "var(--accent-2)" : "var(--text)",
+                    fontWeight: highlightLast && isLast ? 700 : undefined,
+                  }}>
+                  {highlightLast && isLast && yoyPct != null
+                    ? `${yFmt(total)} · ${yoyPct >= 0 ? "+" : ""}${yoyPct.toFixed(0)}%`
+                    : yFmt(total)}
+                </text>
+              )}
+              {highlightLast && isLast && (
+                <rect x={x - 2} y={top - 2}
+                  width={barWidth + 4} height={padT + innerH - top + 4}
+                  fill="none" stroke="var(--accent-2)" strokeWidth="1.5" rx="3" />
+              )}
               <text x={sx(i)} y={height - padB + 18} className="nid-axis-text" textAnchor="middle">{d.label}</text>
             </g>
           );
@@ -269,12 +599,18 @@ export function StackedBarChart({
           transform: "translate(-50%, calc(-100% - 8px))",
         }}>
           <div className="tip-label">{data[hover].label}</div>
-          {keys.map((k, ki) => (
-            <div className="tip-row" key={k}>
-              <span className="name"><span className="swatch" style={{ background: colors[ki] }}></span>{k}</span>
-              <span>{tipFmt(data[hover][k] || 0)}</span>
-            </div>
-          ))}
+          {keys.map((k, ki) => {
+            const swatchColor = baseColor || resolvedColors[ki];
+            const swatchOpacity = baseColor ? opacityScale(ki) : 1;
+            return (
+              <div className="tip-row" key={k}>
+                <span className="name">
+                  <span className="swatch" style={{ background: swatchColor, opacity: swatchOpacity }}></span>{k}
+                </span>
+                <span>{tipFmt(data[hover][k] || 0)}</span>
+              </div>
+            );
+          })}
         </div>
       )}
     </div>
@@ -283,82 +619,478 @@ export function StackedBarChart({
 
 // ────────── MultiLineChart (Comparativo) ──────────
 export function MultiLineChart({
-  data, series, colors, height = 280, glow = true,
+  data, series, colors, height = 280, glow = "hover",
   yFmt = fmtMoneyShort, tipFmt = fmtMoneyFull,
+  yCaption,
+  benchmark,    // { value, label, color? }  — array-form (ticket 04)
+  forecast,     // { steps, method, color?, label? } — applied to ALL series; draws one band per series
+  annotations,  // [{ x, kind, label? } | { xRange:[x1,x2], kind }]  — array-form (ticket 04)
+  children,     // declarative <Annotation/>, <AnnotationBand/>, <Benchmark/> (ticket 15)
+  // ── focus + context (ticket 06) ──────────────────────────────────────────
+  focusSeries,  // string — when set, switches to focus+context mode
+  focusColor,   // defaults to var(--accent-2)
+  showMedian,   // boolean — draw dashed peer-median line
+  showBand,     // boolean — draw peer min/max band
+  loading,
+  emptyMessage,
+  emptyAction,
+  syncGroup,    // ticket 14: cross-chart hover sync
 }) {
   const id = useId().replace(/:/g, "");
   const [wrapRef, w] = useContainerWidth(800);
-  const [hover, setHover] = useState(null);
-  if (!data || data.length === 0) return <EmptyChart h={height} />;
+  const [localHover, setLocalHover] = useState(null);
+  const [hoverSeries, setHoverSeries] = useState(null);
+  const [externalLabel, setExternalLabel] = useChartHover(syncGroup);
 
-  const padL = 56, padR = 16, padT = 14, padB = 34;
+  const externalIdx =
+    externalLabel != null && data
+      ? data.findIndex((d) => String(d.label) === String(externalLabel))
+      : -1;
+
+  const hover = localHover ?? (externalIdx >= 0 ? externalIdx : null);
+  const isExternalHover = localHover == null && externalIdx >= 0;
+
+  useEffect(() => {
+    if (!syncGroup || !data) return;
+    setExternalLabel(localHover != null ? data[localHover]?.label ?? null : null);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [localHover, syncGroup]);
+
+  if (loading) return <ChartState kind="loading" shape="line" height={height} />;
+  if (!data || data.length === 0) return <EmptyChart h={height} shape="line" message={emptyMessage} action={emptyAction} />;
+  const glowMode = resolveGlow(glow);
+  const glowHover  = glowMode !== "off";
+
+  // ── ticket 15: merge declarative children with array-form props ───────────
+  const { annotations: childAnnotations, bands: childBands, benchmarks: childBenchmarks } = partitionChildren(children);
+  const allAnnotations = [
+    ...(annotations || []),
+    ...childAnnotations.map((a) => ({ x: a.x, kind: a.kind, label: a.label })),
+    ...childBands.map((b) => ({ xRange: b.xRange, kind: b.kind })),
+  ];
+  const resolvedBenchmark = benchmark ?? (childBenchmarks.length > 0 ? childBenchmarks[0] : undefined);
+
+  // ── focus + context helpers ──────────────────────────────────────────────
+  const focusMode = !!focusSeries;
+  const resolvedFocusColor = focusColor || "var(--accent-2)";
+  // focusIdx may be -1 if focusSeries is not in series array — graceful fallback
+  const focusIdx = focusMode ? series.indexOf(focusSeries) : -1;
+
+  const colorFor = (si) => {
+    if (!focusMode) return (colors || [])[si] || "var(--accent-1)";
+    if (si === focusIdx) return resolvedFocusColor;
+    return "rgba(120,145,255,.28)";
+  };
+
+  const strokeFor = (si, isHovered) => {
+    if (!focusMode) return 2;
+    if (si === focusIdx) return 2.5;
+    return isHovered ? 1.8 : 1.2;
+  };
+
+  // Widen right padding when focus label is painted at line end
+  const padL = 56, padR = focusMode ? 80 : 16, padT = 14, padB = 34;
   const innerW = w - padL - padR;
   const innerH = height - padT - padB;
-  const allVals = data.flatMap((d) => series.map((s) => d[s] || 0));
-  const yMax = Math.max(...allVals) * 1.12;
-  const ticks = niceTicks(0, yMax, 4);
+
+  // ── forecast per series ──────────────────────────────────────────────────
+  const forecastSteps = forecast?.steps ?? 1;
+  const forecastN     = parseN(forecast?.method);
+  const forecastColor = forecast?.color || "var(--accent-3)";
+  const forecastLabel = forecast?.label || "projeção";
+  // one forecast array per series
+  const forecastValsBySeries = forecast
+    ? series.map((s) => linearForecast(data.map((d) => d[s] || 0), forecastSteps, forecastN))
+    : series.map(() => []);
+  const hasForecast = forecast && forecastValsBySeries.some((fc) => fc.length > 0);
+
+  // Extended x domain
+  const lastLabel = data[data.length - 1]?.label ?? "";
+  const projLabels = hasForecast
+    ? forecastValsBySeries[0].map((_, i) => {
+        const base = parseInt(lastLabel, 10);
+        return isNaN(base) ? `${lastLabel}+${i + 1}P` : `${base + i + 1} P`;
+      })
+    : [];
+  const allLabels = [...data.map((d) => d.label), ...projLabels];
+  const totalPts  = allLabels.length;
+
+  // ── Y scale (expand for benchmark / forecast) ────────────────────────
+  const allVals = [
+    ...data.flatMap((d) => series.map((s) => d[s] || 0)),
+    ...forecastValsBySeries.flat(),
+    ...(resolvedBenchmark?.value != null ? [resolvedBenchmark.value] : []),
+  ];
+  const yMaxRaw = Math.max(...allVals) * 1.12;
+  const ticks = niceTicks(0, yMaxRaw, yCaption ? 3 : 4);
+  const tickFmt = yCaption ? fmtNumberShort : yFmt;
   const yScaleMax = ticks[ticks.length - 1];
-  const sx = (i) => padL + (i / (data.length - 1 || 1)) * innerW;
+
+  const sx = (i) => padL + (i / (totalPts - 1 || 1)) * innerW;
   const sy = (v) => padT + (1 - v / yScaleMax) * innerH;
-  const ptsBySeries = series.map((s) => data.map((d, i) => ({ x: sx(i), y: sy(d[s] || 0), v: d[s] || 0 })));
+  const ptsBySeries = series.map((s) =>
+    data.map((d, i) => ({ x: sx(i), y: sy(d[s] || 0), v: d[s] || 0 }))
+  );
+  const fcPtsBySeries = forecastValsBySeries.map((fc) =>
+    fc.map((v, i) => ({ x: sx(data.length + i), y: sy(v), v, isForecast: true }))
+  );
+
+  // ── Focused-series last point (for endpoint dot + label) ─────────────────
+  const focusedPts = focusMode && focusIdx >= 0 ? ptsBySeries[focusIdx] : null;
+  const focusedLast = focusedPts ? focusedPts[focusedPts.length - 1] : null;
+
+  // ── Peer median per x-tick ────────────────────────────────────────────────
+  const medianAt = (i) => {
+    const peerVals = series
+      .filter((s) => s !== focusSeries)
+      .map((s) => data[i][s])
+      .filter((v) => v != null && !isNaN(v))
+      .sort((a, b) => a - b);
+    if (peerVals.length === 0) return null;
+    const mid = Math.floor(peerVals.length / 2);
+    return peerVals.length % 2 === 0
+      ? (peerVals[mid - 1] + peerVals[mid]) / 2
+      : peerVals[mid];
+  };
+  const medianPts = (focusMode && showMedian)
+    ? data.map((_, i) => {
+        const mv = medianAt(i);
+        return { x: sx(i), y: sy(mv != null ? mv : 0), v: mv };
+      })
+    : [];
+
+  // ── Peer min/max band path ────────────────────────────────────────────────
+  let bandPath = null;
+  if (focusMode && showBand) {
+    const peerSeries = series.filter((s) => s !== focusSeries);
+    const peerMin = data.map((row) => {
+      const vals = peerSeries.map((s) => row[s]).filter((v) => v != null && !isNaN(v) && isFinite(v));
+      return vals.length ? Math.min(...vals) : null;
+    });
+    const peerMax = data.map((row) => {
+      const vals = peerSeries.map((s) => row[s]).filter((v) => v != null && !isNaN(v) && isFinite(v));
+      return vals.length ? Math.max(...vals) : null;
+    });
+    const validIndices = peerMin.map((v, i) => (v != null && peerMax[i] != null ? i : null)).filter((i) => i != null);
+    if (validIndices.length >= 2) {
+      const upper = validIndices.map((i) => `${sx(i)} ${sy(peerMax[i])}`).join(" L ");
+      const lower = [...validIndices].reverse().map((i) => `${sx(i)} ${sy(peerMin[i])}`).join(" L ");
+      bandPath = `M ${upper} L ${lower} Z`;
+    }
+  }
 
   const handleMove = (e) => {
     const rect = e.currentTarget.getBoundingClientRect();
     const px = ((e.clientX - rect.left) / rect.width) * w;
     let best = 0, bestD = Infinity;
-    for (let i = 0; i < data.length; i++) {
+    for (let i = 0; i < totalPts; i++) {
       const d = Math.abs(sx(i) - px);
       if (d < bestD) { bestD = d; best = i; }
     }
-    setHover(best);
+    setLocalHover(best);
   };
 
+  const isHoverForecast = hover != null && hover >= data.length;
+
   return (
-    <div className="nid-chart-wrap" ref={wrapRef} onMouseLeave={() => setHover(null)}>
+    <div className="nid-chart-wrap" ref={wrapRef} onMouseLeave={() => { setLocalHover(null); setHoverSeries(null); }}>
       <svg viewBox={`0 0 ${w} ${height}`}>
         <defs>
-          {colors.map((c, i) => (
+          {(colors || []).map((c, i) => (
             <filter key={i} id={`mglow-${id}-${i}`} x="-50%" y="-50%" width="200%" height="200%">
-              <feGaussianBlur stdDeviation={glow ? 4 : 0} />
+              <feGaussianBlur stdDeviation="2.5" result="b" />
+              <feMerge><feMergeNode in="b" /><feMergeNode in="SourceGraphic" /></feMerge>
             </filter>
           ))}
+          {focusMode && (
+            <filter id={`mglow-${id}-focus`} x="-50%" y="-50%" width="200%" height="200%">
+              <feGaussianBlur stdDeviation="2.5" result="b" />
+              <feMerge><feMergeNode in="b" /><feMergeNode in="SourceGraphic" /></feMerge>
+            </filter>
+          )}
         </defs>
         {ticks.map((t, i) => (
           <g key={i}>
             <line x1={padL} x2={w - padR} y1={sy(t)} y2={sy(t)} stroke="var(--grid)" strokeDasharray="3 4" />
-            <text x={padL - 10} y={sy(t) + 3.5} className="nid-axis-text" textAnchor="end">{yFmt(t)}</text>
+            <text x={padL - 10} y={sy(t) + 3.5} className="nid-axis-text" textAnchor="end">{tickFmt(t)}</text>
           </g>
         ))}
-        {data.map((d, i) =>
-          (i % Math.ceil(data.length / 10) === 0 || i === data.length - 1) && (
-            <text key={i} x={sx(i)} y={height - padB + 18} className="nid-axis-text" textAnchor="middle">{d.label}</text>
-          )
+        {yCaption && (
+          <text className="axis-cap"
+            x={14} y={height / 2}
+            transform={`rotate(-90 14 ${height / 2})`}
+            textAnchor="middle">
+            {yCaption}
+          </text>
         )}
-        {ptsBySeries.map((pts, si) => (
-          <g key={si}>
-            {glow && <path d={smoothPath(pts)} stroke={colors[si]} strokeWidth="5" fill="none" opacity="0.45" filter={`url(#mglow-${id}-${si})`} />}
-            <path d={smoothPath(pts)} stroke={colors[si]} strokeWidth="2" fill="none" strokeLinecap="round" />
+        {/* X-axis labels */}
+        {allLabels.map((lbl, i) => {
+          const isReal = i < data.length;
+          if (isReal && !(i % Math.ceil(data.length / 10) === 0 || i === data.length - 1)) return null;
+          return (
+            <text key={i} x={sx(i)} y={height - padB + 18}
+              className="nid-axis-text" textAnchor="middle"
+              style={!isReal ? { fill: forecastColor } : undefined}>
+              {lbl}
+            </text>
+          );
+        })}
+
+        {/* ── Range annotations (behind everything) ── */}
+        {allAnnotations.filter((a) => a.xRange).map((a, i) => {
+          const i0 = data.findIndex((d) => d.label === a.xRange[0]);
+          const i1 = data.findIndex((d) => d.label === a.xRange[1]);
+          if (i0 < 0 || i1 < 0) return null;
+          const fill   = a.kind === "negative" ? "rgba(255,61,146,.06)" : "rgba(0,229,255,.06)";
+          const stroke = a.kind === "negative" ? "rgba(255,61,146,.15)" : "rgba(0,229,255,.15)";
+          return (
+            <rect key={`band-${i}`}
+              x={ptsBySeries[0][i0].x} y={padT}
+              width={ptsBySeries[0][i1].x - ptsBySeries[0][i0].x}
+              height={innerH}
+              fill={fill} stroke={stroke} />
+          );
+        })}
+
+        {/* ── Peer min/max band (behind all lines) ── */}
+        {focusMode && showBand && bandPath && (
+          <path d={bandPath} fill="rgba(120,145,255,.06)" stroke="none" />
+        )}
+
+        {/* ── Real series paths ── peer lines first, focused line last (on top) ── */}
+        {focusMode ? (
+          <>
+            {/* Peer lines */}
+            {ptsBySeries.map((pts, si) => {
+              if (si === focusIdx) return null; // drawn after
+              const isHov = hoverSeries === si;
+              return (
+                <g key={si}
+                  onMouseEnter={() => setHoverSeries(si)}
+                  onMouseLeave={() => setHoverSeries(null)}>
+                  <path
+                    d={smoothPath(pts)}
+                    stroke={isHov ? "var(--accent-1)" : colorFor(si)}
+                    strokeWidth={strokeFor(si, isHov)}
+                    fill="none" strokeLinecap="round"
+                    opacity={isHov ? 1 : 0.55}
+                    style={{ transition: "stroke 0.15s, opacity 0.15s" }}
+                  />
+                  {/* Invisible wider hit target for hover */}
+                  <path d={smoothPath(pts)} stroke="transparent" strokeWidth="12" fill="none" />
+                </g>
+              );
+            })}
+
+            {/* Peer median dashed line */}
+            {showMedian && medianPts.length >= 2 && (
+              <>
+                <path
+                  d={smoothPath(medianPts)}
+                  stroke="var(--text-dim)" strokeWidth="1.4"
+                  strokeDasharray="5 4" fill="none"
+                />
+                <text
+                  x={medianPts[medianPts.length - 1].x + 6}
+                  y={medianPts[medianPts.length - 1].y + 4}
+                  className="nid-axis-text"
+                  style={{ fill: "var(--text-dim)" }}>
+                  mediana
+                </text>
+              </>
+            )}
+
+            {/* Focused line — drawn last so it sits on top */}
+            {focusIdx >= 0 && (
+              <g>
+                <path
+                  d={smoothPath(ptsBySeries[focusIdx])}
+                  stroke={resolvedFocusColor}
+                  strokeWidth={2.5}
+                  fill="none" strokeLinecap="round"
+                />
+              </g>
+            )}
+
+            {/* Endpoint dot + label for focused series */}
+            {focusedLast && (
+              <>
+                <circle cx={focusedLast.x} cy={focusedLast.y} r="5" fill={resolvedFocusColor} />
+                <text
+                  x={focusedLast.x + 8} y={focusedLast.y + 4}
+                  className="nid-axis-text"
+                  style={{ fill: resolvedFocusColor, fontSize: 11, fontWeight: 700 }}>
+                  {focusSeries}
+                </text>
+              </>
+            )}
+          </>
+        ) : (
+          /* Legacy per-series-color rendering */
+          ptsBySeries.map((pts, si) => (
+            <g key={si}>
+              <path d={smoothPath(pts)} stroke={(colors || [])[si] || "var(--accent-1)"} strokeWidth="2" fill="none" strokeLinecap="round" />
+            </g>
+          ))
+        )}
+
+        {/* ── Forecast paths (one per series) ── */}
+        {hasForecast && ptsBySeries.map((pts, si) => {
+          const fc = fcPtsBySeries[si];
+          if (!fc.length) return null;
+          const lastReal = pts[pts.length - 1];
+          return (
+            <path key={`fc-${si}`}
+              d={`M ${lastReal.x} ${lastReal.y} L ${fc.map((p) => `${p.x} ${p.y}`).join(" L ")}`}
+              stroke={forecastColor} strokeWidth="2" strokeDasharray="3 4" fill="none" opacity="0.8"
+            />
+          );
+        })}
+
+        {/* ── Benchmark line ── */}
+        {resolvedBenchmark && (
+          <g>
+            <line
+              x1={padL} x2={w - padR}
+              y1={sy(resolvedBenchmark.value)} y2={sy(resolvedBenchmark.value)}
+              stroke={resolvedBenchmark.color || "var(--text-dim)"}
+              strokeDasharray="6 5" strokeWidth="1.2" opacity="0.55"
+            />
+            <text
+              x={w - padR} y={sy(resolvedBenchmark.value) - 5}
+              textAnchor="end" className="nid-axis-text"
+              style={{ fill: resolvedBenchmark.color || "var(--text-dim)", letterSpacing: ".06em" }}
+            >
+              {resolvedBenchmark.label} · {tipFmt(resolvedBenchmark.value)}
+            </text>
           </g>
-        ))}
+        )}
+
         {hover != null && (
           <>
-            <line x1={sx(hover)} x2={sx(hover)} y1={padT} y2={padT + innerH} stroke="var(--text-dim)" strokeOpacity="0.3" strokeDasharray="2 3" />
-            {ptsBySeries.map((pts, si) => (
-              <circle key={si} cx={pts[hover].x} cy={pts[hover].y} r="4" fill="var(--bg)" stroke={colors[si]} strokeWidth="2" />
-            ))}
+            <line x1={sx(hover)} x2={sx(hover)} y1={padT} y2={padT + innerH}
+              stroke={isHoverForecast ? forecastColor : "var(--text-dim)"}
+              strokeOpacity={isExternalHover ? 0.15 : 0.3}
+              strokeDasharray={isExternalHover ? "3 5" : "2 3"} />
+            {/* Real series hover dots */}
+            {!isHoverForecast && ptsBySeries.map((pts, si) => {
+              const dotColor = focusMode ? colorFor(si) : ((colors || [])[si] || "var(--accent-1)");
+              const glowFilter = focusMode && si === focusIdx
+                ? `url(#mglow-${id}-focus)`
+                : `url(#mglow-${id}-${si})`;
+              return (
+                <g key={si}>
+                  {glowHover && !focusMode && (
+                    <circle cx={pts[hover].x} cy={pts[hover].y} r="8" fill={dotColor} opacity="0.4" filter={glowFilter} />
+                  )}
+                  {glowHover && focusMode && si === focusIdx && (
+                    <circle cx={pts[hover].x} cy={pts[hover].y} r="8" fill={resolvedFocusColor} opacity="0.4" filter={glowFilter} />
+                  )}
+                  <circle cx={pts[hover].x} cy={pts[hover].y} r="4" fill="var(--bg)" stroke={dotColor} strokeWidth="2" />
+                </g>
+              );
+            })}
+            {/* Forecast hover dots */}
+            {isHoverForecast && fcPtsBySeries.map((fc, si) => {
+              const fcIdx = hover - data.length;
+              const p = fc[fcIdx];
+              if (!p) return null;
+              return (
+                <circle key={`fch-${si}`} cx={p.x} cy={p.y} r="4"
+                  fill="var(--bg)" stroke={forecastColor} strokeWidth="2" strokeDasharray="2 2" />
+              );
+            })}
           </>
         )}
+
+        {/* ── Point annotations ── */}
+        {allAnnotations.filter((a) => a.x != null).map((a, i) => {
+          const idx = data.findIndex((d) => d.label === a.x);
+          if (idx < 0) return null;
+          // Use first series for y position
+          const p = ptsBySeries[0][idx];
+          const fill = a.kind === "negative" ? "var(--accent-2)"
+                     : a.kind === "positive" ? "var(--accent-5)"
+                     : "var(--accent-1)";
+          return (
+            <g key={`ann-${i}`}>
+              <circle cx={p.x} cy={p.y} r="5" fill="var(--bg)" stroke={fill} strokeWidth="2" />
+              {a.label && (
+                <foreignObject x={p.x - 60} y={p.y - 38} width="120" height="22">
+                  <div xmlns="http://www.w3.org/1999/xhtml" className={`nid-pin${a.kind ? ` ${a.kind}` : ""}`}>
+                    {a.label}
+                  </div>
+                </foreignObject>
+              )}
+            </g>
+          );
+        })}
+
         <rect x={padL} y={padT} width={innerW} height={innerH} fill="transparent" onMouseMove={handleMove} />
       </svg>
       {hover != null && (
-        <div className="nid-tip" style={{ left: `${(sx(hover) / w) * 100}%`, top: "10%" }}>
-          <div className="tip-label">{data[hover].label}</div>
-          {series.map((s, si) => (
-            <div className="tip-row" key={s}>
-              <span className="name"><span className="swatch" style={{ background: colors[si] }}></span>{s}</span>
-              <span>{tipFmt(data[hover][s] || 0)}</span>
-            </div>
-          ))}
+        <div className="nid-tip" style={{ left: `${(sx(hover) / w) * 100}%`, top: "10%", opacity: isExternalHover ? 0.75 : 1 }}>
+          <div className="tip-label">{allLabels[hover]}</div>
+          {isHoverForecast ? (
+            <>
+              {series.map((s, si) => {
+                const fcIdx = hover - data.length;
+                const p = fcPtsBySeries[si][fcIdx];
+                if (!p) return null;
+                return (
+                  <div className="tip-row" key={s}>
+                    <span className="name"><span className="swatch" style={{ background: forecastColor }}></span>{s} {forecastLabel.toUpperCase()}</span>
+                    <span>{tipFmt(p.v)}</span>
+                  </div>
+                );
+              })}
+              <div style={{ fontSize: 10, color: "var(--text-mute)", marginTop: 3, fontFamily: "var(--font-mono)" }}>
+                regressão linear, {forecastN} pts
+              </div>
+            </>
+          ) : focusMode ? (
+            /* Focus-mode tooltip: focused first (bold) → peers (dimmed) → median */
+            (() => {
+              const focusValue = focusIdx >= 0 ? (data[hover][focusSeries] || 0) : null;
+              const peers = series
+                .filter((s) => s !== focusSeries)
+                .map((s) => ({ name: s, value: data[hover][s] || 0 }))
+                .sort((a, b) => b.value - a.value);
+              const medianValue = medianAt(hover);
+              return (
+                <>
+                  {focusIdx >= 0 && focusValue != null && (
+                    <div className="tip-row" style={{ fontWeight: 700 }}>
+                      <span className="name">
+                        <span className="swatch" style={{ background: resolvedFocusColor }} />
+                        {focusSeries}
+                      </span>
+                      <span>{tipFmt(focusValue)}</span>
+                    </div>
+                  )}
+                  {peers.map((p) => (
+                    <div className="tip-row" key={p.name} style={{ opacity: 0.7 }}>
+                      <span className="name">{p.name}</span>
+                      <span>{tipFmt(p.value)}</span>
+                    </div>
+                  ))}
+                  {showMedian && medianValue != null && (
+                    <div className="tip-row" style={{ borderTop: "1px solid var(--border)", paddingTop: 4, marginTop: 2 }}>
+                      <span className="name">mediana</span>
+                      <span>{tipFmt(medianValue)}</span>
+                    </div>
+                  )}
+                </>
+              );
+            })()
+          ) : (
+            series.map((s, si) => (
+              <div className="tip-row" key={s}>
+                <span className="name"><span className="swatch" style={{ background: (colors || [])[si] || "var(--accent-1)" }}></span>{s}</span>
+                <span>{tipFmt(data[hover][s] || 0)}</span>
+              </div>
+            ))
+          )}
         </div>
       )}
     </div>
@@ -366,20 +1098,39 @@ export function MultiLineChart({
 }
 
 // ────────── TwinBarChart (CAGED) ──────────
-export function TwinBarChart({
-  data, height = 280, glow = true,
-  colorUp = "var(--accent-5)", colorDown = "var(--accent-2)",
+// Internal bruto (side-by-side) renderer — preserves pre-ticket-05 behavior exactly.
+function TwinBarBrutoChart({
+  data, height, glow,
+  colorUp, colorDown,
+  yCaption, w, wrapRef,
+  syncGroup,
 }) {
   const id = useId().replace(/:/g, "");
-  const [wrapRef, w] = useContainerWidth(800);
-  const [hover, setHover] = useState(null);
-  if (!data || data.length === 0) return <EmptyChart h={height} />;
+  const [localHover, setLocalHover] = useState(null);
+  const [externalLabel, setExternalLabel] = useChartHover(syncGroup);
+
+  const externalIdx =
+    externalLabel != null && data
+      ? data.findIndex((d) => String(d.label) === String(externalLabel))
+      : -1;
+
+  const hover = localHover ?? (externalIdx >= 0 ? externalIdx : null);
+  const isExternalHover = localHover == null && externalIdx >= 0;
+
+  useEffect(() => {
+    if (!syncGroup || !data) return;
+    setExternalLabel(localHover != null ? data[localHover]?.label ?? null : null);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [localHover, syncGroup]);
+
+  const glowMode = resolveGlow(glow);
+  const glowHover  = glowMode !== "off";
 
   const padL = 50, padR = 16, padT = 18, padB = 34;
   const innerW = w - padL - padR;
   const innerH = height - padT - padB;
   const maxVal = Math.max(...data.flatMap((d) => [d.admissoes, d.desligamentos])) * 1.15;
-  const ticks = niceTicks(0, maxVal, 4);
+  const ticks = niceTicks(0, maxVal, yCaption ? 3 : 4);
   const yScaleMax = ticks[ticks.length - 1];
   const slot = innerW / data.length;
   const barW = (slot * 0.7) / 2;
@@ -387,7 +1138,7 @@ export function TwinBarChart({
   const sy = (v) => padT + (1 - v / yScaleMax) * innerH;
 
   return (
-    <div className="nid-chart-wrap" ref={wrapRef} onMouseLeave={() => setHover(null)}>
+    <div className="nid-chart-wrap" ref={wrapRef} onMouseLeave={() => setLocalHover(null)}>
       <svg viewBox={`0 0 ${w} ${height}`}>
         <defs>
           <linearGradient id={`tup-${id}`} x1="0" y1="0" x2="0" y2="1">
@@ -399,7 +1150,7 @@ export function TwinBarChart({
             <stop offset="100%" stopColor={colorDown} stopOpacity="0.4" />
           </linearGradient>
           <filter id={`tglow-${id}`}>
-            <feGaussianBlur stdDeviation={glow ? 3 : 0} />
+            <feGaussianBlur stdDeviation="3" />
           </filter>
         </defs>
         {ticks.map((t, i) => (
@@ -408,6 +1159,14 @@ export function TwinBarChart({
             <text x={padL - 10} y={sy(t) + 3.5} className="nid-axis-text" textAnchor="end">{fmtNumberShort(t)}</text>
           </g>
         ))}
+        {yCaption && (
+          <text className="axis-cap"
+            x={14} y={height / 2}
+            transform={`rotate(-90 14 ${height / 2})`}
+            textAnchor="middle">
+            {yCaption}
+          </text>
+        )}
         {data.map((d, i) => {
           const cx = sxCenter(i);
           const xUp = cx - barW - 1;
@@ -418,8 +1177,8 @@ export function TwinBarChart({
           const hDn = padT + innerH - yDn;
           const isH = hover === i;
           return (
-            <g key={i} onMouseEnter={() => setHover(i)}>
-              {glow && isH && (
+            <g key={i} onMouseEnter={() => setLocalHover(i)}>
+              {glowHover && isH && (
                 <>
                   <rect x={xUp - 2} y={yUp - 2} width={barW + 4} height={hUp + 4} rx={5} fill={colorUp} opacity="0.6" filter={`url(#tglow-${id})`} />
                   <rect x={xDn - 2} y={yDn - 2} width={barW + 4} height={hDn + 4} rx={5} fill={colorDown} opacity="0.6" filter={`url(#tglow-${id})`} />
@@ -437,7 +1196,10 @@ export function TwinBarChart({
       {hover != null && (
         <div className="nid-tip" style={{
           left: `${(sxCenter(hover) / w) * 100}%`,
-          top: `${(Math.min(sy(data[hover].admissoes), sy(data[hover].desligamentos)) / height) * 100}%`,
+          top: isExternalHover
+            ? `${((padT + 8) / height) * 100}%`
+            : `${(Math.min(sy(data[hover].admissoes), sy(data[hover].desligamentos)) / height) * 100}%`,
+          opacity: isExternalHover ? 0.75 : 1,
           transform: "translate(-50%, calc(-100% - 8px))",
         }}>
           <div className="tip-label">{data[hover].label}</div>
@@ -456,12 +1218,229 @@ export function TwinBarChart({
   );
 }
 
-// ────────── DonutChart ──────────
-export function DonutChart({
-  data, colors, height = 220, glow = true, centerLabel, centerSub,
+// Internal saldo renderer — single bar per period anchored to 0 baseline.
+function TwinBarSaldoChart({
+  data, height, glow,
+  colorUp, colorDown,
+  yCaption, showCumulative, w, wrapRef,
+  syncGroup,
 }) {
   const id = useId().replace(/:/g, "");
-  if (!data || data.length === 0) return <EmptyChart h={height} />;
+  const [localHover, setLocalHover] = useState(null);
+  const [externalLabel, setExternalLabel] = useChartHover(syncGroup);
+
+  const externalIdx =
+    externalLabel != null && data
+      ? data.findIndex((d) => String(d.label) === String(externalLabel))
+      : -1;
+
+  const hover = localHover ?? (externalIdx >= 0 ? externalIdx : null);
+  const isExternalHover = localHover == null && externalIdx >= 0;
+
+  useEffect(() => {
+    if (!syncGroup || !data) return;
+    setExternalLabel(localHover != null ? data[localHover]?.label ?? null : null);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [localHover, syncGroup]);
+
+  const glowMode = resolveGlow(glow);
+  const glowHover  = glowMode !== "off";
+
+  const padL = 56, padR = 24, padT = 18, padB = 34;
+  const innerW = w - padL - padR;
+  const innerH = height - padT - padB;
+
+  const saldos = data.map((d) => d.admissoes - d.desligamentos);
+
+  // Compute cumulative before finalising maxAbs so we can expand if needed.
+  let acc = 0;
+  const cumRaw = saldos.map((s) => { acc += s; return acc; });
+  const cumAbs = Math.max(...cumRaw.map(Math.abs), 0);
+  const perAbs = Math.max(...saldos.map(Math.abs), 0);
+  const maxAbs = Math.max(perAbs, showCumulative ? cumAbs : 0) * 1.15 || 1;
+
+  const yScaleMin = -maxAbs;
+  const yScaleMax =  maxAbs;
+
+  const slot = innerW / data.length;
+  const barW = slot * 0.55;
+  const sxCenter = (i) => padL + slot * (i + 0.5);
+  const sy = (v) => padT + ((yScaleMax - v) / (yScaleMax - yScaleMin)) * innerH;
+  const zeroY = sy(0);
+
+  // Cumulative path points
+  const cumPts = cumRaw.map((v, i) => ({ x: sxCenter(i), y: sy(v), value: v }));
+  const cumPath = cumPts.length > 1
+    ? `M ${cumPts[0].x} ${cumPts[0].y} ` + cumPts.slice(1).map((p) => `L ${p.x} ${p.y}`).join(" ")
+    : "";
+  const lastCumPt = cumPts[cumPts.length - 1] || { x: 0, y: 0, value: 0 };
+
+  // Y axis: 3 ticks — +max, 0, −max
+  const tickMax  = Math.round(maxAbs / 1.15); // rough "nice" scale before padding
+  const axisTicks = [tickMax, 0, -tickMax];
+
+  return (
+    <div className="nid-chart-wrap" ref={wrapRef} onMouseLeave={() => setLocalHover(null)}>
+      <svg viewBox={`0 0 ${w} ${height}`}>
+        <defs>
+          <filter id={`sglow-${id}`}>
+            <feGaussianBlur stdDeviation="3" />
+          </filter>
+        </defs>
+
+        {/* Grid lines at ±max and 0 */}
+        {axisTicks.map((t, i) => (
+          <g key={i}>
+            <line x1={padL} x2={w - padR} y1={sy(t)} y2={sy(t)}
+              stroke={t === 0 ? "var(--text-mute)" : "var(--grid)"}
+              strokeDasharray={t === 0 ? "none" : "3 4"}
+              strokeWidth={t === 0 ? "1" : "1"}
+              opacity={t === 0 ? "0.6" : "1"}
+            />
+            <text x={padL - 10} y={sy(t) + 3.5} className="nid-axis-text" textAnchor="end">
+              {t === 0 ? "0" : (t > 0 ? "+" : "") + fmtNumberShort(t)}
+            </text>
+          </g>
+        ))}
+
+        {/* Explicit zero line for emphasis */}
+        <line x1={padL} x2={w - padR} y1={zeroY} y2={zeroY}
+          stroke="var(--text-mute)" strokeWidth="1" opacity="0.6" />
+
+        {yCaption && (
+          <text className="axis-cap"
+            x={14} y={height / 2}
+            transform={`rotate(-90 14 ${height / 2})`}
+            textAnchor="middle">
+            {yCaption}
+          </text>
+        )}
+
+        {/* Bars */}
+        {data.map((d, i) => {
+          const saldo = saldos[i];
+          const fill = saldo >= 0 ? colorUp : colorDown;
+          const barY  = saldo >= 0 ? sy(saldo) : zeroY;
+          const barH  = Math.abs(zeroY - sy(saldo));
+          const cx = sxCenter(i);
+          const isH = hover === i;
+          return (
+            <g key={i} onMouseEnter={() => setLocalHover(i)}>
+              {glowHover && isH && (
+                <rect x={cx - barW / 2 - 2} y={barY - 2} width={barW + 4} height={barH + 4}
+                  rx={4} fill={fill} opacity="0.55" filter={`url(#sglow-${id})`} />
+              )}
+              <rect
+                x={cx - barW / 2} y={barY}
+                width={barW} height={Math.max(barH, 1)}
+                rx={2}
+                fill={fill}
+                opacity={hover != null && !isH ? 0.35 : 0.9}
+              />
+              <text x={cx} y={height - padB + 18} className="nid-axis-text" textAnchor="middle">
+                {d.label}
+              </text>
+            </g>
+          );
+        })}
+
+        {/* Cumulative YTD acumulado line */}
+        {showCumulative && cumPts.length > 1 && (
+          <>
+            <path d={cumPath} stroke="var(--accent-1)" strokeWidth="2" fill="none"
+              strokeLinecap="round" strokeLinejoin="round" opacity="0.9" />
+            <circle cx={lastCumPt.x} cy={lastCumPt.y} r="4" fill="var(--accent-1)" />
+            <text x={lastCumPt.x + 8} y={lastCumPt.y + 4}
+              className="nid-axis-text" style={{ fill: "var(--accent-1)" }}>
+              acumulado YTD
+            </text>
+          </>
+        )}
+      </svg>
+
+      {hover != null && (() => {
+        const d = data[hover];
+        const saldo = saldos[hover];
+        const saldoColor = saldo >= 0 ? colorUp : colorDown;
+        const tipX = sxCenter(hover);
+        const barTop = saldo >= 0 ? sy(saldo) : zeroY;
+        return (
+          <div className="nid-tip" style={{
+            left: `${(tipX / w) * 100}%`,
+            top: isExternalHover
+              ? `${((padT + 8) / height) * 100}%`
+              : `${(barTop / height) * 100}%`,
+            opacity: isExternalHover ? 0.75 : 1,
+            transform: "translate(-50%, calc(-100% - 8px))",
+          }}>
+            <div className="tip-label">{d.label}</div>
+            <div className="tip-row" style={{ marginBottom: 2 }}>
+              <span className="name" style={{ fontWeight: 700, color: saldoColor }}>SALDO</span>
+              <span style={{ fontWeight: 700, color: saldoColor }}>
+                {saldo >= 0 ? "+" : ""}{fmtNumber(saldo)} {saldo >= 0 ? "▲" : "▼"}
+              </span>
+            </div>
+            <div className="tip-row" style={{ opacity: 0.7 }}>
+              <span className="name"><span className="swatch" style={{ background: colorUp }}></span>admissões</span>
+              <span>{fmtNumber(d.admissoes)}</span>
+            </div>
+            <div className="tip-row" style={{ opacity: 0.7 }}>
+              <span className="name"><span className="swatch" style={{ background: colorDown }}></span>desligamentos</span>
+              <span>{fmtNumber(d.desligamentos)}</span>
+            </div>
+            {showCumulative && (
+              <div className="tip-row" style={{ borderTop: "1px solid var(--border)", marginTop: 4, paddingTop: 4, opacity: 0.85 }}>
+                <span className="name"><span className="swatch" style={{ background: "var(--accent-1)" }}></span>acumulado YTD</span>
+                <span style={{ color: "var(--accent-1)" }}>
+                  {cumRaw[hover] >= 0 ? "+" : ""}{fmtNumber(cumRaw[hover])}
+                </span>
+              </div>
+            )}
+          </div>
+        );
+      })()}
+    </div>
+  );
+}
+
+// Public component — dispatches to saldo or bruto renderer based on `mode`.
+export function TwinBarChart({
+  data, height = 280, glow = "hover",
+  colorUp = "var(--accent-5)", colorDown = "var(--accent-2)",
+  yCaption,
+  mode = "saldo",
+  showCumulative,
+  loading,
+  emptyMessage,
+  emptyAction,
+  syncGroup,    // ticket 14: cross-chart hover sync
+}) {
+  const [wrapRef, w] = useContainerWidth(800);
+  if (loading) return <ChartState kind="loading" shape="twin" height={height} />;
+  if (!data || data.length === 0) return <EmptyChart h={height} shape="twin" message={emptyMessage} action={emptyAction} />;
+
+  // Default showCumulative to true in saldo mode, false otherwise.
+  const cumulative = showCumulative != null ? showCumulative : mode === "saldo";
+
+  const shared = { data, height, glow, colorUp, colorDown, yCaption, w, wrapRef, syncGroup };
+
+  if (mode === "bruto") {
+    return <TwinBarBrutoChart {...shared} />;
+  }
+
+  return <TwinBarSaldoChart {...shared} showCumulative={cumulative} />;
+}
+
+// ────────── DonutChartCore (inner implementation) ──────────
+function DonutChartCore({
+  data, colors, height = 220, glow = "hover", centerLabel, centerSub,
+}) {
+  const id = useId().replace(/:/g, "");
+  const [hoverSlice, setHoverSlice] = useState(null);
+  if (!data || data.length === 0) return <EmptyChart h={height} shape="donut" />;
+  const glowMode = resolveGlow(glow);
+  const glowAlways = glowMode === "always";
+  const glowHover  = glowMode !== "off";
   const size = height;
   const cx = size / 2, cy = size / 2;
   const R = size * 0.40;
@@ -486,16 +1465,22 @@ export function DonutChart({
   });
   return (
     <div className="nid-chart-wrap" style={{ display: "grid", placeItems: "center" }}>
-      <svg viewBox={`0 0 ${size} ${size}`} style={{ maxWidth: size, width: size }}>
+      <svg viewBox={`0 0 ${size} ${size}`} style={{ maxWidth: size, width: size }}
+        onMouseLeave={() => setHoverSlice(null)}>
         <defs>
           <filter id={`dglow-${id}`} x="-30%" y="-30%" width="160%" height="160%">
-            <feGaussianBlur stdDeviation={glow ? 6 : 0} />
+            <feGaussianBlur stdDeviation="4" result="b" />
+            <feMerge><feMergeNode in="b" /><feMergeNode in="SourceGraphic" /></feMerge>
           </filter>
         </defs>
         {slices.map((s, i) => (
-          <g key={i}>
-            {glow && <path d={s.path} fill={s.color} opacity="0.45" filter={`url(#dglow-${id})`} />}
-            <path d={s.path} fill={s.color} stroke="var(--bg)" strokeWidth="2" />
+          <g key={i} onMouseEnter={() => setHoverSlice(i)}>
+            {/* Glow halo: always for glowAlways, or on hover for glowHover */}
+            {(glowAlways || (glowHover && hoverSlice === i)) && (
+              <path d={s.path} fill={s.color} opacity="0.45" filter={`url(#dglow-${id})`} />
+            )}
+            <path d={s.path} fill={s.color} stroke="var(--bg)" strokeWidth="2"
+              opacity={hoverSlice != null && hoverSlice !== i ? 0.5 : 1} />
           </g>
         ))}
         {centerLabel && (
@@ -509,63 +1494,175 @@ export function DonutChart({
   );
 }
 
-// ────────── Horizontal Bar (Ranking) ──────────
-export function HBarChart({
-  data, color = "var(--accent-1)", glow = true, height = 240, fmt = fmtMoneyFull,
-}) {
-  const id = useId().replace(/:/g, "");
-  if (!data || data.length === 0) return <EmptyChart h={height} />;
-  const max = Math.max(...data.map((d) => d.value)) || 1;
-  const rowH = (height - 8) / data.length;
+// ────────── PercentBarChart (100% stacked horizontal bar) ──────────
+function PercentBarChart({ data, baseColor, centerLabel, centerSub }) {
+  const [hoverSeg, setHoverSeg] = useState(null);
+  if (!data || data.length === 0) return null;
+  const total = data.reduce((s, d) => s + d.value, 0) || 1;
+  const sorted = [...data].sort((a, b) => b.value - a.value);
+  const opacityScale = [0.95, 0.7, 0.5, 0.35, 0.25, 0.18];
+
   return (
-    <div className="nid-chart-wrap" style={{ position: "relative", height }}>
-      <svg viewBox={`0 0 100 ${height}`} preserveAspectRatio="none" style={{ height, width: "100%" }}>
-        <defs>
-          <linearGradient id={`hb-${id}`} x1="0" y1="0" x2="1" y2="0">
-            <stop offset="0%" stopColor={color} stopOpacity="0.7" />
-            <stop offset="100%" stopColor={color} stopOpacity="0.25" />
-          </linearGradient>
-          <filter id={`hglow-${id}`}>
-            <feGaussianBlur stdDeviation={glow ? 1.5 : 0} />
-          </filter>
-        </defs>
-        {data.map((d, i) => {
-          const y = i * rowH + 5;
-          const w = (d.value / max) * 100;
+    <div className="nid-pct-wrap">
+      {/* Total label — centerLabel/centerSub as header above bar */}
+      {(centerLabel || centerSub) && (
+        <div className="nid-pct-total">
+          <span className="big">{centerLabel}</span>
+          {centerSub && <span className="small">{centerSub}</span>}
+        </div>
+      )}
+
+      {/* Single 100% horizontal bar */}
+      <div
+        className="nid-pct-bar"
+        role="img"
+        aria-label="composição percentual"
+        onMouseLeave={() => setHoverSeg(null)}
+      >
+        {sorted.map((d, i) => {
+          const pct = (d.value / total) * 100;
+          const opacity = opacityScale[i] ?? 0.12;
+          const isHovered = hoverSeg === i;
+          const isDimmed = hoverSeg != null && !isHovered;
           return (
-            <g key={i}>
-              <rect x="0" y={y} width="100" height={rowH - 10} rx="3" fill="var(--panel-2)" />
-              {glow && <rect x="0" y={y - 1} width={w} height={rowH - 8} rx="3" fill={color} opacity="0.6" filter={`url(#hglow-${id})`} />}
-              <rect x="0" y={y} width={w} height={rowH - 10} rx="3" fill={`url(#hb-${id})`} stroke={color} strokeWidth="0.3" />
-            </g>
+            <div
+              key={d.label}
+              className="nid-pct-seg"
+              style={{
+                flex: pct,
+                background: baseColor,
+                opacity: isHovered ? 1 : isDimmed ? opacity * 0.5 : opacity,
+                outline: isHovered ? "2px solid var(--border-strong)" : "none",
+                outlineOffset: "-2px",
+              }}
+              title={`${d.label}: ${d.value.toLocaleString("pt-BR")} · ${pct.toFixed(1)}%`}
+              onMouseEnter={() => setHoverSeg(i)}
+            >
+              {/* Inline label only when segment is wide enough and opaque enough to be readable */}
+              {pct > 12 && opacity >= 0.4 && (
+                <span className="nid-pct-seg-label">{pct.toFixed(0)}%</span>
+              )}
+            </div>
           );
         })}
-      </svg>
-      <div style={{
-        position: "absolute", inset: 0, display: "flex", flexDirection: "column",
-        justifyContent: "space-around", padding: "5px 12px", pointerEvents: "none",
-      }}>
-        {data.map((d, i) => (
-          <div key={i} style={{
-            display: "flex", justifyContent: "space-between",
-            fontSize: 12, fontFamily: "var(--font-mono)", fontWeight: 600,
-          }}>
-            <span style={{ color: "var(--text)" }}>{d.label}</span>
-            <span style={{ color: "var(--text-dim)" }}>{fmt(d.value)}</span>
-          </div>
-        ))}
       </div>
+
+      {/* Legend rows: swatch · label · absolute · percent */}
+      <ul className="nid-pct-legend">
+        {sorted.map((d, i) => {
+          const pct = (d.value / total) * 100;
+          const opacity = opacityScale[i] ?? 0.12;
+          return (
+            <li
+              key={d.label}
+              style={{ opacity: hoverSeg != null && hoverSeg !== i ? 0.45 : 1 }}
+              onMouseEnter={() => setHoverSeg(i)}
+              onMouseLeave={() => setHoverSeg(null)}
+            >
+              <span className="sw" style={{ background: baseColor, opacity }} />
+              <span className="label">{d.label}</span>
+              <span className="val">
+                {d.value.toLocaleString("pt-BR")} · {pct.toFixed(1)}%
+              </span>
+            </li>
+          );
+        })}
+      </ul>
     </div>
   );
 }
 
-function EmptyChart({ h = 240 }) {
+// ────────── DonutChart (public — auto-falls back to PercentBarChart) ──────────
+export function DonutChart({
+  data, baseColor, prefer = "auto", threshold = 4,
+  colors, height, glow, centerLabel, centerSub,
+  loading,
+  emptyMessage,
+  emptyAction,
+}) {
+  if (loading) return <ChartState kind="loading" shape="donut" height={height || 220} />;
+  if (!data || data.length === 0) return <EmptyChart h={height || 220} shape="donut" message={emptyMessage} action={emptyAction} />;
+
+  const useBar =
+    prefer === "bar" ||
+    (prefer === "auto" && data && data.length > threshold);
+
+  return useBar
+    ? (
+      <PercentBarChart
+        data={data}
+        baseColor={baseColor || "var(--accent-1)"}
+        centerLabel={centerLabel}
+        centerSub={centerSub}
+      />
+    )
+    : (
+      <DonutChartCore
+        data={data}
+        colors={colors}
+        height={height}
+        glow={glow}
+        centerLabel={centerLabel}
+        centerSub={centerSub}
+      />
+    );
+}
+
+// ────────── Horizontal Bar (Ranking) ──────────
+export function HBarChart({
+  data,
+  highlight,
+  showPosition = false,
+  positionOffset = 0,
+  color = "var(--accent-1)",
+  highlightColor = "var(--accent-2)",
+  // legacy props — kept for backward-compat (no-op in new layout)
+  glow,
+  height,
+  fmt = fmtMoneyFull,
+  loading,
+  emptyMessage,
+  emptyAction,
+}) {
+  if (loading) return <ChartState kind="loading" shape="hbar" height={height || 240} />;
+  if (!data || data.length === 0) return <EmptyChart h={height || 240} shape="hbar" message={emptyMessage} action={emptyAction} />;
+  const max = Math.max(...data.map((d) => d.value)) || 1;
+
   return (
-    <div style={{
-      height: h, display: "grid", placeItems: "center",
-      color: "var(--text-mute)", fontSize: 13, fontFamily: "var(--font-mono)",
-    }}>
-      Sem dados disponíveis
+    <div className="nid-hbar" role="list">
+      {data.map((d, i) => {
+        const pct = (d.value / max) * 100;
+        const isOwn = Boolean(highlight && d.label === highlight);
+        const barColor = isOwn ? highlightColor : color;
+        return (
+          <div
+            className="nid-hbar-row"
+            key={d.label ?? i}
+            role="listitem"
+            aria-label={`${i + 1 + positionOffset}. ${d.label}: ${fmt(d.value)}`}
+          >
+            {showPosition && (
+              <span className={`pos${isOwn ? " own" : ""}`}>
+                #{i + 1 + positionOffset}
+              </span>
+            )}
+            <div className="bar-wrap">
+              <div
+                className={`bar${isOwn ? " own" : ""}`}
+                style={{ width: `${pct}%`, "--bar": barColor }}
+              />
+              <span className={`city${isOwn ? " own" : ""}`}>{d.label}</span>
+            </div>
+            <span className={`val${isOwn ? " own" : ""}`}>{fmt(d.value)}</span>
+          </div>
+        );
+      })}
     </div>
+  );
+}
+
+function EmptyChart({ h = 240, shape = "line", message, action }) {
+  return (
+    <ChartState kind="empty" shape={shape} height={h} message={message} action={action} />
   );
 }

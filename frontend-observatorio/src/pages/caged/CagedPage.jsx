@@ -10,6 +10,7 @@ import {
   AreaLineChart, TwinBarChart, DonutChart, HBarChart, StackedBarChart,
   fmtNumber, fmtNumberShort,
 } from "../../components/nid/charts";
+import ChartState from "../../components/nid/ChartState.jsx";
 
 const A1 = "var(--accent-1)";
 const A2 = "var(--accent-2)";
@@ -42,6 +43,7 @@ export default function CagedPage() {
   const [indicadores, setIndicadores] = useState([]);
 
   const [loading, setLoading] = useState(true);
+  const [turnoverMode, setTurnoverMode] = useState("saldo");
 
   useEffect(() => {
     let alive = true;
@@ -107,6 +109,16 @@ export default function CagedPage() {
       .sort(([a], [b]) => a - b)
       .map(([ano, v]) => ({ label: String(ano), value: v }));
   }, [serie]);
+
+  // Auto-annotate extremes on the saldo chart (ticket 04)
+  const saldoAnnotations = useMemo(() => {
+    if (!saldoAnual || saldoAnual.length < 2) return [];
+    const sorted = [...saldoAnual].sort((a, b) => a.value - b.value);
+    return [
+      { x: sorted[0].label, kind: "negative", label: "mínimo" },
+      { x: sorted[sorted.length - 1].label, kind: "positive", label: "máximo" },
+    ];
+  }, [saldoAnual]);
 
   // Spark series
   const admissoesSpark = useMemo(() => {
@@ -307,7 +319,9 @@ export default function CagedPage() {
       {loading ? (
         <div className="nid-kpis">
           {[...Array(4)].map((_, i) => (
-            <div key={i} className="nid-kpi" style={{ minHeight: 150, opacity: 0.4 }} />
+            <div key={i} className="nid-kpi">
+              <ChartState kind="loading" shape="kpi" height={120} />
+            </div>
           ))}
         </div>
       ) : (
@@ -390,16 +404,39 @@ export default function CagedPage() {
             label="Saldo"
             yFmt={fmtNumberShort}
             tipFmt={fmtNumber}
+            annotations={saldoAnnotations}
           />
           <NidLegend items={[{ name: "Saldo (admissões − desligamentos)", color: A5 }]} />
         </NidPanel>
 
-        <NidPanel title="Turnover Mensal" sub={`Admissões vs Desligamentos · ${anoAtivo || ""}`}>
-          <TwinBarChart data={turnoverMes} glow colorUp={A5} colorDown={A2} height={260} />
-          <NidLegend items={[
-            { name: "Admissões", color: A5 },
-            { name: "Desligamentos", color: A2 },
-          ]} />
+        <NidPanel
+          title="Movimentação CAGED"
+          sub={turnoverMode === "saldo"
+            ? `saldo mensal · acumulado YTD · ${anoAtivo || ""}`
+            : `admissões vs. desligamentos · ${anoAtivo || ""}`}
+          tabs={["Saldo", "Bruto"]}
+          onTabChange={(i) => setTurnoverMode(i === 0 ? "saldo" : "bruto")}
+        >
+          <TwinBarChart
+            data={turnoverMes}
+            glow
+            colorUp={A5}
+            colorDown={A2}
+            height={260}
+            mode={turnoverMode}
+          />
+          {turnoverMode === "bruto" && (
+            <NidLegend items={[
+              { name: "Admissões", color: A5 },
+              { name: "Desligamentos", color: A2 },
+            ]} />
+          )}
+          {turnoverMode === "saldo" && (
+            <NidLegend items={[
+              { name: "Saldo (+/−)", color: A5 },
+              { name: "Acumulado YTD", color: A1 },
+            ]} />
+          )}
         </NidPanel>
       </div>
 

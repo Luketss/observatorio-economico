@@ -1,33 +1,34 @@
 import { useEffect, useMemo, useState } from "react";
 import api from "../../services/api";
-import { useChartTheme } from "../../hooks/useChartTheme";
 import { motion } from "framer-motion";
 import InsightsPanel from "../../components/InsightsPanel";
 import ReleasesPanel from "../../components/ReleasesPanel";
 import NidComparativoPanel from "../../components/nid/ComparativoPanel";
 import InfoTooltip from "../../components/InfoTooltip";
-import FilterBar from "../../components/FilterBar";
+import FilterBar, { describeFilter, clearFilter } from "../../components/FilterBar";
 import KpiCard from "../../components/KpiCard";
 import PlanGate from "../../components/PlanGate";
+import { NidPanel, NidLegend, NidPageHeader } from "../../components/nid/Panel";
+import { useAuth } from "../../context/AuthContext";
+import ChartState from "../../components/nid/ChartState.jsx";
 import {
-  ResponsiveContainer,
-  BarChart,
-  Bar,
-  LineChart,
-  Line,
-  CartesianGrid,
-  XAxis,
-  YAxis,
-  Tooltip,
-  Legend,
-  Cell,
-} from "recharts";
+  AreaLineChart,
+  StackedBarChart,
+  MultiLineChart,
+  Annotation,
+  AnnotationBand,
+  fmtMoneyShort,
+  fmtMoneyFull,
+} from "../../components/nid/charts";
+import DataTable from "../../components/nid/DataTable";
 
 const fmtBRL = (v) =>
   `R$ ${Number(v).toLocaleString("pt-BR", { maximumFractionDigits: 0 })}`;
 
 export default function PibPage() {
-  const ct = useChartTheme();
+  const { user } = useAuth();
+  const ownCity = user?.municipio?.nome;
+
   const [rawSerie, setRawSerie] = useState([]);
   const [resumo, setResumo] = useState(null);
   const [comparativo, setComparativo] = useState([]);
@@ -79,7 +80,6 @@ export default function PibPage() {
   }, [comparativo]);
 
   const cidades = useMemo(() => [...new Set(comparativo.map((d) => d.cidade))], [comparativo]);
-  const COMP_COLORS = ["#10b981", "#3b82f6", "#f59e0b", "#8b5cf6", "#ef4444", "#06b6d4"];
 
   const serie = useMemo(() => {
     const { yearFrom, yearTo } = filters;
@@ -89,6 +89,32 @@ export default function PibPage() {
       return true;
     });
   }, [rawSerie, filters]);
+
+  // ── NID chart data shapes ──────────────────────────────────────────────────
+
+  const areaData = useMemo(
+    () => serie.map((d) => ({ label: String(d.ano), value: d.pib_total })),
+    [serie]
+  );
+
+  const vaChartData = useMemo(
+    () =>
+      vaData.map((d) => ({
+        label: String(d.ano),
+        "Agropecuária": d.va_agropecuaria,
+        "Indústria": d.va_industria,
+        "Serviços": d.va_servicos,
+        "Governo": d.va_governo,
+      })),
+    [vaData]
+  );
+
+  const compData = useMemo(
+    () => comparativoChart.map((row) => ({ label: String(row.ano), ...row })),
+    [comparativoChart]
+  );
+
+  // ── KPI cards ──────────────────────────────────────────────────────────────
 
   const cards = [
     {
@@ -127,26 +153,27 @@ export default function PibPage() {
       transition={{ duration: 0.3 }}
       className="space-y-8"
     >
-      <div>
-        <div className="flex items-center gap-2">
-          <h1 className="text-2xl font-extrabold tracking-tight text-slate-800 dark:text-white">
-            PIB — Produto Interno Bruto
-          </h1>
-          <InfoTooltip dataset="pib" />
-        </div>
-        <p className="text-sm text-slate-400 dark:text-slate-500 mt-1">
-          Série histórica do PIB municipal.
-        </p>
-      </div>
+      <NidPageHeader
+        title={<>PIB — Produto Interno Bruto <InfoTooltip dataset="pib" /></>}
+        sub="Série histórica do PIB municipal."
+        chips={describeFilter(filters) ? [{
+          label: describeFilter(filters),
+          active: true,
+          onClick: () => document.getElementById("filter-bar-pib")?.scrollIntoView({ block: "center", behavior: "smooth" }),
+          onClear: () => setFilters(clearFilter()),
+        }] : null}
+      />
 
       <InsightsPanel dataset="pib" />
 
-      <FilterBar years={years} value={filters} onChange={setFilters} />
+      <FilterBar id="filter-bar-pib" years={years} value={filters} onChange={setFilters} />
 
       {loading ? (
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           {[...Array(3)].map((_, i) => (
-            <div key={i} className="bg-white dark:bg-slate-900 p-6 rounded-2xl border border-slate-100 dark:border-slate-800 animate-pulse h-28" />
+            <div key={i} className="bg-white dark:bg-slate-900 p-6 rounded-2xl border border-slate-100 dark:border-slate-800">
+              <ChartState kind="loading" shape="kpi" height={80} />
+            </div>
           ))}
         </div>
       ) : (
@@ -157,142 +184,82 @@ export default function PibPage() {
         </div>
       )}
 
-      <div className="bg-white dark:bg-slate-900 p-6 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-800">
-        <h3 className="text-base font-bold mb-5 text-slate-800 dark:text-white">
-          Evolução Anual do PIB
-        </h3>
-        {serie.length === 0 ? (
-          <div className="h-64 flex items-center justify-center text-slate-400 dark:text-slate-500 text-sm">
-            Sem dados disponíveis
-          </div>
-        ) : (
-          <div className="h-44 md:h-64">
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={serie} barCategoryGap="30%">
-                <CartesianGrid strokeDasharray="3 3" stroke={ct.grid} vertical={false} />
-                <XAxis dataKey="ano" tick={{ fontSize: 12, fill: ct.tick }} stroke={ct.axis} />
-                <YAxis
-                  tick={{ fontSize: 11, fill: ct.tick }}
-                  stroke={ct.axis}
-                  width={75}
-                  tickFormatter={(v) =>
-                    `${(v / 1_000_000).toFixed(0)}M`
-                  }
-                />
-                <Tooltip
-                  formatter={(v) => [fmtBRL(v), "PIB Total"]}
-                  cursor={{ fill: ct.grid }}
-                />
-                <Bar dataKey="pib_total" radius={[4, 4, 0, 0]}>
-                  {serie.map((_, i) => (
-                    <Cell
-                      key={i}
-                      fill={i === serie.length - 1 ? "#10b981" : "#a7f3d0"}
-                    />
-                  ))}
-                </Bar>
-              </BarChart>
-            </ResponsiveContainer>
-          </div>
-        )}
-      </div>
+      {/* Evolução Anual do PIB */}
+      <NidPanel title="Evolução Anual do PIB" sub="série histórica · R$ milhões">
+        {/* demo: array-form (xRange band) + declarative child (point annotation) — both coexist */}
+        <AreaLineChart
+          data={areaData}
+          height={280}
+          color="var(--accent-1)"
+          label="PIB Total"
+          yFmt={fmtMoneyShort}
+          tipFmt={fmtMoneyFull}
+          forecast={{ steps: 1, method: "linear-6" }}
+          annotations={[
+            { xRange: ["2020", "2021"], kind: "negative" },
+          ]}
+        >
+          <Annotation x="2020" kind="negative">COVID</Annotation>
+        </AreaLineChart>
+      </NidPanel>
 
-      {/* VA Breakdown */}
+      {/* Valor Adicionado por Setor */}
       {vaData.length > 0 && (
         <PlanGate planKey="pib.por_setor">
-          <div className="bg-white dark:bg-slate-900 p-6 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-800">
-            <h3 className="text-base font-bold mb-5 text-slate-800 dark:text-white">
-              Valor Adicionado por Setor
-            </h3>
-            <div className="h-48 md:h-72">
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={vaData} margin={{ left: 10, right: 10 }}>
-                  <CartesianGrid strokeDasharray="3 3" stroke={ct.grid} vertical={false} />
-                  <XAxis dataKey="ano" tick={{ fontSize: 12, fill: ct.tick }} stroke={ct.axis} />
-                  <YAxis
-                    tick={{ fontSize: 11, fill: ct.tick }}
-                    stroke={ct.axis}
-                    width={75}
-                    tickFormatter={(v) => `${(v / 1_000_000).toFixed(0)}M`}
-                  />
-                  <Tooltip contentStyle={ct.tooltipStyle} formatter={(v) => [fmtBRL(v)]} />
-                  <Legend />
-                  <Bar dataKey="va_agropecuaria" name="Agropecuária" stackId="va" fill="#10b981" />
-                  <Bar dataKey="va_industria" name="Indústria" stackId="va" fill="#3b82f6" />
-                  <Bar dataKey="va_servicos" name="Serviços" stackId="va" fill="#f59e0b" />
-                  <Bar dataKey="va_governo" name="Governo" stackId="va" fill="#8b5cf6" radius={[4, 4, 0, 0]} />
-                </BarChart>
-              </ResponsiveContainer>
-            </div>
-          </div>
+          <NidPanel title="Valor Adicionado por Setor" sub="composição por setor produtivo">
+            <NidLegend
+              items={[
+                { name: "Agropecuária", color: "var(--accent-1)" },
+                { name: "Indústria", color: "var(--accent-3)" },
+                { name: "Serviços", color: "var(--accent-5)" },
+                { name: "Governo", color: "var(--accent-4)" },
+              ]}
+            />
+            <StackedBarChart
+              data={vaChartData}
+              keys={["Agropecuária", "Indústria", "Serviços", "Governo"]}
+              colors={["var(--accent-1)", "var(--accent-3)", "var(--accent-5)", "var(--accent-4)"]}
+              height={280}
+              yFmt={fmtMoneyShort}
+              tipFmt={fmtMoneyFull}
+            />
+          </NidPanel>
         </PlanGate>
       )}
 
-      {/* Comparativo entre cidades */}
+      {/* PIB Comparativo — Municípios */}
       {comparativoChart.length > 0 && cidades.length > 1 && (
-        <div className="bg-white dark:bg-slate-900 p-6 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-800">
-          <h3 className="text-base font-bold mb-5 text-slate-800 dark:text-white">
-            PIB Comparativo — Municípios
-          </h3>
-          <div className="h-48 md:h-72">
-            <ResponsiveContainer width="100%" height="100%">
-              <LineChart data={comparativoChart}>
-                <CartesianGrid strokeDasharray="3 3" stroke={ct.grid} />
-                <XAxis dataKey="ano" tick={{ fontSize: 12, fill: ct.tick }} stroke={ct.axis} />
-                <YAxis
-                  tick={{ fontSize: 11, fill: ct.tick }}
-                  stroke={ct.axis}
-                  width={75}
-                  tickFormatter={(v) => `${(v / 1_000_000).toFixed(0)}M`}
-                />
-                <Tooltip formatter={(v) => [fmtBRL(v)]} />
-                <Legend />
-                {cidades.map((cidade, i) => (
-                  <Line
-                    key={cidade}
-                    type="monotone"
-                    dataKey={cidade}
-                    name={cidade}
-                    stroke={COMP_COLORS[i % COMP_COLORS.length]}
-                    strokeWidth={2}
-                    dot={false}
-                  />
-                ))}
-              </LineChart>
-            </ResponsiveContainer>
-          </div>
-        </div>
+        <NidPanel title="PIB Comparativo — Municípios" sub="evolução comparativa entre municípios">
+          <MultiLineChart
+            data={compData}
+            series={cidades}
+            colors={cidades.map((_, i) => `var(--accent-${(i % 5) + 1})`)}
+            height={280}
+            yFmt={fmtMoneyShort}
+            tipFmt={fmtMoneyFull}
+            focusSeries={ownCity}
+            showMedian
+            showBand
+          />
+        </NidPanel>
       )}
 
+      {/* Série Anual table */}
       {serie.length > 0 && (
-        <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-800 overflow-hidden">
-          <div className="px-6 py-4 border-b border-slate-100 dark:border-slate-800">
-            <h3 className="text-base font-bold text-slate-800 dark:text-white">Série Anual</h3>
-          </div>
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="bg-slate-50 dark:bg-slate-800 text-left text-xs uppercase text-slate-400 dark:text-slate-500 tracking-wider">
-                  <th className="px-6 py-3">Ano</th>
-                  <th className="px-6 py-3 text-right">PIB Total</th>
-                  <th className="px-6 py-3">Tipo</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-50 dark:divide-slate-800">
-                {serie.slice().reverse().map((item, i) => (
-                  <tr key={i} className="hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors">
-                    <td className="px-6 py-3 font-medium text-slate-700 dark:text-slate-200">{item.ano}</td>
-                    <td className="px-6 py-3 text-right font-semibold text-slate-800 dark:text-white">
-                      {fmtBRL(item.pib_total)}
-                    </td>
-                    <td className="px-6 py-3 text-slate-500 dark:text-slate-400">{item.tipo_dado || "—"}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </div>
+        <NidPanel title="Série Anual" sub="histórico · PIB total por ano">
+          <DataTable
+            columns={[
+              { key: "ano",       label: "Ano",          width: 80 },
+              { key: "pib_total", label: "PIB Total",    align: "right", fmt: fmtMoneyShort, mono: true, heatmap: true },
+              { key: "__delta",   label: "YoY",          align: "right", kind: "delta" },
+              { key: "__trend",   label: "Tendência 5a", kind: "spark",  width: 130 },
+              { key: "tipo_dado", label: "Tipo",         align: "right", kind: "code", mono: true },
+            ]}
+            data={serie.slice().reverse()}
+          />
+        </NidPanel>
       )}
+
       <NidComparativoPanel
         title="Ranking de PIB Municipal"
         sub="Posição do município no ranking nacional/estadual (último ano disponível)"

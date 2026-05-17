@@ -350,6 +350,22 @@ body.theme-light .nid-nav-item:hover:not(.active) {
   color: var(--text-dim);
 }
 body.theme-light .nid-pill { background: #ffffff; border-color: rgba(15, 23, 42, 0.08); }
+/* Period chip variants */
+.nid-pill--active {
+  background: color-mix(in oklab, var(--accent-1) 14%, transparent);
+  border-color: color-mix(in oklab, var(--accent-1) 35%, transparent);
+  color: var(--text);
+}
+.nid-pill-x {
+  margin-left: 2px;
+  color: var(--text-mute, var(--text-dim));
+  cursor: pointer;
+  line-height: 1;
+  font-style: normal;
+  border-radius: 3px;
+  padding: 0 1px;
+}
+.nid-pill-x:hover { color: var(--text); }
 
 /* Notification bell */
 .nid-bell {
@@ -612,6 +628,48 @@ body.theme-light .nid-tab.active {
   text-transform: uppercase;
 }
 
+/* PercentBarChart — 100% stacked horizontal bar fallback */
+.nid-pct-wrap { width: 100%; }
+.nid-pct-total {
+  display: flex; align-items: baseline; gap: 8px;
+  font-family: var(--font-display);
+  color: var(--text);
+  margin-bottom: 12px;
+}
+.nid-pct-total .big { font-size: 22px; font-weight: 700; letter-spacing: -0.02em; }
+.nid-pct-total .small {
+  font-family: var(--font-mono); font-size: 11px;
+  text-transform: uppercase; letter-spacing: 0.1em;
+  color: var(--text-mute);
+}
+.nid-pct-bar {
+  display: flex; height: 38px; border-radius: 8px; overflow: hidden;
+  border: 1px solid var(--border);
+}
+.nid-pct-seg {
+  display: flex; align-items: center; padding: 0 8px;
+  font-family: var(--font-mono); font-size: 11px; font-weight: 600;
+  transition: opacity 0.15s; cursor: default;
+}
+.nid-pct-seg-label {
+  color: rgba(0,0,0,0.85);
+  pointer-events: none;
+  user-select: none;
+}
+.nid-pct-legend {
+  list-style: none; padding: 0; margin: 14px 0 0;
+  display: grid; gap: 8px;
+}
+.nid-pct-legend li {
+  display: grid; grid-template-columns: 14px 1fr auto; gap: 10px;
+  align-items: center;
+  font-family: var(--font-mono); font-size: 12px; font-variant-numeric: tabular-nums;
+  color: var(--text-dim); cursor: default; transition: opacity 0.15s;
+}
+.nid-pct-legend .sw { width: 10px; height: 10px; border-radius: 3px; display: block; }
+.nid-pct-legend .label { color: var(--text); }
+.nid-pct-legend .val { color: var(--text-dim); }
+
 /* Tooltip */
 .nid-tip {
   position: absolute;
@@ -647,4 +705,81 @@ body.theme-light .nid-tab.active {
 }
 .nid-tip .tip-row .name { color: var(--text-dim); font-weight: 500; display: flex; align-items: center; gap: 6px; }
 .nid-tip .tip-row .swatch { width: 8px; height: 8px; border-radius: 2px; display: inline-block; }
+
+/* ── HBarChart grid layout ─────────────────────────────────────────── */
+.nid-hbar { display: flex; flex-direction: column; }
+.nid-hbar-row {
+  display: grid;
+  grid-template-columns: 28px 1fr 100px;
+  gap: 12px;
+  align-items: center;
+  padding: 8px 0;
+  border-bottom: 1px solid var(--border);
+}
+/* When showPosition is false the first column (pos) is absent — collapse it */
+.nid-hbar-row:not(:has(.pos)) {
+  grid-template-columns: 1fr 100px;
+}
+.nid-hbar-row:last-child { border-bottom: none; }
+
+.nid-hbar-row .pos {
+  font: 700 11px/1 var(--font-mono);
+  color: var(--text-mute);
+  text-align: right;
+  letter-spacing: 0.04em;
+}
+.nid-hbar-row .pos.own { color: var(--accent-2); }
+
+.nid-hbar-row .bar-wrap {
+  position: relative;
+  height: 26px;
+}
+.nid-hbar-row .bar {
+  position: absolute;
+  inset: 0 auto 0 0;
+  border-radius: 5px;
+  background: linear-gradient(
+    90deg,
+    color-mix(in oklab, var(--bar) 55%, transparent),
+    color-mix(in oklab, var(--bar) 12%, transparent)
+  );
+  border-left: 2px solid var(--bar);
+}
+.nid-hbar-row .city {
+  position: absolute;
+  left: 10px;
+  top: 50%;
+  transform: translateY(-50%);
+  font: 600 12.5px/1 var(--font-display);
+  color: var(--text);
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.4);
+  max-width: 75%;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.nid-hbar-row .city.own::after {
+  content: "você";
+  margin-left: 8px;
+  font: 600 9px/1 var(--font-mono);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--accent-2);
+  background: color-mix(in oklab, var(--accent-2) 15%, transparent);
+  padding: 2px 5px;
+  border-radius: 3px;
+  vertical-align: 1px;
+}
+.nid-hbar-row .val {
+  text-align: right;
+  font: 600 12px/1 var(--font-mono);
+  color: var(--text-dim);
+}
+.nid-hbar-row .val.own { color: var(--accent-2); }
+
+/* Light theme: drop the text-shadow on city labels */
+body.theme-light .nid-hbar-row .city {
+  text-shadow: none;
+  color: var(--text);
+}
 
