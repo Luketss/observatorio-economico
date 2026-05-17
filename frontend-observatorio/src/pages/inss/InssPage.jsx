@@ -6,9 +6,9 @@ import InsightsPanel from "../../components/InsightsPanel";
 import ReleasesPanel from "../../components/ReleasesPanel";
 import NidComparativoPanel from "../../components/nid/ComparativoPanel";
 import InfoTooltip from "../../components/InfoTooltip";
-import FilterBar from "../../components/FilterBar";
+import FilterBar, { describeFilter, clearFilter } from "../../components/FilterBar";
 import KpiCard from "../../components/KpiCard";
-import { NidPanel } from "../../components/nid/Panel";
+import { NidPanel, NidPageHeader } from "../../components/nid/Panel";
 import { fmtMoneyShort } from "../../components/nid/charts";
 import DataTable from "../../components/nid/DataTable";
 import {
@@ -124,21 +124,20 @@ export default function InssPage() {
       transition={{ duration: 0.3 }}
       className="space-y-8"
     >
-      <div>
-        <div className="flex items-center gap-2">
-          <h1 className="text-2xl font-extrabold tracking-tight text-slate-800 dark:text-white">
-            INSS — Benefícios Previdenciários
-          </h1>
-          <InfoTooltip dataset="inss" />
-        </div>
-        <p className="text-sm text-slate-400 dark:text-slate-500 mt-1">
-          Quantidade e valor dos benefícios pagos pelo INSS.
-        </p>
-      </div>
+      <NidPageHeader
+        title={<>INSS — Benefícios Previdenciários <InfoTooltip dataset="inss" /></>}
+        sub="Quantidade e valor dos benefícios pagos pelo INSS."
+        chips={describeFilter(filters) ? [{
+          label: describeFilter(filters),
+          active: true,
+          onClick: () => document.getElementById("filter-bar-inss")?.scrollIntoView({ block: "center", behavior: "smooth" }),
+          onClear: () => setFilters(clearFilter()),
+        }] : null}
+      />
 
       <InsightsPanel dataset="inss" />
 
-      <FilterBar years={years} value={filters} onChange={setFilters} />
+      <FilterBar id="filter-bar-inss" years={years} value={filters} onChange={setFilters} />
 
       {loading ? (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">

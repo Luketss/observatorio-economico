@@ -350,6 +350,22 @@ body.theme-light .nid-nav-item:hover:not(.active) {
   color: var(--text-dim);
 }
 body.theme-light .nid-pill { background: #ffffff; border-color: rgba(15, 23, 42, 0.08); }
+/* Period chip variants */
+.nid-pill--active {
+  background: color-mix(in oklab, var(--accent-1) 14%, transparent);
+  border-color: color-mix(in oklab, var(--accent-1) 35%, transparent);
+  color: var(--text);
+}
+.nid-pill-x {
+  margin-left: 2px;
+  color: var(--text-mute, var(--text-dim));
+  cursor: pointer;
+  line-height: 1;
+  font-style: normal;
+  border-radius: 3px;
+  padding: 0 1px;
+}
+.nid-pill-x:hover { color: var(--text); }
 
 /* Notification bell */
 .nid-bell {

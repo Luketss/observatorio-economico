@@ -5,10 +5,10 @@ import InsightsPanel from "../../components/InsightsPanel";
 import ReleasesPanel from "../../components/ReleasesPanel";
 import NidComparativoPanel from "../../components/nid/ComparativoPanel";
 import InfoTooltip from "../../components/InfoTooltip";
-import FilterBar from "../../components/FilterBar";
+import FilterBar, { describeFilter, clearFilter } from "../../components/FilterBar";
 import KpiCard from "../../components/KpiCard";
 import PlanGate from "../../components/PlanGate";
-import { NidPanel, NidLegend } from "../../components/nid/Panel";
+import { NidPanel, NidLegend, NidPageHeader } from "../../components/nid/Panel";
 import { useAuth } from "../../context/AuthContext";
 import ChartState from "../../components/nid/ChartState.jsx";
 import {
@@ -151,21 +151,20 @@ export default function PibPage() {
       transition={{ duration: 0.3 }}
       className="space-y-8"
     >
-      <div>
-        <div className="flex items-center gap-2">
-          <h1 className="text-2xl font-extrabold tracking-tight text-slate-800 dark:text-white">
-            PIB — Produto Interno Bruto
-          </h1>
-          <InfoTooltip dataset="pib" />
-        </div>
-        <p className="text-sm text-slate-400 dark:text-slate-500 mt-1">
-          Série histórica do PIB municipal.
-        </p>
-      </div>
+      <NidPageHeader
+        title={<>PIB — Produto Interno Bruto <InfoTooltip dataset="pib" /></>}
+        sub="Série histórica do PIB municipal."
+        chips={describeFilter(filters) ? [{
+          label: describeFilter(filters),
+          active: true,
+          onClick: () => document.getElementById("filter-bar-pib")?.scrollIntoView({ block: "center", behavior: "smooth" }),
+          onClear: () => setFilters(clearFilter()),
+        }] : null}
+      />
 
       <InsightsPanel dataset="pib" />
 
-      <FilterBar years={years} value={filters} onChange={setFilters} />
+      <FilterBar id="filter-bar-pib" years={years} value={filters} onChange={setFilters} />
 
       {loading ? (
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">

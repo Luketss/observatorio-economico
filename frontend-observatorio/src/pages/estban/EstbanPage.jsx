@@ -6,9 +6,10 @@ import InsightsPanel from "../../components/InsightsPanel";
 import ReleasesPanel from "../../components/ReleasesPanel";
 import NidComparativoPanel from "../../components/nid/ComparativoPanel";
 import InfoTooltip from "../../components/InfoTooltip";
-import FilterBar from "../../components/FilterBar";
+import FilterBar, { describeFilter, clearFilter } from "../../components/FilterBar";
 import KpiCard from "../../components/KpiCard";
 import PlanGate from "../../components/PlanGate";
+import { NidPageHeader } from "../../components/nid/Panel";
 import {
   ResponsiveContainer,
   LineChart,
@@ -133,21 +134,20 @@ export default function EstbanPage() {
       transition={{ duration: 0.3 }}
       className="space-y-8"
     >
-      <div>
-        <div className="flex items-center gap-2">
-          <h1 className="text-2xl font-extrabold tracking-tight text-slate-800 dark:text-white">
-            ESTBAN — Estatísticas Bancárias
-          </h1>
-          <InfoTooltip dataset="estban" />
-        </div>
-        <p className="text-sm text-slate-400 dark:text-slate-500 mt-1">
-          Operações de crédito, depósitos e agências bancárias.
-        </p>
-      </div>
+      <NidPageHeader
+        title={<>ESTBAN — Estatísticas Bancárias <InfoTooltip dataset="estban" /></>}
+        sub="Operações de crédito, depósitos e agências bancárias."
+        chips={describeFilter(filters) ? [{
+          label: describeFilter(filters),
+          active: true,
+          onClick: () => document.getElementById("filter-bar-estban")?.scrollIntoView({ block: "center", behavior: "smooth" }),
+          onClear: () => setFilters(clearFilter()),
+        }] : null}
+      />
 
       <InsightsPanel dataset="estban" />
 
-      <FilterBar years={years} value={filters} onChange={setFilters} />
+      <FilterBar id="filter-bar-estban" years={years} value={filters} onChange={setFilters} />
 
       {loading ? (
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">

@@ -5,9 +5,9 @@ import { motion } from "framer-motion";
 import InsightsPanel from "../../components/InsightsPanel";
 import ReleasesPanel from "../../components/ReleasesPanel";
 import InfoTooltip from "../../components/InfoTooltip";
-import FilterBar from "../../components/FilterBar";
+import FilterBar, { describeFilter, clearFilter } from "../../components/FilterBar";
 import KpiCard from "../../components/KpiCard";
-import { NidPanel } from "../../components/nid/Panel";
+import { NidPanel, NidPageHeader } from "../../components/nid/Panel";
 import ChartState from "../../components/nid/ChartState.jsx";
 import { AreaLineChart, fmtMoneyShort, fmtMoneyFull } from "../../components/nid/charts";
 import DataTable from "../../components/nid/DataTable";
@@ -104,21 +104,20 @@ export default function ArrecadacaoPage() {
       transition={{ duration: 0.3 }}
       className="space-y-8"
     >
-      <div>
-        <div className="flex items-center gap-2">
-          <h1 className="text-2xl font-extrabold tracking-tight text-slate-800 dark:text-white">
-            Arrecadação Municipal
-          </h1>
-          <InfoTooltip dataset="arrecadacao" />
-        </div>
-        <p className="text-sm text-slate-400 dark:text-slate-500 mt-1">
-          Evolução das receitas municipais por período.
-        </p>
-      </div>
+      <NidPageHeader
+        title={<>Arrecadação Municipal <InfoTooltip dataset="arrecadacao" /></>}
+        sub="Evolução das receitas municipais por período."
+        chips={describeFilter(filters) ? [{
+          label: describeFilter(filters),
+          active: true,
+          onClick: () => document.getElementById("filter-bar-arrecadacao")?.scrollIntoView({ block: "center", behavior: "smooth" }),
+          onClear: () => setFilters(clearFilter()),
+        }] : null}
+      />
 
       <InsightsPanel dataset="arrecadacao" />
 
-      <FilterBar years={years} value={filters} onChange={setFilters} />
+      <FilterBar id="filter-bar-arrecadacao" years={years} value={filters} onChange={setFilters} />
 
       {loading ? (
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6">
