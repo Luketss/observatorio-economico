@@ -51,6 +51,8 @@ export default function InsightsAdminPage() {
   const [manualModal, setManualModal] = useState(null); // { key, label }
   const [manualText, setManualText] = useState("");
   const [submittingManual, setSubmittingManual] = useState(false);
+  const [prioridades, setPrioridades] = useState(null);
+  const [generatingPrioridades, setGeneratingPrioridades] = useState(false);
 
   useEffect(() => {
     api.get("/municipios").then((r) => setMunicipios(r.data || []));
@@ -60,11 +62,16 @@ export default function InsightsAdminPage() {
     setLoadingInsights(true);
     setInsights({});
     setReleases({});
+    setPrioridades(null);
     Promise.all([
       api.get("/insights/admin", { params: { municipio_id: id } }),
       api.get("/insights/admin_releases", { params: { municipio_id: id } }),
+      api.get("/insights/prioridades", { params: { municipio_id: id } }).catch((err) => {
+        if (err.response?.status === 404) return { data: null };
+        throw err;
+      }),
     ])
-      .then(([insRes, relRes]) => {
+      .then(([insRes, relRes, priRes]) => {
         const map = {};
         (insRes.data || []).forEach((ins) => { map[ins.dataset] = ins; });
         setInsights(map);
@@ -75,8 +82,10 @@ export default function InsightsAdminPage() {
           relMap[baseKey] = ins;
         });
         setReleases(relMap);
+
+        setPrioridades(priRes.data);
       })
-      .catch(() => { setInsights({}); setReleases({}); })
+      .catch(() => { setInsights({}); setReleases({}); setPrioridades(null); })
       .finally(() => setLoadingInsights(false));
   };
 
@@ -122,6 +131,20 @@ export default function InsightsAdminPage() {
       await handleGerar(d.key);
     }
     setGeneratingAll(false);
+  };
+
+  const handleGerarPrioridades = async () => {
+    setGeneratingPrioridades(true);
+    try {
+      const res = await api.post("/insights/prioridades/gerar", {
+        municipio_id: parseInt(selectedId),
+      });
+      setPrioridades(res.data);
+    } catch (err) {
+      console.error("Erro ao gerar prioridades:", err.response?.data?.detail || err.message);
+    } finally {
+      setGeneratingPrioridades(false);
+    }
   };
 
   const handleToggleAtivo = async (insight) => {
@@ -294,6 +317,39 @@ export default function InsightsAdminPage() {
           ))}
         </select>
       </div>
+
+      {/* Prioridades do mês */}
+      {selectedId && (
+        <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-100 dark:border-slate-800 shadow-sm p-6">
+          <div className="flex items-center justify-between mb-3">
+            <div>
+              <h3 className="text-base font-bold text-slate-800 dark:text-white">Prioridades do mês</h3>
+              <p className="text-xs text-slate-400 dark:text-slate-500 mt-1">
+                Top 3 observações cruzando todos os datasets. Renderizado no topo do Dashboard Geral.
+              </p>
+            </div>
+            <button
+              onClick={handleGerarPrioridades}
+              disabled={generatingPrioridades || loadingInsights}
+              className="inline-flex items-center gap-2 text-sm font-medium text-violet-600 hover:text-violet-700 dark:text-violet-400 disabled:opacity-40 transition-colors px-3 py-2 rounded-xl hover:bg-violet-50 dark:hover:bg-violet-950/40"
+            >
+              <ArrowPathIcon className={`w-4 h-4 ${generatingPrioridades ? "animate-spin" : ""}`} />
+              {generatingPrioridades
+                ? "Gerando..."
+                : prioridades
+                  ? "Regenerar"
+                  : "Gerar"}
+            </button>
+          </div>
+          {prioridades ? (
+            <div className="text-xs text-slate-500 dark:text-slate-400">
+              Última geração: {fmtDate(prioridades.gerado_em)} · período {prioridades.periodo} · {prioridades.prioridades.length} prioridade(s)
+            </div>
+          ) : (
+            <div className="text-xs text-slate-400 dark:text-slate-500">Ainda não gerado para este município.</div>
+          )}
+        </div>
+      )}
 
       {/* Dataset table */}
       {selectedId && (
