@@ -1272,8 +1272,8 @@ export function TwinBarChart({
   return <TwinBarSaldoChart {...shared} showCumulative={cumulative} />;
 }
 
-// ────────── DonutChart ──────────
-export function DonutChart({
+// ────────── DonutChartCore (inner implementation) ──────────
+function DonutChartCore({
   data, colors, height = 220, glow = "hover", centerLabel, centerSub,
 }) {
   const id = useId().replace(/:/g, "");
@@ -1333,6 +1333,114 @@ export function DonutChart({
       </svg>
     </div>
   );
+}
+
+// ────────── PercentBarChart (100% stacked horizontal bar) ──────────
+function PercentBarChart({ data, baseColor, centerLabel, centerSub }) {
+  const [hoverSeg, setHoverSeg] = useState(null);
+  if (!data || data.length === 0) return null;
+  const total = data.reduce((s, d) => s + d.value, 0) || 1;
+  const sorted = [...data].sort((a, b) => b.value - a.value);
+  const opacityScale = [0.95, 0.7, 0.5, 0.35, 0.25, 0.18];
+
+  return (
+    <div className="nid-pct-wrap">
+      {/* Total label — centerLabel/centerSub as header above bar */}
+      {(centerLabel || centerSub) && (
+        <div className="nid-pct-total">
+          <span className="big">{centerLabel}</span>
+          {centerSub && <span className="small">{centerSub}</span>}
+        </div>
+      )}
+
+      {/* Single 100% horizontal bar */}
+      <div
+        className="nid-pct-bar"
+        role="img"
+        aria-label="composição percentual"
+        onMouseLeave={() => setHoverSeg(null)}
+      >
+        {sorted.map((d, i) => {
+          const pct = (d.value / total) * 100;
+          const opacity = opacityScale[i] ?? 0.12;
+          const isHovered = hoverSeg === i;
+          const isDimmed = hoverSeg != null && !isHovered;
+          return (
+            <div
+              key={d.label}
+              className="nid-pct-seg"
+              style={{
+                flex: pct,
+                background: baseColor,
+                opacity: isHovered ? 1 : isDimmed ? opacity * 0.5 : opacity,
+                outline: isHovered ? "2px solid var(--border-strong)" : "none",
+                outlineOffset: "-2px",
+              }}
+              title={`${d.label}: ${d.value.toLocaleString("pt-BR")} · ${pct.toFixed(1)}%`}
+              onMouseEnter={() => setHoverSeg(i)}
+            >
+              {/* Inline label only when segment is wide enough and opaque enough to be readable */}
+              {pct > 12 && opacity >= 0.4 && (
+                <span className="nid-pct-seg-label">{pct.toFixed(0)}%</span>
+              )}
+            </div>
+          );
+        })}
+      </div>
+
+      {/* Legend rows: swatch · label · absolute · percent */}
+      <ul className="nid-pct-legend">
+        {sorted.map((d, i) => {
+          const pct = (d.value / total) * 100;
+          const opacity = opacityScale[i] ?? 0.12;
+          return (
+            <li
+              key={d.label}
+              style={{ opacity: hoverSeg != null && hoverSeg !== i ? 0.45 : 1 }}
+              onMouseEnter={() => setHoverSeg(i)}
+              onMouseLeave={() => setHoverSeg(null)}
+            >
+              <span className="sw" style={{ background: baseColor, opacity }} />
+              <span className="label">{d.label}</span>
+              <span className="val">
+                {d.value.toLocaleString("pt-BR")} · {pct.toFixed(1)}%
+              </span>
+            </li>
+          );
+        })}
+      </ul>
+    </div>
+  );
+}
+
+// ────────── DonutChart (public — auto-falls back to PercentBarChart) ──────────
+export function DonutChart({
+  data, baseColor, prefer = "auto", threshold = 4,
+  colors, height, glow, centerLabel, centerSub,
+}) {
+  const useBar =
+    prefer === "bar" ||
+    (prefer === "auto" && data && data.length > threshold);
+
+  return useBar
+    ? (
+      <PercentBarChart
+        data={data}
+        baseColor={baseColor || "var(--accent-1)"}
+        centerLabel={centerLabel}
+        centerSub={centerSub}
+      />
+    )
+    : (
+      <DonutChartCore
+        data={data}
+        colors={colors}
+        height={height}
+        glow={glow}
+        centerLabel={centerLabel}
+        centerSub={centerSub}
+      />
+    );
 }
 
 // ────────── Horizontal Bar (Ranking) ──────────
