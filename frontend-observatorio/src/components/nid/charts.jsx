@@ -98,6 +98,7 @@ export function Sparkline({ data, color = "var(--accent-1)", glow = true, height
 export function AreaLineChart({
   data, height = 280, glow = true, color = "var(--accent-1)",
   yFmt = fmtMoneyShort, tipFmt = fmtMoneyFull, label = "PIB Total",
+  yCaption,
 }) {
   const id = useId().replace(/:/g, "");
   const [wrapRef, w] = useContainerWidth(800);
@@ -110,7 +111,8 @@ export function AreaLineChart({
 
   const ys = data.map((d) => d.value);
   const yMax = Math.max(...ys) * 1.12;
-  const ticks = niceTicks(0, yMax, 4);
+  const ticks = niceTicks(0, yMax, yCaption ? 3 : 4);
+  const tickFmt = yCaption ? fmtNumberShort : yFmt;
   const yScaleMax = ticks[ticks.length - 1];
   const sx = (i) => padL + (i / (data.length - 1 || 1)) * innerW;
   const sy = (v) => padT + (1 - v / yScaleMax) * innerH;
@@ -148,9 +150,17 @@ export function AreaLineChart({
         {ticks.map((t, i) => (
           <g key={i}>
             <line x1={padL} x2={w - padR} y1={sy(t)} y2={sy(t)} stroke="var(--grid)" strokeDasharray="3 4" />
-            <text x={padL - 10} y={sy(t) + 3.5} className="nid-axis-text" textAnchor="end">{yFmt(t)}</text>
+            <text x={padL - 10} y={sy(t) + 3.5} className="nid-axis-text" textAnchor="end">{tickFmt(t)}</text>
           </g>
         ))}
+        {yCaption && (
+          <text className="axis-cap"
+            x={14} y={height / 2}
+            transform={`rotate(-90 14 ${height / 2})`}
+            textAnchor="middle">
+            {yCaption}
+          </text>
+        )}
         {data.map((d, i) =>
           (i % Math.ceil(data.length / 10) === 0 || i === data.length - 1) && (
             <text key={i} x={sx(i)} y={height - padB + 18} className="nid-axis-text" textAnchor="middle">{d.label}</text>
@@ -187,35 +197,56 @@ export function AreaLineChart({
 }
 
 // ────────── StackedBarChart ──────────
+const opacityScale = (i) => {
+  const stops = [0.95, 0.70, 0.45, 0.25, 0.15];
+  return stops[i] ?? 0.10;
+};
+
 export function StackedBarChart({
   data, keys, colors, height = 280, glow = true,
   yFmt = fmtMoneyShort, tipFmt = fmtMoneyFull,
+  yCaption,
+  baseColor, showTotalLabel = false, highlightLast = false,
 }) {
   const id = useId().replace(/:/g, "");
   const [wrapRef, w] = useContainerWidth(800);
   const [hover, setHover] = useState(null);
   if (!data || data.length === 0) return <EmptyChart h={height} />;
 
+  const resolvedColors = colors || [];
   const padL = 56, padR = 16, padT = 14, padB = 34;
   const innerW = w - padL - padR;
   const innerH = height - padT - padB;
   const yMax = Math.max(...data.map((d) => keys.reduce((s, k) => s + (d[k] || 0), 0))) * 1.1;
-  const ticks = niceTicks(0, yMax, 4);
+  const ticks = niceTicks(0, yMax, yCaption ? 3 : 4);
+  const tickFmt = yCaption ? fmtNumberShort : yFmt;
   const yScaleMax = ticks[ticks.length - 1];
   const barWidth = (innerW / data.length) * 0.55;
   const sx = (i) => padL + (innerW / data.length) * (i + 0.5);
   const sy = (v) => padT + (1 - v / yScaleMax) * innerH;
 
+  // YoY delta helper for highlightLast
+  const lastIdx = data.length - 1;
+  const prevIdx = data.length - 2;
+  const lastTotal = lastIdx >= 0 ? keys.reduce((s, k) => s + (data[lastIdx][k] || 0), 0) : 0;
+  const prevTotal = prevIdx >= 0 ? keys.reduce((s, k) => s + (data[prevIdx][k] || 0), 0) : 0;
+  const yoyPct = prevTotal > 0 ? ((lastTotal - prevTotal) / prevTotal) * 100 : null;
+
   return (
     <div className="nid-chart-wrap" ref={wrapRef} onMouseLeave={() => setHover(null)}>
       <svg viewBox={`0 0 ${w} ${height}`}>
         <defs>
-          {colors.map((c, i) => (
+          {!baseColor && resolvedColors.map((c, i) => (
             <filter key={i} id={`bglow-${id}-${i}`} x="-50%" y="-50%" width="200%" height="200%">
               <feGaussianBlur stdDeviation={glow ? 4 : 0} />
             </filter>
           ))}
-          {colors.map((c, i) => (
+          {baseColor && (
+            <filter id={`bglow-${id}-mono`} x="-50%" y="-50%" width="200%" height="200%">
+              <feGaussianBlur stdDeviation={glow ? 4 : 0} />
+            </filter>
+          )}
+          {!baseColor && resolvedColors.map((c, i) => (
             <linearGradient key={i} id={`bgrad-${id}-${i}`} x1="0" y1="0" x2="0" y2="1">
               <stop offset="0%" stopColor={c} stopOpacity="0.95" />
               <stop offset="100%" stopColor={c} stopOpacity="0.55" />
@@ -225,13 +256,24 @@ export function StackedBarChart({
         {ticks.map((t, i) => (
           <g key={i}>
             <line x1={padL} x2={w - padR} y1={sy(t)} y2={sy(t)} stroke="var(--grid)" strokeDasharray="3 4" />
-            <text x={padL - 10} y={sy(t) + 3.5} className="nid-axis-text" textAnchor="end">{yFmt(t)}</text>
+            <text x={padL - 10} y={sy(t) + 3.5} className="nid-axis-text" textAnchor="end">{tickFmt(t)}</text>
           </g>
         ))}
+        {yCaption && (
+          <text className="axis-cap"
+            x={14} y={height / 2}
+            transform={`rotate(-90 14 ${height / 2})`}
+            textAnchor="middle">
+            {yCaption}
+          </text>
+        )}
         {data.map((d, i) => {
           let acc = 0;
           const x = sx(i) - barWidth / 2;
           const isHover = hover === i;
+          const isLast = i === lastIdx;
+          const total = keys.reduce((s, k) => s + (d[k] || 0), 0);
+          const top = sy(total);
           return (
             <g key={i} onMouseEnter={() => setHover(i)}>
               {keys.map((k, ki) => {
@@ -240,22 +282,45 @@ export function StackedBarChart({
                 const y1 = sy(acc);
                 acc += v;
                 const isTop = ki === keys.length - 1;
+                const segColor = baseColor || resolvedColors[ki];
+                const fillAttr = baseColor
+                  ? baseColor
+                  : `url(#bgrad-${id}-${ki})`;
+                const glowId = baseColor ? `bglow-${id}-mono` : `bglow-${id}-${ki}`;
                 return (
                   <g key={k}>
                     {glow && isHover && (
                       <rect x={x - 2} y={y0 - 2} width={barWidth + 4} height={y1 - y0 + 4}
-                        rx={isTop ? 6 : 0} fill={colors[ki]} opacity="0.5" filter={`url(#bglow-${id}-${ki})`} />
+                        rx={isTop ? 6 : 0} fill={segColor} opacity="0.5" filter={`url(#${glowId})`} />
                     )}
                     <rect x={x} y={y0} width={barWidth} height={Math.max(0, y1 - y0)}
                       rx={isTop ? 5 : 0}
-                      fill={`url(#bgrad-${id}-${ki})`}
-                      stroke={isTop ? colors[ki] : "transparent"}
+                      fill={fillAttr}
+                      opacity={baseColor ? opacityScale(ki) : 1}
+                      stroke={isTop ? segColor : "transparent"}
                       strokeWidth={isTop ? 1 : 0}
-                      style={{ transition: "opacity 0.15s", opacity: hover != null && hover !== i ? 0.35 : 1 }}
+                      style={{ transition: "opacity 0.15s", opacity: baseColor ? (hover != null && hover !== i ? opacityScale(ki) * 0.4 : opacityScale(ki)) : (hover != null && hover !== i ? 0.35 : 1) }}
                     />
                   </g>
                 );
               })}
+              {showTotalLabel && (
+                <text x={sx(i)} y={top - 8} className="nid-axis-text"
+                  textAnchor="middle"
+                  style={{
+                    fill: highlightLast && isLast ? "var(--accent-2)" : "var(--text)",
+                    fontWeight: highlightLast && isLast ? 700 : undefined,
+                  }}>
+                  {highlightLast && isLast && yoyPct != null
+                    ? `${yFmt(total)} · ${yoyPct >= 0 ? "+" : ""}${yoyPct.toFixed(0)}%`
+                    : yFmt(total)}
+                </text>
+              )}
+              {highlightLast && isLast && (
+                <rect x={x - 2} y={top - 2}
+                  width={barWidth + 4} height={padT + innerH - top + 4}
+                  fill="none" stroke="var(--accent-2)" strokeWidth="1.5" rx="3" />
+              )}
               <text x={sx(i)} y={height - padB + 18} className="nid-axis-text" textAnchor="middle">{d.label}</text>
             </g>
           );
@@ -269,12 +334,18 @@ export function StackedBarChart({
           transform: "translate(-50%, calc(-100% - 8px))",
         }}>
           <div className="tip-label">{data[hover].label}</div>
-          {keys.map((k, ki) => (
-            <div className="tip-row" key={k}>
-              <span className="name"><span className="swatch" style={{ background: colors[ki] }}></span>{k}</span>
-              <span>{tipFmt(data[hover][k] || 0)}</span>
-            </div>
-          ))}
+          {keys.map((k, ki) => {
+            const swatchColor = baseColor || resolvedColors[ki];
+            const swatchOpacity = baseColor ? opacityScale(ki) : 1;
+            return (
+              <div className="tip-row" key={k}>
+                <span className="name">
+                  <span className="swatch" style={{ background: swatchColor, opacity: swatchOpacity }}></span>{k}
+                </span>
+                <span>{tipFmt(data[hover][k] || 0)}</span>
+              </div>
+            );
+          })}
         </div>
       )}
     </div>
@@ -285,6 +356,7 @@ export function StackedBarChart({
 export function MultiLineChart({
   data, series, colors, height = 280, glow = true,
   yFmt = fmtMoneyShort, tipFmt = fmtMoneyFull,
+  yCaption,
 }) {
   const id = useId().replace(/:/g, "");
   const [wrapRef, w] = useContainerWidth(800);
@@ -296,7 +368,8 @@ export function MultiLineChart({
   const innerH = height - padT - padB;
   const allVals = data.flatMap((d) => series.map((s) => d[s] || 0));
   const yMax = Math.max(...allVals) * 1.12;
-  const ticks = niceTicks(0, yMax, 4);
+  const ticks = niceTicks(0, yMax, yCaption ? 3 : 4);
+  const tickFmt = yCaption ? fmtNumberShort : yFmt;
   const yScaleMax = ticks[ticks.length - 1];
   const sx = (i) => padL + (i / (data.length - 1 || 1)) * innerW;
   const sy = (v) => padT + (1 - v / yScaleMax) * innerH;
@@ -326,9 +399,17 @@ export function MultiLineChart({
         {ticks.map((t, i) => (
           <g key={i}>
             <line x1={padL} x2={w - padR} y1={sy(t)} y2={sy(t)} stroke="var(--grid)" strokeDasharray="3 4" />
-            <text x={padL - 10} y={sy(t) + 3.5} className="nid-axis-text" textAnchor="end">{yFmt(t)}</text>
+            <text x={padL - 10} y={sy(t) + 3.5} className="nid-axis-text" textAnchor="end">{tickFmt(t)}</text>
           </g>
         ))}
+        {yCaption && (
+          <text className="axis-cap"
+            x={14} y={height / 2}
+            transform={`rotate(-90 14 ${height / 2})`}
+            textAnchor="middle">
+            {yCaption}
+          </text>
+        )}
         {data.map((d, i) =>
           (i % Math.ceil(data.length / 10) === 0 || i === data.length - 1) && (
             <text key={i} x={sx(i)} y={height - padB + 18} className="nid-axis-text" textAnchor="middle">{d.label}</text>
@@ -369,6 +450,7 @@ export function MultiLineChart({
 export function TwinBarChart({
   data, height = 280, glow = true,
   colorUp = "var(--accent-5)", colorDown = "var(--accent-2)",
+  yCaption,
 }) {
   const id = useId().replace(/:/g, "");
   const [wrapRef, w] = useContainerWidth(800);
@@ -379,7 +461,7 @@ export function TwinBarChart({
   const innerW = w - padL - padR;
   const innerH = height - padT - padB;
   const maxVal = Math.max(...data.flatMap((d) => [d.admissoes, d.desligamentos])) * 1.15;
-  const ticks = niceTicks(0, maxVal, 4);
+  const ticks = niceTicks(0, maxVal, yCaption ? 3 : 4);
   const yScaleMax = ticks[ticks.length - 1];
   const slot = innerW / data.length;
   const barW = (slot * 0.7) / 2;
@@ -408,6 +490,14 @@ export function TwinBarChart({
             <text x={padL - 10} y={sy(t) + 3.5} className="nid-axis-text" textAnchor="end">{fmtNumberShort(t)}</text>
           </g>
         ))}
+        {yCaption && (
+          <text className="axis-cap"
+            x={14} y={height / 2}
+            transform={`rotate(-90 14 ${height / 2})`}
+            textAnchor="middle">
+            {yCaption}
+          </text>
+        )}
         {data.map((d, i) => {
           const cx = sxCenter(i);
           const xUp = cx - barW - 1;

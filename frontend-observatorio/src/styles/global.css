@@ -237,3 +237,12 @@ th, td {
 tr:not(:last-child) {
   border-bottom: 1px solid #e2e8f0;
 }
+
+/* ─── Y-axis caption (ticket 03) ─── */
+.axis-cap {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  fill: var(--text-mute);
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
