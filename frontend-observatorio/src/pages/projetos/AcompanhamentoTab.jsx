@@ -16,24 +16,18 @@ import api from "../../services/api";
 import { useAuth } from "../../context/AuthContext";
 import { useToast } from "../../context/ToastContext";
 import { useEscapeKey } from "../../hooks/useEscapeKey";
+import NidTabBar from "../../components/nid/NidTabBar";
+import StatusPill from "../../components/nid/StatusPill";
 
+// Map backend status → StatusPill kind + display label
 const STATUS_CONFIG = {
-  nao_iniciado: {
-    label: "Não iniciado",
-    color: "bg-slate-100 text-slate-600 dark:bg-slate-700 dark:text-slate-300",
-    dot: "bg-slate-400",
-  },
-  em_andamento: {
-    label: "Em andamento",
-    color: "bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-400",
-    dot: "bg-amber-500",
-  },
-  concluido: {
-    label: "Concluído",
-    color: "bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-400",
-    dot: "bg-green-500",
-  },
+  nao_iniciado: { label: "Não iniciado", kind: "draft", dot: "var(--text-mute)" },
+  em_andamento: { label: "Em andamento", kind: "warn",  dot: "var(--accent-4)" },
+  concluido:    { label: "Concluído",    kind: "ok",    dot: "var(--accent-5)" },
 };
+
+// Cycle accent vars for eixo coloring
+const EIXO_ACCENTS = ["--accent-1", "--accent-2", "--accent-3", "--accent-4", "--accent-5"];
 
 const defaultForm = {
   eixo_id: "",
@@ -200,76 +194,113 @@ export default function AcompanhamentoTab() {
 
   if (isGlobal) {
     return (
-      <div className="text-center py-20 text-slate-400">
-        <InformationCircleIcon className="w-12 h-12 mx-auto mb-3 opacity-30" />
-        <p className="text-sm font-medium text-slate-500 dark:text-slate-400">O acompanhamento de projetos é específico por município.</p>
-        <p className="text-xs mt-1">Faça login com uma conta de município para ver e gerenciar os projetos em andamento.</p>
+      <div style={{ textAlign: "center", padding: "80px 0", color: "var(--text-dim)" }}>
+        <InformationCircleIcon style={{ width: 48, height: 48, margin: "0 auto 12px", opacity: 0.3 }} />
+        <p style={{ fontSize: 14, fontWeight: 500, color: "var(--text-dim)" }}>O acompanhamento de projetos é específico por município.</p>
+        <p style={{ fontSize: 12, marginTop: 4, color: "var(--text-mute)" }}>Faça login com uma conta de município para ver e gerenciar os projetos em andamento.</p>
       </div>
     );
   }
 
+  // Eixo accent map by index
+  const eixoAccentMap = Object.fromEntries(
+    eixos.map((e, i) => [String(e.id), EIXO_ACCENTS[i % EIXO_ACCENTS.length]])
+  );
+
+  // Eixo sub-tabs for filtering
+  const eixoTabs = [
+    { key: "", label: "Todos", count: projetos.length },
+    ...eixos.map((e, i) => ({
+      key: String(e.id),
+      label: e.nome,
+      count: projetos.filter((p) => String(p.eixo_id) === String(e.id)).length,
+    })),
+  ];
+
   function ProjetoCard({ projeto }) {
     const st = STATUS_CONFIG[projeto.status] || STATUS_CONFIG.nao_iniciado;
     const label = eixoLabel(projeto.eixo_id);
+    const accentVar = eixoAccentMap[String(projeto.eixo_id)] || "--accent-1";
     return (
-      <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-100 dark:border-slate-700 p-4 space-y-2.5 hover:shadow-md transition-shadow">
-        <div className="flex items-start justify-between gap-2">
-          <div className="flex-1 min-w-0">
+      <div className="proj-card">
+        {/* Image slot */}
+        <div
+          className="proj-card__img"
+          style={{ "--proj-accent": `var(${accentVar})` }}
+        >
+          PROJETO · IMAGEM
+        </div>
+
+        {/* Header: eixo tag + actions */}
+        <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 8 }}>
+          <div style={{ flex: 1, minWidth: 0 }}>
             {label && (
-              <span className="inline-block text-[10px] font-medium text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-950/30 px-1.5 py-0.5 rounded mb-1">
+              <span
+                className="proj-card__eixo-tag"
+                style={{
+                  color: `var(${accentVar})`,
+                  background: `color-mix(in oklab, var(${accentVar}) 14%, transparent)`,
+                  borderColor: "transparent",
+                }}
+              >
                 {label}
               </span>
             )}
-            <h4
-              className="font-medium text-slate-700 dark:text-slate-200 text-sm leading-snug cursor-pointer hover:text-blue-600 transition-colors"
+            <h3
+              className="proj-card__title"
               onClick={() => setViewingProjeto(projeto)}
+              style={{ cursor: "pointer" }}
             >
               {projeto.titulo}
-            </h4>
+            </h3>
           </div>
           {canEdit && (
-            <div className="flex gap-1 shrink-0">
-              <button onClick={() => openEdit(projeto)} aria-label="Editar" className="p-1.5 rounded-lg text-slate-400 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-950/40 transition-colors cursor-pointer">
+            <div style={{ display: "flex", gap: 4, flexShrink: 0 }}>
+              <button onClick={() => openEdit(projeto)} aria-label="Editar" className="proj-card__icon-btn">
                 <PencilIcon className="w-3.5 h-3.5" />
               </button>
-              <button onClick={() => setDeleteConfirmId(projeto.id)} aria-label="Excluir" className="p-1.5 rounded-lg text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-950/40 transition-colors cursor-pointer">
+              <button onClick={() => setDeleteConfirmId(projeto.id)} aria-label="Excluir" className="proj-card__icon-btn proj-card__icon-btn--danger">
                 <TrashIcon className="w-3.5 h-3.5" />
               </button>
             </div>
           )}
         </div>
 
-        <div className="flex flex-col gap-1 text-xs text-slate-400">
+        {/* Meta info */}
+        <div style={{ display: "flex", flexDirection: "column", gap: 4, fontSize: 11, color: "var(--text-mute)" }}>
           {projeto.departamento && (
-            <span className="flex items-center gap-1">
-              <BuildingOfficeIcon className="w-3.5 h-3.5" /> {projeto.departamento}
+            <span style={{ display: "flex", alignItems: "center", gap: 4 }}>
+              <BuildingOfficeIcon style={{ width: 12, height: 12 }} /> {projeto.departamento}
             </span>
           )}
           {projeto.responsavel && (
-            <span className="flex items-center gap-1">
-              <UserIcon className="w-3.5 h-3.5" /> {projeto.responsavel}
+            <span style={{ display: "flex", alignItems: "center", gap: 4 }}>
+              <UserIcon style={{ width: 12, height: 12 }} /> {projeto.responsavel}
             </span>
           )}
           {projeto.data_prazo && (
-            <span className="flex items-center gap-1">
-              <CalendarDaysIcon className="w-3.5 h-3.5" /> Prazo: {fmtDate(projeto.data_prazo)}
+            <span style={{ display: "flex", alignItems: "center", gap: 4 }}>
+              <CalendarDaysIcon style={{ width: 12, height: 12 }} /> Prazo: {fmtDate(projeto.data_prazo)}
             </span>
           )}
         </div>
 
-        {canEdit && (
-          <div className="pt-1.5 border-t border-slate-50 dark:border-slate-700">
+        {/* Footer: StatusPill + optional status change dropdown */}
+        <div className="proj-card__footer" style={{ flexDirection: "column", gap: 8 }}>
+          <StatusPill kind={st.kind} dot label={st.label} />
+          {canEdit && (
             <select
               value={projeto.status}
               onChange={(e) => handleStatusChange(projeto.id, e.target.value)}
-              className="w-full text-xs px-2 py-1.5 rounded-lg border border-slate-200 dark:border-slate-600 focus:outline-none focus:ring-1 focus:ring-blue-500 bg-white dark:bg-slate-700 text-slate-700 dark:text-slate-200 cursor-pointer"
+              className="nid-form-input"
+              style={{ fontSize: 11, padding: "4px 8px" }}
             >
               {Object.entries(STATUS_CONFIG).map(([k, v]) => (
                 <option key={k} value={k}>{v.label}</option>
               ))}
             </select>
-          </div>
-        )}
+          )}
+        </div>
       </div>
     );
   }
@@ -279,57 +310,51 @@ export default function AcompanhamentoTab() {
       {/* KPI row */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         {[
-          { label: "Total", value: kpis.total, color: "text-slate-700 dark:text-slate-100" },
-          { label: "Não iniciados", value: kpis.nao_iniciado, color: "text-slate-500" },
-          { label: "Em andamento", value: kpis.em_andamento, color: "text-amber-600" },
-          { label: "Concluídos", value: kpis.concluido, color: "text-green-600" },
+          { label: "Total", value: kpis.total, accent: "var(--text)" },
+          { label: "Não iniciados", value: kpis.nao_iniciado, accent: "var(--text-dim)" },
+          { label: "Em andamento", value: kpis.em_andamento, accent: "var(--accent-4)" },
+          { label: "Concluídos", value: kpis.concluido, accent: "var(--accent-5)" },
         ].map((k) => (
-          <div key={k.label} className="bg-white dark:bg-slate-800 rounded-xl border border-slate-100 dark:border-slate-700 p-4">
-            <p className="text-xs text-slate-400 uppercase tracking-wider">{k.label}</p>
-            <p className={`text-3xl font-extrabold mt-1 ${k.color}`}>{k.value}</p>
+          <div key={k.label} className="nid-kpi">
+            <p className="nid-kpi-label">{k.label}</p>
+            <p className="nid-kpi-value" style={{ color: k.accent, fontSize: 28 }}>{k.value}</p>
           </div>
         ))}
       </div>
 
-      {/* Toolbar */}
-      <div className="flex items-center justify-between gap-3 flex-wrap">
-        <div className="flex items-center gap-2">
-          {eixos.length > 0 && (
-            <select
-              value={filterEixo}
-              onChange={(e) => setFilterEixo(e.target.value)}
-              className="px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-700 text-sm text-slate-700 dark:text-slate-200 bg-white dark:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500"
-            >
-              <option value="">Todos os eixos</option>
-              {eixos.map((e) => (
-                <option key={e.id} value={String(e.id)}>{e.nome}</option>
-              ))}
-            </select>
-          )}
-          <div className="flex gap-1 bg-slate-100 dark:bg-slate-800 p-1 rounded-lg">
+      {/* Eixo sub-tabs + view toggle + add button */}
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
+          <NidTabBar
+            tabs={eixoTabs}
+            value={filterEixo}
+            onChange={setFilterEixo}
+            ariaLabel="Filtrar por eixo"
+          />
+          {/* View toggle */}
+          <div className="nid-tabbar" style={{ display: "inline-flex" }}>
             <button
               onClick={() => setViewMode("kanban")}
-              aria-label="Visualização Kanban"
+              aria-label="Kanban"
               aria-pressed={viewMode === "kanban"}
-              className={`p-1.5 rounded transition-colors cursor-pointer ${viewMode === "kanban" ? "bg-white dark:bg-slate-700 text-blue-600 shadow-sm" : "text-slate-400 hover:text-slate-600"}`}
+              className={`nid-tabbar__tab ${viewMode === "kanban" ? "is-active" : ""}`}
+              style={{ padding: "6px 10px" }}
             >
-              <ViewColumnsIcon className="w-4 h-4" />
+              <ViewColumnsIcon style={{ width: 15, height: 15 }} />
             </button>
             <button
               onClick={() => setViewMode("table")}
-              aria-label="Visualização Tabela"
+              aria-label="Tabela"
               aria-pressed={viewMode === "table"}
-              className={`p-1.5 rounded transition-colors cursor-pointer ${viewMode === "table" ? "bg-white dark:bg-slate-700 text-blue-600 shadow-sm" : "text-slate-400 hover:text-slate-600"}`}
+              className={`nid-tabbar__tab ${viewMode === "table" ? "is-active" : ""}`}
+              style={{ padding: "6px 10px" }}
             >
-              <TableCellsIcon className="w-4 h-4" />
+              <TableCellsIcon style={{ width: 15, height: 15 }} />
             </button>
           </div>
         </div>
-        {canEdit && !isGlobal && (
-          <button
-            onClick={openCreate}
-            className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2.5 rounded-xl text-sm font-medium transition-colors cursor-pointer"
-          >
+        {canEdit && (
+          <button onClick={openCreate} className="proj-add-btn">
             <PlusIcon className="w-4 h-4" />
             Novo Projeto
           </button>
@@ -340,10 +365,10 @@ export default function AcompanhamentoTab() {
       {viewMode === "kanban" && (
         <>
           {filtrados.length === 0 ? (
-            <div className="text-center py-16 text-slate-400">
-              <ViewColumnsIcon className="w-10 h-10 mx-auto mb-3 opacity-30" />
-              <p className="text-sm">Nenhum projeto em acompanhamento.</p>
-              <p className="text-xs mt-1">Selecione projetos do Acervo ou crie um novo diretamente.</p>
+            <div style={{ textAlign: "center", padding: "64px 0", color: "var(--text-dim)" }}>
+              <ViewColumnsIcon style={{ width: 40, height: 40, margin: "0 auto 12px", opacity: 0.3 }} />
+              <p style={{ fontSize: 13 }}>Nenhum projeto em acompanhamento.</p>
+              <p style={{ fontSize: 12, marginTop: 4, color: "var(--text-mute)" }}>Selecione projetos do Acervo ou crie um novo diretamente.</p>
             </div>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -351,15 +376,15 @@ export default function AcompanhamentoTab() {
                 const cols = filtrados.filter((p) => p.status === status);
                 return (
                   <div key={status} className="space-y-3">
-                    <div className="flex items-center gap-2">
-                      <div className={`w-2 h-2 rounded-full ${cfg.dot}`} />
-                      <h3 className="font-semibold text-slate-600 dark:text-slate-300 text-sm">{cfg.label}</h3>
-                      <span className="ml-auto text-xs text-slate-400 bg-slate-100 dark:bg-slate-700 px-2 py-0.5 rounded-full">{cols.length}</span>
+                    <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                      <span style={{ width: 8, height: 8, borderRadius: "50%", background: cfg.dot, display: "inline-block", flexShrink: 0 }} />
+                      <h3 style={{ fontWeight: 600, color: "var(--text-dim)", fontSize: 12, fontFamily: "var(--font-mono)", textTransform: "uppercase", letterSpacing: "0.06em", margin: 0 }}>{cfg.label}</h3>
+                      <span style={{ marginLeft: "auto", fontSize: 11, color: "var(--text-mute)", background: "var(--panel-2)", border: "1px solid var(--border)", padding: "1px 7px", borderRadius: 999 }}>{cols.length}</span>
                     </div>
-                    <div className="space-y-3 min-h-[80px]">
+                    <div className="space-y-3" style={{ minHeight: 80 }}>
                       {cols.map((p) => <ProjetoCard key={p.id} projeto={p} />)}
                       {cols.length === 0 && (
-                        <div className="h-20 border-2 border-dashed border-slate-100 dark:border-slate-700 rounded-xl flex items-center justify-center text-xs text-slate-300 dark:text-slate-600">
+                        <div style={{ height: 80, border: "2px dashed var(--border)", borderRadius: 14, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 11, color: "var(--text-mute)" }}>
                           Vazio
                         </div>
                       )}
@@ -374,22 +399,22 @@ export default function AcompanhamentoTab() {
 
       {/* Table view */}
       {viewMode === "table" && (
-        <div className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-100 dark:border-slate-700 overflow-hidden">
-          <table className="w-full text-sm">
+        <div className="nid-panel" style={{ padding: 0, overflow: "hidden" }}>
+          <table style={{ width: "100%", fontSize: 13, borderCollapse: "collapse" }}>
             <thead>
-              <tr className="bg-slate-50 dark:bg-slate-700/50 text-xs uppercase text-slate-400 tracking-wider text-left">
-                <th className="px-6 py-3">Título</th>
-                <th className="px-6 py-3">Eixo</th>
-                <th className="px-6 py-3">Status</th>
-                <th className="px-6 py-3">Responsável</th>
-                <th className="px-6 py-3">Prazo</th>
-                {canEdit && <th className="px-6 py-3" />}
+              <tr style={{ background: "var(--panel-2)", fontSize: 10, fontFamily: "var(--font-mono)", textTransform: "uppercase", color: "var(--text-mute)", letterSpacing: "0.1em", textAlign: "left" }}>
+                <th style={{ padding: "10px 20px" }}>Título</th>
+                <th style={{ padding: "10px 20px" }}>Eixo</th>
+                <th style={{ padding: "10px 20px" }}>Status</th>
+                <th style={{ padding: "10px 20px" }}>Responsável</th>
+                <th style={{ padding: "10px 20px" }}>Prazo</th>
+                {canEdit && <th style={{ padding: "10px 20px" }} />}
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-50 dark:divide-slate-700">
+            <tbody>
               {filtrados.length === 0 ? (
                 <tr>
-                  <td colSpan={6} className="px-6 py-10 text-center text-slate-400 text-sm">
+                  <td colSpan={6} style={{ padding: "40px 20px", textAlign: "center", color: "var(--text-dim)", fontSize: 13 }}>
                     Nenhum projeto em acompanhamento.
                   </td>
                 </tr>
@@ -397,23 +422,26 @@ export default function AcompanhamentoTab() {
                 filtrados.map((p) => {
                   const st = STATUS_CONFIG[p.status] || STATUS_CONFIG.nao_iniciado;
                   return (
-                    <tr key={p.id} className="hover:bg-slate-50 dark:hover:bg-slate-700/30 transition-colors">
-                      <td className="px-6 py-3 font-medium text-slate-700 dark:text-slate-200 cursor-pointer hover:text-blue-600 transition-colors" onClick={() => setViewingProjeto(p)}>
+                    <tr key={p.id} style={{ borderTop: "1px solid var(--border)" }}>
+                      <td
+                        style={{ padding: "10px 20px", fontWeight: 500, color: "var(--text)", cursor: "pointer" }}
+                        onClick={() => setViewingProjeto(p)}
+                      >
                         {p.titulo}
                       </td>
-                      <td className="px-6 py-3 text-slate-400 text-xs">{eixoLabel(p.eixo_id) || "—"}</td>
-                      <td className="px-6 py-3">
-                        <span className={`px-2.5 py-1 rounded-full text-xs font-medium ${st.color}`}>{st.label}</span>
+                      <td style={{ padding: "10px 20px", color: "var(--text-dim)", fontSize: 11 }}>{eixoLabel(p.eixo_id) || "—"}</td>
+                      <td style={{ padding: "10px 20px" }}>
+                        <StatusPill kind={st.kind} dot label={st.label} />
                       </td>
-                      <td className="px-6 py-3 text-slate-500 dark:text-slate-400">{p.responsavel || "—"}</td>
-                      <td className="px-6 py-3 text-slate-400 text-xs">{fmtDate(p.data_prazo) || "—"}</td>
+                      <td style={{ padding: "10px 20px", color: "var(--text-dim)" }}>{p.responsavel || "—"}</td>
+                      <td style={{ padding: "10px 20px", color: "var(--text-mute)", fontSize: 11 }}>{fmtDate(p.data_prazo) || "—"}</td>
                       {canEdit && (
-                        <td className="px-6 py-3">
-                          <div className="flex items-center gap-2 justify-end">
-                            <button onClick={() => openEdit(p)} aria-label="Editar" className="p-1.5 rounded-lg text-slate-400 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-950/40 transition-colors cursor-pointer">
+                        <td style={{ padding: "10px 20px" }}>
+                          <div style={{ display: "flex", alignItems: "center", gap: 8, justifyContent: "flex-end" }}>
+                            <button onClick={() => openEdit(p)} aria-label="Editar" className="proj-card__icon-btn">
                               <PencilIcon className="w-4 h-4" />
                             </button>
-                            <button onClick={() => setDeleteConfirmId(p.id)} aria-label="Excluir" className="p-1.5 rounded-lg text-slate-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-950/40 transition-colors cursor-pointer">
+                            <button onClick={() => setDeleteConfirmId(p.id)} aria-label="Excluir" className="proj-card__icon-btn proj-card__icon-btn--danger">
                               <TrashIcon className="w-4 h-4" />
                             </button>
                           </div>
@@ -435,7 +463,7 @@ export default function AcompanhamentoTab() {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4"
+            className="nid-modal-backdrop"
             onClick={(e) => { if (e.target === e.currentTarget) setViewingProjeto(null); }}
           >
             <motion.div
@@ -443,34 +471,36 @@ export default function AcompanhamentoTab() {
               animate={{ scale: 1 }}
               exit={{ scale: 0.95 }}
               transition={{ type: "spring", stiffness: 300, damping: 30 }}
-              className="bg-white dark:bg-slate-800 rounded-2xl shadow-xl w-full max-w-lg p-6 space-y-4 max-h-[90vh] overflow-y-auto"
+              className="nid-modal"
+              style={{ maxWidth: 520 }}
             >
-              <div className="flex items-start justify-between gap-3">
+              <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 12 }}>
                 <div>
-                  <span className={`px-2.5 py-1 rounded-full text-xs font-medium ${STATUS_CONFIG[viewingProjeto.status]?.color}`}>
-                    {STATUS_CONFIG[viewingProjeto.status]?.label}
-                  </span>
-                  <h2 className="text-lg font-bold text-slate-800 dark:text-slate-100 mt-2">{viewingProjeto.titulo}</h2>
+                  {(() => {
+                    const st = STATUS_CONFIG[viewingProjeto.status] || STATUS_CONFIG.nao_iniciado;
+                    return <StatusPill kind={st.kind} dot label={st.label} />;
+                  })()}
+                  <h2 style={{ fontSize: 17, fontWeight: 700, color: "var(--text)", margin: "8px 0 0" }}>{viewingProjeto.titulo}</h2>
                 </div>
-                <button onClick={() => setViewingProjeto(null)} className="p-1.5 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors cursor-pointer">
+                <button onClick={() => setViewingProjeto(null)} className="nid-modal__close">
                   <XMarkIcon className="w-5 h-5" />
                 </button>
               </div>
 
               {viewingProjeto.descricao && (
-                <p className="text-sm text-slate-600 dark:text-slate-300">{viewingProjeto.descricao}</p>
+                <p style={{ fontSize: 13, color: "var(--text-dim)", lineHeight: 1.6 }}>{viewingProjeto.descricao}</p>
               )}
               {viewingProjeto.conteudo && (
-                <div className="text-sm text-slate-600 dark:text-slate-300 whitespace-pre-line border-t border-slate-100 dark:border-slate-700 pt-4 leading-relaxed">
+                <div style={{ fontSize: 13, color: "var(--text-dim)", whiteSpace: "pre-line", borderTop: "1px solid var(--border)", paddingTop: 16, lineHeight: 1.6 }}>
                   {viewingProjeto.conteudo}
                 </div>
               )}
-              <div className="flex flex-wrap gap-4 text-xs text-slate-400 border-t border-slate-100 dark:border-slate-700 pt-3">
-                {eixoLabel(viewingProjeto.eixo_id) && <span><span className="font-medium">Eixo:</span> {eixoLabel(viewingProjeto.eixo_id)}</span>}
-                {viewingProjeto.departamento && <span><span className="font-medium">Departamento:</span> {viewingProjeto.departamento}</span>}
-                {viewingProjeto.responsavel && <span><span className="font-medium">Responsável:</span> {viewingProjeto.responsavel}</span>}
-                {viewingProjeto.data_inicio && <span><span className="font-medium">Início:</span> {fmtDate(viewingProjeto.data_inicio)}</span>}
-                {viewingProjeto.data_prazo && <span><span className="font-medium">Prazo:</span> {fmtDate(viewingProjeto.data_prazo)}</span>}
+              <div style={{ display: "flex", flexWrap: "wrap", gap: "10px 20px", borderTop: "1px solid var(--border)", paddingTop: 12, fontSize: 11, color: "var(--text-dim)", fontFamily: "var(--font-mono)" }}>
+                {eixoLabel(viewingProjeto.eixo_id) && <span><span style={{ fontWeight: 600 }}>Eixo:</span> {eixoLabel(viewingProjeto.eixo_id)}</span>}
+                {viewingProjeto.departamento && <span><span style={{ fontWeight: 600 }}>Departamento:</span> {viewingProjeto.departamento}</span>}
+                {viewingProjeto.responsavel && <span><span style={{ fontWeight: 600 }}>Responsável:</span> {viewingProjeto.responsavel}</span>}
+                {viewingProjeto.data_inicio && <span><span style={{ fontWeight: 600 }}>Início:</span> {fmtDate(viewingProjeto.data_inicio)}</span>}
+                {viewingProjeto.data_prazo && <span><span style={{ fontWeight: 600 }}>Prazo:</span> {fmtDate(viewingProjeto.data_prazo)}</span>}
               </div>
             </motion.div>
           </motion.div>
@@ -484,19 +514,20 @@ export default function AcompanhamentoTab() {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4"
+            className="nid-modal-backdrop"
           >
             <motion.div
               initial={{ scale: 0.95 }}
               animate={{ scale: 1 }}
               exit={{ scale: 0.95 }}
-              className="bg-white dark:bg-slate-800 rounded-2xl shadow-xl p-6 w-full max-w-sm space-y-4"
+              className="nid-modal"
+              style={{ maxWidth: 380 }}
             >
-              <h3 className="font-bold text-slate-800 dark:text-slate-100">Excluir projeto?</h3>
-              <p className="text-sm text-slate-500 dark:text-slate-400">Esta ação não pode ser desfeita.</p>
-              <div className="flex gap-3 justify-end">
-                <button onClick={() => setDeleteConfirmId(null)} className="px-4 py-2 rounded-lg border border-slate-200 dark:border-slate-600 text-sm text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 cursor-pointer">Cancelar</button>
-                <button onClick={() => handleDelete(deleteConfirmId)} className="px-4 py-2 rounded-lg bg-red-600 hover:bg-red-700 text-white text-sm cursor-pointer">Excluir</button>
+              <h3 style={{ fontWeight: 700, color: "var(--text)", margin: 0 }}>Excluir projeto?</h3>
+              <p style={{ fontSize: 13, color: "var(--text-dim)" }}>Esta ação não pode ser desfeita.</p>
+              <div style={{ display: "flex", gap: 12, justifyContent: "flex-end" }}>
+                <button onClick={() => setDeleteConfirmId(null)} className="nid-modal__btn-cancel">Cancelar</button>
+                <button onClick={() => handleDelete(deleteConfirmId)} className="nid-modal__btn-danger">Excluir</button>
               </div>
             </motion.div>
           </motion.div>
@@ -510,7 +541,7 @@ export default function AcompanhamentoTab() {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4"
+            className="nid-modal-backdrop"
             onClick={(e) => { if (e.target === e.currentTarget) closeForm(); }}
           >
             <motion.div
@@ -518,35 +549,36 @@ export default function AcompanhamentoTab() {
               animate={{ scale: 1 }}
               exit={{ scale: 0.95 }}
               transition={{ type: "spring", stiffness: 300, damping: 30 }}
-              className="bg-white dark:bg-slate-800 rounded-2xl shadow-xl w-full max-w-2xl p-6 max-h-[90vh] overflow-y-auto"
+              className="nid-modal"
+              style={{ maxWidth: 680 }}
             >
-              <div className="flex items-center justify-between mb-5">
-                <h3 className="text-base font-bold text-slate-800 dark:text-slate-100">
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 20 }}>
+                <h3 style={{ fontSize: 15, fontWeight: 700, color: "var(--text)", margin: 0 }}>
                   {editingId ? "Editar Projeto" : "Novo Projeto"}
                 </h3>
-                <button onClick={closeForm} className="p-1.5 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors cursor-pointer">
+                <button onClick={closeForm} className="nid-modal__close">
                   <XMarkIcon className="w-5 h-5" />
                 </button>
               </div>
 
               <form onSubmit={handleSubmit} className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="md:col-span-2 flex flex-col gap-1">
-                  <label className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Título *</label>
+                  <label className="nid-form-label">Título *</label>
                   <input
                     value={form.titulo}
                     onChange={(e) => setForm((p) => ({ ...p, titulo: e.target.value }))}
                     required
-                    className="px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-600 text-sm bg-white dark:bg-slate-700 text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="nid-form-input"
                   />
                 </div>
 
                 <div className="flex flex-col gap-1">
-                  <label className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Eixo *</label>
+                  <label className="nid-form-label">Eixo *</label>
                   <select
                     value={form.eixo_id}
                     onChange={(e) => setForm((p) => ({ ...p, eixo_id: e.target.value }))}
                     required
-                    className="px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-600 text-sm bg-white dark:bg-slate-700 text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="nid-form-input"
                   >
                     <option value="">Selecione um eixo</option>
                     {eixos.map((e) => <option key={e.id} value={String(e.id)}>{e.nome}</option>)}
@@ -554,11 +586,11 @@ export default function AcompanhamentoTab() {
                 </div>
 
                 <div className="flex flex-col gap-1">
-                  <label className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Status</label>
+                  <label className="nid-form-label">Status</label>
                   <select
                     value={form.status}
                     onChange={(e) => setForm((p) => ({ ...p, status: e.target.value }))}
-                    className="px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-600 text-sm bg-white dark:bg-slate-700 text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="nid-form-input"
                   >
                     {Object.entries(STATUS_CONFIG).map(([k, v]) => (
                       <option key={k} value={k}>{v.label}</option>
@@ -567,71 +599,73 @@ export default function AcompanhamentoTab() {
                 </div>
 
                 <div className="flex flex-col gap-1">
-                  <label className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Departamento</label>
+                  <label className="nid-form-label">Departamento</label>
                   <input
                     value={form.departamento}
                     onChange={(e) => setForm((p) => ({ ...p, departamento: e.target.value }))}
                     placeholder="Ex.: Secretaria de Obras"
-                    className="px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-600 text-sm bg-white dark:bg-slate-700 text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="nid-form-input"
                   />
                 </div>
 
                 <div className="flex flex-col gap-1">
-                  <label className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Responsável</label>
+                  <label className="nid-form-label">Responsável</label>
                   <input
                     value={form.responsavel}
                     onChange={(e) => setForm((p) => ({ ...p, responsavel: e.target.value }))}
                     placeholder="Nome do responsável"
-                    className="px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-600 text-sm bg-white dark:bg-slate-700 text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="nid-form-input"
                   />
                 </div>
 
                 <div className="flex flex-col gap-1">
-                  <label className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Data de Início</label>
+                  <label className="nid-form-label">Data de Início</label>
                   <input
                     type="date"
                     value={form.data_inicio}
                     onChange={(e) => setForm((p) => ({ ...p, data_inicio: e.target.value }))}
-                    className="px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-600 text-sm bg-white dark:bg-slate-700 text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="nid-form-input"
                   />
                 </div>
 
                 <div className="flex flex-col gap-1">
-                  <label className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Prazo</label>
+                  <label className="nid-form-label">Prazo</label>
                   <input
                     type="date"
                     value={form.data_prazo}
                     onChange={(e) => setForm((p) => ({ ...p, data_prazo: e.target.value }))}
-                    className="px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-600 text-sm bg-white dark:bg-slate-700 text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="nid-form-input"
                   />
                 </div>
 
                 <div className="md:col-span-2 flex flex-col gap-1">
-                  <label className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Descrição resumida</label>
+                  <label className="nid-form-label">Descrição resumida</label>
                   <textarea
                     value={form.descricao}
                     onChange={(e) => setForm((p) => ({ ...p, descricao: e.target.value }))}
                     rows={2}
-                    className="px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-600 text-sm bg-white dark:bg-slate-700 text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
+                    className="nid-form-input"
+                    style={{ resize: "none" }}
                   />
                 </div>
 
                 <div className="md:col-span-2 flex flex-col gap-1">
-                  <label className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Conteúdo / Progresso</label>
+                  <label className="nid-form-label">Conteúdo / Progresso</label>
                   <textarea
                     value={form.conteudo}
                     onChange={(e) => setForm((p) => ({ ...p, conteudo: e.target.value }))}
                     rows={4}
                     placeholder="Descreva o andamento, metas, observações..."
-                    className="px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-600 text-sm bg-white dark:bg-slate-700 text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
+                    className="nid-form-input"
+                    style={{ resize: "none" }}
                   />
                 </div>
 
-                <div className="md:col-span-2 flex items-center gap-3 pt-2">
-                  {formError && <p className="text-sm text-red-600 flex-1">{formError}</p>}
-                  <div className="flex gap-3 ml-auto">
-                    <button type="button" onClick={closeForm} className="px-4 py-2 rounded-lg border border-slate-200 dark:border-slate-600 text-sm text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 cursor-pointer">Cancelar</button>
-                    <button type="submit" disabled={saving} className="px-4 py-2 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium disabled:opacity-50 cursor-pointer">
+                <div className="md:col-span-2" style={{ display: "flex", alignItems: "center", gap: 12, paddingTop: 8 }}>
+                  {formError && <p style={{ fontSize: 13, color: "var(--accent-2)", flex: 1 }}>{formError}</p>}
+                  <div style={{ display: "flex", gap: 12, marginLeft: "auto" }}>
+                    <button type="button" onClick={closeForm} className="nid-modal__btn-cancel">Cancelar</button>
+                    <button type="submit" disabled={saving} className="nid-modal__btn-primary">
                       {saving ? "Salvando..." : editingId ? "Salvar" : "Criar Projeto"}
                     </button>
                   </div>

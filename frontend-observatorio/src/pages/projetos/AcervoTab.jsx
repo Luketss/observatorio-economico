@@ -12,6 +12,10 @@ import api from "../../services/api";
 import { useAuth } from "../../context/AuthContext";
 import { useToast } from "../../context/ToastContext";
 import { useEscapeKey } from "../../hooks/useEscapeKey";
+import NidTabBar from "../../components/nid/NidTabBar";
+
+// Cycle through accent vars by eixo index
+const EIXO_ACCENTS = ["--accent-1", "--accent-2", "--accent-3", "--accent-4", "--accent-5"];
 
 const defaultForm = { eixo_id: "", titulo: "", descricao: "", conteudo: "" };
 
@@ -149,9 +153,24 @@ export default function AcervoTab({ onSelectSuccess }) {
     }
   }
 
+  // Build eixo tab list: "Todos" + one per eixo with count
+  const eixoTabs = [
+    { key: "", label: "Todos", count: templates.length },
+    ...eixos.map((e, i) => ({
+      key: String(e.id),
+      label: e.nome,
+      count: templates.filter((t) => String(t.eixo_id) === String(e.id)).length,
+      accentVar: EIXO_ACCENTS[i % EIXO_ACCENTS.length],
+    })),
+  ];
+
+  const eixoAccentMap = Object.fromEntries(
+    eixos.map((e, i) => [String(e.id), EIXO_ACCENTS[i % EIXO_ACCENTS.length]])
+  );
+
   if (loading) {
     return (
-      <div className="flex justify-center py-20">
+      <div style={{ display: "flex", justifyContent: "center", padding: "80px 0" }}>
         <div className="w-8 h-8 border-4 border-blue-600 border-t-transparent rounded-full animate-spin" />
       </div>
     );
@@ -159,27 +178,18 @@ export default function AcervoTab({ onSelectSuccess }) {
 
   return (
     <div className="space-y-6">
-      {/* Toolbar */}
-      <div className="flex items-center justify-between gap-3 flex-wrap">
-        <div className="flex items-center gap-2">
-          {eixos.length > 0 && (
-            <select
-              value={filterEixo}
-              onChange={(e) => setFilterEixo(e.target.value)}
-              className="px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-700 text-sm text-slate-700 dark:text-slate-200 bg-white dark:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500"
-            >
-              <option value="">Todos os eixos</option>
-              {eixos.map((e) => (
-                <option key={e.id} value={String(e.id)}>{e.nome}</option>
-              ))}
-            </select>
-          )}
-          <span className="text-xs text-slate-400">{filteredTemplates.length} modelo{filteredTemplates.length !== 1 ? "s" : ""}</span>
-        </div>
+      {/* Eixo sub-tab bar + add button row */}
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}>
+        <NidTabBar
+          tabs={eixoTabs}
+          value={filterEixo}
+          onChange={setFilterEixo}
+          ariaLabel="Filtrar por eixo"
+        />
         {isGlobal && (
           <button
             onClick={openCreate}
-            className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2.5 rounded-xl text-sm font-medium transition-colors cursor-pointer"
+            className="proj-add-btn"
           >
             <PlusIcon className="w-4 h-4" />
             Novo Modelo
@@ -189,10 +199,10 @@ export default function AcervoTab({ onSelectSuccess }) {
 
       {/* Empty state */}
       {filteredTemplates.length === 0 && (
-        <div className="text-center py-20 text-slate-400">
-          <BookOpenIcon className="w-12 h-12 mx-auto mb-3 opacity-30" />
-          <p className="text-sm font-medium">Nenhum modelo disponível</p>
-          <p className="text-xs mt-1 text-slate-400">
+        <div style={{ textAlign: "center", padding: "80px 0", color: "var(--text-dim)" }}>
+          <BookOpenIcon style={{ width: 48, height: 48, margin: "0 auto 12px", opacity: 0.3 }} />
+          <p style={{ fontSize: 14, fontWeight: 500, color: "var(--text-dim)" }}>Nenhum modelo disponível</p>
+          <p style={{ fontSize: 12, marginTop: 4, color: "var(--text-mute)" }}>
             {isGlobal
               ? "Clique em \"Novo Modelo\" para adicionar o primeiro projeto ao acervo."
               : "O administrador ainda não cadastrou projetos no acervo."}
@@ -202,42 +212,57 @@ export default function AcervoTab({ onSelectSuccess }) {
 
       {/* Cards grid */}
       {filteredTemplates.length > 0 && (
-        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5">
+        <div className="proj-grid">
           {filteredTemplates.map((t) => {
             const alreadyAdded = selectedTemplateIds.has(t.id);
             const label = eixoLabel(t.eixo_id);
+            const accentVar = eixoAccentMap[String(t.eixo_id)] || "--accent-1";
             return (
-              <div
-                key={t.id}
-                className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-100 dark:border-slate-700 p-5 flex flex-col gap-3 hover:shadow-md transition-shadow"
-              >
-                <div className="flex items-start justify-between gap-2">
-                  <div className="flex-1 min-w-0">
+              <div key={t.id} className="proj-card">
+                {/* Image slot — gradient placeholder */}
+                <div
+                  className="proj-card__img"
+                  style={{ "--proj-accent": `var(${accentVar})` }}
+                >
+                  PROJETO · IMAGEM
+                </div>
+
+                {/* Header row: eixo tag + admin actions */}
+                <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 8 }}>
+                  <div style={{ flex: 1, minWidth: 0 }}>
                     {label && (
-                      <span className="inline-block text-xs font-medium text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-950/30 px-2 py-0.5 rounded-full mb-1.5">
+                      <span
+                        className="proj-card__eixo-tag"
+                        style={{
+                          color: `var(${accentVar})`,
+                          background: `color-mix(in oklab, var(${accentVar}) 14%, transparent)`,
+                          borderColor: "transparent",
+                        }}
+                      >
                         {label}
                       </span>
                     )}
                     <h3
-                      className="font-semibold text-slate-800 dark:text-slate-100 leading-snug cursor-pointer hover:text-blue-600 transition-colors"
+                      className="proj-card__title"
                       onClick={() => setViewingTemplate(t)}
+                      style={{ cursor: "pointer" }}
                     >
                       {t.titulo}
                     </h3>
                   </div>
                   {isGlobal && (
-                    <div className="flex gap-1 shrink-0">
+                    <div style={{ display: "flex", gap: 4, flexShrink: 0 }}>
                       <button
                         onClick={() => openEdit(t)}
                         aria-label="Editar modelo"
-                        className="p-1.5 rounded-lg text-slate-400 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-950/40 transition-colors cursor-pointer"
+                        className="proj-card__icon-btn"
                       >
                         <PencilIcon className="w-4 h-4" />
                       </button>
                       <button
                         onClick={() => setDeleteConfirmId(t.id)}
                         aria-label="Excluir modelo"
-                        className="p-1.5 rounded-lg text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-950/40 transition-colors cursor-pointer"
+                        className="proj-card__icon-btn proj-card__icon-btn--danger"
                       >
                         <TrashIcon className="w-4 h-4" />
                       </button>
@@ -245,24 +270,24 @@ export default function AcervoTab({ onSelectSuccess }) {
                   )}
                 </div>
 
+                {/* Description */}
                 {t.descricao && (
-                  <p className="text-sm text-slate-500 dark:text-slate-400 line-clamp-2 leading-relaxed">
-                    {t.descricao}
-                  </p>
+                  <p className="proj-card__desc">{t.descricao}</p>
                 )}
 
+                {/* Footer */}
                 {!isGlobal && (
-                  <div className="mt-auto pt-2 border-t border-slate-50 dark:border-slate-700">
+                  <div className="proj-card__footer">
                     {alreadyAdded ? (
-                      <div className="flex items-center gap-1.5 text-xs text-green-600 dark:text-green-400 font-medium">
-                        <CheckIcon className="w-4 h-4" />
+                      <div style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12, color: "var(--accent-5)", fontWeight: 500 }}>
+                        <CheckIcon style={{ width: 14, height: 14 }} />
                         Já adicionado ao acompanhamento
                       </div>
                     ) : (
                       <button
                         onClick={() => handleSelecionar(t)}
                         disabled={selecting === t.id}
-                        className="w-full flex items-center justify-center gap-2 bg-green-600 hover:bg-green-700 disabled:opacity-50 text-white px-3 py-2 rounded-lg text-sm font-medium transition-colors cursor-pointer"
+                        className="proj-card__select-btn"
                       >
                         {selecting === t.id ? (
                           <><div className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" /> Adicionando...</>
@@ -286,7 +311,7 @@ export default function AcervoTab({ onSelectSuccess }) {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4"
+            className="nid-modal-backdrop"
             onClick={(e) => { if (e.target === e.currentTarget) setViewingTemplate(null); }}
           >
             <motion.div
@@ -294,44 +319,50 @@ export default function AcervoTab({ onSelectSuccess }) {
               animate={{ scale: 1 }}
               exit={{ scale: 0.95 }}
               transition={{ type: "spring", stiffness: 300, damping: 30 }}
-              className="bg-white dark:bg-slate-800 rounded-2xl shadow-xl w-full max-w-lg p-6 space-y-4 max-h-[90vh] overflow-y-auto"
+              className="nid-modal"
+              style={{ maxWidth: 520 }}
             >
-              <div className="flex items-start justify-between gap-3">
+              <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 12 }}>
                 <div>
-                  {eixoLabel(viewingTemplate.eixo_id) && (
-                    <span className="inline-block text-xs font-medium text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-950/30 px-2 py-0.5 rounded-full mb-2">
-                      {eixoLabel(viewingTemplate.eixo_id)}
-                    </span>
-                  )}
-                  <h2 className="text-lg font-bold text-slate-800 dark:text-slate-100">{viewingTemplate.titulo}</h2>
+                  {eixoLabel(viewingTemplate.eixo_id) && (() => {
+                    const idx = eixos.findIndex((e) => e.id === viewingTemplate.eixo_id);
+                    const av = EIXO_ACCENTS[idx >= 0 ? idx % EIXO_ACCENTS.length : 0];
+                    return (
+                      <span
+                        className="proj-card__eixo-tag"
+                        style={{ color: `var(${av})`, background: `color-mix(in oklab, var(${av}) 14%, transparent)`, borderColor: "transparent", marginBottom: 8, display: "inline-block" }}
+                      >
+                        {eixoLabel(viewingTemplate.eixo_id)}
+                      </span>
+                    );
+                  })()}
+                  <h2 style={{ fontSize: 17, fontWeight: 700, color: "var(--text)", margin: 0 }}>{viewingTemplate.titulo}</h2>
                 </div>
-                <button
-                  onClick={() => setViewingTemplate(null)}
-                  className="p-1.5 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors cursor-pointer"
-                >
+                <button onClick={() => setViewingTemplate(null)} className="nid-modal__close">
                   <XMarkIcon className="w-5 h-5" />
                 </button>
               </div>
               {viewingTemplate.descricao && (
-                <p className="text-sm text-slate-600 dark:text-slate-300 leading-relaxed">{viewingTemplate.descricao}</p>
+                <p style={{ fontSize: 13, color: "var(--text-dim)", lineHeight: 1.6 }}>{viewingTemplate.descricao}</p>
               )}
               {viewingTemplate.conteudo && (
-                <div className="text-sm text-slate-600 dark:text-slate-300 whitespace-pre-line border-t border-slate-100 dark:border-slate-700 pt-4 leading-relaxed">
+                <div style={{ fontSize: 13, color: "var(--text-dim)", whiteSpace: "pre-line", borderTop: "1px solid var(--border)", paddingTop: 16, lineHeight: 1.6 }}>
                   {viewingTemplate.conteudo}
                 </div>
               )}
               {!isGlobal && (
-                <div className="border-t border-slate-100 dark:border-slate-700 pt-4">
+                <div style={{ borderTop: "1px solid var(--border)", paddingTop: 16 }}>
                   {selectedTemplateIds.has(viewingTemplate.id) ? (
-                    <div className="flex items-center gap-2 text-sm text-green-600 dark:text-green-400 font-medium">
-                      <CheckIcon className="w-4 h-4" />
+                    <div style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13, color: "var(--accent-5)", fontWeight: 500 }}>
+                      <CheckIcon style={{ width: 16, height: 16 }} />
                       Já adicionado ao acompanhamento
                     </div>
                   ) : (
                     <button
                       onClick={() => { handleSelecionar(viewingTemplate); setViewingTemplate(null); }}
                       disabled={selecting === viewingTemplate.id}
-                      className="w-full flex items-center justify-center gap-2 bg-green-600 hover:bg-green-700 text-white px-4 py-2.5 rounded-xl text-sm font-semibold transition-colors cursor-pointer"
+                      className="proj-card__select-btn"
+                      style={{ width: "100%" }}
                     >
                       Selecionar projeto
                     </button>
@@ -350,19 +381,20 @@ export default function AcervoTab({ onSelectSuccess }) {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4"
+            className="nid-modal-backdrop"
           >
             <motion.div
               initial={{ scale: 0.95 }}
               animate={{ scale: 1 }}
               exit={{ scale: 0.95 }}
-              className="bg-white dark:bg-slate-800 rounded-2xl shadow-xl p-6 w-full max-w-sm space-y-4"
+              className="nid-modal"
+              style={{ maxWidth: 380 }}
             >
-              <h3 className="font-bold text-slate-800 dark:text-slate-100">Excluir modelo?</h3>
-              <p className="text-sm text-slate-500 dark:text-slate-400">Esta ação não pode ser desfeita. Os projetos em acompanhamento derivados deste modelo não serão afetados.</p>
-              <div className="flex gap-3 justify-end">
-                <button onClick={() => setDeleteConfirmId(null)} className="px-4 py-2 rounded-lg border border-slate-200 dark:border-slate-600 text-sm text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 cursor-pointer">Cancelar</button>
-                <button onClick={() => handleDelete(deleteConfirmId)} className="px-4 py-2 rounded-lg bg-red-600 hover:bg-red-700 text-white text-sm cursor-pointer">Excluir</button>
+              <h3 style={{ fontWeight: 700, color: "var(--text)", margin: 0 }}>Excluir modelo?</h3>
+              <p style={{ fontSize: 13, color: "var(--text-dim)" }}>Esta ação não pode ser desfeita. Os projetos em acompanhamento derivados deste modelo não serão afetados.</p>
+              <div style={{ display: "flex", gap: 12, justifyContent: "flex-end" }}>
+                <button onClick={() => setDeleteConfirmId(null)} className="nid-modal__btn-cancel">Cancelar</button>
+                <button onClick={() => handleDelete(deleteConfirmId)} className="nid-modal__btn-danger">Excluir</button>
               </div>
             </motion.div>
           </motion.div>
@@ -376,7 +408,7 @@ export default function AcervoTab({ onSelectSuccess }) {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4"
+            className="nid-modal-backdrop"
             onClick={(e) => { if (e.target === e.currentTarget) closeForm(); }}
           >
             <motion.div
@@ -384,13 +416,14 @@ export default function AcervoTab({ onSelectSuccess }) {
               animate={{ scale: 1 }}
               exit={{ scale: 0.95 }}
               transition={{ type: "spring", stiffness: 300, damping: 30 }}
-              className="bg-white dark:bg-slate-800 rounded-2xl shadow-xl w-full max-w-2xl p-6 max-h-[90vh] overflow-y-auto"
+              className="nid-modal"
+              style={{ maxWidth: 680 }}
             >
-              <div className="flex items-center justify-between mb-5">
-                <h3 className="text-base font-bold text-slate-800 dark:text-slate-100">
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 20 }}>
+                <h3 style={{ fontSize: 15, fontWeight: 700, color: "var(--text)", margin: 0 }}>
                   {editingId ? "Editar Modelo" : "Novo Modelo de Projeto"}
                 </h3>
-                <button onClick={closeForm} className="p-1.5 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors cursor-pointer">
+                <button onClick={closeForm} className="nid-modal__close">
                   <XMarkIcon className="w-5 h-5" />
                 </button>
               </div>
@@ -398,11 +431,11 @@ export default function AcervoTab({ onSelectSuccess }) {
               <form onSubmit={handleSubmit} className="space-y-4">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div className="flex flex-col gap-1">
-                    <label className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Eixo (opcional)</label>
+                    <label className="nid-form-label">Eixo (opcional)</label>
                     <select
                       value={form.eixo_id}
                       onChange={(e) => setForm((p) => ({ ...p, eixo_id: e.target.value }))}
-                      className="px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-600 text-sm bg-white dark:bg-slate-700 text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      className="nid-form-input"
                     >
                       <option value="">Sem eixo</option>
                       {eixos.map((e) => <option key={e.id} value={String(e.id)}>{e.nome}</option>)}
@@ -410,44 +443,46 @@ export default function AcervoTab({ onSelectSuccess }) {
                   </div>
 
                   <div className="flex flex-col gap-1">
-                    <label className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Título *</label>
+                    <label className="nid-form-label">Título *</label>
                     <input
                       value={form.titulo}
                       onChange={(e) => setForm((p) => ({ ...p, titulo: e.target.value }))}
                       required
                       placeholder="Nome do projeto modelo"
-                      className="px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-600 text-sm bg-white dark:bg-slate-700 text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      className="nid-form-input"
                     />
                   </div>
                 </div>
 
                 <div className="flex flex-col gap-1">
-                  <label className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Descrição resumida</label>
+                  <label className="nid-form-label">Descrição resumida</label>
                   <textarea
                     value={form.descricao}
                     onChange={(e) => setForm((p) => ({ ...p, descricao: e.target.value }))}
                     rows={2}
                     placeholder="Breve descrição do projeto..."
-                    className="px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-600 text-sm bg-white dark:bg-slate-700 text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
+                    className="nid-form-input"
+                    style={{ resize: "none" }}
                   />
                 </div>
 
                 <div className="flex flex-col gap-1">
-                  <label className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Conteúdo detalhado</label>
+                  <label className="nid-form-label">Conteúdo detalhado</label>
                   <textarea
                     value={form.conteudo}
                     onChange={(e) => setForm((p) => ({ ...p, conteudo: e.target.value }))}
                     rows={6}
                     placeholder="Detalhes, objetivos, metodologia, resultados esperados..."
-                    className="px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-600 text-sm bg-white dark:bg-slate-700 text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
+                    className="nid-form-input"
+                    style={{ resize: "none" }}
                   />
                 </div>
 
-                <div className="flex items-center gap-3 pt-2">
-                  {formError && <p className="text-sm text-red-600 flex-1">{formError}</p>}
-                  <div className="flex gap-3 ml-auto">
-                    <button type="button" onClick={closeForm} className="px-4 py-2 rounded-lg border border-slate-200 dark:border-slate-600 text-sm text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 cursor-pointer">Cancelar</button>
-                    <button type="submit" disabled={saving} className="px-4 py-2 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium disabled:opacity-50 cursor-pointer">
+                <div style={{ display: "flex", alignItems: "center", gap: 12, paddingTop: 8 }}>
+                  {formError && <p style={{ fontSize: 13, color: "var(--accent-2)", flex: 1 }}>{formError}</p>}
+                  <div style={{ display: "flex", gap: 12, marginLeft: "auto" }}>
+                    <button type="button" onClick={closeForm} className="nid-modal__btn-cancel">Cancelar</button>
+                    <button type="submit" disabled={saving} className="nid-modal__btn-primary">
                       {saving ? "Salvando..." : editingId ? "Salvar" : "Criar Modelo"}
                     </button>
                   </div>
