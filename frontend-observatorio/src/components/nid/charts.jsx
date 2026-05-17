@@ -1,4 +1,5 @@
 import { useEffect, useId, useRef, useState } from "react";
+import React from "react";
 import ChartState from "./ChartState.jsx";
 import { useChartHover } from "./ChartHoverContext.jsx";
 
@@ -96,6 +97,35 @@ function useContainerWidth(initial = 600) {
   return [ref, w];
 }
 
+// ────────── Declarative annotation shadow components (ticket 15) ──────────
+// These components return null — they exist only to be detected by
+// React.Children.forEach inside AreaLineChart / MultiLineChart.
+export function Annotation(props) { return null; }        // point callout: x, kind, children(label)
+export function AnnotationBand(props) { return null; }    // range band: xRange, kind
+export function Benchmark(props) { return null; }         // horizontal ref line: value, label, color
+
+/**
+ * Partitions React children into the three annotation buckets.
+ * Each bucket item is the child's props object (plus `label` normalized
+ * from React children text when the child has text content).
+ */
+function partitionChildren(children) {
+  const annotations = [], bands = [], benchmarks = [];
+  React.Children.forEach(children, (child) => {
+    if (!React.isValidElement(child)) return;
+    if (child.type === Annotation) {
+      // Normalize: label comes from children text if not set as prop
+      const label = child.props.label ?? (typeof child.props.children === "string" ? child.props.children : undefined);
+      annotations.push({ ...child.props, label });
+    } else if (child.type === AnnotationBand) {
+      bands.push(child.props);
+    } else if (child.type === Benchmark) {
+      benchmarks.push(child.props);
+    }
+  });
+  return { annotations, bands, benchmarks };
+}
+
 // ────────── Sparkline (KPI cards) ──────────
 export function Sparkline({ data, color = "var(--accent-1)", glow = "hover", height = 42, width = 240 }) {
   const id = useId().replace(/:/g, "");
@@ -130,9 +160,10 @@ export function AreaLineChart({
   data, height = 280, glow = "hover", color = "var(--accent-1)",
   yFmt = fmtMoneyShort, tipFmt = fmtMoneyFull, label = "PIB Total",
   yCaption,
-  benchmark,    // { value, label, color? }
+  benchmark,    // { value, label, color? }  — array-form (ticket 04)
   forecast,     // { steps, method, color?, label? }
-  annotations,  // [{ x, kind, label? } | { xRange:[x1,x2], kind }]
+  annotations,  // [{ x, kind, label? } | { xRange:[x1,x2], kind }]  — array-form (ticket 04)
+  children,     // declarative <Annotation/>, <AnnotationBand/>, <Benchmark/> (ticket 15)
   loading,
   emptyMessage,
   emptyAction,
@@ -165,6 +196,17 @@ export function AreaLineChart({
   const glowAlways = glowMode === "always";
   const glowHover  = glowMode !== "off";
 
+  // ── ticket 15: merge declarative children with array-form props ───────────
+  const { annotations: childAnnotations, bands: childBands, benchmarks: childBenchmarks } = partitionChildren(children);
+  // Point annotations: array-form first, then child-form (xRange items are bands)
+  const allAnnotations = [
+    ...(annotations || []),
+    ...childAnnotations.map((a) => ({ x: a.x, kind: a.kind, label: a.label })),
+    ...childBands.map((b) => ({ xRange: b.xRange, kind: b.kind })),
+  ];
+  // Benchmark: array-form wins; if not set, use first declarative <Benchmark>
+  const resolvedBenchmark = benchmark ?? (childBenchmarks.length > 0 ? childBenchmarks[0] : undefined);
+
   const padL = 56, padR = 16, padT = 14, padB = 34;
   const innerW = w - padL - padR;
   const innerH = height - padT - padB;
@@ -189,7 +231,7 @@ export function AreaLineChart({
 
   // ── Y scale (expand for benchmark / forecast) ─────────────────────────
   const ys = data.map((d) => d.value);
-  const allYs = [...ys, ...forecastVals, ...(benchmark?.value != null ? [benchmark.value] : [])];
+  const allYs = [...ys, ...forecastVals, ...(resolvedBenchmark?.value != null ? [resolvedBenchmark.value] : [])];
   const yMaxRaw = Math.max(...allYs) * 1.12;
   const ticks = niceTicks(0, yMaxRaw, yCaption ? 3 : 4);
   const tickFmt = yCaption ? fmtNumberShort : yFmt;
@@ -273,7 +315,7 @@ export function AreaLineChart({
         })}
 
         {/* ── Range annotations (behind everything) ── */}
-        {annotations?.filter((a) => a.xRange).map((a, i) => {
+        {allAnnotations.filter((a) => a.xRange).map((a, i) => {
           const i0 = data.findIndex((d) => d.label === a.xRange[0]);
           const i1 = data.findIndex((d) => d.label === a.xRange[1]);
           if (i0 < 0 || i1 < 0) return null;
@@ -304,21 +346,21 @@ export function AreaLineChart({
         )}
 
         {/* ── Benchmark line ── */}
-        {benchmark && (
+        {resolvedBenchmark && (
           <g>
             <line
               x1={padL} x2={w - padR}
-              y1={sy(benchmark.value)} y2={sy(benchmark.value)}
-              stroke={benchmark.color || "var(--text-dim)"}
+              y1={sy(resolvedBenchmark.value)} y2={sy(resolvedBenchmark.value)}
+              stroke={resolvedBenchmark.color || "var(--text-dim)"}
               strokeDasharray="6 5" strokeWidth="1.2" opacity="0.55"
             />
             <text
-              x={w - padR} y={sy(benchmark.value) - 5}
+              x={w - padR} y={sy(resolvedBenchmark.value) - 5}
               textAnchor="end"
               className="nid-axis-text"
-              style={{ fill: benchmark.color || "var(--text-dim)", letterSpacing: ".06em" }}
+              style={{ fill: resolvedBenchmark.color || "var(--text-dim)", letterSpacing: ".06em" }}
             >
-              {benchmark.label} · {tipFmt(benchmark.value)}
+              {resolvedBenchmark.label} · {tipFmt(resolvedBenchmark.value)}
             </text>
           </g>
         )}
@@ -354,7 +396,7 @@ export function AreaLineChart({
         )}
 
         {/* ── Point annotations (on top of lines) ── */}
-        {annotations?.filter((a) => a.x != null).map((a, i) => {
+        {allAnnotations.filter((a) => a.x != null).map((a, i) => {
           const idx = data.findIndex((d) => d.label === a.x);
           if (idx < 0) return null;
           const p = pts[idx];
@@ -580,9 +622,10 @@ export function MultiLineChart({
   data, series, colors, height = 280, glow = "hover",
   yFmt = fmtMoneyShort, tipFmt = fmtMoneyFull,
   yCaption,
-  benchmark,    // { value, label, color? }
+  benchmark,    // { value, label, color? }  — array-form (ticket 04)
   forecast,     // { steps, method, color?, label? } — applied to ALL series; draws one band per series
-  annotations,  // [{ x, kind, label? } | { xRange:[x1,x2], kind }]
+  annotations,  // [{ x, kind, label? } | { xRange:[x1,x2], kind }]  — array-form (ticket 04)
+  children,     // declarative <Annotation/>, <AnnotationBand/>, <Benchmark/> (ticket 15)
   // ── focus + context (ticket 06) ──────────────────────────────────────────
   focusSeries,  // string — when set, switches to focus+context mode
   focusColor,   // defaults to var(--accent-2)
@@ -617,6 +660,15 @@ export function MultiLineChart({
   if (!data || data.length === 0) return <EmptyChart h={height} shape="line" message={emptyMessage} action={emptyAction} />;
   const glowMode = resolveGlow(glow);
   const glowHover  = glowMode !== "off";
+
+  // ── ticket 15: merge declarative children with array-form props ───────────
+  const { annotations: childAnnotations, bands: childBands, benchmarks: childBenchmarks } = partitionChildren(children);
+  const allAnnotations = [
+    ...(annotations || []),
+    ...childAnnotations.map((a) => ({ x: a.x, kind: a.kind, label: a.label })),
+    ...childBands.map((b) => ({ xRange: b.xRange, kind: b.kind })),
+  ];
+  const resolvedBenchmark = benchmark ?? (childBenchmarks.length > 0 ? childBenchmarks[0] : undefined);
 
   // ── focus + context helpers ──────────────────────────────────────────────
   const focusMode = !!focusSeries;
@@ -667,7 +719,7 @@ export function MultiLineChart({
   const allVals = [
     ...data.flatMap((d) => series.map((s) => d[s] || 0)),
     ...forecastValsBySeries.flat(),
-    ...(benchmark?.value != null ? [benchmark.value] : []),
+    ...(resolvedBenchmark?.value != null ? [resolvedBenchmark.value] : []),
   ];
   const yMaxRaw = Math.max(...allVals) * 1.12;
   const ticks = niceTicks(0, yMaxRaw, yCaption ? 3 : 4);
@@ -785,7 +837,7 @@ export function MultiLineChart({
         })}
 
         {/* ── Range annotations (behind everything) ── */}
-        {annotations?.filter((a) => a.xRange).map((a, i) => {
+        {allAnnotations.filter((a) => a.xRange).map((a, i) => {
           const i0 = data.findIndex((d) => d.label === a.xRange[0]);
           const i1 = data.findIndex((d) => d.label === a.xRange[1]);
           if (i0 < 0 || i1 < 0) return null;
@@ -896,20 +948,20 @@ export function MultiLineChart({
         })}
 
         {/* ── Benchmark line ── */}
-        {benchmark && (
+        {resolvedBenchmark && (
           <g>
             <line
               x1={padL} x2={w - padR}
-              y1={sy(benchmark.value)} y2={sy(benchmark.value)}
-              stroke={benchmark.color || "var(--text-dim)"}
+              y1={sy(resolvedBenchmark.value)} y2={sy(resolvedBenchmark.value)}
+              stroke={resolvedBenchmark.color || "var(--text-dim)"}
               strokeDasharray="6 5" strokeWidth="1.2" opacity="0.55"
             />
             <text
-              x={w - padR} y={sy(benchmark.value) - 5}
+              x={w - padR} y={sy(resolvedBenchmark.value) - 5}
               textAnchor="end" className="nid-axis-text"
-              style={{ fill: benchmark.color || "var(--text-dim)", letterSpacing: ".06em" }}
+              style={{ fill: resolvedBenchmark.color || "var(--text-dim)", letterSpacing: ".06em" }}
             >
-              {benchmark.label} · {tipFmt(benchmark.value)}
+              {resolvedBenchmark.label} · {tipFmt(resolvedBenchmark.value)}
             </text>
           </g>
         )}
@@ -952,7 +1004,7 @@ export function MultiLineChart({
         )}
 
         {/* ── Point annotations ── */}
-        {annotations?.filter((a) => a.x != null).map((a, i) => {
+        {allAnnotations.filter((a) => a.x != null).map((a, i) => {
           const idx = data.findIndex((d) => d.label === a.x);
           if (idx < 0) return null;
           // Use first series for y position

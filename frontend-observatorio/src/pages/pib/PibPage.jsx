@@ -15,6 +15,8 @@ import {
   AreaLineChart,
   StackedBarChart,
   MultiLineChart,
+  Annotation,
+  AnnotationBand,
   fmtMoneyShort,
   fmtMoneyFull,
 } from "../../components/nid/charts";
@@ -184,6 +186,7 @@ export default function PibPage() {
 
       {/* Evolução Anual do PIB */}
       <NidPanel title="Evolução Anual do PIB" sub="série histórica · R$ milhões">
+        {/* demo: array-form (xRange band) + declarative child (point annotation) — both coexist */}
         <AreaLineChart
           data={areaData}
           height={280}
@@ -194,9 +197,10 @@ export default function PibPage() {
           forecast={{ steps: 1, method: "linear-6" }}
           annotations={[
             { xRange: ["2020", "2021"], kind: "negative" },
-            { x: "2020", kind: "negative", label: "COVID" },
           ]}
-        />
+        >
+          <Annotation x="2020" kind="negative">COVID</Annotation>
+        </AreaLineChart>
       </NidPanel>
 
       {/* Valor Adicionado por Setor */}
