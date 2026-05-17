@@ -1,41 +1,48 @@
 import { useAuth } from "../../context/AuthContext";
 import { motion } from "framer-motion";
-import { CalendarDaysIcon, Cog6ToothIcon } from "@heroicons/react/24/outline";
-import { Link } from "react-router-dom";
+import { CalendarDaysIcon } from "@heroicons/react/24/outline";
 import MandatoTimeline from "../../components/MandatoTimeline";
 
 export default function TimelinePage() {
   const { user } = useAuth();
-  const canManage = user?.role === "ADMIN_GLOBAL" || user?.role === "ADMIN_MUNICIPIO";
 
   return (
     <motion.div
       initial={{ opacity: 0, y: 15 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.3 }}
-      className="space-y-8"
+      style={{ display: "flex", flexDirection: "column", gap: "28px" }}
     >
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <CalendarDaysIcon className="w-7 h-7 text-blue-600" />
-          <div>
-            <h1 className="text-2xl font-extrabold tracking-tight text-slate-800 dark:text-slate-100">
-              Timeline do Mandato
-            </h1>
-            <p className="text-sm text-slate-400 mt-0.5">
-              Marcos e eventos relevantes do mandato municipal.
-            </p>
-          </div>
-        </div>
-        {canManage && (
-          <Link
-            to="/admin/mandato"
-            className="flex items-center gap-2 px-4 py-2.5 rounded-xl border border-slate-200 text-sm text-slate-600 hover:bg-slate-50 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800 transition-colors"
+      {/* Page header */}
+      <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+        <CalendarDaysIcon
+          style={{ width: "28px", height: "28px", color: "var(--accent-1)", flexShrink: 0 }}
+        />
+        <div>
+          <h1
+            style={{
+              fontFamily: "var(--font-display)",
+              fontSize: "22px",
+              fontWeight: 700,
+              letterSpacing: "-0.02em",
+              color: "var(--text)",
+              margin: 0,
+            }}
           >
-            <Cog6ToothIcon className="w-4 h-4" />
-            Gerenciar
-          </Link>
-        )}
+            Timeline do Mandato
+          </h1>
+          <p
+            style={{
+              fontFamily: "var(--font-mono)",
+              fontSize: "11.5px",
+              color: "var(--text-dim)",
+              marginTop: "2px",
+              letterSpacing: "0.02em",
+            }}
+          >
+            Marcos e eventos relevantes do mandato municipal.
+          </p>
+        </div>
       </div>
 
       <MandatoTimeline />
