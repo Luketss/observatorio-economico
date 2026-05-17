@@ -1,0 +1,1233 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<title>Features — Visual review</title>
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#050610;
+  --bg-grad: radial-gradient(ellipse 1200px 600px at 20% -10%, #0d1230 0%, transparent 60%),
+             radial-gradient(ellipse 900px 500px at 95% 0%, #1a0830 0%, transparent 55%), #050610;
+  --panel: rgba(13,17,35,.72);
+  --panel-2: rgba(20,24,45,.55);
+  --panel-solid:#0c1024;
+  --border: rgba(120,145,255,.10);
+  --border-strong: rgba(120,145,255,.22);
+  --text:#eef0ff;
+  --text-dim:#7c87b3;
+  --text-mute:#4c5378;
+  --accent-1:#00e5ff;
+  --accent-2:#ff3d92;
+  --accent-3:#b97cff;
+  --accent-4:#ffd23f;
+  --accent-5:#4ade80;
+  --grid: rgba(120,145,255,.08);
+  --font-display:"Geist","Inter",-apple-system,sans-serif;
+  --font-mono:"JetBrains Mono","SF Mono",ui-monospace,Menlo,monospace;
+  --shadow-card: 0 24px 60px -20px rgba(0,30,80,.6), inset 0 1px 0 rgba(255,255,255,.04);
+}
+*{box-sizing:border-box}
+html,body{margin:0;padding:0}
+body{
+  background:var(--bg); background-image:var(--bg-grad); background-attachment:fixed;
+  color:var(--text); font-family:var(--font-display);
+  -webkit-font-smoothing:antialiased; min-height:100vh;
+}
+.doc{ max-width:1320px; margin:0 auto; padding:56px 48px 96px; }
+
+.eyebrow{ font-family:var(--font-mono); font-size:11px; letter-spacing:.22em; text-transform:uppercase; color:var(--accent-1);}
+.h1{ font-size:46px; font-weight:800; letter-spacing:-.025em; line-height:1.05; margin:14px 0 6px; text-wrap:balance;}
+.h1 em{ font-style:normal; color:var(--text-dim); font-weight:500;}
+.deck{ color:var(--text-dim); font-size:16px; max-width:780px; line-height:1.55;}
+.toc{ margin:36px 0 0; display:grid; grid-template-columns:repeat(3,1fr); gap:14px;}
+.toc a{ display:flex; align-items:baseline; gap:10px; padding:14px 16px;
+  border:1px solid var(--border); border-radius:12px; text-decoration:none;
+  background:var(--panel-2); color:var(--text); transition:.15s;}
+.toc a:hover{ border-color:var(--border-strong); background:var(--panel);}
+.toc .n{ font-family:var(--font-mono); font-size:11px; color:var(--accent-1); letter-spacing:.1em;}
+.toc .t{ font-size:13.5px; font-weight:600;}
+
+section{ margin-top:88px;}
+.sec-head{ display:flex; align-items:baseline; gap:14px; margin-bottom:6px;}
+.sec-num{ font-family:var(--font-mono); font-size:12px; color:var(--text-mute); letter-spacing:.18em;}
+.sec-title{ font-size:30px; font-weight:700; letter-spacing:-.02em; margin:0; line-height:1.1;}
+.sec-sub{ color:var(--text-dim); font-size:14.5px; line-height:1.55; max-width:820px; margin:8px 0 28px;}
+code.kbd{ font-family:var(--font-mono); font-size:.92em; color:var(--text); background:var(--panel-2); padding:1px 6px; border-radius:4px; border:1px solid var(--border);}
+
+.compare{ display:grid; grid-template-columns:1fr 1fr; gap:18px; align-items:stretch;}
+.compare.single{ grid-template-columns:1fr;}
+.card{ background:var(--panel); border:1px solid var(--border); border-radius:18px;
+  padding:18px 20px; box-shadow:var(--shadow-card); backdrop-filter:blur(10px);
+  position:relative; display:flex; flex-direction:column;}
+.card.bad::before, .card.good::before{
+  content:""; position:absolute; left:20px; top:-1px; height:2px; width:48px; border-radius:2px;}
+.card.bad::before{ background:var(--accent-2);}
+.card.good::before{ background:var(--accent-5);}
+.card-tag{ font-family:var(--font-mono); font-size:10.5px; letter-spacing:.16em; text-transform:uppercase;
+  color:var(--text-mute); margin-bottom:10px; display:flex; align-items:center; gap:8px;}
+.card.bad .card-tag{ color:var(--accent-2);}
+.card.good .card-tag{ color:var(--accent-5);}
+.card-tag .dot{ width:6px; height:6px; border-radius:50%; background:currentColor;}
+.notes{ margin-top:14px; padding-top:14px; border-top:1px dashed var(--border); display:grid; gap:8px;}
+.notes li{ list-style:none; font-size:12.5px; color:var(--text-dim); line-height:1.5; padding-left:18px; position:relative;}
+.notes li::before{ content:""; position:absolute; left:0; top:8px; width:8px; height:2px; background:var(--text-mute);}
+.notes.good li::before{ background:var(--accent-5);}
+.notes.bad li::before{ background:var(--accent-2);}
+.notes b{ color:var(--text); font-weight:600;}
+ul.notes{ margin:14px 0 0; padding:14px 0 0;}
+
+/* ─── helpers ─── */
+.axis-text{ font-family:var(--font-mono); font-size:10.5px; fill:var(--text-mute); letter-spacing:.04em;}
+.axis-text.bright{ fill:var(--text-dim);}
+
+/* ── FilterBar — current vs proposed ── */
+.fb-cur{
+  display:flex; align-items:center; gap:14px; flex-wrap:wrap;
+  background:#1e293b80; border:1px solid #334155; border-radius:14px; padding:14px 18px;
+  color:#f1f5f9;
+}
+.fb-cur .lbl{ font:600 11px/1 var(--font-mono); letter-spacing:.14em; text-transform:uppercase; color:#64748b;}
+.fb-cur .sub{ font:500 12px/1 var(--font-display); color:#94a3b8;}
+.fb-cur select{
+  background:#0f172a; color:#f1f5f9; border:1px solid #334155; border-radius:8px;
+  font:500 13px/1 var(--font-display); padding:7px 10px; min-width:80px;
+}
+.fb-cur .sep{ color:#475569;}
+.fb-cur .clear{ font:600 11.5px/1 var(--font-mono); color:#60a5fa; cursor:default; letter-spacing:.04em; margin-left:auto;}
+
+.fb-new{
+  display:flex; align-items:center; gap:10px; flex-wrap:wrap;
+  background:var(--panel-2); border:1px solid var(--border); border-radius:14px; padding:10px 14px;
+}
+.fb-new .lbl{ font:600 10px/1 var(--font-mono); letter-spacing:.16em; text-transform:uppercase; color:var(--text-mute);}
+.fb-new .seg{ display:inline-flex; background:var(--panel-solid); border:1px solid var(--border); border-radius:10px; padding:3px; gap:2px;}
+.fb-new .seg button{
+  font:600 11px/1 var(--font-mono); letter-spacing:.06em; padding:7px 10px;
+  background:transparent; color:var(--text-dim); border:none; border-radius:7px;
+}
+.fb-new .seg button.active{ background:color-mix(in oklab, var(--accent-1) 18%, transparent); color:var(--text);}
+.fb-new .range{ display:inline-flex; align-items:center; gap:6px; padding:4px 6px;
+  background:var(--panel-solid); border:1px solid var(--border); border-radius:10px;}
+.fb-new .range select{
+  background:transparent; color:var(--text); border:none; font:500 12px/1 var(--font-mono); padding:5px 4px; appearance:none;
+}
+.fb-new .range .sep{ color:var(--text-mute); font:500 11px/1 var(--font-mono);}
+.fb-new .sp{ flex:1;}
+.fb-new .chip-active{
+  font:600 10.5px/1 var(--font-mono); letter-spacing:.06em; text-transform:uppercase;
+  padding:6px 10px; border-radius:999px;
+  background:color-mix(in oklab, var(--accent-1) 14%, transparent);
+  border:1px solid color-mix(in oklab, var(--accent-1) 35%, transparent); color:var(--text);
+}
+.fb-new .chip-active .x{ margin-left:8px; color:var(--text-mute); cursor:default;}
+.fb-new .clear{ font:600 10.5px/1 var(--font-mono); color:var(--text-dim); letter-spacing:.06em;}
+
+/* ── PAGE HEADER (used in dataset mockups) ── */
+.ph{ display:flex; justify-content:space-between; align-items:flex-end; margin:0 0 14px; gap:14px;}
+.ph h2{ margin:0; font:700 22px/1.1 var(--font-display); letter-spacing:-.02em;}
+.ph p{ margin:6px 0 0; font:400 13px/1.5 var(--font-display); color:var(--text-dim); max-width:520px;}
+.ph .chips{ display:flex; gap:8px;}
+
+/* ── KPI strip ── */
+.kpis{ display:grid; grid-template-columns:repeat(4,1fr); gap:1px; background:var(--border);
+  border:1px solid var(--border); border-radius:14px; overflow:hidden;}
+.kpis > div{ background:var(--panel-solid); padding:16px 18px;}
+.kpis .lbl{ font:600 10px/1 var(--font-mono); letter-spacing:.1em; text-transform:uppercase; color:var(--text-dim);}
+.kpis .v{ font:700 26px/1 var(--font-display); margin-top:10px; color:var(--text); letter-spacing:-.02em; font-feature-settings:"tnum";}
+.kpis .v .u{ font-size:13px; color:var(--text-dim); font-weight:500; margin-left:3px;}
+.kpis .d{ font:500 11px/1 var(--font-mono); color:var(--text-dim); margin-top:8px;}
+.delta.up{ color:var(--accent-5);}
+.delta.down{ color:var(--accent-2);}
+.delta.flat{ color:var(--text-dim);}
+
+/* ── tab bars ── */
+.tabbar{ display:inline-flex; gap:4px; padding:4px; background:var(--panel-2); border:1px solid var(--border); border-radius:10px;}
+.tabbar .tab{
+  font:600 11.5px/1 var(--font-mono); letter-spacing:.04em; text-transform:uppercase;
+  padding:8px 12px; border-radius:7px; background:transparent; color:var(--text-mute); border:none; display:inline-flex; align-items:center; gap:6px;
+}
+.tabbar .tab.active{ background:var(--panel-solid); color:var(--text); border:1px solid var(--border-strong);}
+
+/* tab bar (current, slate/blue) */
+.tabbar-cur{ display:inline-flex; gap:4px; padding:4px; background:#0f172a; border-radius:12px;}
+.tabbar-cur .tab{ font:600 12px/1 var(--font-display); padding:8px 14px; border-radius:8px; color:#94a3b8;}
+.tabbar-cur .tab.active{ background:#1e293b; color:#fff;}
+
+/* timeline */
+.tl-wrap{ position:relative; padding:18px 0 0;}
+.tl-rail{ position:absolute; left:0; right:0; top:36px; height:2px;
+  background:linear-gradient(90deg, transparent, var(--border) 8%, var(--border) 92%, transparent);}
+.tl-row{ display:flex; gap:18px; overflow:hidden; padding:0 4px;}
+.tl-item{ flex:1; min-width:160px; position:relative;}
+.tl-dot{
+  position:relative; z-index:1; width:14px; height:14px; border-radius:50%;
+  background:var(--bg); border:2px solid var(--accent-1); margin-bottom:14px;
+}
+.tl-dot.obras{ border-color:var(--accent-4); box-shadow:0 0 12px color-mix(in oklab, var(--accent-4) 50%, transparent);}
+.tl-dot.politica{ border-color:var(--accent-5);}
+.tl-dot.evento{ border-color:var(--text-dim);}
+.tl-dot.start{ border-color:var(--accent-1); background:var(--accent-1); box-shadow:0 0 14px var(--accent-1);}
+.tl-card{ background:var(--panel); border:1px solid var(--border); border-radius:12px; padding:12px 14px;}
+.tl-card .kind{ font:600 10px/1 var(--font-mono); letter-spacing:.14em; text-transform:uppercase;}
+.tl-card .kind.obras{ color:var(--accent-4);}
+.tl-card .kind.politica{ color:var(--accent-5);}
+.tl-card .kind.evento{ color:var(--text-dim);}
+.tl-card .kind.start{ color:var(--accent-1);}
+.tl-card h5{ margin:8px 0 4px; font:600 13px/1.25 var(--font-display);}
+.tl-card .meta{ font:500 10.5px/1 var(--font-mono); color:var(--text-mute); letter-spacing:.04em;}
+
+/* Mandato — old tile */
+.tl-cur{ background:#fff; border-radius:14px; padding:16px; color:#0f172a;}
+.tl-cur h3{ font:700 14px/1.2 var(--font-display); margin:0 0 14px;}
+.tl-cur .tlrow{ display:flex; gap:14px; overflow-x:auto;}
+.tl-cur .tlcard{
+  flex-shrink:0; min-width:180px; padding:12px 14px;
+  border:1px solid #e2e8f0; border-radius:14px; background:#fff;
+}
+.tl-cur .tlcard.obras{ background:#ffedd5; border-color:#fed7aa;}
+.tl-cur .tlcard.politica{ background:#dcfce7; border-color:#bbf7d0;}
+.tl-cur .tlcard.start{ background:#dbeafe; border-color:#bfdbfe;}
+.tl-cur .tlcard.evento{ background:#f1f5f9; border-color:#e2e8f0;}
+.tl-cur .tlcard .ttl{ font:600 12px/1.3 var(--font-display); color:#0f172a;}
+.tl-cur .tlcard .dt{ font:500 11px/1 var(--font-display); color:#64748b; margin-top:4px;}
+
+/* ── HBar — current vs proposed ── */
+.hbar-cur{ display:grid; gap:10px;}
+.hbar-cur .row{ display:grid; grid-template-columns:170px 1fr; gap:14px; align-items:center;}
+.hbar-cur .row .lbl{ font:500 11.5px/1.3 var(--font-display); color:var(--text); text-align:right;}
+.hbar-cur .row .bar{ height:18px; border-radius:4px;}
+.hbar-cur .row .bar.b1{ background:#3b82f6;}
+.hbar-cur .row .bar.b2{ background:#10b981;}
+.hbar-cur .row .bar.b3{ background:#f59e0b;}
+.hbar-cur .row .bar.b4{ background:#8b5cf6;}
+.hbar-cur .row .bar.b5{ background:#ef4444;}
+.hbar-cur .row .bar.b6{ background:#06b6d4;}
+
+.hbar-new{ display:grid; gap:8px;}
+.hbar-new .row{ display:grid; grid-template-columns:180px 1fr 70px; gap:14px; align-items:center;}
+.hbar-new .row .lbl{ font:500 12px/1.3 var(--font-display); color:var(--text); text-align:right;}
+.hbar-new .row .bar-wrap{ position:relative; height:24px;}
+.hbar-new .row .bar{
+  position:absolute; inset:0 auto 0 0;
+  background:linear-gradient(90deg, color-mix(in oklab,var(--accent-1) 55%, transparent), color-mix(in oklab,var(--accent-1) 12%, transparent));
+  border-left:2px solid var(--accent-1); border-radius:5px;
+}
+.hbar-new .row .pct{ position:absolute; right:8px; top:50%; transform:translateY(-50%); font:600 11px/1 var(--font-mono); color:var(--text-dim);}
+.hbar-new .row .val{ font:600 12px/1 var(--font-mono); color:var(--text-dim); text-align:right;}
+
+/* funil */
+.funnel{
+  width:100%; max-width:380px; margin:0 auto;
+  display:flex; flex-direction:column; gap:3px; align-items:center;
+}
+.funnel .stage{
+  font:600 12px/1 var(--font-mono); letter-spacing:.06em; text-transform:uppercase;
+  background:linear-gradient(135deg, color-mix(in oklab,var(--accent-1) 50%, transparent), color-mix(in oklab,var(--accent-1) 20%, transparent));
+  border:1px solid color-mix(in oklab,var(--accent-1) 30%, transparent);
+  color:var(--text); padding:12px 18px; border-radius:6px;
+  display:flex; justify-content:space-between; align-items:center; gap:14px;
+}
+.funnel .stage.s2{ width:84%;}
+.funnel .stage.s3{ width:62%;}
+.funnel .stage.s4{ width:36%;
+  background:linear-gradient(135deg, color-mix(in oklab,var(--accent-5) 60%, transparent), color-mix(in oklab,var(--accent-5) 24%, transparent));
+  border-color:color-mix(in oklab,var(--accent-5) 35%, transparent);}
+.funnel .stage .v{ font:700 13px/1 var(--font-mono); color:var(--text);}
+.funnel .stage .pct{ font:500 10px/1 var(--font-mono); color:var(--text-dim); margin-left:auto;}
+.funnel .conn{ width:1px; height:6px; background:var(--text-mute); opacity:.6;}
+
+/* funil — current */
+.funnel-cur{
+  width:100%; max-width:380px; margin:0 auto;
+  display:flex; flex-direction:column; gap:0; align-items:center;
+}
+.funnel-cur .stage{
+  font:700 14px/1 var(--font-display);
+  color:#fff; padding:14px 18px;
+  display:flex; flex-direction:column; align-items:center; gap:4px;
+}
+.funnel-cur .stage .v{ font:700 18px/1 var(--font-display);}
+.funnel-cur .stage .pct{ font:500 11px/1 var(--font-display); opacity:.85;}
+.funnel-cur .s1{ background:#94a3b8; width:100%;}
+.funnel-cur .s2{ background:#60a5fa; width:80%;}
+.funnel-cur .s3{ background:#f59e0b; width:55%;}
+.funnel-cur .s4{ background:#22c55e; width:30%;}
+
+/* projetos cards */
+.proj-grid{ display:grid; grid-template-columns:repeat(3,1fr); gap:14px;}
+.proj-card{
+  border:1px solid var(--border); border-radius:14px; background:var(--panel); padding:16px;
+  display:flex; flex-direction:column; gap:10px;
+}
+.proj-card .img{ height:80px; border-radius:8px;
+  background:linear-gradient(135deg, color-mix(in oklab,var(--accent-3) 20%, transparent), color-mix(in oklab,var(--accent-1) 10%, transparent));
+  border:1px solid var(--border); display:grid; place-items:center; color:var(--text-mute);
+  font:600 10px/1 var(--font-mono); letter-spacing:.1em;}
+.proj-card .ti{ font:600 13.5px/1.3 var(--font-display); color:var(--text);}
+.proj-card .desc{ font:400 12px/1.45 var(--font-display); color:var(--text-dim); flex:1;}
+.proj-card .tags{ display:flex; gap:6px; flex-wrap:wrap;}
+.proj-card .tag{
+  font:600 9.5px/1 var(--font-mono); letter-spacing:.1em; text-transform:uppercase;
+  padding:4px 7px; border-radius:5px; color:var(--text-dim); background:var(--panel-2); border:1px solid var(--border);
+}
+.proj-card .tag.eixo{ color:var(--accent-3); background:color-mix(in oklab,var(--accent-3) 14%, transparent); border-color:transparent;}
+.proj-card .meta{ display:flex; justify-content:space-between; font:500 11px/1 var(--font-mono); color:var(--text-mute); letter-spacing:.04em;}
+
+/* kanban */
+.kanban{ display:grid; grid-template-columns:repeat(4,1fr); gap:12px;}
+.kanban .col{ background:var(--panel); border:1px solid var(--border); border-radius:14px; padding:12px; display:flex; flex-direction:column; gap:8px;}
+.kanban .col h5{ font:600 11px/1 var(--font-mono); letter-spacing:.1em; text-transform:uppercase; margin:0 0 4px; display:flex; justify-content:space-between;}
+.kanban .col .count{ color:var(--text-mute); font-weight:500;}
+.kanban .lead { color:var(--text-dim);}
+.kanban .negociacao { color:var(--accent-4);}
+.kanban .contato { color:var(--accent-1);}
+.kanban .implantacao { color:var(--accent-5);}
+.kanban .item{
+  border:1px solid var(--border); background:var(--panel-2); border-radius:10px; padding:10px 12px;
+  display:flex; flex-direction:column; gap:4px;
+}
+.kanban .item .name{ font:600 12px/1.25 var(--font-display); color:var(--text);}
+.kanban .item .sub{ font:500 10.5px/1 var(--font-mono); color:var(--text-mute);}
+.kanban .item .row{ display:flex; justify-content:space-between; font:500 10.5px/1 var(--font-mono); color:var(--text-dim); margin-top:4px;}
+
+/* calendar */
+.cal{ border:1px solid var(--border); border-radius:14px; overflow:hidden;}
+.cal-h{ display:flex; justify-content:space-between; align-items:center; padding:12px 16px; background:var(--panel-2); border-bottom:1px solid var(--border);}
+.cal-h h5{ margin:0; font:600 13px/1.2 var(--font-display); letter-spacing:-.005em;}
+.cal-h .nav{ display:flex; gap:6px;}
+.cal-h .nav button{ width:28px; height:28px; border-radius:6px; background:var(--panel-solid); border:1px solid var(--border); color:var(--text-dim); font:600 12px/1 var(--font-mono);}
+.cal-grid{ display:grid; grid-template-columns:repeat(7,1fr); gap:1px; background:var(--border);}
+.cal-grid .dow{ background:var(--panel-2); padding:8px; font:600 9.5px/1 var(--font-mono); letter-spacing:.14em; text-transform:uppercase; color:var(--text-mute); text-align:center;}
+.cal-grid .day{ background:var(--panel-solid); height:78px; padding:6px; position:relative; font:500 11.5px/1 var(--font-mono); color:var(--text-dim);}
+.cal-grid .day.dim{ color:var(--text-mute);}
+.cal-grid .day.today{ background:color-mix(in oklab,var(--accent-1) 10%, transparent);}
+.cal-grid .day.today .num{ color:var(--accent-1); font-weight:700;}
+.cal-grid .ev{ font:500 9.5px/1.2 var(--font-mono); padding:2px 4px; border-radius:3px; margin-top:6px; color:#fff; display:block;}
+.cal-grid .ev.dados{ background:var(--accent-1); color:#03191e;}
+.cal-grid .ev.mandato{ background:var(--accent-4); color:#3a2d00;}
+.cal-grid .ev.release{ background:var(--accent-3); color:#fff;}
+
+/* indicadores grid */
+.ind-grid{ display:grid; grid-template-columns:repeat(3,1fr); gap:10px;}
+.ind-cell{ background:var(--panel); border:1px solid var(--border); border-radius:12px; padding:12px 14px;}
+.ind-cell .l{ font:600 9.5px/1 var(--font-mono); letter-spacing:.12em; text-transform:uppercase; color:var(--text-mute);}
+.ind-cell .v{ font:700 18px/1.05 var(--font-display); margin-top:6px; color:var(--text); font-feature-settings:"tnum";}
+.ind-cell .v .u{ font-size:11px; color:var(--text-dim); margin-left:3px;}
+.ind-cell .t{ font:500 10.5px/1 var(--font-mono); color:var(--text-dim); margin-top:4px;}
+.ind-cell .sp{ height:24px; margin:8px -14px -12px;}
+
+/* OPPS table */
+.opps{ border:1px solid var(--border); border-radius:14px; overflow:hidden; background:var(--panel);}
+.opps .row{ display:grid; grid-template-columns:38px 1.2fr 2fr 100px 100px; gap:16px; padding:14px 18px; border-bottom:1px solid var(--border); align-items:start;}
+.opps .row:last-child{ border-bottom:none;}
+.opps .row.head{ background:var(--panel-2); font:600 10px/1 var(--font-mono); text-transform:uppercase; letter-spacing:.12em; color:var(--text-mute); padding:10px 18px;}
+.opps .id{ font:700 11px/1 var(--font-mono); color:var(--accent-1); letter-spacing:.06em;}
+.opps .what{ font:600 13px/1.35 var(--font-display); color:var(--text);}
+.opps .why{ font:400 12.5px/1.5 var(--font-display); color:var(--text-dim);}
+.tag{ font:600 9.5px/1 var(--font-mono); letter-spacing:.1em; text-transform:uppercase; padding:4px 7px; border-radius:5px; display:inline-block;}
+.tag.high{ color:var(--accent-5); background:color-mix(in oklab, var(--accent-5) 14%, transparent);}
+.tag.med{  color:var(--accent-4); background:color-mix(in oklab, var(--accent-4) 14%, transparent);}
+.tag.low{  color:var(--text-dim); background:var(--panel-2);}
+.tag.s{ color:var(--accent-1); background:color-mix(in oklab, var(--accent-1) 14%, transparent);}
+.tag.m{ color:var(--accent-3); background:color-mix(in oklab,var(--accent-3) 14%, transparent);}
+.tag.l{ color:var(--accent-2); background:color-mix(in oklab,var(--accent-2) 14%, transparent);}
+
+footer{ margin-top:96px; padding-top:32px; border-top:1px solid var(--border); color:var(--text-mute); font-size:12px; font-family:var(--font-mono); letter-spacing:.04em;}
+
+@media (max-width:980px){
+  .compare{ grid-template-columns:1fr;}
+  .toc{ grid-template-columns:1fr;}
+  .doc{ padding:36px 22px 72px;}
+  .h1{ font-size:34px;}
+  .kpis{ grid-template-columns:1fr 1fr;}
+  .proj-grid, .ind-grid, .kanban{ grid-template-columns:1fr;}
+  .hbar-cur .row, .hbar-new .row{ grid-template-columns:1fr;}
+  .opps .row{ grid-template-columns:1fr;}
+}
+</style>
+</head>
+<body>
+<div class="doc">
+
+<!-- ════════════════ HEADER ════════════════ -->
+<header>
+  <div class="eyebrow">Observatório Econômico Municipal · Features review · 17 mai 2026</div>
+  <h1 class="h1">The rest of the app, <em>brought into the same family.</em></h1>
+  <p class="deck">
+    Pass three covers the features that still ship in their original visual language — the global <b>FilterBar</b>,
+    the dataset pages (<b>INSS, Bolsa Família, Pé-de-Meia, Bancos, Comex, Empresas, PIX</b>), the <b>Mandato Timeline</b>,
+    <b>Desenvolvimento Econômico</b> tabs, <b>Projetos</b>, and the <b>dados-internos</b> cluster
+    (Indicadores, Calendário, Plano Gov). Same NID tokens, same hierarchy, same shape across the app.
+  </p>
+
+  <div class="toc">
+    <a href="#findings"><span class="n">00</span><span class="t">What's still on the old design</span></a>
+    <a href="#filterbar"><span class="n">01</span><span class="t">FilterBar — used on every page</span></a>
+    <a href="#datasets"><span class="n">02</span><span class="t">Dataset pages — the rainbow problem</span></a>
+    <a href="#mandato"><span class="n">03</span><span class="t">Timeline do Mandato</span></a>
+    <a href="#dezeco"><span class="n">04</span><span class="t">Desenvolvimento Econômico</span></a>
+    <a href="#projetos"><span class="n">05</span><span class="t">Projetos — acervo &amp; acompanhamento</span></a>
+    <a href="#dados-internos"><span class="n">06</span><span class="t">Indicadores, Calendário, Plano Gov</span></a>
+    <a href="#system"><span class="n">07</span><span class="t">System-wide tickets (26-35)</span></a>
+  </div>
+</header>
+
+
+<!-- ════════════════ 00 FINDINGS ════════════════ -->
+<section id="findings">
+  <div class="sec-head"><span class="sec-num">00 · DIAGNOSIS</span></div>
+  <h2 class="sec-title">What's still on the old design.</h2>
+  <p class="sec-sub">
+    Most of these are repeat offenders of the same root causes. Fix the shared components and the pages inherit the fix.
+  </p>
+
+  <div class="opps">
+    <div class="row head"><div>#</div><div>What</div><div>Why it matters</div><div>Where</div><div>Impact</div></div>
+
+    <div class="row">
+      <div class="id">α</div>
+      <div class="what">FilterBar is hard-coded slate / blue</div>
+      <div class="why">It sits at the top of <b>12 pages</b> and doesn't read theme tokens. Tailwind classes <code class="kbd">bg-slate-50</code>, <code class="kbd">border-slate-200</code>, <code class="kbd">text-blue-500</code> are baked in. Single file, fixes 12 pages.</div>
+      <div><span class="tag low">tokens</span></div>
+      <div><span class="tag high">high</span></div>
+    </div>
+
+    <div class="row">
+      <div class="id">β</div>
+      <div class="what">Charts in dataset pages pass rainbow color arrays</div>
+      <div class="why">The NID chart library is fine; the <b>call sites</b> aren't. INSS passes 6 distinct hex colors to <code class="kbd">HBarChart</code>; Bolsa Família, Pé-de-Meia, INSS, Empresas all do similar. The chart library should default to monochrome and the pages should stop passing palettes.</div>
+      <div><span class="tag low">encoding</span></div>
+      <div><span class="tag high">high</span></div>
+    </div>
+
+    <div class="row">
+      <div class="id">γ</div>
+      <div class="what">Recharts still lurks in non-PibPage corners</div>
+      <div class="why">Found a Recharts <code class="kbd">FunnelChart</code> in <code class="kbd">FunilTab.jsx</code> (Desenvolvimento Econômico). Ticket 02 missed it. Migration scope is bigger than just PibPage — needs a sweep.</div>
+      <div><span class="tag low">consistency</span></div>
+      <div><span class="tag high">high</span></div>
+    </div>
+
+    <div class="row">
+      <div class="id">δ</div>
+      <div class="what">Each new feature invented its own visual language</div>
+      <div class="why">MandatoTimeline → pastel chips. ProjetosPage → custom tab pill. FunilTab → Recharts. CalendarioPage → its own everything. Each one is fine in isolation; together they're inconsistent. <b>Two shared patterns</b> (tab bar, event chip) would unify ~80% of it.</div>
+      <div><span class="tag low">consistency</span></div>
+      <div><span class="tag med">medium</span></div>
+    </div>
+
+    <div class="row">
+      <div class="id">ε</div>
+      <div class="what">No dark / theme support outside the dashboard</div>
+      <div class="why">Mandato, Projetos, Desenv. Econômico use <code class="kbd">dark:</code> Tailwind modifiers (works in dark-only). Switching to <i>light</i>, <i>aurora</i>, or <i>sunset</i> on the dashboard leaves these features looking unrelated. Same root cause as admin (finding B in admin review).</div>
+      <div><span class="tag low">theming</span></div>
+      <div><span class="tag med">medium</span></div>
+    </div>
+  </div>
+</section>
+
+
+<!-- ════════════════ 01 FILTERBAR ════════════════ -->
+<section id="filterbar" data-screen-label="01 FilterBar">
+  <div class="sec-head"><span class="sec-num">01 · FILTERBAR</span></div>
+  <h2 class="sec-title">FilterBar — the most-shown component.</h2>
+  <p class="sec-sub">
+    It's on Arrecadação, PIB, CAGED, RAIS, INSS, Comex, PIX, Empresas, Estban, Bolsa Família, Pé-de-Meia — 12 pages. Today: two <code class="kbd">&lt;select&gt;</code> elements + slate background + a "Limpar filtros" link in blue. Proposed: themed pill row, segmented "preset" control, range chips, with the active filter mirrored into the page header (ticket 12 chip).
+  </p>
+
+  <div class="compare">
+
+    <div class="card bad">
+      <div class="card-tag"><span class="dot"></span>Current · FilterBar.jsx</div>
+      <div class="fb-cur">
+        <span class="lbl">Filtros</span>
+        <span class="sub">Ano</span>
+        <select><option>De</option></select>
+        <span class="sep">–</span>
+        <select><option>Até</option></select>
+        <span class="clear">Limpar filtros</span>
+      </div>
+      <ul class="notes bad">
+        <li>Hardcoded <code class="kbd">slate-50 / slate-200 / blue-500</code>; doesn't follow theme.</li>
+        <li>Two empty <code class="kbd">&lt;select&gt;</code>s ask the user to think in calendar years instead of <b>"últimos 12 meses"</b> / "<b>5a</b>" / "<b>Tudo</b>".</li>
+        <li>"Limpar filtros" is the only colored thing — the eye lands on the destructive action first.</li>
+        <li>After applying, the chosen period <b>vanishes from the page</b> — ticket 12 already proposed mirroring it to the page header chip.</li>
+      </ul>
+    </div>
+
+    <div class="card good">
+      <div class="card-tag"><span class="dot"></span>Proposed · themed pill row</div>
+      <div class="fb-new">
+        <span class="lbl">Período</span>
+        <div class="seg">
+          <button>12m</button>
+          <button>5a</button>
+          <button>10a</button>
+          <button class="active">Tudo</button>
+          <button>Personalizar</button>
+        </div>
+        <div class="range">
+          <select><option>2010</option></select>
+          <span class="sep">→</span>
+          <select><option>2023</option></select>
+        </div>
+        <span class="sp"></span>
+        <span class="chip-active">2010–2023 <span class="x">✕</span></span>
+        <span class="clear">Limpar</span>
+      </div>
+      <ul class="notes good">
+        <li><b>Presets first</b> (12m, 5a, 10a, Tudo). The custom range opens an inline year-picker, not a forced select.</li>
+        <li>Active period as a <b>cyan chip</b> — same chip the page header surfaces (ticket 12). One source of truth.</li>
+        <li>All tokens themed: <code class="kbd">var(--panel-2)</code>, <code class="kbd">var(--border)</code>, <code class="kbd">var(--accent-1)</code>.</li>
+        <li>"Limpar" stays subtle (mute color, no underline) — not the visual hero.</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+
+<!-- ════════════════ 02 DATASET PAGES ════════════════ -->
+<section id="datasets" data-screen-label="02 Dataset pages">
+  <div class="sec-head"><span class="sec-num">02 · DATASET PAGES</span></div>
+  <h2 class="sec-title">Dataset pages — kill the rainbow.</h2>
+  <p class="sec-sub">
+    The 7 dataset pages (INSS, Bolsa Família, Pé-de-Meia, Bancos, Comex, Empresas, PIX) share a structure: header + filters + KPI strip + 2-3 chart panels + a table. They look different from each other because each one passes its own <b>color array</b>. With one rule — <b>monochrome by default, accent for the highlighted slice</b> — they collapse into one consistent visual.
+  </p>
+
+  <div class="compare">
+
+    <div class="card bad">
+      <div class="card-tag"><span class="dot"></span>Current · INSS Top Categorias (HBar)</div>
+      <div style="font:600 13px/1.3 var(--font-display); margin-bottom:14px;">Top Categorias de Benefícios</div>
+      <div class="hbar-cur">
+        <div class="row"><span class="lbl">Aposentadoria por Idade</span><div class="bar b1" style="width:100%"></div></div>
+        <div class="row"><span class="lbl">Pensões por Morte</span><div class="bar b2" style="width:48%"></div></div>
+        <div class="row"><span class="lbl">Aposent. Tempo de Contribuição</span><div class="bar b3" style="width:30%"></div></div>
+        <div class="row"><span class="lbl">Benefícios Assistenciais (BPC)</span><div class="bar b4" style="width:24%"></div></div>
+        <div class="row"><span class="lbl">Aposentadoria por Invalidez</span><div class="bar b5" style="width:15%"></div></div>
+        <div class="row"><span class="lbl">Auxílios (Doença/Acidente)</span><div class="bar b6" style="width:6%"></div></div>
+      </div>
+      <ul class="notes bad">
+        <li>6 hardcoded hex values — <code class="kbd">#3b82f6 / #10b981 / #f59e0b / #8b5cf6 / #ef4444 / #06b6d4</code>. Encodes nothing; just a rainbow.</li>
+        <li>Doesn't read theme: switches the dashboard to light theme, this chart stays brutalist.</li>
+        <li>No values, no percentages, no totals — just bars.</li>
+      </ul>
+    </div>
+
+    <div class="card good">
+      <div class="card-tag"><span class="dot"></span>Proposed · monochrome + percentages</div>
+      <div style="display:flex; justify-content:space-between; align-items:baseline; margin-bottom:14px;">
+        <div style="font:600 13px/1.3 var(--font-display);">Top Categorias de Benefícios</div>
+        <div style="font:500 11px/1 var(--font-mono); color:var(--text-mute); letter-spacing:.04em;">% sobre 7 933 benefícios</div>
+      </div>
+      <div class="hbar-new">
+        <div class="row">
+          <span class="lbl">Aposentadoria por Idade</span>
+          <div class="bar-wrap"><div class="bar" style="width:100%;"></div><span class="pct">5 132</span></div>
+          <span class="val">64.7%</span>
+        </div>
+        <div class="row">
+          <span class="lbl">Pensões por Morte</span>
+          <div class="bar-wrap"><div class="bar" style="width:48%; opacity:.85;"></div><span class="pct">1 590</span></div>
+          <span class="val">20.0%</span>
+        </div>
+        <div class="row">
+          <span class="lbl">Aposent. Tempo de Contribuição</span>
+          <div class="bar-wrap"><div class="bar" style="width:30%; opacity:.7;"></div><span class="pct">615</span></div>
+          <span class="val">7.8%</span>
+        </div>
+        <div class="row">
+          <span class="lbl">Benefícios Assistenciais (BPC)</span>
+          <div class="bar-wrap"><div class="bar" style="width:24%; opacity:.55;"></div><span class="pct">348</span></div>
+          <span class="val">4.4%</span>
+        </div>
+        <div class="row">
+          <span class="lbl">Aposentadoria por Invalidez</span>
+          <div class="bar-wrap"><div class="bar" style="width:15%; opacity:.4;"></div><span class="pct">186</span></div>
+          <span class="val">2.3%</span>
+        </div>
+        <div class="row">
+          <span class="lbl">Auxílios (Doença/Acidente)</span>
+          <div class="bar-wrap"><div class="bar" style="width:6%; opacity:.3;"></div><span class="pct">62</span></div>
+          <span class="val">0.8%</span>
+        </div>
+      </div>
+      <ul class="notes good">
+        <li>Single hue (<code class="kbd">--accent-1</code>) ranked by value. Opacity decays as you go down — the eye reads it as <b>a list ordered by size</b>, not a rainbow.</li>
+        <li>Absolute count <b>inside the bar</b>; percentage of total to the right.</li>
+        <li>Subtle header note tells you the denominator.</li>
+        <li>Same data, same component (<code class="kbd">HBarChart</code> after ticket 08); the page just stops passing <code class="kbd">colors=[…]</code>.</li>
+      </ul>
+    </div>
+
+  </div>
+
+  <!-- INSS full mock — line evolution -->
+  <h3 style="margin:36px 0 6px; font-size:18px; letter-spacing:-.01em;">And the "Evolução Anual" line below it</h3>
+  <p class="sec-sub" style="margin-top:0;">
+    The line chart in your screenshot has 3 huge dots, a legend at the bottom for one line, and a blue palette unrelated to the page. Same treatment as <code class="kbd">AreaLineChart</code> ticket 03 + 04: caption + 3 ticks + benchmark + last-point only.
+  </p>
+
+  <div class="compare">
+
+    <div class="card bad">
+      <div class="card-tag"><span class="dot"></span>Current</div>
+      <div style="font:600 13px/1.3 var(--font-display); margin-bottom:14px;">Evolução Anual de Benefícios</div>
+      <svg viewBox="0 0 540 200" style="width:100%;">
+        <g>
+          <line x1="60" x2="520" y1="30" y2="30" stroke="rgba(120,145,255,.06)"/><text class="axis-text" x="52" y="34" text-anchor="end">2800</text>
+          <line x1="60" x2="520" y1="78" y2="78" stroke="rgba(120,145,255,.06)"/><text class="axis-text" x="52" y="82" text-anchor="end">2100</text>
+          <line x1="60" x2="520" y1="125" y2="125" stroke="rgba(120,145,255,.06)"/><text class="axis-text" x="52" y="129" text-anchor="end">1400</text>
+          <line x1="60" x2="520" y1="155" y2="155" stroke="rgba(120,145,255,.06)"/><text class="axis-text" x="52" y="159" text-anchor="end">700</text>
+          <line x1="60" x2="520" y1="180" y2="180" stroke="rgba(120,145,255,.06)"/><text class="axis-text" x="52" y="184" text-anchor="end">0</text>
+        </g>
+        <path d="M70 40 L280 38 L490 35" stroke="#3b82f6" stroke-width="2.5" fill="none"/>
+        <circle cx="70" cy="40" r="5" fill="#3b82f6"/>
+        <circle cx="280" cy="38" r="5" fill="#3b82f6"/>
+        <circle cx="490" cy="35" r="5" fill="#3b82f6"/>
+        <text class="axis-text" x="70" y="198" text-anchor="middle">2021</text>
+        <text class="axis-text" x="280" y="198" text-anchor="middle">2022</text>
+        <text class="axis-text" x="490" y="198" text-anchor="middle">2024</text>
+      </svg>
+      <div style="display:flex; gap:14px; justify-content:center; margin-top:8px; font:500 11px/1 var(--font-mono); color:var(--text-dim);">
+        <span style="color:#3b82f6;">○</span> Benefícios
+      </div>
+      <ul class="notes bad">
+        <li>3 datapoints, 3 huge dots — flat-looking and hard to read magnitude.</li>
+        <li>Legend at the bottom for one series. Why.</li>
+        <li>Blue palette unrelated to the page domain or any token.</li>
+      </ul>
+    </div>
+
+    <div class="card good">
+      <div class="card-tag"><span class="dot"></span>Proposed · area line + benchmark</div>
+      <div style="display:flex; justify-content:space-between; align-items:baseline; margin-bottom:14px;">
+        <div style="font:600 13px/1.3 var(--font-display);">Evolução Anual de Benefícios</div>
+        <div style="font:500 11px/1 var(--font-mono); color:var(--text-mute); letter-spacing:.04em;">benefícios · 2021 — 2024</div>
+      </div>
+      <svg viewBox="0 0 540 200" style="width:100%;">
+        <text style="font-family:var(--font-mono); font-size:10px; fill:var(--text-mute); letter-spacing:.14em;"
+              x="14" y="100" transform="rotate(-90 14 100)" text-anchor="middle">BENEFÍCIOS</text>
+        <g>
+          <line x1="44" x2="520" y1="40" y2="40" stroke="rgba(120,145,255,.06)" stroke-dasharray="3 4"/><text class="axis-text bright" x="38" y="44" text-anchor="end">2 800</text>
+          <line x1="44" x2="520" y1="110" y2="110" stroke="rgba(120,145,255,.06)" stroke-dasharray="3 4"/><text class="axis-text bright" x="38" y="114" text-anchor="end">1 400</text>
+          <line x1="44" x2="520" y1="180" y2="180" stroke="rgba(120,145,255,.06)" stroke-dasharray="3 4"/><text class="axis-text bright" x="38" y="184" text-anchor="end">0</text>
+        </g>
+        <line x1="44" x2="520" y1="86" y2="86" stroke="var(--text-dim)" stroke-dasharray="5 4" stroke-width="1.2" opacity=".55"/>
+        <text class="axis-text" x="515" y="80" text-anchor="end" fill="var(--text-dim)">média estadual · 2 100</text>
+
+        <defs>
+          <linearGradient id="ar-inss" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stop-color="var(--accent-1)" stop-opacity=".35"/>
+            <stop offset="100%" stop-color="var(--accent-1)" stop-opacity="0"/>
+          </linearGradient>
+        </defs>
+        <path d="M50 36 L200 32 L350 28 L500 24 L500 180 L50 180 Z" fill="url(#ar-inss)"/>
+        <path d="M50 36 L200 32 L350 28 L500 24" stroke="var(--accent-1)" stroke-width="2" fill="none"/>
+        <circle cx="500" cy="24" r="4" fill="var(--accent-1)"/>
+        <text class="axis-text" x="50" y="198" text-anchor="middle">2021</text>
+        <text class="axis-text" x="200" y="198" text-anchor="middle">2022</text>
+        <text class="axis-text" x="350" y="198" text-anchor="middle">2023</text>
+        <text class="axis-text" x="500" y="198" text-anchor="middle">2024</text>
+      </svg>
+      <ul class="notes good">
+        <li>Same data, two tokens (accent-1 + text-dim) + the established axis-caption pattern from ticket 03.</li>
+        <li><b>Benchmark line</b> tells the prefeito they're above the state average — context that wasn't there before.</li>
+        <li>Dot only on the latest point. Legend dropped — one series, no legend.</li>
+        <li>Same fix unlocks Bolsa Família, Pé-de-Meia, Empresas, Bancos, Comex, PIX.</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+
+<!-- ════════════════ 03 MANDATO TIMELINE ════════════════ -->
+<section id="mandato" data-screen-label="03 Mandato">
+  <div class="sec-head"><span class="sec-num">03 · MANDATO TIMELINE</span></div>
+  <h2 class="sec-title">Timeline do Mandato — events on a rail, not pastel cards.</h2>
+  <p class="sec-sub">
+    Today: pastel cards (blue / orange / green / slate) in a horizontal scroller. Functional but feels nothing like the rest of the dashboard. Proposal: a true rail-based timeline with dots colored by event type, themed cards, and a chip filter for event kinds.
+  </p>
+
+  <div class="compare">
+
+    <div class="card bad">
+      <div class="card-tag"><span class="dot"></span>Current · MandatoTimeline</div>
+      <div class="tl-cur">
+        <h3>Timeline do Mandato</h3>
+        <div class="tlrow">
+          <div class="tlcard start">
+            <div class="ttl">Posse do Prefeito</div>
+            <div class="dt">01 jan 2025</div>
+          </div>
+          <div class="tlcard obras">
+            <div class="ttl">Início Av. das Acácias</div>
+            <div class="dt">12 fev 2025</div>
+          </div>
+          <div class="tlcard politica">
+            <div class="ttl">Programa Renda Cidadã</div>
+            <div class="dt">05 mar 2025</div>
+          </div>
+          <div class="tlcard evento">
+            <div class="ttl">Feira do Empreendedor</div>
+            <div class="dt">22 abr 2025</div>
+          </div>
+        </div>
+      </div>
+      <ul class="notes bad">
+        <li>Pastel backgrounds are the only theme switch — break in dark mode, look unrelated to the dashboard.</li>
+        <li>No <b>rail</b>; the time axis is implicit. Hard to tell distance between events at a glance.</li>
+        <li>Title styled with the 14px/700 Geist pattern, but everything else uses raw <code class="kbd">slate-*</code> classes.</li>
+      </ul>
+    </div>
+
+    <div class="card good">
+      <div class="card-tag"><span class="dot"></span>Proposed · rail timeline</div>
+      <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:14px;">
+        <div>
+          <div style="font:600 13px/1.2 var(--font-display);">Timeline do Mandato</div>
+          <div style="font:500 11px/1 var(--font-mono); color:var(--text-mute); margin-top:4px;">jan 2025 — atual · 4 marcos</div>
+        </div>
+        <div class="tabbar">
+          <button class="tab active">Tudo</button>
+          <button class="tab" style="color:var(--accent-4);">Obras</button>
+          <button class="tab" style="color:var(--accent-5);">Políticas</button>
+          <button class="tab">Eventos</button>
+        </div>
+      </div>
+      <div class="tl-wrap">
+        <div class="tl-rail"></div>
+        <div class="tl-row">
+          <div class="tl-item">
+            <div class="tl-dot start"></div>
+            <div class="tl-card">
+              <div class="kind start">●　Início de mandato</div>
+              <h5>Posse do Prefeito</h5>
+              <div class="meta">01 jan 2025</div>
+            </div>
+          </div>
+          <div class="tl-item">
+            <div class="tl-dot obras"></div>
+            <div class="tl-card">
+              <div class="kind obras">●　Obra</div>
+              <h5>Início Av. das Acácias</h5>
+              <div class="meta">12 fev 2025 · R$ 2.1 Mi</div>
+            </div>
+          </div>
+          <div class="tl-item">
+            <div class="tl-dot politica"></div>
+            <div class="tl-card">
+              <div class="kind politica">●　Política pública</div>
+              <h5>Programa Renda Cidadã</h5>
+              <div class="meta">05 mar 2025 · 2 400 famílias</div>
+            </div>
+          </div>
+          <div class="tl-item">
+            <div class="tl-dot evento"></div>
+            <div class="tl-card">
+              <div class="kind evento">●　Evento</div>
+              <h5>Feira do Empreendedor</h5>
+              <div class="meta">22 abr 2025 · 1 800 participantes</div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <ul class="notes good">
+        <li>Explicit horizontal rail with themed dots — eye reads "events on a line", not "4 colored cards".</li>
+        <li>Event kind shown as a <b>colored kind row</b> at the top of each card; same color as the dot. Easier to scan by category.</li>
+        <li>Tab bar above filters by kind (replaces "scroll to find").</li>
+        <li>Meta line shows <b>useful detail</b> (custo, beneficiários, participantes) inline so the card is more than a pretty label.</li>
+        <li>Hover state: card gets <code class="kbd">--border-strong</code> ring; rail dot grows.</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+
+<!-- ════════════════ 04 DESENV ECONOMICO ════════════════ -->
+<section id="dezeco" data-screen-label="04 Desenvolvimento economico">
+  <div class="sec-head"><span class="sec-num">04 · DESENVOLVIMENTO ECONÔMICO</span></div>
+  <h2 class="sec-title">5 tabs, 5 different visual languages — unify.</h2>
+  <p class="sec-sub">
+    Captação / Funil / Escrita / Premiações / Retenção. Each tab is its own page in <code class="kbd">/desenvolvimento-economico</code>. The big issues: <b>FunilTab uses Recharts</b> (missed by ticket 02 — needs a Recharts sweep), tab bars are inconsistent, and "Funil" is a custom shape that doesn't read like a chart in the rest of the app.
+  </p>
+
+  <!-- TAB BAR comparison -->
+  <h3 style="margin:18px 0 6px; font-size:16px; letter-spacing:-.01em;">Tab bar — unify across all multi-tab pages</h3>
+
+  <div class="compare">
+    <div class="card bad">
+      <div class="card-tag"><span class="dot"></span>Current · ProjetosPage / DesenvEcoPage</div>
+      <div class="tabbar-cur">
+        <div class="tab active">Captação</div>
+        <div class="tab">Funil</div>
+        <div class="tab">Escrita</div>
+        <div class="tab">Premiações</div>
+        <div class="tab">Retenção</div>
+      </div>
+      <ul class="notes bad" style="font-size:11.5px;">
+        <li>Hardcoded slate-100/slate-800 background; doesn't theme.</li>
+        <li>Each multi-tab page in the app uses a slightly different variant of this.</li>
+      </ul>
+    </div>
+    <div class="card good">
+      <div class="card-tag"><span class="dot"></span>Proposed · shared NidTabBar</div>
+      <div class="tabbar">
+        <button class="tab active">Captação</button>
+        <button class="tab">Funil</button>
+        <button class="tab">Escrita</button>
+        <button class="tab">Premiações</button>
+        <button class="tab">Retenção</button>
+      </div>
+      <ul class="notes good" style="font-size:11.5px;">
+        <li>Single <code class="kbd">&lt;NidTabBar /&gt;</code> with token-based styling.</li>
+        <li>Used in: ProjetosPage (2 tabs), DesenvEcoPage (5 tabs), CagedPage (Saldo/Bruto), AdminPanel (filter tabs).</li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- FUNIL comparison -->
+  <h3 style="margin:30px 0 6px; font-size:16px; letter-spacing:-.01em;">Funil — replace Recharts FunnelChart</h3>
+  <div class="compare">
+
+    <div class="card bad">
+      <div class="card-tag"><span class="dot"></span>Current · Recharts FunnelChart</div>
+      <div style="background:#0f172a; padding:18px; border-radius:12px;">
+        <div style="font:600 13px/1.3 var(--font-display); color:#fff; margin-bottom:14px;">Funil de Captação · 2025</div>
+        <div class="funnel-cur">
+          <div class="stage s1">Lead<span class="v">42</span><span class="pct">100%</span></div>
+          <div class="stage s2">Contato<span class="v">31</span><span class="pct">74%</span></div>
+          <div class="stage s3">Negociação<span class="v">17</span><span class="pct">40%</span></div>
+          <div class="stage s4">Implantação<span class="v">8</span><span class="pct">19%</span></div>
+        </div>
+      </div>
+      <ul class="notes bad">
+        <li>Recharts dependency — ticket 02 missed this file. Migration needed for the same reasons (visual + bundle).</li>
+        <li>4 hardcoded hex colors per stage. No theme support.</li>
+        <li>The decreasing trapezoid is decorative — it doesn't add information beyond what stacked horizontal bars give you.</li>
+      </ul>
+    </div>
+
+    <div class="card good">
+      <div class="card-tag"><span class="dot"></span>Proposed · NID funnel</div>
+      <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:14px;">
+        <div>
+          <div style="font:600 13px/1.3 var(--font-display);">Funil de Captação · 2025</div>
+          <div style="font:500 11px/1 var(--font-mono); color:var(--text-mute); margin-top:4px;">42 leads · taxa de conversão 19%</div>
+        </div>
+        <div class="tabbar">
+          <button class="tab active">Vista funil</button>
+          <button class="tab">Lista</button>
+        </div>
+      </div>
+      <div class="funnel">
+        <div class="stage">Lead<span class="v">42</span><span class="pct">100%</span></div>
+        <div class="conn"></div>
+        <div class="stage s2">Contato<span class="v">31</span><span class="pct">74%</span></div>
+        <div class="conn"></div>
+        <div class="stage s3">Negociação<span class="v">17</span><span class="pct">40%</span></div>
+        <div class="conn"></div>
+        <div class="stage s4">Implantação<span class="v">8</span><span class="pct">19%</span></div>
+      </div>
+      <ul class="notes good">
+        <li>Pure CSS / SVG — no Recharts. Adds itself to the deprecation pile.</li>
+        <li>Single hue with the final stage in <code class="kbd">--accent-5</code> green (the "successful conversion" stage).</li>
+        <li>Conversion rate <b>per stage</b> inside each bar — answers "where do we drop off" without hover.</li>
+        <li>Toggle to a <b>list view</b> with the actual empresas in each stage (more useful for daily work than the funnel itself).</li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- KANBAN -->
+  <h3 style="margin:30px 0 6px; font-size:16px; letter-spacing:-.01em;">"Lista" view — kanban-style by stage</h3>
+  <p class="sec-sub" style="margin-top:0;">When the user clicks "Lista" on the funnel above, here's what they get:</p>
+  <div class="compare single">
+    <div class="card good" style="padding:18px 22px;">
+      <div class="kanban">
+        <div class="col">
+          <h5><span class="lead">Lead</span><span class="count">42</span></h5>
+          <div class="item"><div class="name">Indústria Verdesa</div><div class="sub">Setor metalurgia</div><div class="row"><span>R$ 8.2 Mi</span><span>+ 2d</span></div></div>
+          <div class="item"><div class="name">Soluções AgroX</div><div class="sub">Setor agro</div><div class="row"><span>R$ 4.6 Mi</span><span>+ 4d</span></div></div>
+          <div class="item" style="opacity:.7;"><div class="name">Logística Norte</div><div class="sub">Setor logística</div><div class="row"><span>R$ 2.1 Mi</span><span>+ 8d</span></div></div>
+          <div class="item" style="border-style:dashed; background:transparent; color:var(--text-mute); text-align:center; padding:8px;">+ 39 mais</div>
+        </div>
+        <div class="col">
+          <h5><span class="contato">Contato</span><span class="count">31</span></h5>
+          <div class="item"><div class="name">Têxtil Aurora</div><div class="sub">Setor têxtil</div><div class="row"><span>R$ 12 Mi</span><span style="color:var(--accent-2);">!  contato há 6d</span></div></div>
+          <div class="item"><div class="name">DataServ TI</div><div class="sub">Setor TI</div><div class="row"><span>R$ 3.4 Mi</span><span>+ 1d</span></div></div>
+          <div class="item" style="border-style:dashed; background:transparent; color:var(--text-mute); text-align:center; padding:8px;">+ 29 mais</div>
+        </div>
+        <div class="col">
+          <h5><span class="negociacao">Negociação</span><span class="count">17</span></h5>
+          <div class="item"><div class="name">Cimentos Cristal</div><div class="sub">Setor construção</div><div class="row"><span>R$ 18 Mi</span><span>+ 3d</span></div></div>
+          <div class="item"><div class="name">FoodChain LTDA</div><div class="sub">Setor alimentos</div><div class="row"><span>R$ 6.8 Mi</span><span>+ 5d</span></div></div>
+          <div class="item" style="border-style:dashed; background:transparent; color:var(--text-mute); text-align:center; padding:8px;">+ 15 mais</div>
+        </div>
+        <div class="col">
+          <h5><span class="implantacao">Implantação</span><span class="count">8</span></h5>
+          <div class="item" style="border-color:color-mix(in oklab,var(--accent-5) 30%, transparent);"><div class="name">EcoEnergia SA</div><div class="sub">Renováveis</div><div class="row"><span style="color:var(--accent-5);">R$ 24 Mi ✓</span><span>+ 1d</span></div></div>
+          <div class="item"><div class="name">PharmaLab</div><div class="sub">Farmacêutico</div><div class="row"><span>R$ 9.5 Mi</span><span>+ 2d</span></div></div>
+          <div class="item" style="border-style:dashed; background:transparent; color:var(--text-mute); text-align:center; padding:8px;">+ 6 mais</div>
+        </div>
+      </div>
+      <ul class="notes good">
+        <li>Same data the funnel chart shows, but <b>actionable</b> — each card is a company you can click into.</li>
+        <li>"Stale" cards (no contact in N days) get a small pink "!" marker — surfaces neglected leads.</li>
+        <li>"Implantação" stage cards subtly outlined in green to celebrate the win.</li>
+        <li>Each column shows a count so you instantly see distribution.</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+
+<!-- ════════════════ 05 PROJETOS ════════════════ -->
+<section id="projetos" data-screen-label="05 Projetos">
+  <div class="sec-head"><span class="sec-num">05 · PROJETOS</span></div>
+  <h2 class="sec-title">Projetos — acervo cards &amp; acompanhamento.</h2>
+  <p class="sec-sub">
+    Two tabs: <b>Acervo</b> (modelos de projetos) and <b>Acompanhamento</b> (status dos projetos do município). Acervo today is a list of cards with similar problems (hardcoded colors, no theming, weak visual hierarchy). Treatment: themed card grid with eixo tag, image placeholder, action affordances.
+  </p>
+
+  <div class="compare single">
+    <div class="card good">
+      <div class="card-tag"><span class="dot"></span>Proposed · Acervo de Projetos</div>
+      <div class="ph">
+        <div>
+          <h2>Acervo de Projetos</h2>
+          <p>Modelos de projetos prontos para adaptação ao seu município. Filtre por eixo ou busque por palavra-chave.</p>
+        </div>
+        <div class="chips">
+          <span style="font:600 11.5px/1 var(--font-mono); padding:8px 14px; background:var(--panel-2); border:1px solid var(--border); border-radius:10px; color:var(--text-dim);">🔍 buscar título…</span>
+          <span style="font:600 11.5px/1 var(--font-mono); padding:8px 14px; background:color-mix(in oklab,var(--accent-1) 14%, transparent); border:1px solid color-mix(in oklab,var(--accent-1) 35%, transparent); border-radius:10px; color:var(--text);">+ Submeter projeto</span>
+        </div>
+      </div>
+
+      <div class="tabbar" style="margin-bottom:14px;">
+        <button class="tab active">Todos · 42</button>
+        <button class="tab">Educação · 11</button>
+        <button class="tab">Saúde · 8</button>
+        <button class="tab">Mobilidade · 7</button>
+        <button class="tab">Tecnologia · 5</button>
+        <button class="tab">Outros</button>
+      </div>
+
+      <div class="proj-grid">
+        <div class="proj-card">
+          <div class="img">PROJETO · IMAGEM</div>
+          <div class="ti">Escola em Tempo Integral — Modelo Pioneiro</div>
+          <div class="desc">Reorganização curricular e infraestrutura para escolas municipais, com foco em zonas periféricas. Inclui modelo de financiamento e indicadores de impacto.</div>
+          <div class="tags">
+            <span class="tag eixo">Educação</span>
+            <span class="tag">FNDE</span>
+            <span class="tag">PNE Meta 6</span>
+          </div>
+          <div class="meta">
+            <span>34 municípios adotaram</span>
+            <span>★ 4.6</span>
+          </div>
+        </div>
+
+        <div class="proj-card">
+          <div class="img">PROJETO · IMAGEM</div>
+          <div class="ti">UBS Estendida — Atendimento até 22h</div>
+          <div class="desc">Modelo de horário estendido para unidades básicas de saúde, com gestão de escala e contratualização de profissionais. Custo médio R$ 280k/UBS/ano.</div>
+          <div class="tags">
+            <span class="tag eixo" style="color:var(--accent-5); background:color-mix(in oklab,var(--accent-5) 14%, transparent);">Saúde</span>
+            <span class="tag">SUS</span>
+            <span class="tag">Atenção primária</span>
+          </div>
+          <div class="meta">
+            <span>12 municípios adotaram</span>
+            <span>★ 4.8</span>
+          </div>
+        </div>
+
+        <div class="proj-card">
+          <div class="img">PROJETO · IMAGEM</div>
+          <div class="ti">Faixa Azul — Mobilidade Urbana</div>
+          <div class="desc">Sistema de corredores prioritários para transporte coletivo. Inclui especificação de sinalização, estudo de impacto e KPIs operacionais.</div>
+          <div class="tags">
+            <span class="tag eixo" style="color:var(--accent-4); background:color-mix(in oklab,var(--accent-4) 14%, transparent);">Mobilidade</span>
+            <span class="tag">SeMob</span>
+          </div>
+          <div class="meta">
+            <span>8 municípios adotaram</span>
+            <span>★ 4.4</span>
+          </div>
+        </div>
+      </div>
+
+      <ul class="notes good">
+        <li>Each card has a real <b>visual</b> (image slot or themed placeholder), a clear title, summary, eixo tag colored by eixo, and social-proof footer.</li>
+        <li>Tabs filter by eixo with counts — instant orientation.</li>
+        <li>"+ Submeter projeto" is the only saturated CTA on the page; everything else is content.</li>
+        <li>"Acompanhamento" tab uses the same card shape but with status pills (Em planejamento / Em execução / Concluído / Suspenso) — reuses the admin status-pill pattern.</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+
+<!-- ════════════════ 06 DADOS INTERNOS ════════════════ -->
+<section id="dados-internos" data-screen-label="06 Dados internos">
+  <div class="sec-head"><span class="sec-num">06 · DADOS INTERNOS</span></div>
+  <h2 class="sec-title">Indicadores Internos, Calendário, Plano Gov.</h2>
+  <p class="sec-sub">
+    The cluster the prefeito uses to manage their own operation. All three are tile / grid / calendar based — use the existing token primitives without inventing new patterns.
+  </p>
+
+  <!-- INDICADORES INTERNOS -->
+  <div class="compare">
+    <div class="card good">
+      <div class="card-tag"><span class="dot"></span>Indicadores Internos · dense KPI grid</div>
+      <div class="ph">
+        <div>
+          <h2>Indicadores Internos</h2>
+          <p>KPIs operacionais do município · atualizados pela equipe da prefeitura</p>
+        </div>
+        <div class="chips">
+          <span style="font:600 11.5px/1 var(--font-mono); padding:8px 14px; background:var(--panel-2); border:1px solid var(--border); border-radius:10px; color:var(--text-dim);">Mensal</span>
+          <span style="font:600 11.5px/1 var(--font-mono); padding:8px 14px; background:color-mix(in oklab,var(--accent-1) 14%, transparent); border:1px solid color-mix(in oklab,var(--accent-1) 35%, transparent); border-radius:10px; color:var(--text);">+ Adicionar</span>
+        </div>
+      </div>
+      <div class="ind-grid">
+        <div class="ind-cell">
+          <div class="l">Visitas à UBS · mai/25</div>
+          <div class="v">12 480</div>
+          <div class="t"><span class="delta up">▲ 8.2%</span> vs abr/25</div>
+          <svg viewBox="0 0 200 30" class="sp" preserveAspectRatio="none"><path d="M2 22 L40 20 L80 18 L120 14 L160 10 L196 6" stroke="var(--accent-5)" stroke-width="1.6" fill="none"/></svg>
+        </div>
+        <div class="ind-cell">
+          <div class="l">Atendimentos CRAS · mai/25</div>
+          <div class="v">3 218</div>
+          <div class="t"><span class="delta down">▼ 4.1%</span> vs abr/25</div>
+          <svg viewBox="0 0 200 30" class="sp" preserveAspectRatio="none"><path d="M2 8 L40 10 L80 14 L120 16 L160 20 L196 24" stroke="var(--accent-2)" stroke-width="1.6" fill="none"/></svg>
+        </div>
+        <div class="ind-cell">
+          <div class="l">Frota ativa · vigente</div>
+          <div class="v">142 <span class="u">veículos</span></div>
+          <div class="t"><span class="delta flat">— sem alteração</span></div>
+          <svg viewBox="0 0 200 30" class="sp" preserveAspectRatio="none"><path d="M2 15 L196 15" stroke="var(--text-dim)" stroke-width="1.6" fill="none"/></svg>
+        </div>
+        <div class="ind-cell">
+          <div class="l">Reclamações 156 · mai/25</div>
+          <div class="v">847</div>
+          <div class="t"><span class="delta down" style="color:var(--accent-5);">▼ 12.4%</span> vs abr/25</div>
+          <svg viewBox="0 0 200 30" class="sp" preserveAspectRatio="none"><path d="M2 8 L40 10 L80 14 L120 14 L160 18 L196 22" stroke="var(--accent-5)" stroke-width="1.6" fill="none"/></svg>
+        </div>
+        <div class="ind-cell">
+          <div class="l">Vagas escolares ocupadas</div>
+          <div class="v">94.2<span class="u">%</span></div>
+          <div class="t"><span class="delta up">▲ 1.8 pp</span> vs ano anterior</div>
+          <svg viewBox="0 0 200 30" class="sp" preserveAspectRatio="none"><path d="M2 22 L40 20 L80 20 L120 16 L160 12 L196 10" stroke="var(--accent-5)" stroke-width="1.6" fill="none"/></svg>
+        </div>
+        <div class="ind-cell" style="background:var(--panel-2); border-style:dashed;">
+          <div class="l" style="color:var(--text-mute);">Adicionar indicador</div>
+          <div class="v" style="color:var(--text-mute); font-weight:500;">＋</div>
+          <div class="t" style="color:var(--text-mute);">configure pela própria página</div>
+        </div>
+      </div>
+      <ul class="notes good">
+        <li>Same KPI shape as the dashboard hero strip but <b>denser</b> (18px values, 12-cell grid). Admin-style scanability.</li>
+        <li>Each cell carries spark + delta — single-glance.</li>
+        <li>"+" cell is a CTA to add a new internal indicator; uses the dashed-border pattern from empty states.</li>
+        <li>Filterable by "Mensal / Trimestral / Anual / Vigente" via the period chip.</li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- CALENDARIO -->
+  <h3 style="margin:30px 0 6px; font-size:18px; letter-spacing:-.01em;">Calendário — atualizações, marcos, releases em um só lugar</h3>
+  <div class="compare single">
+    <div class="card good">
+      <div class="card-tag"><span class="dot"></span>Calendário · unified view</div>
+      <div class="ph" style="margin-bottom:16px;">
+        <div>
+          <h2>Calendário</h2>
+          <p>Atualizações de dados · marcos do mandato · releases editoriais · próximos 30 dias</p>
+        </div>
+        <div class="chips">
+          <span style="font:600 11.5px/1 var(--font-mono); padding:8px 14px; background:color-mix(in oklab,var(--accent-1) 14%, transparent); border:1px solid color-mix(in oklab,var(--accent-1) 35%, transparent); border-radius:10px; color:var(--text);">Mês</span>
+          <span style="font:600 11.5px/1 var(--font-mono); padding:8px 14px; background:var(--panel-2); border:1px solid var(--border); border-radius:10px; color:var(--text-dim);">Lista</span>
+        </div>
+      </div>
+      <div class="cal">
+        <div class="cal-h">
+          <h5>Maio 2026</h5>
+          <div class="nav"><button>‹</button><button>Hoje</button><button>›</button></div>
+        </div>
+        <div class="cal-grid">
+          <div class="dow">Dom</div><div class="dow">Seg</div><div class="dow">Ter</div><div class="dow">Qua</div><div class="dow">Qui</div><div class="dow">Sex</div><div class="dow">Sáb</div>
+
+          <div class="day dim"><span class="num">27</span></div>
+          <div class="day dim"><span class="num">28</span></div>
+          <div class="day dim"><span class="num">29</span></div>
+          <div class="day dim"><span class="num">30</span></div>
+          <div class="day"><span class="num">01</span><span class="ev mandato">Posse vereadores</span></div>
+          <div class="day"><span class="num">02</span></div>
+          <div class="day"><span class="num">03</span></div>
+
+          <div class="day"><span class="num">04</span><span class="ev dados">CAGED · abr/25</span></div>
+          <div class="day"><span class="num">05</span></div>
+          <div class="day"><span class="num">06</span></div>
+          <div class="day"><span class="num">07</span><span class="ev release">Release econômico mai</span></div>
+          <div class="day"><span class="num">08</span></div>
+          <div class="day"><span class="num">09</span></div>
+          <div class="day"><span class="num">10</span></div>
+
+          <div class="day"><span class="num">11</span><span class="ev dados">Bolsa Família · abr/25</span></div>
+          <div class="day"><span class="num">12</span></div>
+          <div class="day"><span class="num">13</span></div>
+          <div class="day"><span class="num">14</span></div>
+          <div class="day"><span class="num">15</span><span class="ev mandato">100 dias de mandato</span></div>
+          <div class="day"><span class="num">16</span></div>
+          <div class="day today"><span class="num">17</span><span class="ev dados">PIB anual 2024</span></div>
+
+          <div class="day"><span class="num">18</span></div>
+          <div class="day"><span class="num">19</span></div>
+          <div class="day"><span class="num">20</span><span class="ev release">Síntese trimestral</span></div>
+          <div class="day"><span class="num">21</span></div>
+          <div class="day"><span class="num">22</span><span class="ev dados">RAIS atualização</span></div>
+          <div class="day"><span class="num">23</span></div>
+          <div class="day"><span class="num">24</span></div>
+        </div>
+      </div>
+      <div style="display:flex; gap:14px; margin-top:14px; font:500 11.5px/1 var(--font-mono); color:var(--text-dim);">
+        <span><span style="display:inline-block; width:10px; height:10px; background:var(--accent-1); border-radius:3px; margin-right:6px; vertical-align:-1px;"></span>Atualização de dados</span>
+        <span><span style="display:inline-block; width:10px; height:10px; background:var(--accent-4); border-radius:3px; margin-right:6px; vertical-align:-1px;"></span>Marco do mandato</span>
+        <span><span style="display:inline-block; width:10px; height:10px; background:var(--accent-3); border-radius:3px; margin-right:6px; vertical-align:-1px;"></span>Release editorial</span>
+      </div>
+      <ul class="notes good">
+        <li>One calendar, three event sources — dataset updates (the ingestion calendar), mandate marcos (from MandatoTimeline), and editorial releases (from ReleasesPage).</li>
+        <li>"Hoje" highlighted with a tinted cell + accent number; events keep their kind color.</li>
+        <li>Toggle to a list view for accessibility and dense scanning.</li>
+        <li>This consolidates 3 separate features into one page; existing pages keep working but link to here.</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+
+<!-- ════════════════ 07 SYSTEM ════════════════ -->
+<section id="system" data-screen-label="07 System">
+  <div class="sec-head"><span class="sec-num">07 · SYSTEM</span></div>
+  <h2 class="sec-title">Tickets 26–35 — features pack.</h2>
+  <p class="sec-sub">
+    Slots into the same <code class="kbd">design_handoff_charts_redesign</code> folder alongside chart tickets 01–15 and admin tickets 16–25.
+  </p>
+
+  <div class="opps">
+    <div class="row head"><div>#</div><div>Improvement</div><div>What it changes</div><div>Effort</div><div>Impact</div></div>
+
+    <div class="row">
+      <div class="id">26</div>
+      <div class="what">Rewrite FilterBar with NID tokens + presets</div>
+      <div class="why">Drop the slate/blue Tailwind; new shape: segmented preset control (12m / 5a / 10a / Tudo / Personalizar) + custom range. Persists the active period as a chip and broadcasts it via <code class="kbd">describeFilter()</code> (ticket 12) so the page header mirror works.</div>
+      <div><span class="tag s">S</span></div>
+      <div><span class="tag high">high</span></div>
+    </div>
+
+    <div class="row">
+      <div class="id">27</div>
+      <div class="what">Stop passing color arrays from dataset pages</div>
+      <div class="why">Audit every <code class="kbd">/pages/[dataset]/*.jsx</code>: remove hex-coded <code class="kbd">colors={[…]}</code> props on <code class="kbd">HBarChart</code>, <code class="kbd">DonutChart</code>, <code class="kbd">StackedBarChart</code>. Charts default to monochrome (after ticket 03 lands the <code class="kbd">baseColor</code> prop). Affects: INSS, BolsaFamilia, PeDeMeia, Empresas, Comex, Pix, Estban.</div>
+      <div><span class="tag s">S</span></div>
+      <div><span class="tag high">high</span></div>
+    </div>
+
+    <div class="row">
+      <div class="id">28</div>
+      <div class="what">Recharts sweep — kill the remaining instances</div>
+      <div class="why">Ticket 02 only covered PibPage. There's also a <code class="kbd">FunnelChart</code> in <code class="kbd">FunilTab.jsx</code>. Likely more in unscanned files. Do a full <code class="kbd">grep -r "from \"recharts\""</code> and migrate. Then <code class="kbd">npm uninstall recharts</code>.</div>
+      <div><span class="tag m">M</span></div>
+      <div><span class="tag high">high</span></div>
+    </div>
+
+    <div class="row">
+      <div class="id">29</div>
+      <div class="what">NidFunnel component</div>
+      <div class="why">Replace the Recharts funnel in <code class="kbd">FunilTab</code> with a pure-CSS funnel + toggle to kanban-list view. Conversion rate inline per stage. Component lives in <code class="kbd">/components/nid/Funnel.jsx</code>.</div>
+      <div><span class="tag m">M</span></div>
+      <div><span class="tag med">medium</span></div>
+    </div>
+
+    <div class="row">
+      <div class="id">30</div>
+      <div class="what">Shared NidTabBar component</div>
+      <div class="why">Replace per-page tab-bar JSX in <code class="kbd">ProjetosPage</code>, <code class="kbd">DesenvEconomicoPage</code>, and the new Saldo/Bruto toggle in CagedPage with one component. Token-styled, supports counts in tab labels.</div>
+      <div><span class="tag s">S</span></div>
+      <div><span class="tag med">medium</span></div>
+    </div>
+
+    <div class="row">
+      <div class="id">31</div>
+      <div class="what">Rewrite MandatoTimeline as a rail-based component</div>
+      <div class="why">Explicit horizontal rail + dots colored by kind (start / obras / política / evento), themed cards, top-of-card kind row, and a tab-bar filter. Drop the pastel-card scroller.</div>
+      <div><span class="tag m">M</span></div>
+      <div><span class="tag med">medium</span></div>
+    </div>
+
+    <div class="row">
+      <div class="id">32</div>
+      <div class="what">Projetos · Acervo &amp; Acompanhamento card grid</div>
+      <div class="why">Card grid with image slot, eixo tag (color per eixo from a small palette), description, social proof (adopters + star rating). Acompanhamento tab reuses the same card shape with status pills.</div>
+      <div><span class="tag m">M</span></div>
+      <div><span class="tag med">medium</span></div>
+    </div>
+
+    <div class="row">
+      <div class="id">33</div>
+      <div class="what">Indicadores Internos · dense KPI grid</div>
+      <div class="why">12-cell grid of compact KPI cells (18px values, inline spark + delta). A dashed "+ Adicionar" cell at the end (uses ChartState empty pattern). Pulls in tickets 01 + 09 components.</div>
+      <div><span class="tag s">S</span></div>
+      <div><span class="tag med">medium</span></div>
+    </div>
+
+    <div class="row">
+      <div class="id">34</div>
+      <div class="what">Unified Calendário (dados + mandato + releases)</div>
+      <div class="why">One calendar component that aggregates events from 3 sources via a hook (<code class="kbd">useCalendarEvents()</code>). Month / list toggle. Event colored by kind. Today highlighted with accent-1 tint. Existing per-source pages link out to here.</div>
+      <div><span class="tag m">M</span></div>
+      <div><span class="tag med">medium</span></div>
+    </div>
+
+    <div class="row">
+      <div class="id">35</div>
+      <div class="what">Sweep all Tailwind <code class="kbd">dark:</code> modifiers from feature pages</div>
+      <div class="why">Replace <code class="kbd">bg-white dark:bg-slate-900</code> patterns with <code class="kbd">var(--panel)</code> token-class usage. This finishes the job of making the entire app respect the 5-theme switcher. Bulk find-and-replace work; ~30 min per page.</div>
+      <div><span class="tag l">L</span></div>
+      <div><span class="tag high">high</span></div>
+    </div>
+  </div>
+</section>
+
+
+<section id="next">
+  <div class="sec-head"><span class="sec-num">08 · NEXT</span></div>
+  <h2 class="sec-title">Where to start.</h2>
+  <p class="sec-sub">
+    Highest leverage in this pack:
+  </p>
+  <p class="sec-sub" style="margin-top:0;">
+    <b>26 (FilterBar rewrite)</b> — single component, fixes 12 pages.<br>
+    <b>27 (drop color arrays)</b> — kills the rainbow problem across 7 dataset pages with one PR.<br>
+    <b>28 (Recharts sweep)</b> — finishes what ticket 02 started.<br>
+    <b>35 (Tailwind dark: cleanup)</b> — the big one, but it's the only way the whole app respects the theme switcher.
+  </p>
+  <p class="sec-sub" style="margin-top:18px;">
+    Want me to generate the actual ticket files (26–35) and merge them into the handoff folder alongside the chart + admin tickets?
+  </p>
+</section>
+
+<footer>
+  Review · 17 mai 2026 · uses theme-neon tokens · pairs with Charts Review &amp; Admin Panel Review for full system coverage
+</footer>
+
+</div>
+</body>
+</html>
