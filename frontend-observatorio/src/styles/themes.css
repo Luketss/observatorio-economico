@@ -1466,3 +1466,45 @@ body.theme-light .nid-filterbar [aria-pressed="true"] {
   }
 }
 
+/* ─────────────────────────────────────────────────────────────────────────────
+   NidTabBar — ticket 30
+   Standalone pill-row tab bar for page-level section switching.
+   Lives OUTSIDE panel headers (those use .nid-tab inside NidPanel).
+   ───────────────────────────────────────────────────────────────────────────── */
+.nid-tabbar {
+  display: inline-flex;
+  background: var(--panel-2);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 4px;
+  gap: 2px;
+}
+.nid-tabbar__tab {
+  padding: 8px 14px;
+  border: none; background: transparent;
+  border-radius: 8px;
+  font: 600 12px/1 var(--font-display);
+  color: var(--text-dim);
+  cursor: pointer;
+  display: inline-flex; align-items: center; gap: 6px;
+  transition: background 0.15s, color 0.15s;
+}
+.nid-tabbar__tab:hover { color: var(--text); }
+.nid-tabbar__tab.is-active {
+  background: color-mix(in oklab, var(--accent-1) 14%, transparent);
+  color: var(--text);
+}
+.nid-tabbar__count {
+  font: 600 10px/1 var(--font-mono);
+  color: var(--text-mute);
+  padding: 2px 6px;
+  border-radius: 999px;
+  background: var(--panel-2);
+  border: 1px solid var(--border);
+}
+.nid-tabbar__tab.is-active .nid-tabbar__count {
+  color: var(--accent-1);
+  border-color: color-mix(in oklab, var(--accent-1) 28%, transparent);
+  background: color-mix(in oklab, var(--accent-1) 10%, transparent);
+}
+
