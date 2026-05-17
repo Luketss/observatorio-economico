@@ -12,6 +12,7 @@
 
 /* ─── Theme: NEON CYBER (default dark) ─── */
 body.theme-neon {
+  --admin-accent: var(--accent-3); /* purple #b97cff */
   --bg:        #050610;
   --bg-grad:   radial-gradient(ellipse 1200px 600px at 20% -10%, #0d1230 0%, transparent 60%),
                radial-gradient(ellipse 900px 500px at 95% 0%, #1a0830 0%, transparent 55%),
@@ -42,6 +43,7 @@ body.theme-neon {
 
 /* ─── Theme: AURORA ─── */
 body.theme-aurora {
+  --admin-accent: var(--accent-3); /* purple #a78bfa */
   --bg:        #0b0820;
   --bg-grad:   radial-gradient(ellipse 1400px 700px at 50% -20%, #2b1564 0%, transparent 55%),
                radial-gradient(ellipse 900px 500px at 90% 100%, #0d2d4a 0%, transparent 50%),
@@ -72,6 +74,7 @@ body.theme-aurora {
 
 /* ─── Theme: SUNSET GLASS ─── */
 body.theme-sunset {
+  --admin-accent: var(--accent-4); /* gold/yellow #ffd166 — purple is too close to sunset reds */
   --bg:        #190d18;
   --bg-grad:   radial-gradient(ellipse 1200px 600px at 15% -10%, #3d1820 0%, transparent 60%),
                radial-gradient(ellipse 900px 500px at 95% 100%, #2a1004 0%, transparent 55%),
@@ -102,6 +105,7 @@ body.theme-sunset {
 
 /* ─── Theme: MINIMAL DARK ─── */
 body.theme-minimal {
+  --admin-accent: var(--accent-3); /* indigo #6366f1 */
   --bg:        #0a0a0c;
   --bg-grad:   #0a0a0c;
   --panel:     #111114;
@@ -130,6 +134,7 @@ body.theme-minimal {
 
 /* ─── Theme: LIGHT PRO ─── */
 body.theme-light {
+  --admin-accent: var(--accent-3); /* violet #8b5cf6 */
   --bg:        #f7f8fb;
   --bg-grad:   radial-gradient(ellipse 1200px 600px at 15% -10%, #eef2fc 0%, transparent 60%),
                radial-gradient(ellipse 900px 500px at 95% 0%, #f3edff 0%, transparent 55%),
@@ -311,6 +316,22 @@ body.theme-light .nid-nav-item:hover:not(.active) {
   background: rgba(15, 23, 42, 0.04);
   color: #0f172a;
 }
+/* ── Admin shell: active nav uses --admin-accent instead of --accent-1 ── */
+.admin-shell .nid-nav-item.admin-active {
+  border-left-color: var(--admin-accent);
+  background: linear-gradient(90deg, color-mix(in oklab, var(--admin-accent) 10%, transparent), transparent);
+}
+body.theme-neon .admin-shell .nid-nav-item.admin-active,
+body.theme-aurora .admin-shell .nid-nav-item.admin-active {
+  box-shadow: inset 2px 0 12px -4px color-mix(in oklab, var(--admin-accent) 40%, transparent);
+}
+body.theme-light .admin-shell .nid-nav-item.admin-active {
+  background: color-mix(in oklab, var(--admin-accent) 10%, transparent);
+  border-left-color: var(--admin-accent);
+  color: var(--admin-accent);
+  font-weight: 700;
+}
+
 .nid-nav-section {
   font-size: 10px;
   color: var(--text-mute);
