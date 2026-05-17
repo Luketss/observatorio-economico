@@ -10,6 +10,7 @@ import {
   AreaLineChart, TwinBarChart, DonutChart, HBarChart, StackedBarChart,
   fmtNumber, fmtNumberShort,
 } from "../../components/nid/charts";
+import ChartState from "../../components/nid/ChartState.jsx";
 
 const A1 = "var(--accent-1)";
 const A2 = "var(--accent-2)";
@@ -318,7 +319,9 @@ export default function CagedPage() {
       {loading ? (
         <div className="nid-kpis">
           {[...Array(4)].map((_, i) => (
-            <div key={i} className="nid-kpi" style={{ minHeight: 150, opacity: 0.4 }} />
+            <div key={i} className="nid-kpi">
+              <ChartState kind="loading" shape="kpi" height={120} />
+            </div>
           ))}
         </div>
       ) : (

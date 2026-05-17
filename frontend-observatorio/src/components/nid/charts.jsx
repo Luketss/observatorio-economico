@@ -1,4 +1,5 @@
 import { useEffect, useId, useRef, useState } from "react";
+import ChartState from "./ChartState.jsx";
 
 // ────────── glow resolver ──────────
 function resolveGlow(glow) {
@@ -128,14 +129,18 @@ export function AreaLineChart({
   data, height = 280, glow = "hover", color = "var(--accent-1)",
   yFmt = fmtMoneyShort, tipFmt = fmtMoneyFull, label = "PIB Total",
   yCaption,
-  benchmark,   // { value, label, color? }
-  forecast,    // { steps, method, color?, label? }
-  annotations, // [{ x, kind, label? } | { xRange:[x1,x2], kind }]
+  benchmark,    // { value, label, color? }
+  forecast,     // { steps, method, color?, label? }
+  annotations,  // [{ x, kind, label? } | { xRange:[x1,x2], kind }]
+  loading,
+  emptyMessage,
+  emptyAction,
 }) {
   const id = useId().replace(/:/g, "");
   const [wrapRef, w] = useContainerWidth(800);
   const [hover, setHover] = useState(null);
-  if (!data || data.length === 0) return <EmptyChart h={height} />;
+  if (loading) return <ChartState kind="loading" shape="line" height={height} />;
+  if (!data || data.length === 0) return <EmptyChart h={height} shape="line" message={emptyMessage} action={emptyAction} />;
   const glowMode = resolveGlow(glow);
   const glowAlways = glowMode === "always";
   const glowHover  = glowMode !== "off";
@@ -388,11 +393,15 @@ export function StackedBarChart({
   yFmt = fmtMoneyShort, tipFmt = fmtMoneyFull,
   yCaption,
   baseColor, showTotalLabel = false, highlightLast = false,
+  loading,
+  emptyMessage,
+  emptyAction,
 }) {
   const id = useId().replace(/:/g, "");
   const [wrapRef, w] = useContainerWidth(800);
   const [hover, setHover] = useState(null);
-  if (!data || data.length === 0) return <EmptyChart h={height} />;
+  if (loading) return <ChartState kind="loading" shape="stacked" height={height} />;
+  if (!data || data.length === 0) return <EmptyChart h={height} shape="stacked" message={emptyMessage} action={emptyAction} />;
   const glowMode = resolveGlow(glow);
   const glowHover  = glowMode !== "off";
 
@@ -548,12 +557,16 @@ export function MultiLineChart({
   focusColor,   // defaults to var(--accent-2)
   showMedian,   // boolean — draw dashed peer-median line
   showBand,     // boolean — draw peer min/max band
+  loading,
+  emptyMessage,
+  emptyAction,
 }) {
   const id = useId().replace(/:/g, "");
   const [wrapRef, w] = useContainerWidth(800);
   const [hover, setHover] = useState(null);
   const [hoverSeries, setHoverSeries] = useState(null);
-  if (!data || data.length === 0) return <EmptyChart h={height} />;
+  if (loading) return <ChartState kind="loading" shape="line" height={height} />;
+  if (!data || data.length === 0) return <EmptyChart h={height} shape="line" message={emptyMessage} action={emptyAction} />;
   const glowMode = resolveGlow(glow);
   const glowHover  = glowMode !== "off";
 
@@ -1256,9 +1269,13 @@ export function TwinBarChart({
   yCaption,
   mode = "saldo",
   showCumulative,
+  loading,
+  emptyMessage,
+  emptyAction,
 }) {
   const [wrapRef, w] = useContainerWidth(800);
-  if (!data || data.length === 0) return <EmptyChart h={height} />;
+  if (loading) return <ChartState kind="loading" shape="twin" height={height} />;
+  if (!data || data.length === 0) return <EmptyChart h={height} shape="twin" message={emptyMessage} action={emptyAction} />;
 
   // Default showCumulative to true in saldo mode, false otherwise.
   const cumulative = showCumulative != null ? showCumulative : mode === "saldo";
@@ -1278,7 +1295,7 @@ function DonutChartCore({
 }) {
   const id = useId().replace(/:/g, "");
   const [hoverSlice, setHoverSlice] = useState(null);
-  if (!data || data.length === 0) return <EmptyChart h={height} />;
+  if (!data || data.length === 0) return <EmptyChart h={height} shape="donut" />;
   const glowMode = resolveGlow(glow);
   const glowAlways = glowMode === "always";
   const glowHover  = glowMode !== "off";
@@ -1417,7 +1434,13 @@ function PercentBarChart({ data, baseColor, centerLabel, centerSub }) {
 export function DonutChart({
   data, baseColor, prefer = "auto", threshold = 4,
   colors, height, glow, centerLabel, centerSub,
+  loading,
+  emptyMessage,
+  emptyAction,
 }) {
+  if (loading) return <ChartState kind="loading" shape="donut" height={height || 220} />;
+  if (!data || data.length === 0) return <EmptyChart h={height || 220} shape="donut" message={emptyMessage} action={emptyAction} />;
+
   const useBar =
     prefer === "bar" ||
     (prefer === "auto" && data && data.length > threshold);
@@ -1455,8 +1478,12 @@ export function HBarChart({
   glow,
   height,
   fmt = fmtMoneyFull,
+  loading,
+  emptyMessage,
+  emptyAction,
 }) {
-  if (!data || data.length === 0) return <EmptyChart h={height || 240} />;
+  if (loading) return <ChartState kind="loading" shape="hbar" height={height || 240} />;
+  if (!data || data.length === 0) return <EmptyChart h={height || 240} shape="hbar" message={emptyMessage} action={emptyAction} />;
   const max = Math.max(...data.map((d) => d.value)) || 1;
 
   return (
@@ -1492,13 +1519,8 @@ export function HBarChart({
   );
 }
 
-function EmptyChart({ h = 240 }) {
+function EmptyChart({ h = 240, shape = "line", message, action }) {
   return (
-    <div style={{
-      height: h, display: "grid", placeItems: "center",
-      color: "var(--text-mute)", fontSize: 13, fontFamily: "var(--font-mono)",
-    }}>
-      Sem dados disponíveis
-    </div>
+    <ChartState kind="empty" shape={shape} height={h} message={message} action={action} />
   );
 }

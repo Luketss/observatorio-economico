@@ -10,6 +10,7 @@ import KpiCard from "../../components/KpiCard";
 import PlanGate from "../../components/PlanGate";
 import { NidPanel, NidLegend } from "../../components/nid/Panel";
 import { useAuth } from "../../context/AuthContext";
+import ChartState from "../../components/nid/ChartState.jsx";
 import {
   AreaLineChart,
   StackedBarChart,
@@ -168,7 +169,9 @@ export default function PibPage() {
       {loading ? (
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           {[...Array(3)].map((_, i) => (
-            <div key={i} className="bg-white dark:bg-slate-900 p-6 rounded-2xl border border-slate-100 dark:border-slate-800 animate-pulse h-28" />
+            <div key={i} className="bg-white dark:bg-slate-900 p-6 rounded-2xl border border-slate-100 dark:border-slate-800">
+              <ChartState kind="loading" shape="kpi" height={80} />
+            </div>
           ))}
         </div>
       ) : (
