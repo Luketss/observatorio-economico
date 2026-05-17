@@ -690,3 +690,80 @@ body.theme-light .nid-tab.active {
 .nid-tip .tip-row .name { color: var(--text-dim); font-weight: 500; display: flex; align-items: center; gap: 6px; }
 .nid-tip .tip-row .swatch { width: 8px; height: 8px; border-radius: 2px; display: inline-block; }
 
+/* ── HBarChart grid layout ─────────────────────────────────────────── */
+.nid-hbar { display: flex; flex-direction: column; }
+.nid-hbar-row {
+  display: grid;
+  grid-template-columns: 28px 1fr 100px;
+  gap: 12px;
+  align-items: center;
+  padding: 8px 0;
+  border-bottom: 1px solid var(--border);
+}
+/* When showPosition is false the first column (pos) is absent — collapse it */
+.nid-hbar-row:not(:has(.pos)) {
+  grid-template-columns: 1fr 100px;
+}
+.nid-hbar-row:last-child { border-bottom: none; }
+
+.nid-hbar-row .pos {
+  font: 700 11px/1 var(--font-mono);
+  color: var(--text-mute);
+  text-align: right;
+  letter-spacing: 0.04em;
+}
+.nid-hbar-row .pos.own { color: var(--accent-2); }
+
+.nid-hbar-row .bar-wrap {
+  position: relative;
+  height: 26px;
+}
+.nid-hbar-row .bar {
+  position: absolute;
+  inset: 0 auto 0 0;
+  border-radius: 5px;
+  background: linear-gradient(
+    90deg,
+    color-mix(in oklab, var(--bar) 55%, transparent),
+    color-mix(in oklab, var(--bar) 12%, transparent)
+  );
+  border-left: 2px solid var(--bar);
+}
+.nid-hbar-row .city {
+  position: absolute;
+  left: 10px;
+  top: 50%;
+  transform: translateY(-50%);
+  font: 600 12.5px/1 var(--font-display);
+  color: var(--text);
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.4);
+  max-width: 75%;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.nid-hbar-row .city.own::after {
+  content: "você";
+  margin-left: 8px;
+  font: 600 9px/1 var(--font-mono);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--accent-2);
+  background: color-mix(in oklab, var(--accent-2) 15%, transparent);
+  padding: 2px 5px;
+  border-radius: 3px;
+  vertical-align: 1px;
+}
+.nid-hbar-row .val {
+  text-align: right;
+  font: 600 12px/1 var(--font-mono);
+  color: var(--text-dim);
+}
+.nid-hbar-row .val.own { color: var(--accent-2); }
+
+/* Light theme: drop the text-shadow on city labels */
+body.theme-light .nid-hbar-row .city {
+  text-shadow: none;
+  color: var(--text);
+}
+

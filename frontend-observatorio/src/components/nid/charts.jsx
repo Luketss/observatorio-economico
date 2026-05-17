@@ -1445,60 +1445,49 @@ export function DonutChart({
 
 // ────────── Horizontal Bar (Ranking) ──────────
 export function HBarChart({
-  data, color = "var(--accent-1)", glow = "hover", height = 240, fmt = fmtMoneyFull,
+  data,
+  highlight,
+  showPosition = false,
+  positionOffset = 0,
+  color = "var(--accent-1)",
+  highlightColor = "var(--accent-2)",
+  // legacy props — kept for backward-compat (no-op in new layout)
+  glow,
+  height,
+  fmt = fmtMoneyFull,
 }) {
-  const id = useId().replace(/:/g, "");
-  const [hoverRow, setHoverRow] = useState(null);
-  if (!data || data.length === 0) return <EmptyChart h={height} />;
-  const glowMode = resolveGlow(glow);
-  const glowAlways = glowMode === "always";
-  const glowHover  = glowMode !== "off";
+  if (!data || data.length === 0) return <EmptyChart h={height || 240} />;
   const max = Math.max(...data.map((d) => d.value)) || 1;
-  const rowH = (height - 8) / data.length;
+
   return (
-    <div className="nid-chart-wrap" style={{ position: "relative", height }}
-      onMouseLeave={() => setHoverRow(null)}>
-      <svg viewBox={`0 0 100 ${height}`} preserveAspectRatio="none" style={{ height, width: "100%" }}>
-        <defs>
-          <linearGradient id={`hb-${id}`} x1="0" y1="0" x2="1" y2="0">
-            <stop offset="0%" stopColor={color} stopOpacity="0.7" />
-            <stop offset="100%" stopColor={color} stopOpacity="0.25" />
-          </linearGradient>
-          <filter id={`hglow-${id}`}>
-            <feGaussianBlur stdDeviation="1.5" />
-          </filter>
-        </defs>
-        {data.map((d, i) => {
-          const y = i * rowH + 5;
-          const w = (d.value / max) * 100;
-          const isH = hoverRow === i;
-          const showGlow = glowAlways || (glowHover && isH);
-          return (
-            <g key={i} onMouseEnter={() => setHoverRow(i)}>
-              <rect x="0" y={y} width="100" height={rowH - 10} rx="3" fill="var(--panel-2)" />
-              {showGlow && (
-                <rect x="0" y={y - 1} width={w} height={rowH - 8} rx="3" fill={color} opacity="0.6" filter={`url(#hglow-${id})`} />
-              )}
-              <rect x="0" y={y} width={w} height={rowH - 10} rx="3" fill={`url(#hb-${id})`} stroke={color} strokeWidth="0.3"
-                opacity={hoverRow != null && !isH ? 0.5 : 1} />
-            </g>
-          );
-        })}
-      </svg>
-      <div style={{
-        position: "absolute", inset: 0, display: "flex", flexDirection: "column",
-        justifyContent: "space-around", padding: "5px 12px", pointerEvents: "none",
-      }}>
-        {data.map((d, i) => (
-          <div key={i} style={{
-            display: "flex", justifyContent: "space-between",
-            fontSize: 12, fontFamily: "var(--font-mono)", fontWeight: 600,
-          }}>
-            <span style={{ color: "var(--text)" }}>{d.label}</span>
-            <span style={{ color: "var(--text-dim)" }}>{fmt(d.value)}</span>
+    <div className="nid-hbar" role="list">
+      {data.map((d, i) => {
+        const pct = (d.value / max) * 100;
+        const isOwn = Boolean(highlight && d.label === highlight);
+        const barColor = isOwn ? highlightColor : color;
+        return (
+          <div
+            className="nid-hbar-row"
+            key={d.label ?? i}
+            role="listitem"
+            aria-label={`${i + 1 + positionOffset}. ${d.label}: ${fmt(d.value)}`}
+          >
+            {showPosition && (
+              <span className={`pos${isOwn ? " own" : ""}`}>
+                #{i + 1 + positionOffset}
+              </span>
+            )}
+            <div className="bar-wrap">
+              <div
+                className={`bar${isOwn ? " own" : ""}`}
+                style={{ width: `${pct}%`, "--bar": barColor }}
+              />
+              <span className={`city${isOwn ? " own" : ""}`}>{d.label}</span>
+            </div>
+            <span className={`val${isOwn ? " own" : ""}`}>{fmt(d.value)}</span>
           </div>
-        ))}
-      </div>
+        );
+      })}
     </div>
   );
 }
