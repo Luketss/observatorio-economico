@@ -22,18 +22,9 @@ import {
   YAxis,
   Tooltip,
   Legend,
-  Cell,
 } from "recharts";
 import ChartState from "../../components/nid/ChartState.jsx";
 
-const COLORS = [
-  "#3b82f6",
-  "#10b981",
-  "#f59e0b",
-  "#8b5cf6",
-  "#ef4444",
-  "#06b6d4",
-];
 
 const fmtBRL = (v) =>
   v != null
@@ -197,12 +188,9 @@ export default function InssPage() {
                   <Bar
                     dataKey="quantidade_beneficios"
                     name="Benefícios"
+                    fill="var(--accent-3)"
                     radius={[0, 4, 4, 0]}
-                  >
-                    {topCategorias.map((_, i) => (
-                      <Cell key={i} fill={COLORS[i % COLORS.length]} />
-                    ))}
-                  </Bar>
+                  />
                 </BarChart>
               </ResponsiveContainer>
             </div>
@@ -242,7 +230,7 @@ export default function InssPage() {
                     type="monotone"
                     dataKey="quantidade_beneficios"
                     name="Benefícios"
-                    stroke="#3b82f6"
+                    stroke="var(--accent-3)"
                     strokeWidth={2.5}
                     dot={{ r: 4 }}
                   />

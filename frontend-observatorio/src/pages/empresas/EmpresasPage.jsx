@@ -21,16 +21,6 @@ import {
   Legend,
 } from "recharts";
 
-const COLORS = [
-  "#3b82f6",
-  "#10b981",
-  "#f59e0b",
-  "#8b5cf6",
-  "#ef4444",
-  "#06b6d4",
-  "#f97316",
-  "#a855f7",
-];
 
 function MiniStat({ label, value, color }) {
   return (
@@ -192,7 +182,7 @@ export default function EmpresasPage() {
                     labelLine={false}
                   >
                     {porPorte.map((_, i) => (
-                      <Cell key={i} fill={COLORS[i % COLORS.length]} />
+                      <Cell key={i} fill={`color-mix(in srgb, var(--accent-1) ${Math.round(100 - i * 15)}%, transparent)`} />
                     ))}
                   </Pie>
                   <Tooltip contentStyle={ct.tooltipStyle} formatter={(v) => [fmtNum(v), "Empresas"]} />
@@ -306,11 +296,7 @@ export default function EmpresasPage() {
                   width={220}
                 />
                 <Tooltip contentStyle={ct.tooltipStyle} formatter={(v) => [fmtNum(v), "Empresas"]} />
-                <Bar dataKey="total_vinculos" name="Empresas" radius={[0, 4, 4, 0]}>
-                  {porCnaeSecao.map((_, i) => (
-                    <Cell key={i} fill={COLORS[i % COLORS.length]} />
-                  ))}
-                </Bar>
+                <Bar dataKey="total_vinculos" name="Empresas" fill="var(--accent-1)" radius={[0, 4, 4, 0]} />
               </BarChart>
             </ResponsiveContainer>
           </div>
@@ -366,11 +352,7 @@ export default function EmpresasPage() {
                 />
                 <Tooltip contentStyle={ct.tooltipStyle} formatter={(v) => [fmtBRL(v)]} />
                 <Legend />
-                <Bar dataKey="capital_medio" name="Capital Médio" fill="#3b82f6" radius={[4, 4, 0, 0]}>
-                  {capitalPorPorte.map((_, i) => (
-                    <Cell key={i} fill={COLORS[i % COLORS.length]} />
-                  ))}
-                </Bar>
+                <Bar dataKey="capital_medio" name="Capital Médio" fill="var(--accent-1)" radius={[4, 4, 0, 0]} />
               </BarChart>
             </ResponsiveContainer>
           </div>

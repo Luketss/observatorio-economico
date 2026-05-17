@@ -23,14 +23,6 @@ import {
   Legend,
 } from "recharts";
 
-const COLORS = [
-  "#3b82f6",
-  "#10b981",
-  "#f59e0b",
-  "#8b5cf6",
-  "#ef4444",
-  "#06b6d4",
-];
 
 const fmtBRL = (v) =>
   v != null
@@ -175,8 +167,8 @@ export default function PeDeMeiaPage() {
                     x2="0"
                     y2="1"
                   >
-                    <stop offset="5%" stopColor="#10b981" stopOpacity={0.2} />
-                    <stop offset="95%" stopColor="#10b981" stopOpacity={0} />
+                    <stop offset="5%" stopColor="var(--accent-5)" stopOpacity={0.2} />
+                    <stop offset="95%" stopColor="var(--accent-5)" stopOpacity={0} />
                   </linearGradient>
                 </defs>
                 <CartesianGrid strokeDasharray="3 3" stroke={ct.grid} />
@@ -197,7 +189,7 @@ export default function PeDeMeiaPage() {
                   type="monotone"
                   dataKey="total_estudantes"
                   name="Estudantes"
-                  stroke="#10b981"
+                  stroke="var(--accent-5)"
                   strokeWidth={2}
                   fill="url(#colorEstudantes)"
                   dot={false}
@@ -250,15 +242,9 @@ export default function PeDeMeiaPage() {
                   <Bar
                     dataKey="total_estudantes"
                     name="Estudantes"
+                    fill="var(--accent-5)"
                     radius={[0, 4, 4, 0]}
-                  >
-                    {porEtapa.map((_, i) => (
-                      <Cell
-                        key={i}
-                        fill={COLORS[i % COLORS.length]}
-                      />
-                    ))}
-                  </Bar>
+                  />
                 </BarChart>
               </ResponsiveContainer>
             </div>
@@ -295,7 +281,7 @@ export default function PeDeMeiaPage() {
                     {porIncentivo.map((_, i) => (
                       <Cell
                         key={i}
-                        fill={COLORS[i % COLORS.length]}
+                        fill={`color-mix(in srgb, var(--accent-5) ${Math.round(100 - i * 18)}%, transparent)`}
                       />
                     ))}
                   </Pie>

@@ -23,18 +23,9 @@ import {
   YAxis,
   Tooltip,
   Legend,
-  Cell,
 } from "recharts";
 import ChartState from "../../components/nid/ChartState.jsx";
 
-const COLORS = [
-  "#3b82f6",
-  "#10b981",
-  "#f59e0b",
-  "#8b5cf6",
-  "#ef4444",
-  "#06b6d4",
-];
 
 const fmtBRL = (v) =>
   v != null
@@ -401,12 +392,9 @@ export default function EstbanPage() {
                 <Bar
                   dataKey="valor_operacoes_credito"
                   name="Operações de Crédito"
+                  fill="var(--accent-1)"
                   radius={[0, 4, 4, 0]}
-                >
-                  {porInstituicao.slice(0, 10).map((_, i) => (
-                    <Cell key={i} fill={COLORS[i % COLORS.length]} />
-                  ))}
-                </Bar>
+                />
               </BarChart>
             </ResponsiveContainer>
           </div>

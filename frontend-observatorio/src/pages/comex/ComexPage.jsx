@@ -21,18 +21,9 @@ import {
   YAxis,
   Tooltip,
   Legend,
-  Cell,
 } from "recharts";
 import ChartState from "../../components/nid/ChartState.jsx";
 
-const COLORS = [
-  "#3b82f6",
-  "#10b981",
-  "#f59e0b",
-  "#8b5cf6",
-  "#ef4444",
-  "#06b6d4",
-];
 
 const fmtUSD = (v) =>
   v != null
@@ -367,11 +358,7 @@ export default function ComexPage() {
                     width={130}
                   />
                   <Tooltip contentStyle={ct.tooltipStyle} formatter={(v) => [fmtUSD(v), "Valor USD"]} />
-                  <Bar dataKey="valor_usd" name="Valor USD" radius={[0, 4, 4, 0]}>
-                    {porProduto.map((_, i) => (
-                      <Cell key={i} fill={COLORS[i % COLORS.length]} />
-                    ))}
-                  </Bar>
+                  <Bar dataKey="valor_usd" name="Valor USD" fill="var(--accent-4)" radius={[0, 4, 4, 0]} />
                 </BarChart>
               </ResponsiveContainer>
             </div>
@@ -399,9 +386,7 @@ export default function ComexPage() {
                   />
                   <YAxis type="category" dataKey="produto" tick={{ fontSize: 9, fill: ct.tick }} stroke={ct.axis} width={130} />
                   <Tooltip contentStyle={ct.tooltipStyle} formatter={(v) => [`${Number(v).toLocaleString("pt-BR")} kg`, "Peso"]} />
-                  <Bar dataKey="peso_kg" name="Peso (kg)" radius={[0, 4, 4, 0]}>
-                    {porProduto.map((_, i) => <Cell key={i} fill={COLORS[i % COLORS.length]} />)}
-                  </Bar>
+                  <Bar dataKey="peso_kg" name="Peso (kg)" fill="var(--accent-4)" radius={[0, 4, 4, 0]} />
                 </BarChart>
               </ResponsiveContainer>
             </div>
@@ -453,11 +438,7 @@ export default function ComexPage() {
                     width={110}
                   />
                   <Tooltip contentStyle={ct.tooltipStyle} formatter={(v) => [fmtUSD(v), "Valor USD"]} />
-                  <Bar dataKey="valor_usd" name="Valor USD" radius={[0, 4, 4, 0]}>
-                    {porPais.map((_, i) => (
-                      <Cell key={i} fill={COLORS[i % COLORS.length]} />
-                    ))}
-                  </Bar>
+                  <Bar dataKey="valor_usd" name="Valor USD" fill="var(--accent-4)" radius={[0, 4, 4, 0]} />
                 </BarChart>
               </ResponsiveContainer>
             </div>
