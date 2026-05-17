@@ -3,10 +3,30 @@ import { motion } from "framer-motion";
 import api from "../../services/api";
 import { PhotoIcon } from "@heroicons/react/24/outline";
 import AdminTable from "../../components/nid/AdminTable";
+import AdminStats from "../../components/nid/AdminStats";
 import BulkActions from "../../components/nid/BulkActions";
 import { useRowSelection } from "../../hooks/useRowSelection";
 
 // ─── helpers ──────────────────────────────────────────────────────────────────
+
+/** Returns a human-readable relative time string for the most recent date in the list */
+function mostRecentRelative(dates) {
+  const valid = dates
+    .map((d) => (d ? new Date(d) : null))
+    .filter((d) => d && !isNaN(d));
+  if (!valid.length) return "—";
+  const latest = new Date(Math.max(...valid.map((d) => d.getTime())));
+  const diffMs = Date.now() - latest.getTime();
+  const diffMin = Math.floor(diffMs / 60000);
+  if (diffMin < 1) return "agora";
+  if (diffMin < 60) return `há ${diffMin} min`;
+  const diffH = Math.floor(diffMin / 60);
+  if (diffH < 24) return `há ${diffH} h`;
+  const diffD = Math.floor(diffH / 24);
+  if (diffD < 30) return `há ${diffD} d`;
+  const diffM = Math.floor(diffD / 30);
+  return `há ${diffM} mes${diffM !== 1 ? "es" : ""}`;
+}
 
 const PLANO_LABEL = { pro: "Pro", premium: "Premium", free: "Gratuito" };
 const NEXT_PLANO = { free: "pro", pro: "premium", premium: "free" };
@@ -289,6 +309,41 @@ export default function MunicipiosAdminPage() {
           </p>
         </div>
       </div>
+
+      {/* KPI strip */}
+      {(() => {
+        const total = municipios.length;
+        const paid = municipios.filter((m) => m.plano !== "free").length;
+        const free = total - paid;
+        const paidPct = total > 0 ? Math.round((paid / total) * 100) : 0;
+        const lastSync = mostRecentRelative(municipios.map((m) => m.updated_at));
+        return (
+          <AdminStats
+            items={[
+              { label: "Municípios", value: total },
+              {
+                label: "Pro / Premium",
+                value: paid,
+                unit: ` · ${paidPct}%`,
+              },
+              { label: "Última atualização", value: lastSync },
+              {
+                label: "Free",
+                value: free,
+                detail: free > 0 ? (
+                  <span>
+                    <span style={{ color: "var(--text-mute)" }}>● </span>sem plano pago
+                  </span>
+                ) : (
+                  <span>
+                    <span style={{ color: "var(--accent-1)" }}>● </span>todos pagos
+                  </span>
+                ),
+              },
+            ]}
+          />
+        );
+      })()}
 
       {/* Bulk toolbar — renders nothing when count === 0 */}
       <BulkActions count={count} onClear={clear}>

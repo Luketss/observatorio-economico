@@ -1096,6 +1096,27 @@ body.theme-light .nid-hbar-row .city {
   border-color: var(--border-strong);
 }
 
+/* ── AdminStats KPI strip ─────────────────────────────────────────────────── */
+.nid-admin-stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 12px;
+  margin: 14px 0 18px;
+}
+.nid-admin-stats__cell {
+  padding: 14px 16px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--panel);
+  transition: border-color 0.15s, background 0.15s;
+}
+.nid-admin-stats__cell[role="button"] { cursor: pointer; }
+.nid-admin-stats__cell[role="button"]:hover { border-color: var(--border-strong); background: color-mix(in oklab, var(--admin-accent) 4%, var(--panel)); }
+.nid-admin-stats__label { font: 500 10.5px/1 var(--font-mono); color: var(--text-mute); text-transform: uppercase; letter-spacing: 0.14em; margin-bottom: 8px; }
+.nid-admin-stats__value { font: 700 22px/1.05 var(--font-display); color: var(--text); font-variant-numeric: tabular-nums; }
+.nid-admin-stats__unit { font: 500 13px/1.05 var(--font-display); color: var(--text-dim); }
+.nid-admin-stats__detail { font: 500 11px/1.3 var(--font-mono); color: var(--text-dim); margin-top: 6px; letter-spacing: 0.02em; }
+
 /* Light theme adjustments */
 body.theme-light .tbl-row-checkbox.on::after {
   border-color: #ffffff;
