@@ -1426,3 +1426,43 @@ body.theme-light .nid-modal__mask {
   .nid-explorer__browser { max-height: 220px; }
 }
 
+/* ─────────────────────────────────────────────────────────────────────────────
+   FilterBar — ticket 26
+   Pill row with segmented preset control. All tokens, no Tailwind.
+   ───────────────────────────────────────────────────────────────────────────── */
+
+/* Root container (inline styles set on the element; this class allows
+   external overrides and responsive narrowing). */
+.nid-filterbar {
+  /* Ensure selects inside pick up the body font */
+  font-family: var(--font-body);
+}
+
+/* Selects inside the filter bar inherit the theme font */
+.nid-filterbar select {
+  font-family: var(--font-mono);
+  appearance: auto; /* keep native arrow */
+}
+
+/* Light-theme: select background */
+body.theme-light .nid-filterbar select {
+  background: #ffffff;
+  border-color: rgba(15, 23, 42, 0.10);
+  color: var(--text);
+}
+
+/* Active preset button — light theme needs dark text on accent */
+body.theme-light .nid-filterbar [aria-pressed="true"] {
+  color: #ffffff;
+}
+
+@media (max-width: 640px) {
+  .nid-filterbar {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+  .nid-filterbar > span[style*="flex: 1"] {
+    display: none;
+  }
+}
+
