@@ -8,6 +8,9 @@ import NidComparativoPanel from "../../components/nid/ComparativoPanel";
 import InfoTooltip from "../../components/InfoTooltip";
 import FilterBar from "../../components/FilterBar";
 import KpiCard from "../../components/KpiCard";
+import { NidPanel } from "../../components/nid/Panel";
+import { fmtMoneyShort } from "../../components/nid/charts";
+import DataTable from "../../components/nid/DataTable";
 import {
   ResponsiveContainer,
   BarChart,
@@ -252,58 +255,19 @@ export default function InssPage() {
       </div>
 
       {/* Tabela detalhada */}
-      <div className="bg-white dark:bg-slate-900 p-6 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-800">
-        <h3 className="text-base font-bold mb-5 text-slate-800 dark:text-white">
-          Detalhamento por Ano e Categoria
-        </h3>
-        {loading ? (
-          <div className="animate-pulse h-40 bg-slate-50 dark:bg-slate-800 rounded-xl" />
-        ) : tableData.length === 0 ? (
-          <div className="h-32 flex items-center justify-center text-slate-400 dark:text-slate-500 text-sm">
-            Sem dados disponíveis
-          </div>
-        ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b border-slate-100 dark:border-slate-800">
-                  <th className="text-left py-3 px-4 text-xs uppercase tracking-wider text-slate-400 dark:text-slate-500 font-medium">
-                    Ano
-                  </th>
-                  <th className="text-left py-3 px-4 text-xs uppercase tracking-wider text-slate-400 dark:text-slate-500 font-medium">
-                    Categoria
-                  </th>
-                  <th className="text-right py-3 px-4 text-xs uppercase tracking-wider text-slate-400 dark:text-slate-500 font-medium">
-                    Qtd. Benefícios
-                  </th>
-                  <th className="text-right py-3 px-4 text-xs uppercase tracking-wider text-slate-400 dark:text-slate-500 font-medium">
-                    Valor Anual
-                  </th>
-                </tr>
-              </thead>
-              <tbody>
-                {tableData.map((row, i) => (
-                  <tr
-                    key={i}
-                    className="border-b border-slate-50 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors"
-                  >
-                    <td className="py-3 px-4 text-slate-600 dark:text-slate-300">{row.ano}</td>
-                    <td className="py-3 px-4 text-slate-800 dark:text-white font-medium">
-                      {row.categoria}
-                    </td>
-                    <td className="py-3 px-4 text-right text-slate-600 dark:text-slate-300">
-                      {fmtNum(row.quantidade_beneficios)}
-                    </td>
-                    <td className="py-3 px-4 text-right text-slate-800 dark:text-white font-medium">
-                      {fmtBRL(row.valor_anual)}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
-      </div>
+      {!loading && tableData.length > 0 && (
+        <NidPanel title="Detalhamento por Ano e Categoria" sub="top 50 · ordenado por valor anual">
+          <DataTable
+            columns={[
+              { key: "ano",                   label: "Ano",           width: 80 },
+              { key: "categoria",             label: "Categoria" },
+              { key: "quantidade_beneficios", label: "Qtd. Benefícios", align: "right", fmt: fmtNum, mono: true },
+              { key: "valor_anual",           label: "Valor Anual",    align: "right", fmt: fmtMoneyShort, mono: true, heatmap: true },
+            ]}
+            data={tableData}
+          />
+        </NidPanel>
+      )}
       <NidComparativoPanel
         title="Comparativo Municipal · INSS"
         sub="Ranking por valor anual de benefícios injetados"

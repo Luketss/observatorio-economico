@@ -18,6 +18,7 @@ import {
   fmtMoneyShort,
   fmtMoneyFull,
 } from "../../components/nid/charts";
+import DataTable from "../../components/nid/DataTable";
 
 const fmtBRL = (v) =>
   `R$ ${Number(v).toLocaleString("pt-BR", { maximumFractionDigits: 0 })}`;
@@ -242,33 +243,18 @@ export default function PibPage() {
 
       {/* Série Anual table */}
       {serie.length > 0 && (
-        <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-800 overflow-hidden">
-          <div className="px-6 py-4 border-b border-slate-100 dark:border-slate-800">
-            <h3 className="text-base font-bold text-slate-800 dark:text-white">Série Anual</h3>
-          </div>
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="bg-slate-50 dark:bg-slate-800 text-left text-xs uppercase text-slate-400 dark:text-slate-500 tracking-wider">
-                  <th className="px-6 py-3">Ano</th>
-                  <th className="px-6 py-3 text-right">PIB Total</th>
-                  <th className="px-6 py-3">Tipo</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-50 dark:divide-slate-800">
-                {serie.slice().reverse().map((item, i) => (
-                  <tr key={i} className="hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors">
-                    <td className="px-6 py-3 font-medium text-slate-700 dark:text-slate-200">{item.ano}</td>
-                    <td className="px-6 py-3 text-right font-semibold text-slate-800 dark:text-white">
-                      {fmtBRL(item.pib_total)}
-                    </td>
-                    <td className="px-6 py-3 text-slate-500 dark:text-slate-400">{item.tipo_dado || "—"}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </div>
+        <NidPanel title="Série Anual" sub="histórico · PIB total por ano">
+          <DataTable
+            columns={[
+              { key: "ano",       label: "Ano",          width: 80 },
+              { key: "pib_total", label: "PIB Total",    align: "right", fmt: fmtMoneyShort, mono: true, heatmap: true },
+              { key: "__delta",   label: "YoY",          align: "right", kind: "delta" },
+              { key: "__trend",   label: "Tendência 5a", kind: "spark",  width: 130 },
+              { key: "tipo_dado", label: "Tipo",         align: "right", kind: "code", mono: true },
+            ]}
+            data={serie.slice().reverse()}
+          />
+        </NidPanel>
       )}
 
       <NidComparativoPanel

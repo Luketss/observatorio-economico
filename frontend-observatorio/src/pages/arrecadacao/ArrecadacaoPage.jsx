@@ -10,6 +10,7 @@ import KpiCard from "../../components/KpiCard";
 import { NidPanel } from "../../components/nid/Panel";
 import ChartState from "../../components/nid/ChartState.jsx";
 import { AreaLineChart, fmtMoneyShort, fmtMoneyFull } from "../../components/nid/charts";
+import DataTable from "../../components/nid/DataTable";
 import {
   ResponsiveContainer,
   BarChart,
@@ -177,35 +178,20 @@ export default function ArrecadacaoPage() {
 
       {/* Breakdown table */}
       {serie.length > 0 && (
-        <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-800 overflow-hidden">
-          <div className="px-6 py-4 border-b border-slate-100 dark:border-slate-800">
-            <h3 className="text-base font-bold text-slate-800 dark:text-white">Detalhamento por Período</h3>
-          </div>
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="bg-slate-50 dark:bg-slate-800 text-left text-xs uppercase text-slate-400 dark:text-slate-500 tracking-wider">
-                  <th className="px-6 py-3">Período</th>
-                  <th className="px-6 py-3 text-right">Total</th>
-                  <th className="px-6 py-3 text-right">ICMS</th>
-                  <th className="px-6 py-3 text-right">IPVA</th>
-                  <th className="px-6 py-3 text-right">IPI</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-50 dark:divide-slate-800">
-                {serie.slice().reverse().map((item, i) => (
-                  <tr key={i} className="hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors">
-                    <td className="px-6 py-3 font-medium text-slate-700 dark:text-slate-200">{item.periodo}</td>
-                    <td className="px-6 py-3 text-right text-slate-800 dark:text-white font-semibold">{fmtBRL(item.total)}</td>
-                    <td className="px-6 py-3 text-right text-slate-500 dark:text-slate-400">{fmtBRL(item.icms)}</td>
-                    <td className="px-6 py-3 text-right text-slate-500 dark:text-slate-400">{fmtBRL(item.ipva)}</td>
-                    <td className="px-6 py-3 text-right text-slate-500 dark:text-slate-400">{fmtBRL(item.ipi)}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </div>
+        <NidPanel title="Detalhamento por Período" sub="arrecadação mensal">
+          <DataTable
+            columns={[
+              { key: "periodo", label: "Período",    width: 100 },
+              { key: "total",   label: "Total",      align: "right", fmt: fmtMoneyShort, mono: true, heatmap: true },
+              { key: "__delta", label: "YoY",        align: "right", kind: "delta" },
+              { key: "__trend", label: "Tendência",  kind: "spark",  width: 120 },
+              { key: "icms",    label: "ICMS",       align: "right", fmt: fmtMoneyShort, mono: true },
+              { key: "ipva",    label: "IPVA",       align: "right", fmt: fmtMoneyShort, mono: true },
+              { key: "ipi",     label: "IPI",        align: "right", fmt: fmtMoneyShort, mono: true },
+            ]}
+            data={serie.slice().reverse()}
+          />
+        </NidPanel>
       )}
       <ReleasesPanel dataset="arrecadacao" />
 

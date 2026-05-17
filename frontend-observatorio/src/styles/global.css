@@ -340,6 +340,67 @@ tr:not(:last-child) {
 .nid-pin.negative { background: var(--accent-2); color: #fff; }
 .nid-pin.positive { background: var(--accent-5); color: #03130a; }
 
+/* ─── DataTable — ticket 10 ─── */
+.nid-data-table-wrap {
+  overflow-x: auto;
+}
+.nid-data-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-family: var(--font-display);
+  font-size: 13px;
+  font-feature-settings: "tnum";
+}
+.nid-data-table thead tr {
+  background: var(--panel-2);
+}
+.nid-data-table th {
+  padding: 10px 14px;
+  text-align: left;
+  font: 600 10px/1 var(--font-mono);
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  color: var(--text-mute);
+  white-space: nowrap;
+}
+.nid-data-table td {
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--border);
+  color: var(--text);
+  vertical-align: middle;
+}
+.nid-data-table td.mono {
+  font-family: var(--font-mono);
+  font-weight: 500;
+  font-size: 13px;
+}
+.nid-data-table tbody tr:last-child td { border-bottom: none; }
+.nid-data-table .muted { color: var(--text-mute); }
+.nid-data-table .spark-cell {
+  display: inline-block;
+  vertical-align: middle;
+  line-height: 0;
+}
+.nid-data-table .code-pill {
+  font: 500 11px/1 var(--font-mono);
+  letter-spacing: 0.06em;
+  color: var(--text-dim);
+  padding: 3px 6px;
+  border-radius: 4px;
+  background: var(--panel-2);
+}
+.nid-data-table .own-tag {
+  margin-left: 8px;
+  font: 600 9px/1 var(--font-mono);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--accent-2);
+  background: color-mix(in oklab, var(--accent-2) 15%, transparent);
+  padding: 2px 5px;
+  border-radius: 3px;
+  vertical-align: 1px;
+}
+
 /* ─── Tabular numerals — apply broadly to numeric UI (ticket 13) ─── */
 .nid-mono,
 .nid-kpi-value,
