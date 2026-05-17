@@ -8,6 +8,7 @@ import {
   CalendarDaysIcon,
   UserIcon,
   InformationCircleIcon,
+  FunnelIcon,
 } from "@heroicons/react/24/outline";
 import {
   FunnelChart,
@@ -164,25 +165,41 @@ export default function FunilTab() {
     }
   }
 
+  const header = (
+    <div className="flex items-center gap-3">
+      <FunnelIcon className="w-7 h-7 text-blue-600" />
+      <h1 className="text-2xl font-extrabold tracking-tight text-slate-800 dark:text-slate-100">
+        Funil de Investimentos
+      </h1>
+    </div>
+  );
+
   if (loading) {
     return (
-      <div className="flex justify-center py-20">
-        <div className="w-8 h-8 border-4 border-blue-600 border-t-transparent rounded-full animate-spin" />
-      </div>
+      <motion.div initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3 }} className="space-y-6">
+        {header}
+        <div className="flex justify-center py-20">
+          <div className="w-8 h-8 border-4 border-blue-600 border-t-transparent rounded-full animate-spin" />
+        </div>
+      </motion.div>
     );
   }
 
   if (isGlobal) {
     return (
-      <div className="text-center py-20 text-slate-400">
-        <InformationCircleIcon className="w-12 h-12 mx-auto mb-3 opacity-30" />
-        <p className="text-sm font-medium text-slate-500 dark:text-slate-400">O funil de investimentos é específico por município.</p>
-      </div>
+      <motion.div initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3 }} className="space-y-6">
+        {header}
+        <div className="text-center py-20 text-slate-400">
+          <InformationCircleIcon className="w-12 h-12 mx-auto mb-3 opacity-30" />
+          <p className="text-sm font-medium text-slate-500 dark:text-slate-400">O funil de investimentos é específico por município.</p>
+        </div>
+      </motion.div>
     );
   }
 
   return (
-    <div className="space-y-6">
+    <motion.div initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3 }} className="space-y-6">
+      {header}
       {/* KPI row */}
       {resumo && (
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
@@ -410,6 +427,6 @@ export default function FunilTab() {
           </motion.div>
         )}
       </AnimatePresence>
-    </div>
+    </motion.div>
   );
 }

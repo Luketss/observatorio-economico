@@ -35,6 +35,9 @@ import {
   TrophyIcon,
   PresentationChartBarIcon,
   SwatchIcon,
+  FunnelIcon,
+  BuildingOffice2Icon,
+  PencilSquareIcon,
 } from "@heroicons/react/24/outline";
 
 const NAV_STRUCTURE = [
@@ -73,7 +76,16 @@ const NAV_STRUCTURE = [
     ],
   },
   { type: "link", to: "/app/projetos", label: "Projetos", icon: FolderOpenIcon, modulo: null },
-  { type: "link", to: "/app/desenvolvimento-economico", label: "Desenv. Econômico", icon: TrophyIcon, modulo: null },
+  {
+    type: "group", label: "Desenv. Econômico", icon: ChartBarIcon,
+    children: [
+      { to: "/app/desenvolvimento-economico/funil",      label: "Funil de Investimentos", icon: FunnelIcon,          modulo: null },
+      { to: "/app/desenvolvimento-economico/retencao",   label: "Retenção & Expansão",    icon: BuildingOffice2Icon, modulo: null },
+      { to: "/app/desenvolvimento-economico/captacao",   label: "Captação de Recursos",   icon: BanknotesIcon,       modulo: null },
+      { to: "/app/desenvolvimento-economico/escrita",    label: "Escrita de Projetos",    icon: PencilSquareIcon,    modulo: null },
+      { to: "/app/desenvolvimento-economico/premiacoes", label: "Premiações",             icon: TrophyIcon,          modulo: null },
+    ],
+  },
   { type: "link", to: "/app/timeline", label: "Timeline", icon: CalendarDaysIcon, modulo: "timeline_mandato" },
   {
     type: "group", label: "Dados Internos", icon: CircleStackIcon,

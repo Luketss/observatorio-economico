@@ -29,7 +29,11 @@ import PixPage from "../../pages/pix/PixPage";
 import ReleasesPage from "../../pages/releases/ReleasesPage";
 import TimelinePage from "../../pages/timeline/TimelinePage";
 import ProjetosPage from "../../pages/projetos/ProjetosPage";
-import DesenvolvimentoEconomicoPage from "../../pages/desenvolvimento-economico/DesenvolvimentoEconomicoPage";
+import FunilTab from "../../pages/desenvolvimento-economico/FunilTab";
+import RetencaoTab from "../../pages/desenvolvimento-economico/RetencaoTab";
+import CaptacaoTab from "../../pages/desenvolvimento-economico/CaptacaoTab";
+import EscritaTab from "../../pages/desenvolvimento-economico/EscritaTab";
+import PremiacoesTab from "../../pages/desenvolvimento-economico/PremiacoesTab";
 import IpsPage from "../../pages/ips/IpsPage";
 import ProjetosEixosAdminPage from "../../pages/admin/ProjetosEixosAdminPage";
 import IndicadoresInternosPage from "../../pages/dados-internos/IndicadoresInternosPage";
@@ -94,7 +98,12 @@ export default function AppRouter() {
           <Route path="releases" element={<ReleasesPage />} />
           <Route path="timeline" element={<TimelinePage />} />
           <Route path="projetos" element={<ProjetosPage />} />
-          <Route path="desenvolvimento-economico" element={<DesenvolvimentoEconomicoPage />} />
+          <Route path="desenvolvimento-economico" element={<Navigate to="/app/desenvolvimento-economico/funil" replace />} />
+          <Route path="desenvolvimento-economico/funil" element={<FunilTab />} />
+          <Route path="desenvolvimento-economico/retencao" element={<RetencaoTab />} />
+          <Route path="desenvolvimento-economico/captacao" element={<CaptacaoTab />} />
+          <Route path="desenvolvimento-economico/escrita" element={<EscritaTab />} />
+          <Route path="desenvolvimento-economico/premiacoes" element={<PremiacoesTab />} />
           <Route path="dados-internos/indicadores" element={<IndicadoresInternosPage />} />
           <Route path="dados-internos/plano-gov" element={<PlanoGovPage />} />
           <Route path="dados-internos/calendario" element={<CalendarioPage />} />
