@@ -1,6 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
 import api from "../../services/api";
-import { useChartTheme } from "../../hooks/useChartTheme";
 import { motion } from "framer-motion";
 import InsightsPanel from "../../components/InsightsPanel";
 import ReleasesPanel from "../../components/ReleasesPanel";
@@ -9,25 +8,19 @@ import InfoTooltip from "../../components/InfoTooltip";
 import FilterBar from "../../components/FilterBar";
 import KpiCard from "../../components/KpiCard";
 import PlanGate from "../../components/PlanGate";
+import { NidPanel, NidLegend } from "../../components/nid/Panel";
 import {
-  ResponsiveContainer,
-  BarChart,
-  Bar,
-  LineChart,
-  Line,
-  CartesianGrid,
-  XAxis,
-  YAxis,
-  Tooltip,
-  Legend,
-  Cell,
-} from "recharts";
+  AreaLineChart,
+  StackedBarChart,
+  MultiLineChart,
+  fmtMoneyShort,
+  fmtMoneyFull,
+} from "../../components/nid/charts";
 
 const fmtBRL = (v) =>
   `R$ ${Number(v).toLocaleString("pt-BR", { maximumFractionDigits: 0 })}`;
 
 export default function PibPage() {
-  const ct = useChartTheme();
   const [rawSerie, setRawSerie] = useState([]);
   const [resumo, setResumo] = useState(null);
   const [comparativo, setComparativo] = useState([]);
@@ -79,7 +72,6 @@ export default function PibPage() {
   }, [comparativo]);
 
   const cidades = useMemo(() => [...new Set(comparativo.map((d) => d.cidade))], [comparativo]);
-  const COMP_COLORS = ["#10b981", "#3b82f6", "#f59e0b", "#8b5cf6", "#ef4444", "#06b6d4"];
 
   const serie = useMemo(() => {
     const { yearFrom, yearTo } = filters;
@@ -89,6 +81,32 @@ export default function PibPage() {
       return true;
     });
   }, [rawSerie, filters]);
+
+  // ── NID chart data shapes ──────────────────────────────────────────────────
+
+  const areaData = useMemo(
+    () => serie.map((d) => ({ label: String(d.ano), value: d.pib_total })),
+    [serie]
+  );
+
+  const vaChartData = useMemo(
+    () =>
+      vaData.map((d) => ({
+        label: String(d.ano),
+        "Agropecuária": d.va_agropecuaria,
+        "Indústria": d.va_industria,
+        "Serviços": d.va_servicos,
+        "Governo": d.va_governo,
+      })),
+    [vaData]
+  );
+
+  const compData = useMemo(
+    () => comparativoChart.map((row) => ({ label: String(row.ano), ...row })),
+    [comparativoChart]
+  );
+
+  // ── KPI cards ──────────────────────────────────────────────────────────────
 
   const cards = [
     {
@@ -157,113 +175,57 @@ export default function PibPage() {
         </div>
       )}
 
-      <div className="bg-white dark:bg-slate-900 p-6 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-800">
-        <h3 className="text-base font-bold mb-5 text-slate-800 dark:text-white">
-          Evolução Anual do PIB
-        </h3>
-        {serie.length === 0 ? (
-          <div className="h-64 flex items-center justify-center text-slate-400 dark:text-slate-500 text-sm">
-            Sem dados disponíveis
-          </div>
-        ) : (
-          <div className="h-44 md:h-64">
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={serie} barCategoryGap="30%">
-                <CartesianGrid strokeDasharray="3 3" stroke={ct.grid} vertical={false} />
-                <XAxis dataKey="ano" tick={{ fontSize: 12, fill: ct.tick }} stroke={ct.axis} />
-                <YAxis
-                  tick={{ fontSize: 11, fill: ct.tick }}
-                  stroke={ct.axis}
-                  width={75}
-                  tickFormatter={(v) =>
-                    `${(v / 1_000_000).toFixed(0)}M`
-                  }
-                />
-                <Tooltip
-                  formatter={(v) => [fmtBRL(v), "PIB Total"]}
-                  cursor={{ fill: ct.grid }}
-                />
-                <Bar dataKey="pib_total" radius={[4, 4, 0, 0]}>
-                  {serie.map((_, i) => (
-                    <Cell
-                      key={i}
-                      fill={i === serie.length - 1 ? "#10b981" : "#a7f3d0"}
-                    />
-                  ))}
-                </Bar>
-              </BarChart>
-            </ResponsiveContainer>
-          </div>
-        )}
-      </div>
+      {/* Evolução Anual do PIB */}
+      <NidPanel title="Evolução Anual do PIB" sub="série histórica · R$ milhões">
+        <AreaLineChart
+          data={areaData}
+          height={280}
+          color="var(--accent-1)"
+          label="PIB Total"
+          yFmt={fmtMoneyShort}
+          tipFmt={fmtMoneyFull}
+        />
+      </NidPanel>
 
-      {/* VA Breakdown */}
+      {/* Valor Adicionado por Setor */}
       {vaData.length > 0 && (
         <PlanGate planKey="pib.por_setor">
-          <div className="bg-white dark:bg-slate-900 p-6 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-800">
-            <h3 className="text-base font-bold mb-5 text-slate-800 dark:text-white">
-              Valor Adicionado por Setor
-            </h3>
-            <div className="h-48 md:h-72">
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={vaData} margin={{ left: 10, right: 10 }}>
-                  <CartesianGrid strokeDasharray="3 3" stroke={ct.grid} vertical={false} />
-                  <XAxis dataKey="ano" tick={{ fontSize: 12, fill: ct.tick }} stroke={ct.axis} />
-                  <YAxis
-                    tick={{ fontSize: 11, fill: ct.tick }}
-                    stroke={ct.axis}
-                    width={75}
-                    tickFormatter={(v) => `${(v / 1_000_000).toFixed(0)}M`}
-                  />
-                  <Tooltip contentStyle={ct.tooltipStyle} formatter={(v) => [fmtBRL(v)]} />
-                  <Legend />
-                  <Bar dataKey="va_agropecuaria" name="Agropecuária" stackId="va" fill="#10b981" />
-                  <Bar dataKey="va_industria" name="Indústria" stackId="va" fill="#3b82f6" />
-                  <Bar dataKey="va_servicos" name="Serviços" stackId="va" fill="#f59e0b" />
-                  <Bar dataKey="va_governo" name="Governo" stackId="va" fill="#8b5cf6" radius={[4, 4, 0, 0]} />
-                </BarChart>
-              </ResponsiveContainer>
-            </div>
-          </div>
+          <NidPanel title="Valor Adicionado por Setor" sub="composição por setor produtivo">
+            <NidLegend
+              items={[
+                { name: "Agropecuária", color: "var(--accent-1)" },
+                { name: "Indústria", color: "var(--accent-3)" },
+                { name: "Serviços", color: "var(--accent-5)" },
+                { name: "Governo", color: "var(--accent-4)" },
+              ]}
+            />
+            <StackedBarChart
+              data={vaChartData}
+              keys={["Agropecuária", "Indústria", "Serviços", "Governo"]}
+              colors={["var(--accent-1)", "var(--accent-3)", "var(--accent-5)", "var(--accent-4)"]}
+              height={280}
+              yFmt={fmtMoneyShort}
+              tipFmt={fmtMoneyFull}
+            />
+          </NidPanel>
         </PlanGate>
       )}
 
-      {/* Comparativo entre cidades */}
+      {/* PIB Comparativo — Municípios */}
       {comparativoChart.length > 0 && cidades.length > 1 && (
-        <div className="bg-white dark:bg-slate-900 p-6 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-800">
-          <h3 className="text-base font-bold mb-5 text-slate-800 dark:text-white">
-            PIB Comparativo — Municípios
-          </h3>
-          <div className="h-48 md:h-72">
-            <ResponsiveContainer width="100%" height="100%">
-              <LineChart data={comparativoChart}>
-                <CartesianGrid strokeDasharray="3 3" stroke={ct.grid} />
-                <XAxis dataKey="ano" tick={{ fontSize: 12, fill: ct.tick }} stroke={ct.axis} />
-                <YAxis
-                  tick={{ fontSize: 11, fill: ct.tick }}
-                  stroke={ct.axis}
-                  width={75}
-                  tickFormatter={(v) => `${(v / 1_000_000).toFixed(0)}M`}
-                />
-                <Tooltip formatter={(v) => [fmtBRL(v)]} />
-                <Legend />
-                {cidades.map((cidade, i) => (
-                  <Line
-                    key={cidade}
-                    type="monotone"
-                    dataKey={cidade}
-                    name={cidade}
-                    stroke={COMP_COLORS[i % COMP_COLORS.length]}
-                    strokeWidth={2}
-                    dot={false}
-                  />
-                ))}
-              </LineChart>
-            </ResponsiveContainer>
-          </div>
-        </div>
+        <NidPanel title="PIB Comparativo — Municípios" sub="evolução comparativa entre municípios">
+          <MultiLineChart
+            data={compData}
+            series={cidades}
+            colors={cidades.map((_, i) => `var(--accent-${(i % 5) + 1})`)}
+            height={280}
+            yFmt={fmtMoneyShort}
+            tipFmt={fmtMoneyFull}
+          />
+        </NidPanel>
       )}
 
+      {/* Série Anual table */}
       {serie.length > 0 && (
         <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-800 overflow-hidden">
           <div className="px-6 py-4 border-b border-slate-100 dark:border-slate-800">
@@ -293,6 +255,7 @@ export default function PibPage() {
           </div>
         </div>
       )}
+
       <NidComparativoPanel
         title="Ranking de PIB Municipal"
         sub="Posição do município no ranking nacional/estadual (último ano disponível)"
