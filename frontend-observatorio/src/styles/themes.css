@@ -1014,6 +1014,47 @@ body.theme-light .nid-hbar-row .city {
   color: var(--text-mute);
 }
 
+/* ─────────────────────────────────────────────────────────────────────────────
+   EmptyState — ticket 23
+   4 variants: list-empty, search-empty, permission-empty, error-empty
+   ───────────────────────────────────────────────────────────────────────────── */
+.nid-empty-state {
+  display: grid; place-items: center; gap: 12px;
+  padding: 40px 20px; max-width: 360px; margin: 0 auto;
+  text-align: center;
+  background: repeating-linear-gradient(135deg, transparent 0 12px, color-mix(in oklab, var(--admin-accent) 4%, transparent) 12px 24px);
+  border: 1px dashed var(--border);
+  border-radius: 14px;
+}
+.nid-empty-state__ico {
+  width: 44px; height: 44px; border-radius: 50%;
+  background: color-mix(in oklab, var(--admin-accent) 12%, transparent);
+  color: var(--admin-accent);
+  display: grid; place-items: center;
+}
+.nid-empty-state__title { font: 600 14px/1.3 var(--font-display); color: var(--text); margin: 0; }
+.nid-empty-state__detail { font: 400 12.5px/1.5 var(--font-display); color: var(--text-dim); margin: 0; max-width: 320px; }
+.nid-empty-state__actions { display: flex; gap: 8px; margin-top: 6px; }
+.nid-empty-state__primary {
+  padding: 6px 12px; border-radius: 8px;
+  background: var(--admin-accent); color: white;
+  border: none; cursor: pointer;
+  font: 600 12px/1 var(--font-display);
+}
+.nid-empty-state__primary:hover { filter: brightness(1.1); }
+.nid-empty-state__secondary {
+  padding: 6px 12px; border-radius: 8px;
+  background: var(--panel-2); color: var(--text-dim);
+  border: 1px solid var(--border); cursor: pointer;
+  font: 500 12px/1 var(--font-display);
+}
+.nid-empty-state__secondary:hover { color: var(--text); border-color: var(--border-strong); }
+
+/* Variants: tint the dashed frame */
+.nid-empty-state--error-empty { background: repeating-linear-gradient(135deg, transparent 0 12px, color-mix(in oklab, var(--accent-2) 5%, transparent) 12px 24px); }
+.nid-empty-state--error-empty .nid-empty-state__ico { background: color-mix(in oklab, var(--accent-2) 12%, transparent); color: var(--accent-2); }
+.nid-empty-state--permission-empty .nid-empty-state__ico { background: var(--panel-2); color: var(--text-dim); }
+
 /* ── Bulk-action toolbar ─────────────────────────────────────────────────── */
 .nid-bulk-bar {
   display: flex;

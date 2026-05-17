@@ -1,4 +1,5 @@
 import StatusPill from "./StatusPill";
+import EmptyState from "./EmptyState";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // AdminTable — column-config-driven admin table
@@ -175,9 +176,7 @@ export default function AdminTable({
             <tr>
               <td colSpan={columns.length} className="nid-admin-table__empty">
                 {emptyState ?? (
-                  <span className="nid-admin-table__empty-text">
-                    Nenhum item encontrado.
-                  </span>
+                  <EmptyState kind="list-empty" title="Nenhum item ainda" />
                 )}
               </td>
             </tr>
