@@ -11,6 +11,14 @@ function resolveGlow(glow) {
   return glow;                          // "hover" | "always" | "off"
 }
 
+// ────────── x-axis label thinning ──────────
+// Always show up to 12 labels; beyond that show ~10 evenly spaced + the last.
+function shouldShowXLabel(i, total) {
+  if (total <= 12) return true;
+  const stride = Math.ceil(total / 10);
+  return i % stride === 0 || i === total - 1;
+}
+
 // ────────── linear forecast (ticket 04) ──────────
 function linearForecast(values, steps = 1, n = 6) {
   const tail = values.slice(-n);
@@ -586,7 +594,9 @@ export function StackedBarChart({
                   width={barWidth + 4} height={padT + innerH - top + 4}
                   fill="none" stroke="var(--accent-2)" strokeWidth="1.5" rx="3" />
               )}
-              <text x={sx(i)} y={height - padB + 18} className="nid-axis-text" textAnchor="middle">{d.label}</text>
+              {shouldShowXLabel(i, data.length) && (
+                <text x={sx(i)} y={height - padB + 18} className="nid-axis-text" textAnchor="middle">{d.label}</text>
+              )}
             </g>
           );
         })}
@@ -1188,7 +1198,9 @@ function TwinBarBrutoChart({
                 fill={`url(#tup-${id})`} stroke={colorUp} strokeWidth="1" opacity={hover != null && !isH ? 0.4 : 1} />
               <rect x={xDn} y={yDn} width={barW} height={hDn} rx={4}
                 fill={`url(#tdn-${id})`} stroke={colorDown} strokeWidth="1" opacity={hover != null && !isH ? 0.4 : 1} />
-              <text x={cx} y={height - padB + 18} className="nid-axis-text" textAnchor="middle">{d.label}</text>
+              {shouldShowXLabel(i, data.length) && (
+                <text x={cx} y={height - padB + 18} className="nid-axis-text" textAnchor="middle">{d.label}</text>
+              )}
             </g>
           );
         })}
@@ -1337,9 +1349,11 @@ function TwinBarSaldoChart({
                 fill={fill}
                 opacity={hover != null && !isH ? 0.35 : 0.9}
               />
-              <text x={cx} y={height - padB + 18} className="nid-axis-text" textAnchor="middle">
-                {d.label}
-              </text>
+              {shouldShowXLabel(i, data.length) && (
+                <text x={cx} y={height - padB + 18} className="nid-axis-text" textAnchor="middle">
+                  {d.label}
+                </text>
+              )}
             </g>
           );
         })}
