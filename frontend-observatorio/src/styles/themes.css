@@ -1508,3 +1508,52 @@ body.theme-light .nid-filterbar [aria-pressed="true"] {
   background: color-mix(in oklab, var(--accent-1) 10%, transparent);
 }
 
+/* ─── NidFunnel (ticket 29) ─── */
+.nid-funnel { display: block; }
+.nid-funnel__svg { display: block; max-width: 100%; }
+.nid-funnel__stage-label { font: 600 12px/1.2 var(--font-display); fill: var(--text); }
+.nid-funnel__stage-value { font: 700 16px/1 var(--font-mono); fill: var(--text); }
+.nid-funnel__stage-conv  { font: 500 10.5px/1 var(--font-mono); fill: var(--text-dim); }
+
+/* View toggle */
+.nid-funnel__toggle {
+  display: flex; gap: 4px; justify-content: flex-end; margin-bottom: 10px;
+}
+.nid-funnel__toggle-btn {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 28px; height: 28px;
+  border: 1px solid var(--border); border-radius: 8px;
+  background: transparent; color: var(--text-dim);
+  cursor: pointer; transition: background 0.15s, color 0.15s, border-color 0.15s;
+}
+.nid-funnel__toggle-btn:hover { color: var(--text); background: var(--panel-2); }
+.nid-funnel__toggle-btn.is-active {
+  background: color-mix(in oklab, var(--accent-1) 14%, transparent);
+  color: var(--text);
+  border-color: color-mix(in oklab, var(--accent-1) 28%, transparent);
+}
+
+/* List (kanban) view */
+.nid-funnel-list {
+  display: grid; gap: 10px;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+}
+.nid-funnel-list__card {
+  background: var(--panel-2); border: 1px solid var(--border);
+  border-radius: 12px; padding: 12px 14px;
+}
+.nid-funnel-list__label {
+  font: 600 11px/1 var(--font-mono);
+  color: var(--text-mute); text-transform: uppercase; letter-spacing: 0.14em;
+}
+.nid-funnel-list__value {
+  font: 700 24px/1 var(--font-display); color: var(--text); margin-top: 6px;
+}
+.nid-funnel-list__conv  {
+  font: 500 11px/1 var(--font-mono); color: var(--text-dim); margin-top: 4px;
+}
+.nid-funnel-list__bar {
+  height: 4px; border-radius: 999px; background: var(--panel); margin-top: 8px; overflow: hidden;
+}
+.nid-funnel-list__bar-fill { height: 100%; }
+
