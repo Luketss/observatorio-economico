@@ -1036,3 +1036,130 @@ def gerar_insight(db: Session, municipio_id: int, dataset: str) -> InsightIA:
     db.commit()
     db.refresh(insight)
     return insight
+
+
+_PROMPT_PRIORIDADES = """Você é um analista estratégico sênior da Uaizi, especialista em prioridades executivas para gestão pública municipal no Brasil.
+
+Sua tarefa é identificar as 3 PRIORIDADES MAIS RELEVANTES do mês corrente para o município de {nome} ({estado}), analisando todos os datasets disponíveis no painel.
+
+O QUE É:
+Uma camada de prioridade executiva — não substitui a análise por dataset, mas seleciona, entre todos os movimentos do período, os 3 que mais merecem atenção imediata do gestor.
+
+CRITÉRIOS DE PRIORIZAÇÃO:
+- Magnitude da variação vs. baseline histórico do próprio município.
+- Persistência (movimento isolado vs. tendência multi-período).
+- Implicação para decisão pública.
+- Risco de interpretação errada (priorize observações que ajudem o gestor a evitar conclusões equivocadas).
+
+REGRAS DE TOM:
+- Use observação ("Atenção a X", "Oportunidade em Y"), nunca prescrição ("Faça Z").
+- Cada prioridade aponta UM dataset principal de referência.
+- Diversifique: evite que as 3 prioridades venham do mesmo dataset.
+- Se um dataset não foi incluído por falta de dados, ignore-o — não invente.
+
+PREFIXOS PERMITIDOS PARA O TÍTULO: "Atenção:", "Oportunidade:", "Risco:".
+"""
+
+_FORMATO_PRIORIDADES = """
+FORMATO DE SAÍDA:
+JSON array de EXATAMENTE 3 objetos. Sem texto fora do array. Sem fences.
+[
+  {
+    "titulo": "Atenção: <5-10 palavras>",
+    "observacao": "<2-3 frases com dados concretos do município>",
+    "dataset_referencia": "<chave: caged | pib | arrecadacao | rais | bolsa_familia | pe_de_meia | inss | estban | comex | empresas | pix | null>"
+  }
+]
+"""
+
+_DATASETS_PRIORIDADES = [
+    "arrecadacao", "pib", "caged", "rais", "bolsa_familia",
+    "pe_de_meia", "inss", "estban", "comex", "empresas", "pix",
+]
+
+
+def gerar_prioridades(db: Session, municipio_id: int) -> InsightIA:
+    """Generate the top-3 cross-dataset strategic priorities for a município."""
+    if not settings.ANTHROPIC_API_KEY:
+        raise HTTPException(
+            status_code=503, detail="ANTHROPIC_API_KEY não configurada no servidor."
+        )
+
+    municipio = db.get(Municipio, municipio_id)
+    if not municipio:
+        raise HTTPException(status_code=404, detail="Município não encontrado.")
+
+    dados_consolidados: dict[str, list[dict]] = {}
+    datasets_ausentes: list[str] = []
+
+    for dataset_key in _DATASETS_PRIORIDADES:
+        try:
+            dados, _ = _fetch_dados(db, municipio_id, dataset_key)
+        except HTTPException:
+            datasets_ausentes.append(dataset_key)
+            continue
+        if not dados:
+            datasets_ausentes.append(dataset_key)
+            continue
+        dados_consolidados[dataset_key] = dados
+
+    if not dados_consolidados:
+        raise HTTPException(
+            status_code=400, detail="Sem dados suficientes para gerar prioridades."
+        )
+
+    prompt = (
+        _PROMPT_PRIORIDADES.format(nome=municipio.nome, estado=municipio.estado)
+        + _PROIBICOES_GERAIS
+        + _QUALITY_FILTER
+        + _FORMATO_PRIORIDADES
+        + f"\nENTRADA:\n"
+        + f"Município: {municipio.nome} ({municipio.estado})\n"
+        + f"Datasets sem dados (ignore): {datasets_ausentes}\n"
+        + f"Dados consolidados:\n{json.dumps(dados_consolidados, ensure_ascii=False, default=str)}"
+    )
+
+    client = anthropic.Anthropic(api_key=settings.ANTHROPIC_API_KEY)
+    message = client.messages.create(
+        model=MODEL,
+        max_tokens=1500,
+        messages=[{"role": "user", "content": prompt}],
+    )
+
+    raw = message.content[0].text.strip()
+    if raw.startswith("```"):
+        lines = raw.splitlines()
+        lines = [l for l in lines if not l.strip().startswith("```")]
+        raw = "\n".join(lines).strip()
+
+    try:
+        prioridades = json.loads(raw)
+        if not isinstance(prioridades, list):
+            prioridades = [{"titulo": "Prioridade", "observacao": raw, "dataset_referencia": None}]
+    except json.JSONDecodeError:
+        logger.warning("gerar_prioridades: malformed JSON from Claude, storing fallback")
+        prioridades = [{"titulo": "Prioridade", "observacao": raw, "dataset_referencia": None}]
+
+    conteudo = json.dumps(prioridades, ensure_ascii=False)
+    periodo = datetime.now(timezone.utc).strftime("%Y-%m")
+
+    existing = buscar_insight(db, municipio_id, "prioridades", periodo)
+    if existing:
+        existing.conteudo = conteudo
+        existing.modelo = MODEL
+        existing.gerado_em = datetime.now(timezone.utc)
+        db.commit()
+        db.refresh(existing)
+        return existing
+
+    prioridades_row = InsightIA(
+        municipio_id=municipio_id,
+        dataset="prioridades",
+        periodo=periodo,
+        conteudo=conteudo,
+        modelo=MODEL,
+    )
+    db.add(prioridades_row)
+    db.commit()
+    db.refresh(prioridades_row)
+    return prioridades_row
