@@ -171,7 +171,7 @@ export default function PibPage() {
       {loading ? (
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           {[...Array(3)].map((_, i) => (
-            <div key={i} className="bg-white dark:bg-slate-900 p-6 rounded-2xl border border-slate-100 dark:border-slate-800">
+            <div key={i} className="bg-[var(--panel)] p-6 rounded-2xl border border-[var(--border)]">
               <ChartState kind="loading" shape="kpi" height={80} />
             </div>
           ))}

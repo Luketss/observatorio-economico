@@ -98,10 +98,10 @@ export default function BenchmarkPage() {
       className="space-y-8"
     >
       <div>
-        <h1 className="text-2xl font-extrabold tracking-tight text-slate-800 dark:text-white">
+        <h1 className="text-2xl font-extrabold tracking-tight text-[var(--text)]">
           Benchmark Municipal
         </h1>
-        <p className="text-sm text-slate-400 dark:text-slate-500 mt-1">
+        <p className="text-sm text-[var(--text-mute)] mt-1">
           Comparativo de indicadores entre municípios da plataforma.
         </p>
       </div>
@@ -111,11 +111,11 @@ export default function BenchmarkPage() {
         {/* State filter */}
         {estados.length > 1 && (
           <div className="flex items-center gap-2">
-            <label className="text-sm font-medium text-slate-600 dark:text-slate-300">Estado:</label>
+            <label className="text-sm font-medium text-[var(--text-dim)]">Estado:</label>
             <select
               value={estadoFiltro}
               onChange={(e) => setEstadoFiltro(e.target.value)}
-              className="text-sm border border-slate-200 dark:border-slate-700 rounded-lg px-3 py-1.5 bg-white dark:bg-slate-800 text-slate-800 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="text-sm border border-[var(--border)] rounded-lg px-3 py-1.5 bg-[var(--panel)] text-[var(--text)] focus:outline-none focus:ring-2 focus:ring-blue-500"
             >
               <option value="">Todos</option>
               {estados.map((uf) => (
@@ -128,11 +128,11 @@ export default function BenchmarkPage() {
         {/* Year selector */}
         {activeDataset?.hasAno && (
           <div className="flex items-center gap-2">
-            <label className="text-sm font-medium text-slate-600 dark:text-slate-300">Ano:</label>
+            <label className="text-sm font-medium text-[var(--text-dim)]">Ano:</label>
             <select
               value={ano}
               onChange={(e) => setAno(+e.target.value)}
-              className="text-sm border border-slate-200 dark:border-slate-700 rounded-lg px-3 py-1.5 bg-white dark:bg-slate-800 text-slate-800 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="text-sm border border-[var(--border)] rounded-lg px-3 py-1.5 bg-[var(--panel)] text-[var(--text)] focus:outline-none focus:ring-2 focus:ring-blue-500"
             >
               {YEAR_OPTIONS.map((y) => (
                 <option key={y} value={y}>{y}</option>
@@ -151,7 +151,7 @@ export default function BenchmarkPage() {
             className={`px-3 py-1.5 rounded-full text-sm font-medium transition-colors ${
               activeKey === ds.key
                 ? "bg-blue-600 text-white shadow"
-                : "bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-700 hover:border-blue-400"
+                : "bg-[var(--panel)] text-[var(--text-dim)] border border-[var(--border)] hover:border-blue-400"
             }`}
           >
             {ds.label}
@@ -160,8 +160,8 @@ export default function BenchmarkPage() {
       </div>
 
       {/* Chart */}
-      <div className="bg-white dark:bg-slate-900 p-6 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-800">
-        <h3 className="text-base font-bold mb-5 text-slate-800 dark:text-white">
+      <div className="bg-[var(--panel)] p-6 rounded-2xl shadow-sm border border-[var(--border)]">
+        <h3 className="text-base font-bold mb-5 text-[var(--text)]">
           {METRIC_LABELS[activeKey]}{activeDataset?.hasAno ? ` — ${ano}` : ""}
         </h3>
 
@@ -179,10 +179,10 @@ export default function BenchmarkPage() {
 
       {/* Ranking table */}
       {!loading && chartData.length > 0 && (
-        <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-800 overflow-hidden">
+        <div className="bg-[var(--panel)] rounded-2xl shadow-sm border border-[var(--border)] overflow-hidden">
           <table className="w-full text-sm">
             <thead>
-              <tr className="border-b border-slate-100 dark:border-slate-800">
+              <tr className="border-b border-[var(--border)]">
                 <th className="text-left px-6 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider w-12">
                   #
                 </th>
@@ -197,29 +197,29 @@ export default function BenchmarkPage() {
                 </th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-50 dark:divide-slate-800">
+            <tbody className="divide-y divide-[var(--border)]">
               {chartData.map((row, i) => (
                 <tr
                   key={i}
                   className={`transition-colors ${
                     myId && row.municipio_id === myId
-                      ? "bg-amber-50 dark:bg-amber-900/10"
-                      : "hover:bg-slate-50 dark:hover:bg-slate-800/40"
+                      ? "bg-amber-50 "
+                      : "hover:bg-[var(--panel-2)]/40"
                   }`}
                 >
                   <td className="px-6 py-3 text-slate-400 font-mono text-xs">{i + 1}</td>
-                  <td className="px-4 py-3 font-medium text-slate-800 dark:text-white">
+                  <td className="px-4 py-3 font-medium text-[var(--text)]">
                     {row.municipio_raw}
                     {myId && row.municipio_id === myId && (
-                      <span className="ml-2 text-xs text-amber-600 dark:text-amber-400 font-semibold">
+                      <span className="ml-2 text-xs text-amber-600  font-semibold">
                         (seu município)
                       </span>
                     )}
                   </td>
-                  <td className="px-4 py-3 text-slate-500 dark:text-slate-400 font-mono text-xs">
+                  <td className="px-4 py-3 text-[var(--text-dim)] font-mono text-xs">
                     {row.estado || "—"}
                   </td>
-                  <td className="px-6 py-3 text-right font-semibold text-slate-700 dark:text-slate-200">
+                  <td className="px-6 py-3 text-right font-semibold text-[var(--text)]">
                     {activeDataset?.fmt(row.valor)}
                   </td>
                 </tr>

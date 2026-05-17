@@ -97,12 +97,12 @@ export default function PeDeMeiaPage() {
     >
       <div>
         <div className="flex items-center gap-2">
-          <h1 className="text-2xl font-extrabold tracking-tight text-slate-800 dark:text-white">
+          <h1 className="text-2xl font-extrabold tracking-tight text-[var(--text)]">
             Pé-de-Meia
           </h1>
           <InfoTooltip dataset="pe_de_meia" />
         </div>
-        <p className="text-sm text-slate-400 dark:text-slate-500 mt-1">
+        <p className="text-sm text-[var(--text-mute)] mt-1">
           Incentivos financeiros a estudantes do ensino médio público.
         </p>
       </div>
@@ -116,7 +116,7 @@ export default function PeDeMeiaPage() {
           {[...Array(2)].map((_, i) => (
             <div
               key={i}
-              className="bg-white dark:bg-slate-900 p-6 rounded-2xl border border-slate-100 dark:border-slate-800 animate-pulse h-28"
+              className="bg-[var(--panel)] p-6 rounded-2xl border border-[var(--border)] animate-pulse h-28"
             />
           ))}
         </div>
@@ -129,8 +129,8 @@ export default function PeDeMeiaPage() {
       )}
 
       {/* Evolução de Estudantes */}
-      <div className="bg-white dark:bg-slate-900 p-6 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-800">
-        <h3 className="text-base font-bold mb-5 text-slate-800 dark:text-white">
+      <div className="bg-[var(--panel)] p-6 rounded-2xl shadow-sm border border-[var(--border)]">
+        <h3 className="text-base font-bold mb-5 text-[var(--text)]">
           Evolução de Estudantes Beneficiados
         </h3>
         <AreaLineChart
@@ -147,8 +147,8 @@ export default function PeDeMeiaPage() {
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Estudantes por Etapa de Ensino */}
-        <div className="bg-white dark:bg-slate-900 p-6 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-800">
-          <h3 className="text-base font-bold mb-5 text-slate-800 dark:text-white">
+        <div className="bg-[var(--panel)] p-6 rounded-2xl shadow-sm border border-[var(--border)]">
+          <h3 className="text-base font-bold mb-5 text-[var(--text)]">
             Estudantes por Etapa de Ensino
           </h3>
           <HBarChart
@@ -161,8 +161,8 @@ export default function PeDeMeiaPage() {
         </div>
 
         {/* Breakdown por Tipo de Incentivo */}
-        <div className="bg-white dark:bg-slate-900 p-6 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-800">
-          <h3 className="text-base font-bold mb-5 text-slate-800 dark:text-white">
+        <div className="bg-[var(--panel)] p-6 rounded-2xl shadow-sm border border-[var(--border)]">
+          <h3 className="text-base font-bold mb-5 text-[var(--text)]">
             Estudantes por Tipo de Incentivo
           </h3>
           <DonutChart

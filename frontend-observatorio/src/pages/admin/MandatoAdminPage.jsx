@@ -107,10 +107,10 @@ export default function MandatoAdminPage() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-extrabold tracking-tight text-slate-800 dark:text-white">
+          <h1 className="text-2xl font-extrabold tracking-tight text-[var(--text)]">
             Timeline do Mandato
           </h1>
-          <p className="text-sm text-slate-400 dark:text-slate-500 mt-1">
+          <p className="text-sm text-[var(--text-mute)] mt-1">
             Gerencie marcos, obras e eventos do mandato.
           </p>
         </div>
@@ -137,15 +137,15 @@ export default function MandatoAdminPage() {
               initial={{ scale: 0.95, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 0.95, opacity: 0 }}
-              className="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl w-full max-w-md p-6"
+              className="bg-[var(--panel)] rounded-2xl shadow-2xl w-full max-w-md p-6"
             >
               <div className="flex items-center justify-between mb-5">
-                <h2 className="text-lg font-bold text-slate-800 dark:text-white">
+                <h2 className="text-lg font-bold text-[var(--text)]">
                   {editing ? "Editar Marco" : "Novo Marco"}
                 </h2>
                 <button
                   onClick={() => setShowForm(false)}
-                  className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
+                  className="text-slate-400 hover:text-slate-600 "
                 >
                   <XMarkIcon className="w-5 h-5" />
                 </button>
@@ -153,7 +153,7 @@ export default function MandatoAdminPage() {
 
               <form onSubmit={handleSubmit} className="space-y-4">
                 <div>
-                  <label className="block text-xs font-semibold text-slate-600 dark:text-slate-300 uppercase tracking-wider mb-1.5">
+                  <label className="block text-xs font-semibold text-[var(--text-dim)] uppercase tracking-wider mb-1.5">
                     Data *
                   </label>
                   <input
@@ -161,18 +161,18 @@ export default function MandatoAdminPage() {
                     required
                     value={form.data}
                     onChange={(e) => setForm({ ...form, data: e.target.value })}
-                    className="w-full border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="w-full border border-[var(--border)] bg-[var(--panel)] text-[var(--text)] rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-xs font-semibold text-slate-600 dark:text-slate-300 uppercase tracking-wider mb-1.5">
+                  <label className="block text-xs font-semibold text-[var(--text-dim)] uppercase tracking-wider mb-1.5">
                     Tipo *
                   </label>
                   <select
                     value={form.tipo}
                     onChange={(e) => setForm({ ...form, tipo: e.target.value })}
-                    className="w-full border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="w-full border border-[var(--border)] bg-[var(--panel)] text-[var(--text)] rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                   >
                     {TIPOS.map((t) => (
                       <option key={t.value} value={t.value}>{t.label}</option>
@@ -181,7 +181,7 @@ export default function MandatoAdminPage() {
                 </div>
 
                 <div>
-                  <label className="block text-xs font-semibold text-slate-600 dark:text-slate-300 uppercase tracking-wider mb-1.5">
+                  <label className="block text-xs font-semibold text-[var(--text-dim)] uppercase tracking-wider mb-1.5">
                     Título *
                   </label>
                   <input
@@ -191,12 +191,12 @@ export default function MandatoAdminPage() {
                     placeholder="Ex: Início da obra do novo hospital"
                     value={form.titulo}
                     onChange={(e) => setForm({ ...form, titulo: e.target.value })}
-                    className="w-full border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="w-full border border-[var(--border)] bg-[var(--panel)] text-[var(--text)] rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-xs font-semibold text-slate-600 dark:text-slate-300 uppercase tracking-wider mb-1.5">
+                  <label className="block text-xs font-semibold text-[var(--text-dim)] uppercase tracking-wider mb-1.5">
                     Descrição
                   </label>
                   <textarea
@@ -204,7 +204,7 @@ export default function MandatoAdminPage() {
                     placeholder="Detalhes adicionais (opcional)"
                     value={form.descricao}
                     onChange={(e) => setForm({ ...form, descricao: e.target.value })}
-                    className="w-full border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100 placeholder-slate-300 dark:placeholder-slate-600 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
+                    className="w-full border border-[var(--border)] bg-[var(--panel)] text-[var(--text)] placeholder-[var(--text-mute)] rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
                   />
                 </div>
 
@@ -216,7 +216,7 @@ export default function MandatoAdminPage() {
                   <button
                     type="button"
                     onClick={() => setShowForm(false)}
-                    className="flex-1 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 text-sm font-medium py-2.5 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors"
+                    className="flex-1 border border-[var(--border)] text-[var(--text-dim)] text-sm font-medium py-2.5 rounded-xl hover:bg-[var(--panel-2)] transition-colors"
                   >
                     Cancelar
                   </button>
@@ -235,25 +235,25 @@ export default function MandatoAdminPage() {
       </AnimatePresence>
 
       {/* List */}
-      <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-100 dark:border-slate-800 shadow-sm overflow-hidden">
+      <div className="bg-[var(--panel)] rounded-2xl border border-[var(--border)] shadow-sm overflow-hidden">
         {loading ? (
           <div className="p-6 space-y-3">
             {[1, 2, 3].map((i) => (
-              <div key={i} className="h-16 bg-slate-100 dark:bg-slate-800 rounded-xl animate-pulse" />
+              <div key={i} className="h-16 bg-[var(--panel-2)] rounded-xl animate-pulse" />
             ))}
           </div>
         ) : marcos.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-16 text-center">
-            <FlagIcon className="w-12 h-12 text-slate-200 dark:text-slate-700 mb-3" />
-            <p className="text-slate-500 dark:text-slate-400 font-medium">Nenhum marco cadastrado</p>
-            <p className="text-sm text-slate-400 dark:text-slate-500 mt-1">
+            <FlagIcon className="w-12 h-12 text-[var(--text-mute)] mb-3" />
+            <p className="text-[var(--text-dim)] font-medium">Nenhum marco cadastrado</p>
+            <p className="text-sm text-[var(--text-mute)] mt-1">
               Clique em "Novo Marco" para começar.
             </p>
           </div>
         ) : (
           <table className="w-full text-sm">
             <thead>
-              <tr className="bg-slate-50 dark:bg-slate-800 text-left text-xs uppercase text-slate-400 dark:text-slate-500 tracking-wider">
+              <tr className="bg-slate-50  text-left text-xs uppercase text-[var(--text-mute)] tracking-wider">
                 <th className="px-3 py-3 md:px-6">Data</th>
                 <th className="px-3 py-3 md:px-6">Tipo</th>
                 <th className="px-3 py-3 md:px-6">Título</th>
@@ -261,10 +261,10 @@ export default function MandatoAdminPage() {
                 <th className="px-3 py-3 md:px-6 text-right">Ações</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-50 dark:divide-slate-800">
+            <tbody className="divide-y divide-[var(--border)]">
               {marcos.map((marco) => (
-                <tr key={marco.id} className="hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors">
-                  <td className="px-3 py-4 md:px-6 font-medium text-slate-700 dark:text-slate-200 whitespace-nowrap">
+                <tr key={marco.id} className="hover:bg-[var(--panel-2)] transition-colors">
+                  <td className="px-3 py-4 md:px-6 font-medium text-[var(--text)] whitespace-nowrap">
                     {fmtDate(marco.data)}
                   </td>
                   <td className="px-3 py-4 md:px-6">
@@ -272,8 +272,8 @@ export default function MandatoAdminPage() {
                       {TIPOS.find((t) => t.value === marco.tipo)?.label || marco.tipo}
                     </span>
                   </td>
-                  <td className="px-3 py-4 md:px-6 font-medium text-slate-800 dark:text-white">{marco.titulo}</td>
-                  <td className="px-3 py-4 md:px-6 text-slate-400 dark:text-slate-500 max-w-xs truncate">
+                  <td className="px-3 py-4 md:px-6 font-medium text-[var(--text)]">{marco.titulo}</td>
+                  <td className="px-3 py-4 md:px-6 text-[var(--text-mute)] max-w-xs truncate">
                     {marco.descricao || "—"}
                   </td>
                   <td className="px-3 py-4 md:px-6 text-right">

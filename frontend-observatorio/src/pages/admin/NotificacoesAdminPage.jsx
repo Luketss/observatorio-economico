@@ -15,9 +15,9 @@ const TIPO_OPTIONS = [
 ];
 
 const TIPO_STYLES = {
-  info: "bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300",
-  warning: "bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300",
-  alert: "bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300",
+  info: "bg-[var(--panel-2)] text-blue-400",
+  warning: "bg-[var(--panel-2)] text-amber-400",
+  alert: "bg-[var(--panel-2)] text-red-400",
 };
 
 const fmtDate = (d) =>
@@ -132,10 +132,10 @@ export default function NotificacoesAdminPage() {
     >
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-extrabold tracking-tight text-slate-800 dark:text-white">
+          <h1 className="text-2xl font-extrabold tracking-tight text-[var(--text)]">
             Notificações
           </h1>
-          <p className="text-sm text-slate-400 dark:text-slate-500 mt-1">
+          <p className="text-sm text-[var(--text-mute)] mt-1">
             Crie e gerencie notificações para os usuários da plataforma.
           </p>
         </div>
@@ -149,19 +149,19 @@ export default function NotificacoesAdminPage() {
       </div>
 
       {/* Table */}
-      <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-100 dark:border-slate-800 overflow-hidden">
+      <div className="bg-[var(--panel)] rounded-2xl border border-[var(--border)] overflow-hidden">
         {loading ? (
-          <div className="p-8 text-center text-slate-400 dark:text-slate-500 text-sm animate-pulse">
+          <div className="p-8 text-center text-[var(--text-mute)] text-sm animate-pulse">
             Carregando...
           </div>
         ) : notifs.length === 0 ? (
-          <div className="p-8 text-center text-slate-400 dark:text-slate-500 text-sm">
+          <div className="p-8 text-center text-[var(--text-mute)] text-sm">
             Nenhuma notificação criada.
           </div>
         ) : (
           <table className="w-full text-sm">
             <thead>
-              <tr className="border-b border-slate-100 dark:border-slate-800">
+              <tr className="border-b border-[var(--border)]">
                 <th className="text-left px-6 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider">
                   Título
                 </th>
@@ -180,38 +180,38 @@ export default function NotificacoesAdminPage() {
                 <th className="px-4 py-3" />
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-50 dark:divide-slate-800">
+            <tbody className="divide-y divide-[var(--border)]">
               {notifs.map((n) => (
-                <tr key={n.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/40 transition-colors">
-                  <td className="px-6 py-3 font-medium text-slate-800 dark:text-white max-w-xs">
+                <tr key={n.id} className="hover:bg-[var(--panel-2)]/40 transition-colors">
+                  <td className="px-6 py-3 font-medium text-[var(--text)] max-w-xs">
                     <div className="truncate">{n.titulo}</div>
-                    <div className="text-xs text-slate-400 dark:text-slate-500 truncate">{n.mensagem}</div>
+                    <div className="text-xs text-[var(--text-mute)] truncate">{n.mensagem}</div>
                   </td>
                   <td className="px-4 py-3">
                     <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${TIPO_STYLES[n.tipo] || TIPO_STYLES.info}`}>
                       {TIPO_OPTIONS.find((t) => t.value === n.tipo)?.label || n.tipo}
                     </span>
                   </td>
-                  <td className="px-4 py-3 text-slate-600 dark:text-slate-300 text-xs">
+                  <td className="px-4 py-3 text-[var(--text-dim)] text-xs">
                     {n.municipio_ids ? `${n.municipio_ids.length} municípios` : "Todos"}
                   </td>
-                  <td className="px-4 py-3 text-slate-500 dark:text-slate-400 text-xs">
+                  <td className="px-4 py-3 text-[var(--text-dim)] text-xs">
                     {fmtDate(n.criado_em)}
                   </td>
-                  <td className="px-4 py-3 text-slate-500 dark:text-slate-400 text-xs">
+                  <td className="px-4 py-3 text-[var(--text-dim)] text-xs">
                     {fmtDate(n.expira_em)}
                   </td>
                   <td className="px-4 py-3">
                     <div className="flex items-center gap-1 justify-end">
                       <button
                         onClick={() => openEdit(n)}
-                        className="p-1.5 rounded-lg text-slate-400 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-colors"
+                        className="p-1.5 rounded-lg text-[var(--text-mute)] hover:text-blue-500 hover:bg-[var(--panel-2)] transition-colors"
                       >
                         <PencilSquareIcon className="w-4 h-4" />
                       </button>
                       <button
                         onClick={() => setDeleteId(n.id)}
-                        className="p-1.5 rounded-lg text-slate-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
+                        className="p-1.5 rounded-lg text-[var(--text-mute)] hover:text-red-400 hover:bg-[var(--panel-2)] transition-colors"
                       >
                         <TrashIcon className="w-4 h-4" />
                       </button>
@@ -234,24 +234,24 @@ export default function NotificacoesAdminPage() {
             exit={{ opacity: 0 }}
           >
             <motion.div
-              className="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl w-full max-w-lg border border-slate-100 dark:border-slate-800"
+              className="bg-[var(--panel)] rounded-2xl shadow-2xl w-full max-w-lg border border-[var(--border)]"
               initial={{ scale: 0.95, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 0.95, opacity: 0 }}
               transition={{ duration: 0.18 }}
             >
-              <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 dark:border-slate-800">
-                <h2 className="font-bold text-slate-800 dark:text-white">
+              <div className="flex items-center justify-between px-6 py-4 border-b border-[var(--border)]">
+                <h2 className="font-bold text-[var(--text)]">
                   {modal === "edit" ? "Editar Notificação" : "Nova Notificação"}
                 </h2>
-                <button onClick={closeModal} className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200">
+                <button onClick={closeModal} className="text-slate-400 hover:text-slate-600 ">
                   <XMarkIcon className="w-5 h-5" />
                 </button>
               </div>
 
               <form onSubmit={handleSubmit} className="p-6 space-y-4">
                 <div>
-                  <label className="block text-xs font-semibold text-slate-600 dark:text-slate-300 mb-1">
+                  <label className="block text-xs font-semibold text-[var(--text-dim)] mb-1">
                     Título
                   </label>
                   <input
@@ -260,13 +260,13 @@ export default function NotificacoesAdminPage() {
                     onChange={(e) => setForm((f) => ({ ...f, titulo: e.target.value }))}
                     maxLength={100}
                     required
-                    className="w-full border border-slate-200 dark:border-slate-700 rounded-lg px-3 py-2 text-sm bg-white dark:bg-slate-800 text-slate-800 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="w-full border border-[var(--border)] rounded-lg px-3 py-2 text-sm bg-[var(--panel)] text-[var(--text)] focus:outline-none focus:ring-2 focus:ring-blue-500"
                     placeholder="Título da notificação"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-xs font-semibold text-slate-600 dark:text-slate-300 mb-1">
+                  <label className="block text-xs font-semibold text-[var(--text-dim)] mb-1">
                     Mensagem
                   </label>
                   <textarea
@@ -274,20 +274,20 @@ export default function NotificacoesAdminPage() {
                     onChange={(e) => setForm((f) => ({ ...f, mensagem: e.target.value }))}
                     required
                     rows={3}
-                    className="w-full border border-slate-200 dark:border-slate-700 rounded-lg px-3 py-2 text-sm bg-white dark:bg-slate-800 text-slate-800 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
+                    className="w-full border border-[var(--border)] rounded-lg px-3 py-2 text-sm bg-[var(--panel)] text-[var(--text)] focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
                     placeholder="Conteúdo da notificação"
                   />
                 </div>
 
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-xs font-semibold text-slate-600 dark:text-slate-300 mb-1">
+                    <label className="block text-xs font-semibold text-[var(--text-dim)] mb-1">
                       Tipo
                     </label>
                     <select
                       value={form.tipo}
                       onChange={(e) => setForm((f) => ({ ...f, tipo: e.target.value }))}
-                      className="w-full border border-slate-200 dark:border-slate-700 rounded-lg px-3 py-2 text-sm bg-white dark:bg-slate-800 text-slate-800 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      className="w-full border border-[var(--border)] rounded-lg px-3 py-2 text-sm bg-[var(--panel)] text-[var(--text)] focus:outline-none focus:ring-2 focus:ring-blue-500"
                     >
                       {TIPO_OPTIONS.map((t) => (
                         <option key={t.value} value={t.value}>{t.label}</option>
@@ -296,20 +296,20 @@ export default function NotificacoesAdminPage() {
                   </div>
 
                   <div>
-                    <label className="block text-xs font-semibold text-slate-600 dark:text-slate-300 mb-1">
+                    <label className="block text-xs font-semibold text-[var(--text-dim)] mb-1">
                       Expira em (opcional)
                     </label>
                     <input
                       type="date"
                       value={form.expira_em}
                       onChange={(e) => setForm((f) => ({ ...f, expira_em: e.target.value }))}
-                      className="w-full border border-slate-200 dark:border-slate-700 rounded-lg px-3 py-2 text-sm bg-white dark:bg-slate-800 text-slate-800 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      className="w-full border border-[var(--border)] rounded-lg px-3 py-2 text-sm bg-[var(--panel)] text-[var(--text)] focus:outline-none focus:ring-2 focus:ring-blue-500"
                     />
                   </div>
                 </div>
 
                 <div>
-                  <label className="block text-xs font-semibold text-slate-600 dark:text-slate-300 mb-2">
+                  <label className="block text-xs font-semibold text-[var(--text-dim)] mb-2">
                     Destino
                   </label>
                   <div className="flex gap-4 text-sm">
@@ -320,7 +320,7 @@ export default function NotificacoesAdminPage() {
                         checked={form.destino === "todos"}
                         onChange={() => setForm((f) => ({ ...f, destino: "todos", municipio_ids: [] }))}
                       />
-                      <span className="text-slate-700 dark:text-slate-300">Todos os municípios</span>
+                      <span className="text-slate-700 ">Todos os municípios</span>
                     </label>
                     <label className="flex items-center gap-2 cursor-pointer">
                       <input
@@ -329,21 +329,21 @@ export default function NotificacoesAdminPage() {
                         checked={form.destino === "especificos"}
                         onChange={() => setForm((f) => ({ ...f, destino: "especificos" }))}
                       />
-                      <span className="text-slate-700 dark:text-slate-300">Municípios específicos</span>
+                      <span className="text-slate-700 ">Municípios específicos</span>
                     </label>
                   </div>
                 </div>
 
                 {form.destino === "especificos" && municipios.length > 0 && (
-                  <div className="max-h-40 overflow-y-auto border border-slate-200 dark:border-slate-700 rounded-lg p-2 space-y-1">
+                  <div className="max-h-40 overflow-y-auto border border-[var(--border)] rounded-lg p-2 space-y-1">
                     {municipios.map((m) => (
-                      <label key={m.id} className="flex items-center gap-2 text-sm cursor-pointer px-2 py-1 rounded hover:bg-slate-50 dark:hover:bg-slate-800">
+                      <label key={m.id} className="flex items-center gap-2 text-sm cursor-pointer px-2 py-1 rounded hover:bg-[var(--panel-2)]">
                         <input
                           type="checkbox"
                           checked={form.municipio_ids.includes(m.id)}
                           onChange={() => toggleMunicipio(m.id)}
                         />
-                        <span className="text-slate-700 dark:text-slate-300">{m.nome}</span>
+                        <span className="text-slate-700 ">{m.nome}</span>
                         <span className="text-xs text-slate-400">{m.estado}</span>
                       </label>
                     ))}
@@ -354,7 +354,7 @@ export default function NotificacoesAdminPage() {
                   <button
                     type="button"
                     onClick={closeModal}
-                    className="flex-1 py-2 rounded-xl border border-slate-200 dark:border-slate-700 text-sm font-medium text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors"
+                    className="flex-1 py-2 rounded-xl border border-[var(--border)] text-sm font-medium text-[var(--text-dim)] hover:bg-[var(--panel-2)] transition-colors"
                   >
                     Cancelar
                   </button>
@@ -382,20 +382,20 @@ export default function NotificacoesAdminPage() {
             exit={{ opacity: 0 }}
           >
             <motion.div
-              className="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl w-full max-w-sm border border-slate-100 dark:border-slate-800 p-6 text-center"
+              className="bg-[var(--panel)] rounded-2xl shadow-2xl w-full max-w-sm border border-[var(--border)] p-6 text-center"
               initial={{ scale: 0.95, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 0.95, opacity: 0 }}
               transition={{ duration: 0.18 }}
             >
-              <p className="font-semibold text-slate-800 dark:text-white mb-2">Excluir notificação?</p>
-              <p className="text-sm text-slate-500 dark:text-slate-400 mb-6">
+              <p className="font-semibold text-[var(--text)] mb-2">Excluir notificação?</p>
+              <p className="text-sm text-[var(--text-dim)] mb-6">
                 Esta ação não pode ser desfeita.
               </p>
               <div className="flex gap-3">
                 <button
                   onClick={() => setDeleteId(null)}
-                  className="flex-1 py-2 rounded-xl border border-slate-200 dark:border-slate-700 text-sm font-medium text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors"
+                  className="flex-1 py-2 rounded-xl border border-[var(--border)] text-sm font-medium text-[var(--text-dim)] hover:bg-[var(--panel-2)] transition-colors"
                 >
                   Cancelar
                 </button>

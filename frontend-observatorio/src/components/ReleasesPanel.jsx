@@ -99,16 +99,16 @@ export default function ReleasesPanel({ dataset }) {
 
   if (loading) {
     return (
-      <div className="bg-gradient-to-br from-amber-50 to-orange-50 dark:from-amber-950/20 dark:to-orange-950/20 border border-amber-200 dark:border-amber-800 rounded-2xl p-6">
+      <div className="border border-[var(--border-strong)] rounded-2xl p-6" style={{ background: "var(--panel)" }}>
         <div className="flex items-center gap-2 mb-4">
           <div className="w-8 h-8 rounded-lg bg-amber-500 flex items-center justify-center">
             <NewspaperIcon className="w-4 h-4 text-white" />
           </div>
-          <h3 className="font-semibold text-gray-800 dark:text-slate-200">Release de Imprensa</h3>
+          <h3 className="font-semibold text-[var(--text)]">Release de Imprensa</h3>
         </div>
         <div className="space-y-2">
           {[1, 2, 3].map((i) => (
-            <div key={i} className="h-4 bg-amber-200 dark:bg-amber-800 rounded animate-pulse" style={{ width: `${85 - i * 10}%` }} />
+            <div key={i} className="h-4 bg-[var(--panel-2)] rounded animate-pulse" style={{ width: `${85 - i * 10}%` }} />
           ))}
         </div>
       </div>
@@ -123,18 +123,19 @@ export default function ReleasesPanel({ dataset }) {
         initial={{ opacity: 0, y: 16 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.4 }}
-        className="bg-gradient-to-br from-amber-50 to-orange-50 dark:from-amber-950/20 dark:to-orange-950/20 border border-amber-200 dark:border-amber-800 rounded-2xl p-6"
+        className="border border-[var(--border-strong)] rounded-2xl p-6"
+        style={{ background: "var(--panel)" }}
       >
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-2">
             <div className="w-8 h-8 rounded-lg bg-amber-500 flex items-center justify-center">
               <NewspaperIcon className="w-4 h-4 text-white" />
             </div>
-            <h3 className="font-semibold text-gray-800 dark:text-slate-200">Release de Imprensa</h3>
+            <h3 className="font-semibold text-[var(--text)]">Release de Imprensa</h3>
           </div>
           <button
             onClick={handlePrint}
-            className="text-xs font-medium text-amber-700 dark:text-amber-400 border border-amber-300 dark:border-amber-700 rounded-lg px-3 py-1.5 hover:bg-amber-100 dark:hover:bg-amber-900/40 transition-colors"
+            className="text-xs font-medium text-[var(--accent-4)] border border-[var(--border)] rounded-lg px-3 py-1.5 hover:bg-[var(--panel-2)] transition-colors"
           >
             Baixar PDF
           </button>
@@ -148,7 +149,7 @@ export default function ReleasesPanel({ dataset }) {
                 initial={{ opacity: 0, y: -6 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: i * 0.05 }}
-                className="text-sm text-gray-700 dark:text-slate-300 leading-relaxed"
+                className="text-sm text-[var(--text-dim)] leading-relaxed"
               >
                 {paragraph}
               </motion.p>
@@ -157,13 +158,13 @@ export default function ReleasesPanel({ dataset }) {
         </AnimatePresence>
 
         <div className="flex items-center justify-between mt-4">
-          <p className="text-xs text-gray-400 dark:text-slate-500">
+          <p className="text-xs text-[var(--text-mute)]">
             Gerado em {fmtDate(release.gerado_em)}
           </p>
           {release.bullets.length > 1 && (
             <button
               onClick={() => setExpanded((v) => !v)}
-              className="flex items-center gap-1 text-xs font-medium text-amber-700 dark:text-amber-400 hover:text-amber-800 dark:hover:text-amber-300 transition-colors"
+              className="flex items-center gap-1 text-xs font-medium text-[var(--accent-4)] hover:opacity-80 transition-colors"
             >
               {expanded ? (
                 <><ChevronUpIcon className="w-3.5 h-3.5" /> Mostrar menos</>

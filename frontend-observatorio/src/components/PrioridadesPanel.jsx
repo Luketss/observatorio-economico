@@ -33,11 +33,11 @@ const DATASET_LABEL = {
 };
 
 const PREFIX_STYLES = {
-  "Atenção": { badge: "bg-amber-100 text-amber-700 dark:bg-amber-950/40 dark:text-amber-400", label: "Atenção" },
-  "Oportunidade": { badge: "bg-blue-100 text-blue-700 dark:bg-blue-950/40 dark:text-blue-400", label: "Oportunidade" },
-  "Risco": { badge: "bg-red-100 text-red-700 dark:bg-red-950/40 dark:text-red-400", label: "Risco" },
+  "Atenção": { badge: "bg-[var(--panel-2)] text-amber-400", label: "Atenção" },
+  "Oportunidade": { badge: "bg-[var(--panel-2)] text-blue-400", label: "Oportunidade" },
+  "Risco": { badge: "bg-[var(--panel-2)] text-red-400", label: "Risco" },
 };
-const DEFAULT_STYLE = { badge: "bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300", label: "Prioridade" };
+const DEFAULT_STYLE = { badge: "bg-[var(--panel-2)] text-[var(--text-dim)]", label: "Prioridade" };
 
 function parsePrefix(titulo) {
   const match = /^(Atenção|Oportunidade|Risco):\s*/.exec(titulo || "");
@@ -64,11 +64,11 @@ export default function PrioridadesPanel() {
 
   if (state.status === "loading") {
     return (
-      <div className="rounded-2xl border border-slate-100 dark:border-slate-800 bg-white dark:bg-slate-900 p-6">
-        <div className="h-5 w-48 bg-slate-100 dark:bg-slate-800 rounded animate-pulse" />
+      <div className="rounded-2xl border border-[var(--border)] bg-[var(--panel)] p-6">
+        <div className="h-5 w-48 bg-[var(--panel-2)] rounded animate-pulse" />
         <div className="grid grid-cols-1 xl:grid-cols-3 gap-4 mt-5">
           {[0, 1, 2].map((i) => (
-            <div key={i} className="h-32 bg-slate-100 dark:bg-slate-800 rounded-xl animate-pulse" />
+            <div key={i} className="h-32 bg-[var(--panel-2)] rounded-xl animate-pulse" />
           ))}
         </div>
       </div>
@@ -79,12 +79,12 @@ export default function PrioridadesPanel() {
 
   if (state.status === "empty") {
     return (
-      <div className="rounded-2xl border border-slate-100 dark:border-slate-800 bg-white dark:bg-slate-900 p-6">
+      <div className="rounded-2xl border border-[var(--border)] bg-[var(--panel)] p-6">
         <div className="flex items-center gap-2 mb-2">
           <SparklesIcon className="w-5 h-5 text-violet-500" />
-          <h2 className="text-base font-bold text-slate-800 dark:text-white">Prioridades do mês</h2>
+          <h2 className="text-base font-bold text-[var(--text)]">Prioridades do mês</h2>
         </div>
-        <p className="text-sm text-slate-400 dark:text-slate-500">
+        <p className="text-sm text-[var(--text-mute)]">
           As prioridades ainda não foram geradas. Aguarde o próximo ciclo de análise.
         </p>
       </div>
@@ -98,14 +98,14 @@ export default function PrioridadesPanel() {
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.3 }}
-      className="rounded-2xl border border-slate-100 dark:border-slate-800 bg-white dark:bg-slate-900 p-6"
+      className="rounded-2xl border border-[var(--border)] bg-[var(--panel)] p-6"
     >
       <div className="flex items-center justify-between mb-5">
         <div className="flex items-center gap-2">
           <SparklesIcon className="w-5 h-5 text-violet-500" />
-          <h2 className="text-base font-bold text-slate-800 dark:text-white">Prioridades do mês</h2>
+          <h2 className="text-base font-bold text-[var(--text)]">Prioridades do mês</h2>
         </div>
-        <span className="text-xs text-slate-400 dark:text-slate-500">gerado em {fmtDate(gerado_em)}</span>
+        <span className="text-xs text-[var(--text-mute)]">gerado em {fmtDate(gerado_em)}</span>
       </div>
 
       <div className="grid grid-cols-1 xl:grid-cols-3 gap-4">
@@ -114,16 +114,16 @@ export default function PrioridadesPanel() {
           const route = p.dataset_referencia ? DATASET_ROUTE[p.dataset_referencia] : null;
           const datasetLabel = p.dataset_referencia ? DATASET_LABEL[p.dataset_referencia] : null;
           return (
-            <div key={i} className="flex flex-col gap-2 p-4 rounded-xl border border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/30">
+            <div key={i} className="flex flex-col gap-2 p-4 rounded-xl border border-[var(--border)] bg-[var(--panel-2)]">
               <span className={`inline-flex w-fit text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded ${style.badge}`}>
                 {style.label}
               </span>
-              <h3 className="text-sm font-semibold text-slate-800 dark:text-slate-100 leading-snug">{body}</h3>
-              <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed">{p.observacao}</p>
+              <h3 className="text-sm font-semibold text-[var(--text)] leading-snug">{body}</h3>
+              <p className="text-xs text-[var(--text-dim)] leading-relaxed">{p.observacao}</p>
               {route && datasetLabel && (
                 <Link
                   to={route}
-                  className="inline-flex items-center gap-1 text-xs font-medium text-violet-600 hover:text-violet-700 dark:text-violet-400 mt-1"
+                  className="inline-flex items-center gap-1 text-xs font-medium text-[var(--accent-3)] hover:opacity-80 mt-1"
                 >
                   Ver em {datasetLabel}
                   <ArrowRightIcon className="w-3.5 h-3.5" />

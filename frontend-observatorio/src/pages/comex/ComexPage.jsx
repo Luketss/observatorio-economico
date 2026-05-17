@@ -147,11 +147,11 @@ export default function ComexPage() {
 
       {anos.length > 0 && (
         <div className="flex items-center gap-2">
-          <label className="text-sm text-slate-500 dark:text-slate-400 font-medium">Ano:</label>
+          <label className="text-sm text-[var(--text-dim)] font-medium">Ano:</label>
           <select
             value={anoSelecionado}
             onChange={(e) => setAnoSelecionado(e.target.value)}
-            className="border border-slate-200 dark:border-slate-700 rounded-lg px-3 py-1.5 text-sm text-slate-700 dark:text-slate-100 bg-white dark:bg-slate-800 shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="border border-[var(--border)] rounded-lg px-3 py-1.5 text-sm text-[var(--text)] bg-[var(--panel)] shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
           >
             {anos.map((ano) => (
               <option key={ano} value={String(ano)}>
@@ -169,7 +169,7 @@ export default function ComexPage() {
       {loading ? (
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           {[...Array(3)].map((_, i) => (
-            <div key={i} className="bg-white dark:bg-slate-900 p-6 rounded-2xl border border-slate-100 dark:border-slate-800">
+            <div key={i} className="bg-[var(--panel)] p-6 rounded-2xl border border-[var(--border)]">
               <ChartState kind="loading" shape="kpi" height={80} />
             </div>
           ))}
@@ -183,8 +183,8 @@ export default function ComexPage() {
       )}
 
       {/* Exportações vs Importações ao longo do tempo */}
-      <div className="bg-white dark:bg-slate-900 p-6 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-800">
-        <h3 className="text-base font-bold mb-5 text-slate-800 dark:text-white">
+      <div className="bg-[var(--panel)] p-6 rounded-2xl shadow-sm border border-[var(--border)]">
+        <h3 className="text-base font-bold mb-5 text-[var(--text)]">
           Exportações vs Importações
         </h3>
         <MultiLineChart
@@ -205,8 +205,8 @@ export default function ComexPage() {
 
       {/* Saldo — Balança Comercial Mensal */}
       {chartSerie.length > 0 && (
-        <div className="bg-white dark:bg-slate-900 p-6 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-800">
-          <h3 className="text-base font-bold mb-5 text-slate-800 dark:text-white">
+        <div className="bg-[var(--panel)] p-6 rounded-2xl shadow-sm border border-[var(--border)]">
+          <h3 className="text-base font-bold mb-5 text-[var(--text)]">
             Saldo da Balança Comercial (Mensal)
           </h3>
           <MultiLineChart
@@ -222,8 +222,8 @@ export default function ComexPage() {
 
       {/* Peso Total por Período (kg) */}
       {chartSerie.length > 0 && (chartSerie.some(d => d.peso_export > 0 || d.peso_import > 0)) && (
-        <div className="bg-white dark:bg-slate-900 p-6 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-800">
-          <h3 className="text-base font-bold mb-5 text-slate-800 dark:text-white">
+        <div className="bg-[var(--panel)] p-6 rounded-2xl shadow-sm border border-[var(--border)]">
+          <h3 className="text-base font-bold mb-5 text-[var(--text)]">
             Volume Físico — Peso Exportado vs Importado (kg)
           </h3>
           <MultiLineChart
@@ -244,11 +244,11 @@ export default function ComexPage() {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Top Produtos */}
         <PlanGate planKey="comex.por_produto">
-        <div className="bg-white dark:bg-slate-900 p-6 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-800">
-          <h3 className="text-base font-bold mb-1 text-slate-800 dark:text-white">
+        <div className="bg-[var(--panel)] p-6 rounded-2xl shadow-sm border border-[var(--border)]">
+          <h3 className="text-base font-bold mb-1 text-[var(--text)]">
             Top 10 Produtos
           </h3>
-          <p className="text-xs text-slate-400 dark:text-slate-500 mb-5">Ano: {anoSelecionado}</p>
+          <p className="text-xs text-[var(--text-mute)] mb-5">Ano: {anoSelecionado}</p>
           <HBarChart
             data={porProduto.map((d) => ({ label: d.produto, value: d.valor_usd || 0 }))}
             color="var(--accent-4)"
@@ -260,9 +260,9 @@ export default function ComexPage() {
 
         {/* Top Produtos por Peso */}
         {!loading && !loadingFilters && porProduto.length > 0 && porProduto.some(p => p.peso_kg > 0) && (
-          <div className="bg-white dark:bg-slate-900 p-6 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-800">
-            <h3 className="text-base font-bold mb-1 text-slate-800 dark:text-white">Top Produtos por Peso</h3>
-            <p className="text-xs text-slate-400 dark:text-slate-500 mb-5">Ano: {anoSelecionado}</p>
+          <div className="bg-[var(--panel)] p-6 rounded-2xl shadow-sm border border-[var(--border)]">
+            <h3 className="text-base font-bold mb-1 text-[var(--text)]">Top Produtos por Peso</h3>
+            <p className="text-xs text-[var(--text-mute)] mb-5">Ano: {anoSelecionado}</p>
             <HBarChart
               data={[...porProduto].sort((a, b) => (b.peso_kg ?? 0) - (a.peso_kg ?? 0)).slice(0, 10).map((d) => ({ label: d.produto, value: d.peso_kg || 0 }))}
               color="var(--accent-4)"
@@ -274,11 +274,11 @@ export default function ComexPage() {
 
         {/* Top Países */}
         <PlanGate planKey="comex.por_pais">
-        <div className="bg-white dark:bg-slate-900 p-6 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-800">
-          <h3 className="text-base font-bold mb-1 text-slate-800 dark:text-white">
+        <div className="bg-[var(--panel)] p-6 rounded-2xl shadow-sm border border-[var(--border)]">
+          <h3 className="text-base font-bold mb-1 text-[var(--text)]">
             Top 10 Países
           </h3>
-          <p className="text-xs text-slate-400 dark:text-slate-500 mb-5">Ano: {anoSelecionado}</p>
+          <p className="text-xs text-[var(--text-mute)] mb-5">Ano: {anoSelecionado}</p>
           <HBarChart
             data={porPais.map((d) => ({ label: d.pais, value: d.valor_usd || 0 }))}
             color="var(--accent-4)"

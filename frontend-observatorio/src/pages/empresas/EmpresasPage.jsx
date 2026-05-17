@@ -11,9 +11,9 @@ import { DonutChart, HBarChart, StackedBarChart, AreaLineChart, fmtMoneyShort, f
 
 function MiniStat({ label, value, color }) {
   return (
-    <div className="flex items-center justify-between py-2 border-b border-slate-50 dark:border-slate-800 last:border-0">
-      <span className="text-sm text-slate-500 dark:text-slate-400">{label}</span>
-      <span className={`text-sm font-bold ${color || "text-slate-800 dark:text-white"}`}>
+    <div className="flex items-center justify-between py-2 border-b border-slate-50  last:border-0">
+      <span className="text-sm text-[var(--text-dim)]">{label}</span>
+      <span className={`text-sm font-bold ${color || "text-[var(--text)]"}`}>
         {value}
       </span>
     </div>
@@ -107,12 +107,12 @@ export default function EmpresasPage() {
     >
       <div>
         <div className="flex items-center gap-2">
-          <h1 className="text-2xl font-extrabold tracking-tight text-slate-800 dark:text-white">
+          <h1 className="text-2xl font-extrabold tracking-tight text-[var(--text)]">
             Empresas — CNPJ
           </h1>
           <InfoTooltip dataset="empresas" />
         </div>
-        <p className="text-sm text-slate-400 dark:text-slate-500 mt-1">
+        <p className="text-sm text-[var(--text-mute)] mt-1">
           Perfil e composição do tecido empresarial local.
         </p>
       </div>
@@ -125,7 +125,7 @@ export default function EmpresasPage() {
           {[...Array(4)].map((_, i) => (
             <div
               key={i}
-              className="bg-white dark:bg-slate-900 p-6 rounded-2xl border border-slate-100 dark:border-slate-800 animate-pulse h-28"
+              className="bg-[var(--panel)] p-6 rounded-2xl border border-[var(--border)] animate-pulse h-28"
             />
           ))}
         </div>
@@ -141,8 +141,8 @@ export default function EmpresasPage() {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Pie — porte */}
         <PlanGate planKey="empresas.por_porte">
-        <div className="bg-white dark:bg-slate-900 p-6 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-800">
-          <h3 className="text-base font-bold mb-5 text-slate-800 dark:text-white">
+        <div className="bg-[var(--panel)] p-6 rounded-2xl shadow-sm border border-[var(--border)]">
+          <h3 className="text-base font-bold mb-5 text-[var(--text)]">
             Distribuição por Porte
           </h3>
           <DonutChart
@@ -157,8 +157,8 @@ export default function EmpresasPage() {
         </PlanGate>
 
         {/* Situação cadastral */}
-        <div className="bg-white dark:bg-slate-900 p-6 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-800">
-          <h3 className="text-base font-bold mb-5 text-slate-800 dark:text-white">
+        <div className="bg-[var(--panel)] p-6 rounded-2xl shadow-sm border border-[var(--border)]">
+          <h3 className="text-base font-bold mb-5 text-[var(--text)]">
             Empresas por Situação Cadastral
           </h3>
           <HBarChart
@@ -172,8 +172,8 @@ export default function EmpresasPage() {
       </div>
 
       {/* Ativas vs Fechadas por Porte (Saldo) */}
-      <div className="bg-white dark:bg-slate-900 p-6 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-800">
-        <h3 className="text-base font-bold mb-5 text-slate-800 dark:text-white">
+      <div className="bg-[var(--panel)] p-6 rounded-2xl shadow-sm border border-[var(--border)]">
+        <h3 className="text-base font-bold mb-5 text-[var(--text)]">
           Ativas vs. Fechadas por Porte
         </h3>
         <StackedBarChart
@@ -194,8 +194,8 @@ export default function EmpresasPage() {
 
       {/* Empresas por Setor CNAE */}
       <PlanGate planKey="empresas.por_cnae">
-      <div className="bg-white dark:bg-slate-900 p-6 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-800">
-        <h3 className="text-base font-bold mb-5 text-slate-800 dark:text-white">
+      <div className="bg-[var(--panel)] p-6 rounded-2xl shadow-sm border border-[var(--border)]">
+        <h3 className="text-base font-bold mb-5 text-[var(--text)]">
           Empresas por Setor de Atividade (CNAE — Seção)
         </h3>
         <HBarChart
@@ -210,12 +210,12 @@ export default function EmpresasPage() {
       </PlanGate>
 
       {/* Composição Adicional */}
-      <div className="bg-white dark:bg-slate-900 p-6 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-800">
-        <h3 className="text-base font-bold mb-5 text-slate-800 dark:text-white">
+      <div className="bg-[var(--panel)] p-6 rounded-2xl shadow-sm border border-[var(--border)]">
+        <h3 className="text-base font-bold mb-5 text-[var(--text)]">
           Indicadores de Composição
         </h3>
         {loading ? (
-          <div className="animate-pulse h-48 bg-slate-50 dark:bg-slate-800 rounded-xl" />
+          <div className="animate-pulse h-48 bg-slate-50  rounded-xl" />
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-x-12">
             <div>
@@ -233,11 +233,11 @@ export default function EmpresasPage() {
       </div>
       {/* Capital Social por Porte */}
       {!loading && capitalPorPorte.length > 0 && (
-        <div className="bg-white dark:bg-slate-900 p-6 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-800">
-          <h3 className="text-base font-bold mb-1 text-slate-800 dark:text-white">
+        <div className="bg-[var(--panel)] p-6 rounded-2xl shadow-sm border border-[var(--border)]">
+          <h3 className="text-base font-bold mb-1 text-[var(--text)]">
             Capital Social por Porte de Empresa
           </h3>
-          <p className="text-xs text-slate-400 dark:text-slate-500 mb-5">
+          <p className="text-xs text-[var(--text-mute)] mb-5">
             Capital médio declarado por empresas com registro ativo
           </p>
           <HBarChart

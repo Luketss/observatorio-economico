@@ -52,7 +52,7 @@ function Toggle({ enabled, onToggle, accent }) {
     <div
       onClick={onToggle}
       className={`relative inline-flex h-5 w-9 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ${
-        enabled ? accent : "bg-slate-200 dark:bg-slate-700"
+        enabled ? accent : "bg-slate-200 "
       }`}
     >
       <span
@@ -75,11 +75,11 @@ function PlanColumn({ label, accent, modulos, onChange, saving }) {
   const visibleCount = modulos.length;
 
   return (
-    <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-100 dark:border-slate-800 shadow-sm overflow-hidden">
-      <div className={`px-6 py-4 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between`}>
+    <div className="bg-[var(--panel)] rounded-2xl border border-[var(--border)] shadow-sm overflow-hidden">
+      <div className={`px-6 py-4 border-b border-[var(--border)] flex items-center justify-between`}>
         <div>
-          <h3 className="text-base font-bold text-slate-800 dark:text-white">{label}</h3>
-          <p className="text-xs text-slate-400 dark:text-slate-500 mt-0.5">
+          <h3 className="text-base font-bold text-[var(--text)]">{label}</h3>
+          <p className="text-xs text-[var(--text-mute)] mt-0.5">
             {visibleCount} de {TOTAL_ITEMS} itens visíveis
           </p>
         </div>
@@ -92,19 +92,19 @@ function PlanColumn({ label, accent, modulos, onChange, saving }) {
 
       {/* Módulos (pages) */}
       <div className="px-6 pt-4 pb-1">
-        <p className="text-xs font-semibold uppercase tracking-wider text-slate-400 dark:text-slate-500">
+        <p className="text-xs font-semibold uppercase tracking-wider text-[var(--text-mute)]">
           Módulos (Páginas)
         </p>
       </div>
-      <div className="divide-y divide-slate-50 dark:divide-slate-800">
+      <div className="divide-y divide-[var(--border)]">
         {MODULOS.map(({ key, label: modLabel }) => {
           const enabled = modulos.includes(key);
           return (
             <label
               key={key}
-              className="flex items-center justify-between px-6 py-3 hover:bg-slate-50 dark:hover:bg-slate-800/50 cursor-pointer transition-colors"
+              className="flex items-center justify-between px-6 py-3 hover:bg-[var(--panel-2)]/50 cursor-pointer transition-colors"
             >
-              <span className={`text-sm font-medium ${enabled ? "text-slate-800 dark:text-white" : "text-slate-400 dark:text-slate-500"}`}>
+              <span className={`text-sm font-medium ${enabled ? "text-[var(--text)]" : "text-[var(--text-mute)]"}`}>
                 {modLabel}
               </span>
               <Toggle enabled={enabled} onToggle={() => toggle(key)} accent={accent} />
@@ -114,23 +114,23 @@ function PlanColumn({ label, accent, modulos, onChange, saving }) {
       </div>
 
       {/* Componentes avançados */}
-      <div className="px-6 pt-5 pb-1 border-t border-slate-100 dark:border-slate-800 mt-2">
-        <p className="text-xs font-semibold uppercase tracking-wider text-slate-400 dark:text-slate-500">
+      <div className="px-6 pt-5 pb-1 border-t border-[var(--border)] mt-2">
+        <p className="text-xs font-semibold uppercase tracking-wider text-[var(--text-mute)]">
           Componentes Avançados
         </p>
-        <p className="text-xs text-slate-400 dark:text-slate-500 mt-0.5">
+        <p className="text-xs text-[var(--text-mute)] mt-0.5">
           Gráficos e análises dentro das páginas
         </p>
       </div>
-      <div className="divide-y divide-slate-50 dark:divide-slate-800">
+      <div className="divide-y divide-[var(--border)]">
         {COMPONENTES.map(({ key, label: compLabel }) => {
           const enabled = modulos.includes(key);
           return (
             <label
               key={key}
-              className="flex items-center justify-between px-6 py-3 hover:bg-slate-50 dark:hover:bg-slate-800/50 cursor-pointer transition-colors"
+              className="flex items-center justify-between px-6 py-3 hover:bg-[var(--panel-2)]/50 cursor-pointer transition-colors"
             >
-              <span className={`text-sm ${enabled ? "text-slate-700 dark:text-slate-200" : "text-slate-400 dark:text-slate-500"}`}>
+              <span className={`text-sm ${enabled ? "text-[var(--text)]" : "text-[var(--text-mute)]"}`}>
                 {compLabel}
               </span>
               <Toggle enabled={enabled} onToggle={() => toggle(key)} accent={accent} />
@@ -194,10 +194,10 @@ export default function PlanoConfigAdminPage() {
       className="space-y-6"
     >
       <div>
-        <h1 className="text-2xl font-extrabold tracking-tight text-slate-800 dark:text-white">
+        <h1 className="text-2xl font-extrabold tracking-tight text-[var(--text)]">
           Planos & Acesso
         </h1>
-        <p className="text-sm text-slate-400 dark:text-slate-500 mt-1">
+        <p className="text-sm text-[var(--text-mute)] mt-1">
           Defina quais módulos e componentes são visíveis para cada plano. Alterações têm efeito imediato.
         </p>
       </div>
@@ -205,7 +205,7 @@ export default function PlanoConfigAdminPage() {
       {loading ? (
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           {[1, 2, 3].map((i) => (
-            <div key={i} className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-100 dark:border-slate-800 h-96 animate-pulse" />
+            <div key={i} className="bg-[var(--panel)] rounded-2xl border border-[var(--border)] h-96 animate-pulse" />
           ))}
         </div>
       ) : (

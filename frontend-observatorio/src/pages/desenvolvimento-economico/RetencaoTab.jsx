@@ -17,15 +17,15 @@ import { useToast } from "../../context/ToastContext";
 import { useEscapeKey } from "../../hooks/useEscapeKey";
 
 const RISCO_CONFIG = {
-  baixo:  { label: "Risco baixo",  color: "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400" },
-  medio:  { label: "Risco médio",  color: "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400" },
-  alto:   { label: "Risco alto",   color: "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400" },
+  baixo:  { label: "Risco baixo",  color: "bg-[var(--panel-2)] text-green-400" },
+  medio:  { label: "Risco médio",  color: "bg-[var(--panel-2)] text-amber-400" },
+  alto:   { label: "Risco alto",   color: "bg-[var(--panel-2)] text-red-400" },
 };
 
 const EXPANSAO_CONFIG = {
-  baixo:  { label: "Expansão baixa",  color: "bg-slate-100 text-slate-600 dark:bg-slate-700 dark:text-slate-300" },
-  medio:  { label: "Expansão média",  color: "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400" },
-  alto:   { label: "Expansão alta",   color: "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400" },
+  baixo:  { label: "Expansão baixa",  color: "bg-[var(--panel-2)] text-[var(--text-dim)]" },
+  medio:  { label: "Expansão média",  color: "bg-[var(--panel-2)] text-amber-400" },
+  alto:   { label: "Expansão alta",   color: "bg-[var(--panel-2)] text-blue-400" },
 };
 
 const defaultForm = {
@@ -223,7 +223,7 @@ export default function RetencaoTab() {
   const header = (
     <div className="flex items-center gap-3">
       <BuildingOffice2Icon className="w-7 h-7 text-blue-600" />
-      <h1 className="text-2xl font-extrabold tracking-tight text-slate-800 dark:text-slate-100">
+      <h1 className="text-2xl font-extrabold tracking-tight text-[var(--text)]">
         Retenção &amp; Expansão
       </h1>
     </div>
@@ -246,7 +246,7 @@ export default function RetencaoTab() {
         {header}
         <div className="text-center py-20 text-slate-400">
           <InformationCircleIcon className="w-12 h-12 mx-auto mb-3 opacity-30" />
-          <p className="text-sm font-medium text-slate-500 dark:text-slate-400">A retenção de empresas é específica por município.</p>
+          <p className="text-sm font-medium text-[var(--text-dim)]">A retenção de empresas é específica por município.</p>
         </div>
       </motion.div>
     );
@@ -258,12 +258,12 @@ export default function RetencaoTab() {
       {/* KPI row */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         {[
-          { label: "Total de empresas", value: kpis.total, color: "text-slate-700 dark:text-slate-100" },
+          { label: "Total de empresas", value: kpis.total, color: "text-[var(--text)]" },
           { label: "Alto risco", value: kpis.altoRisco, color: "text-red-600" },
           { label: "Alto potencial", value: kpis.altoExpansao, color: "text-blue-600" },
           { label: "Total empregos", value: kpis.totalEmpregos.toLocaleString("pt-BR"), color: "text-green-600" },
         ].map((k) => (
-          <div key={k.label} className="bg-white dark:bg-slate-800 rounded-xl border border-slate-100 dark:border-slate-700 p-4">
+          <div key={k.label} className="bg-[var(--panel)] rounded-xl border border-[var(--border)] p-4">
             <p className="text-xs text-slate-400 uppercase tracking-wider">{k.label}</p>
             <p className={`text-2xl font-extrabold mt-1 ${k.color}`}>{k.value}</p>
           </div>
@@ -297,20 +297,20 @@ export default function RetencaoTab() {
             const isExpanded = expandedId === empresa.id;
             const det = detalhe[empresa.id];
             return (
-              <div key={empresa.id} className="bg-white dark:bg-slate-800 rounded-xl border border-slate-100 dark:border-slate-700 overflow-hidden">
+              <div key={empresa.id} className="bg-[var(--panel)] rounded-xl border border-[var(--border)] overflow-hidden">
                 {/* Card header */}
                 <div className="p-4 space-y-3">
                   <div className="flex items-start justify-between gap-2">
                     <div className="flex-1 min-w-0">
-                      <h4 className="font-semibold text-slate-700 dark:text-slate-200 text-sm leading-snug">{empresa.nome}</h4>
+                      <h4 className="font-semibold text-[var(--text)] text-sm leading-snug">{empresa.nome}</h4>
                       {empresa.setor && <p className="text-xs text-slate-400 mt-0.5">{empresa.setor}</p>}
                     </div>
                     {canEdit && (
                       <div className="flex gap-1 shrink-0">
-                        <button onClick={() => openEdit(empresa)} className="p-1.5 rounded-lg text-slate-400 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-950/40 transition-colors cursor-pointer">
+                        <button onClick={() => openEdit(empresa)} className="p-1.5 rounded-lg text-slate-400 hover:text-blue-600 hover:bg-[var(--panel-2)] transition-colors cursor-pointer">
                           <PencilIcon className="w-3.5 h-3.5" />
                         </button>
-                        <button onClick={() => setDeleteConfirmId(empresa.id)} className="p-1.5 rounded-lg text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-950/40 transition-colors cursor-pointer">
+                        <button onClick={() => setDeleteConfirmId(empresa.id)} className="p-1.5 rounded-lg text-slate-400 hover:text-red-500 hover:bg-[var(--panel-2)] transition-colors cursor-pointer">
                           <TrashIcon className="w-3.5 h-3.5" />
                         </button>
                       </div>
@@ -343,7 +343,7 @@ export default function RetencaoTab() {
                       animate={{ height: "auto", opacity: 1 }}
                       exit={{ height: 0, opacity: 0 }}
                       transition={{ duration: 0.2 }}
-                      className="border-t border-slate-100 dark:border-slate-700 overflow-hidden"
+                      className="border-t border-[var(--border)] overflow-hidden"
                     >
                       <div className="p-4 space-y-4">
                         {/* Visit list */}
@@ -356,11 +356,11 @@ export default function RetencaoTab() {
                                 <div key={v.id} className="flex gap-3">
                                   <div className="flex flex-col items-center">
                                     <div className="w-2 h-2 rounded-full bg-blue-500 mt-1 shrink-0" />
-                                    <div className="w-px flex-1 bg-slate-100 dark:bg-slate-700 mt-1" />
+                                    <div className="w-px flex-1 bg-[var(--panel-2)] mt-1" />
                                   </div>
                                   <div className="flex-1 pb-2 space-y-1">
                                     <div className="flex items-center justify-between gap-2">
-                                      <p className="text-xs font-medium text-slate-600 dark:text-slate-300">{fmtDate(v.data_visita)}</p>
+                                      <p className="text-xs font-medium text-[var(--text-dim)]">{fmtDate(v.data_visita)}</p>
                                       {canEdit && (
                                         <button
                                           onClick={() => handleDeleteVisita(v, empresa.id)}
@@ -372,7 +372,7 @@ export default function RetencaoTab() {
                                       )}
                                     </div>
                                     {v.responsavel && <p className="text-xs text-slate-400">{v.responsavel}</p>}
-                                    {v.observacoes && <p className="text-xs text-slate-500 dark:text-slate-400">{v.observacoes}</p>}
+                                    {v.observacoes && <p className="text-xs text-[var(--text-dim)]">{v.observacoes}</p>}
                                     {v.foto_base64 && (
                                       <img src={v.foto_base64} alt="Foto da visita" className="w-16 h-16 object-cover rounded mt-1" />
                                     )}
@@ -389,26 +389,26 @@ export default function RetencaoTab() {
 
                         {/* Add visit form */}
                         {canEdit && (
-                          <div className="border-t border-slate-100 dark:border-slate-700 pt-3 space-y-2">
-                            <p className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Registrar nova visita</p>
+                          <div className="border-t border-[var(--border)] pt-3 space-y-2">
+                            <p className="text-xs font-semibold text-[var(--text-dim)] uppercase tracking-wider">Registrar nova visita</p>
                             <input
                               type="date"
                               value={visitaForm.data_visita}
                               onChange={(e) => setVisitaForm((p) => ({ ...p, data_visita: e.target.value }))}
-                              className="w-full px-3 py-1.5 rounded-lg border border-slate-200 dark:border-slate-600 text-xs bg-white dark:bg-slate-700 text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                              className="w-full px-3 py-1.5 rounded-lg border border-[var(--border)] text-xs bg-[var(--panel-2)] text-[var(--text)] focus:outline-none focus:ring-1 focus:ring-blue-500"
                             />
                             <input
                               value={visitaForm.responsavel}
                               onChange={(e) => setVisitaForm((p) => ({ ...p, responsavel: e.target.value }))}
                               placeholder="Responsável"
-                              className="w-full px-3 py-1.5 rounded-lg border border-slate-200 dark:border-slate-600 text-xs bg-white dark:bg-slate-700 text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                              className="w-full px-3 py-1.5 rounded-lg border border-[var(--border)] text-xs bg-[var(--panel-2)] text-[var(--text)] focus:outline-none focus:ring-1 focus:ring-blue-500"
                             />
                             <textarea
                               value={visitaForm.observacoes}
                               onChange={(e) => setVisitaForm((p) => ({ ...p, observacoes: e.target.value }))}
                               placeholder="Observações"
                               rows={2}
-                              className="w-full px-3 py-1.5 rounded-lg border border-slate-200 dark:border-slate-600 text-xs bg-white dark:bg-slate-700 text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-1 focus:ring-blue-500 resize-none"
+                              className="w-full px-3 py-1.5 rounded-lg border border-[var(--border)] text-xs bg-[var(--panel-2)] text-[var(--text)] focus:outline-none focus:ring-1 focus:ring-blue-500 resize-none"
                             />
                             <label className="flex items-center gap-2 cursor-pointer text-xs text-slate-400 hover:text-slate-600">
                               <CameraIcon className="w-4 h-4" />
@@ -447,12 +447,12 @@ export default function RetencaoTab() {
               initial={{ scale: 0.95 }}
               animate={{ scale: 1 }}
               exit={{ scale: 0.95 }}
-              className="bg-white dark:bg-slate-800 rounded-2xl shadow-xl p-6 w-full max-w-sm space-y-4"
+              className="bg-[var(--panel)] rounded-2xl shadow-xl p-6 w-full max-w-sm space-y-4"
             >
-              <h3 className="font-bold text-slate-800 dark:text-slate-100">Excluir empresa?</h3>
-              <p className="text-sm text-slate-500 dark:text-slate-400">Todas as visitas também serão removidas.</p>
+              <h3 className="font-bold text-[var(--text)]">Excluir empresa?</h3>
+              <p className="text-sm text-[var(--text-dim)]">Todas as visitas também serão removidas.</p>
               <div className="flex gap-3 justify-end">
-                <button onClick={() => setDeleteConfirmId(null)} className="px-4 py-2 rounded-lg border border-slate-200 dark:border-slate-600 text-sm text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 cursor-pointer">Cancelar</button>
+                <button onClick={() => setDeleteConfirmId(null)} className="px-4 py-2 rounded-lg border border-[var(--border)] text-sm text-[var(--text-dim)] hover:bg-[var(--panel-2)] cursor-pointer">Cancelar</button>
                 <button onClick={() => handleDelete(deleteConfirmId)} className="px-4 py-2 rounded-lg bg-red-600 hover:bg-red-700 text-white text-sm cursor-pointer">Excluir</button>
               </div>
             </motion.div>
@@ -475,60 +475,60 @@ export default function RetencaoTab() {
               animate={{ scale: 1 }}
               exit={{ scale: 0.95 }}
               transition={{ type: "spring", stiffness: 300, damping: 30 }}
-              className="bg-white dark:bg-slate-800 rounded-2xl shadow-xl w-full max-w-lg p-6 max-h-[90vh] overflow-y-auto"
+              className="bg-[var(--panel)] rounded-2xl shadow-xl w-full max-w-lg p-6 max-h-[90vh] overflow-y-auto"
             >
               <div className="flex items-center justify-between mb-5">
-                <h3 className="text-base font-bold text-slate-800 dark:text-slate-100">
+                <h3 className="text-base font-bold text-[var(--text)]">
                   {editingId ? "Editar Empresa" : "Nova Empresa"}
                 </h3>
-                <button onClick={closeForm} className="p-1.5 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors cursor-pointer">
+                <button onClick={closeForm} className="p-1.5 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-[var(--panel-2)] transition-colors cursor-pointer">
                   <XMarkIcon className="w-5 h-5" />
                 </button>
               </div>
               <form onSubmit={handleSubmit} className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="md:col-span-2 flex flex-col gap-1">
-                  <label className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Nome *</label>
-                  <input value={form.nome} onChange={(e) => setForm((p) => ({ ...p, nome: e.target.value }))} required className="px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-600 text-sm bg-white dark:bg-slate-700 text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                  <label className="text-xs font-semibold text-[var(--text-dim)] uppercase tracking-wider">Nome *</label>
+                  <input value={form.nome} onChange={(e) => setForm((p) => ({ ...p, nome: e.target.value }))} required className="px-3 py-2 rounded-lg border border-[var(--border)] text-sm bg-[var(--panel-2)] text-[var(--text)] focus:outline-none focus:ring-2 focus:ring-blue-500" />
                 </div>
 
                 <div className="flex flex-col gap-1">
-                  <label className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">CNPJ</label>
-                  <input value={form.cnpj} onChange={(e) => setForm((p) => ({ ...p, cnpj: e.target.value }))} placeholder="00.000.000/0001-00" className="px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-600 text-sm bg-white dark:bg-slate-700 text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                  <label className="text-xs font-semibold text-[var(--text-dim)] uppercase tracking-wider">CNPJ</label>
+                  <input value={form.cnpj} onChange={(e) => setForm((p) => ({ ...p, cnpj: e.target.value }))} placeholder="00.000.000/0001-00" className="px-3 py-2 rounded-lg border border-[var(--border)] text-sm bg-[var(--panel-2)] text-[var(--text)] focus:outline-none focus:ring-2 focus:ring-blue-500" />
                 </div>
 
                 <div className="flex flex-col gap-1">
-                  <label className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Setor</label>
-                  <input value={form.setor} onChange={(e) => setForm((p) => ({ ...p, setor: e.target.value }))} className="px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-600 text-sm bg-white dark:bg-slate-700 text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                  <label className="text-xs font-semibold text-[var(--text-dim)] uppercase tracking-wider">Setor</label>
+                  <input value={form.setor} onChange={(e) => setForm((p) => ({ ...p, setor: e.target.value }))} className="px-3 py-2 rounded-lg border border-[var(--border)] text-sm bg-[var(--panel-2)] text-[var(--text)] focus:outline-none focus:ring-2 focus:ring-blue-500" />
                 </div>
 
                 <div className="flex flex-col gap-1">
-                  <label className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Empregos</label>
-                  <input type="number" value={form.num_empregos} onChange={(e) => setForm((p) => ({ ...p, num_empregos: e.target.value }))} className="px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-600 text-sm bg-white dark:bg-slate-700 text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                  <label className="text-xs font-semibold text-[var(--text-dim)] uppercase tracking-wider">Empregos</label>
+                  <input type="number" value={form.num_empregos} onChange={(e) => setForm((p) => ({ ...p, num_empregos: e.target.value }))} className="px-3 py-2 rounded-lg border border-[var(--border)] text-sm bg-[var(--panel-2)] text-[var(--text)] focus:outline-none focus:ring-2 focus:ring-blue-500" />
                 </div>
 
                 <div className="flex flex-col gap-1">
-                  <label className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Risco de saída</label>
-                  <select value={form.status_risco} onChange={(e) => setForm((p) => ({ ...p, status_risco: e.target.value }))} className="px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-600 text-sm bg-white dark:bg-slate-700 text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                  <label className="text-xs font-semibold text-[var(--text-dim)] uppercase tracking-wider">Risco de saída</label>
+                  <select value={form.status_risco} onChange={(e) => setForm((p) => ({ ...p, status_risco: e.target.value }))} className="px-3 py-2 rounded-lg border border-[var(--border)] text-sm bg-[var(--panel-2)] text-[var(--text)] focus:outline-none focus:ring-2 focus:ring-blue-500">
                     {Object.entries(RISCO_CONFIG).map(([k, v]) => <option key={k} value={k}>{v.label}</option>)}
                   </select>
                 </div>
 
                 <div className="flex flex-col gap-1">
-                  <label className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Potencial de expansão</label>
-                  <select value={form.potencial_expansao} onChange={(e) => setForm((p) => ({ ...p, potencial_expansao: e.target.value }))} className="px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-600 text-sm bg-white dark:bg-slate-700 text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                  <label className="text-xs font-semibold text-[var(--text-dim)] uppercase tracking-wider">Potencial de expansão</label>
+                  <select value={form.potencial_expansao} onChange={(e) => setForm((p) => ({ ...p, potencial_expansao: e.target.value }))} className="px-3 py-2 rounded-lg border border-[var(--border)] text-sm bg-[var(--panel-2)] text-[var(--text)] focus:outline-none focus:ring-2 focus:ring-blue-500">
                     {Object.entries(EXPANSAO_CONFIG).map(([k, v]) => <option key={k} value={k}>{v.label}</option>)}
                   </select>
                 </div>
 
                 <div className="md:col-span-2 flex flex-col gap-1">
-                  <label className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Responsável</label>
-                  <input value={form.responsavel} onChange={(e) => setForm((p) => ({ ...p, responsavel: e.target.value }))} className="px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-600 text-sm bg-white dark:bg-slate-700 text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                  <label className="text-xs font-semibold text-[var(--text-dim)] uppercase tracking-wider">Responsável</label>
+                  <input value={form.responsavel} onChange={(e) => setForm((p) => ({ ...p, responsavel: e.target.value }))} className="px-3 py-2 rounded-lg border border-[var(--border)] text-sm bg-[var(--panel-2)] text-[var(--text)] focus:outline-none focus:ring-2 focus:ring-blue-500" />
                 </div>
 
                 <div className="md:col-span-2 flex items-center gap-3 pt-2">
                   {formError && <p className="text-sm text-red-600 flex-1">{formError}</p>}
                   <div className="flex gap-3 ml-auto">
-                    <button type="button" onClick={closeForm} className="px-4 py-2 rounded-lg border border-slate-200 dark:border-slate-600 text-sm text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 cursor-pointer">Cancelar</button>
+                    <button type="button" onClick={closeForm} className="px-4 py-2 rounded-lg border border-[var(--border)] text-sm text-[var(--text-dim)] hover:bg-[var(--panel-2)] cursor-pointer">Cancelar</button>
                     <button type="submit" disabled={saving} className="px-4 py-2 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium disabled:opacity-50 cursor-pointer">
                       {saving ? "Salvando..." : editingId ? "Salvar" : "Adicionar"}
                     </button>

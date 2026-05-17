@@ -119,7 +119,7 @@ export default function InssPage() {
       {loading ? (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           {[...Array(2)].map((_, i) => (
-            <div key={i} className="bg-white dark:bg-slate-900 p-6 rounded-2xl border border-slate-100 dark:border-slate-800">
+            <div key={i} className="bg-[var(--panel)] p-6 rounded-2xl border border-[var(--border)]">
               <ChartState kind="loading" shape="kpi" height={80} />
             </div>
           ))}
@@ -134,8 +134,8 @@ export default function InssPage() {
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Top Categorias */}
-        <div className="bg-white dark:bg-slate-900 p-6 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-800">
-          <h3 className="text-base font-bold mb-5 text-slate-800 dark:text-white">
+        <div className="bg-[var(--panel)] p-6 rounded-2xl shadow-sm border border-[var(--border)]">
+          <h3 className="text-base font-bold mb-5 text-[var(--text)]">
             Top Categorias de Benefícios
           </h3>
           <HBarChart
@@ -148,8 +148,8 @@ export default function InssPage() {
         </div>
 
         {/* Evolução Anual */}
-        <div className="bg-white dark:bg-slate-900 p-6 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-800">
-          <h3 className="text-base font-bold mb-5 text-slate-800 dark:text-white">
+        <div className="bg-[var(--panel)] p-6 rounded-2xl shadow-sm border border-[var(--border)]">
+          <h3 className="text-base font-bold mb-5 text-[var(--text)]">
             Evolução Anual de Benefícios
           </h3>
           <AreaLineChart
