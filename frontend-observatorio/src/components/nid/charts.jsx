@@ -1,5 +1,13 @@
 import { useEffect, useId, useRef, useState } from "react";
 
+// ────────── glow resolver ──────────
+function resolveGlow(glow) {
+  if (glow === true)  return "hover";   // backward compat
+  if (glow === false) return "off";
+  if (!glow)          return "hover";   // default
+  return glow;                          // "hover" | "always" | "off"
+}
+
 // ────────── helpers ──────────
 const smoothPath = (pts) => {
   if (pts.length < 2) return "";
@@ -61,7 +69,7 @@ function useContainerWidth(initial = 600) {
 }
 
 // ────────── Sparkline (KPI cards) ──────────
-export function Sparkline({ data, color = "var(--accent-1)", glow = true, height = 42, width = 240 }) {
+export function Sparkline({ data, color = "var(--accent-1)", glow = "hover", height = 42, width = 240 }) {
   const id = useId().replace(/:/g, "");
   if (!data || data.length === 0) return null;
   const pad = 6;
@@ -74,6 +82,7 @@ export function Sparkline({ data, color = "var(--accent-1)", glow = true, height
   const last = pts[pts.length - 1];
   const first = pts[0];
   const area = `${path} L ${last.x} ${height} L ${first.x} ${height} Z`;
+  // Sparklines are tiny — drop ghost glow path entirely for all glow modes
   return (
     <svg viewBox={`0 0 ${width} ${height}`} preserveAspectRatio="none">
       <defs>
@@ -81,14 +90,8 @@ export function Sparkline({ data, color = "var(--accent-1)", glow = true, height
           <stop offset="0%" stopColor={color} stopOpacity="0.45" />
           <stop offset="100%" stopColor={color} stopOpacity="0" />
         </linearGradient>
-        <filter id={`spark-glow-${id}`}>
-          <feGaussianBlur stdDeviation={glow ? 2.5 : 0} />
-        </filter>
       </defs>
       <path d={area} fill={`url(#spark-${id})`} />
-      {glow && (
-        <path d={path} stroke={color} strokeWidth="3" fill="none" opacity="0.7" filter={`url(#spark-glow-${id})`} />
-      )}
       <path d={path} stroke={color} strokeWidth="1.6" fill="none" strokeLinecap="round" />
     </svg>
   );
@@ -96,7 +99,7 @@ export function Sparkline({ data, color = "var(--accent-1)", glow = true, height
 
 // ────────── AreaLineChart (PIB Evolution) ──────────
 export function AreaLineChart({
-  data, height = 280, glow = true, color = "var(--accent-1)",
+  data, height = 280, glow = "hover", color = "var(--accent-1)",
   yFmt = fmtMoneyShort, tipFmt = fmtMoneyFull, label = "PIB Total",
   yCaption,
 }) {
@@ -104,6 +107,9 @@ export function AreaLineChart({
   const [wrapRef, w] = useContainerWidth(800);
   const [hover, setHover] = useState(null);
   if (!data || data.length === 0) return <EmptyChart h={height} />;
+  const glowMode = resolveGlow(glow);
+  const glowAlways = glowMode === "always";
+  const glowHover  = glowMode !== "off";
 
   const padL = 56, padR = 16, padT = 14, padB = 34;
   const innerW = w - padL - padR;
@@ -142,7 +148,7 @@ export function AreaLineChart({
             <stop offset="100%" stopColor={color} stopOpacity="0" />
           </linearGradient>
           <filter id={`glow-${id}`} x="-50%" y="-50%" width="200%" height="200%">
-            <feGaussianBlur stdDeviation={glow ? 4 : 0} result="b" />
+            <feGaussianBlur stdDeviation="2.5" result="b" />
             <feMerge><feMergeNode in="b" /><feMergeNode in="SourceGraphic" /></feMerge>
           </filter>
         </defs>
@@ -168,12 +174,18 @@ export function AreaLineChart({
         )}
 
         <path d={area} fill={`url(#area-${id})`} />
-        {glow && <path d={path} stroke={color} strokeWidth="6" fill="none" opacity="0.5" filter={`url(#glow-${id})`} />}
+        {/* Resting glow halo: only when glowAlways */}
+        {glowAlways && (
+          <path d={path} stroke={color} strokeWidth="6" fill="none" opacity="0.5" filter={`url(#glow-${id})`} />
+        )}
         <path d={path} stroke={color} strokeWidth="2.25" fill="none" strokeLinecap="round" strokeLinejoin="round" />
 
         {pts.map((p, i) => (
-          <g key={i} opacity={hover === i ? 1 : 0.6}>
-            {glow && <circle cx={p.x} cy={p.y} r="6" fill={color} opacity="0.3" filter={`url(#glow-${id})`} />}
+          <g key={i}>
+            {/* Per-point glow halo: only on hovered point */}
+            {glowHover && hover === i && (
+              <circle cx={p.x} cy={p.y} r="8" fill={color} opacity="0.4" filter={`url(#glow-${id})`} />
+            )}
             <circle cx={p.x} cy={p.y} r={hover === i ? 4.5 : 2.5} fill="var(--bg)" stroke={color} strokeWidth="2" />
           </g>
         ))}
@@ -203,7 +215,7 @@ const opacityScale = (i) => {
 };
 
 export function StackedBarChart({
-  data, keys, colors, height = 280, glow = true,
+  data, keys, colors, height = 280, glow = "hover",
   yFmt = fmtMoneyShort, tipFmt = fmtMoneyFull,
   yCaption,
   baseColor, showTotalLabel = false, highlightLast = false,
@@ -212,6 +224,8 @@ export function StackedBarChart({
   const [wrapRef, w] = useContainerWidth(800);
   const [hover, setHover] = useState(null);
   if (!data || data.length === 0) return <EmptyChart h={height} />;
+  const glowMode = resolveGlow(glow);
+  const glowHover  = glowMode !== "off";
 
   const resolvedColors = colors || [];
   const padL = 56, padR = 16, padT = 14, padB = 34;
@@ -238,12 +252,12 @@ export function StackedBarChart({
         <defs>
           {!baseColor && resolvedColors.map((c, i) => (
             <filter key={i} id={`bglow-${id}-${i}`} x="-50%" y="-50%" width="200%" height="200%">
-              <feGaussianBlur stdDeviation={glow ? 4 : 0} />
+              <feGaussianBlur stdDeviation="3" />
             </filter>
           ))}
           {baseColor && (
             <filter id={`bglow-${id}-mono`} x="-50%" y="-50%" width="200%" height="200%">
-              <feGaussianBlur stdDeviation={glow ? 4 : 0} />
+              <feGaussianBlur stdDeviation="3" />
             </filter>
           )}
           {!baseColor && resolvedColors.map((c, i) => (
@@ -289,7 +303,7 @@ export function StackedBarChart({
                 const glowId = baseColor ? `bglow-${id}-mono` : `bglow-${id}-${ki}`;
                 return (
                   <g key={k}>
-                    {glow && isHover && (
+                    {glowHover && isHover && (
                       <rect x={x - 2} y={y0 - 2} width={barWidth + 4} height={y1 - y0 + 4}
                         rx={isTop ? 6 : 0} fill={segColor} opacity="0.5" filter={`url(#${glowId})`} />
                     )}
@@ -354,7 +368,7 @@ export function StackedBarChart({
 
 // ────────── MultiLineChart (Comparativo) ──────────
 export function MultiLineChart({
-  data, series, colors, height = 280, glow = true,
+  data, series, colors, height = 280, glow = "hover",
   yFmt = fmtMoneyShort, tipFmt = fmtMoneyFull,
   yCaption,
 }) {
@@ -362,6 +376,8 @@ export function MultiLineChart({
   const [wrapRef, w] = useContainerWidth(800);
   const [hover, setHover] = useState(null);
   if (!data || data.length === 0) return <EmptyChart h={height} />;
+  const glowMode = resolveGlow(glow);
+  const glowHover  = glowMode !== "off";
 
   const padL = 56, padR = 16, padT = 14, padB = 34;
   const innerW = w - padL - padR;
@@ -392,7 +408,8 @@ export function MultiLineChart({
         <defs>
           {colors.map((c, i) => (
             <filter key={i} id={`mglow-${id}-${i}`} x="-50%" y="-50%" width="200%" height="200%">
-              <feGaussianBlur stdDeviation={glow ? 4 : 0} />
+              <feGaussianBlur stdDeviation="2.5" result="b" />
+              <feMerge><feMergeNode in="b" /><feMergeNode in="SourceGraphic" /></feMerge>
             </filter>
           ))}
         </defs>
@@ -417,7 +434,7 @@ export function MultiLineChart({
         )}
         {ptsBySeries.map((pts, si) => (
           <g key={si}>
-            {glow && <path d={smoothPath(pts)} stroke={colors[si]} strokeWidth="5" fill="none" opacity="0.45" filter={`url(#mglow-${id}-${si})`} />}
+            {/* No resting ghost path — flat by default */}
             <path d={smoothPath(pts)} stroke={colors[si]} strokeWidth="2" fill="none" strokeLinecap="round" />
           </g>
         ))}
@@ -425,7 +442,13 @@ export function MultiLineChart({
           <>
             <line x1={sx(hover)} x2={sx(hover)} y1={padT} y2={padT + innerH} stroke="var(--text-dim)" strokeOpacity="0.3" strokeDasharray="2 3" />
             {ptsBySeries.map((pts, si) => (
-              <circle key={si} cx={pts[hover].x} cy={pts[hover].y} r="4" fill="var(--bg)" stroke={colors[si]} strokeWidth="2" />
+              <g key={si}>
+                {/* Per-point glow halo: only on hovered point */}
+                {glowHover && (
+                  <circle cx={pts[hover].x} cy={pts[hover].y} r="8" fill={colors[si]} opacity="0.4" filter={`url(#mglow-${id}-${si})`} />
+                )}
+                <circle cx={pts[hover].x} cy={pts[hover].y} r="4" fill="var(--bg)" stroke={colors[si]} strokeWidth="2" />
+              </g>
             ))}
           </>
         )}
@@ -448,7 +471,7 @@ export function MultiLineChart({
 
 // ────────── TwinBarChart (CAGED) ──────────
 export function TwinBarChart({
-  data, height = 280, glow = true,
+  data, height = 280, glow = "hover",
   colorUp = "var(--accent-5)", colorDown = "var(--accent-2)",
   yCaption,
 }) {
@@ -456,6 +479,8 @@ export function TwinBarChart({
   const [wrapRef, w] = useContainerWidth(800);
   const [hover, setHover] = useState(null);
   if (!data || data.length === 0) return <EmptyChart h={height} />;
+  const glowMode = resolveGlow(glow);
+  const glowHover  = glowMode !== "off";
 
   const padL = 50, padR = 16, padT = 18, padB = 34;
   const innerW = w - padL - padR;
@@ -481,7 +506,7 @@ export function TwinBarChart({
             <stop offset="100%" stopColor={colorDown} stopOpacity="0.4" />
           </linearGradient>
           <filter id={`tglow-${id}`}>
-            <feGaussianBlur stdDeviation={glow ? 3 : 0} />
+            <feGaussianBlur stdDeviation="3" />
           </filter>
         </defs>
         {ticks.map((t, i) => (
@@ -509,7 +534,7 @@ export function TwinBarChart({
           const isH = hover === i;
           return (
             <g key={i} onMouseEnter={() => setHover(i)}>
-              {glow && isH && (
+              {glowHover && isH && (
                 <>
                   <rect x={xUp - 2} y={yUp - 2} width={barW + 4} height={hUp + 4} rx={5} fill={colorUp} opacity="0.6" filter={`url(#tglow-${id})`} />
                   <rect x={xDn - 2} y={yDn - 2} width={barW + 4} height={hDn + 4} rx={5} fill={colorDown} opacity="0.6" filter={`url(#tglow-${id})`} />
@@ -548,10 +573,14 @@ export function TwinBarChart({
 
 // ────────── DonutChart ──────────
 export function DonutChart({
-  data, colors, height = 220, glow = true, centerLabel, centerSub,
+  data, colors, height = 220, glow = "hover", centerLabel, centerSub,
 }) {
   const id = useId().replace(/:/g, "");
+  const [hoverSlice, setHoverSlice] = useState(null);
   if (!data || data.length === 0) return <EmptyChart h={height} />;
+  const glowMode = resolveGlow(glow);
+  const glowAlways = glowMode === "always";
+  const glowHover  = glowMode !== "off";
   const size = height;
   const cx = size / 2, cy = size / 2;
   const R = size * 0.40;
@@ -576,16 +605,22 @@ export function DonutChart({
   });
   return (
     <div className="nid-chart-wrap" style={{ display: "grid", placeItems: "center" }}>
-      <svg viewBox={`0 0 ${size} ${size}`} style={{ maxWidth: size, width: size }}>
+      <svg viewBox={`0 0 ${size} ${size}`} style={{ maxWidth: size, width: size }}
+        onMouseLeave={() => setHoverSlice(null)}>
         <defs>
           <filter id={`dglow-${id}`} x="-30%" y="-30%" width="160%" height="160%">
-            <feGaussianBlur stdDeviation={glow ? 6 : 0} />
+            <feGaussianBlur stdDeviation="4" result="b" />
+            <feMerge><feMergeNode in="b" /><feMergeNode in="SourceGraphic" /></feMerge>
           </filter>
         </defs>
         {slices.map((s, i) => (
-          <g key={i}>
-            {glow && <path d={s.path} fill={s.color} opacity="0.45" filter={`url(#dglow-${id})`} />}
-            <path d={s.path} fill={s.color} stroke="var(--bg)" strokeWidth="2" />
+          <g key={i} onMouseEnter={() => setHoverSlice(i)}>
+            {/* Glow halo: always for glowAlways, or on hover for glowHover */}
+            {(glowAlways || (glowHover && hoverSlice === i)) && (
+              <path d={s.path} fill={s.color} opacity="0.45" filter={`url(#dglow-${id})`} />
+            )}
+            <path d={s.path} fill={s.color} stroke="var(--bg)" strokeWidth="2"
+              opacity={hoverSlice != null && hoverSlice !== i ? 0.5 : 1} />
           </g>
         ))}
         {centerLabel && (
@@ -601,14 +636,19 @@ export function DonutChart({
 
 // ────────── Horizontal Bar (Ranking) ──────────
 export function HBarChart({
-  data, color = "var(--accent-1)", glow = true, height = 240, fmt = fmtMoneyFull,
+  data, color = "var(--accent-1)", glow = "hover", height = 240, fmt = fmtMoneyFull,
 }) {
   const id = useId().replace(/:/g, "");
+  const [hoverRow, setHoverRow] = useState(null);
   if (!data || data.length === 0) return <EmptyChart h={height} />;
+  const glowMode = resolveGlow(glow);
+  const glowAlways = glowMode === "always";
+  const glowHover  = glowMode !== "off";
   const max = Math.max(...data.map((d) => d.value)) || 1;
   const rowH = (height - 8) / data.length;
   return (
-    <div className="nid-chart-wrap" style={{ position: "relative", height }}>
+    <div className="nid-chart-wrap" style={{ position: "relative", height }}
+      onMouseLeave={() => setHoverRow(null)}>
       <svg viewBox={`0 0 100 ${height}`} preserveAspectRatio="none" style={{ height, width: "100%" }}>
         <defs>
           <linearGradient id={`hb-${id}`} x1="0" y1="0" x2="1" y2="0">
@@ -616,17 +656,22 @@ export function HBarChart({
             <stop offset="100%" stopColor={color} stopOpacity="0.25" />
           </linearGradient>
           <filter id={`hglow-${id}`}>
-            <feGaussianBlur stdDeviation={glow ? 1.5 : 0} />
+            <feGaussianBlur stdDeviation="1.5" />
           </filter>
         </defs>
         {data.map((d, i) => {
           const y = i * rowH + 5;
           const w = (d.value / max) * 100;
+          const isH = hoverRow === i;
+          const showGlow = glowAlways || (glowHover && isH);
           return (
-            <g key={i}>
+            <g key={i} onMouseEnter={() => setHoverRow(i)}>
               <rect x="0" y={y} width="100" height={rowH - 10} rx="3" fill="var(--panel-2)" />
-              {glow && <rect x="0" y={y - 1} width={w} height={rowH - 8} rx="3" fill={color} opacity="0.6" filter={`url(#hglow-${id})`} />}
-              <rect x="0" y={y} width={w} height={rowH - 10} rx="3" fill={`url(#hb-${id})`} stroke={color} strokeWidth="0.3" />
+              {showGlow && (
+                <rect x="0" y={y - 1} width={w} height={rowH - 8} rx="3" fill={color} opacity="0.6" filter={`url(#hglow-${id})`} />
+              )}
+              <rect x="0" y={y} width={w} height={rowH - 10} rx="3" fill={`url(#hb-${id})`} stroke={color} strokeWidth="0.3"
+                opacity={hoverRow != null && !isH ? 0.5 : 1} />
             </g>
           );
         })}
