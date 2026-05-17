@@ -263,3 +263,21 @@ tr:not(:last-child) {
 }
 .nid-pin.negative { background: var(--accent-2); color: #fff; }
 .nid-pin.positive { background: var(--accent-5); color: #03130a; }
+
+/* ─── Tabular numerals — apply broadly to numeric UI (ticket 13) ─── */
+.nid-mono,
+.nid-kpi-value,
+.nid-kpi-foot,
+.nid-delta,
+.nid-tip .tip-row,
+.nid-data-table .mono,
+.nid-data-table td.mono,
+.axis-text,
+.nid-pct-legend,
+.nid-hbar-row .pos,
+.nid-hbar-row .val,
+.nid-page-header-chips,
+.code-pill {
+  font-feature-settings: "tnum", "cv11", "ss01";
+  font-variant-numeric: tabular-nums;
+}
