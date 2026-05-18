@@ -166,7 +166,7 @@ def _fetch_dados(
             {
                 "ano": r.ano,
                 "mes": r.mes,
-                "admissoes": r.admissões,
+                "admissoes": r.admissoes,
                 "desligamentos": r.desligamentos,
                 "saldo": r.saldo,
             }
