@@ -1,3 +1,4 @@
+from app.core.exceptions import ForbiddenException, UnauthorizedException
 from app.core.security import decode_token
 from app.db.session import SessionLocal
 from app.models.usuario import Usuario
@@ -23,22 +24,26 @@ def get_current_user(
     payload = decode_token(token)
 
     if payload is None:
-        from app.core.exceptions import UnauthorizedException
-
         raise UnauthorizedException("Invalid or expired token")
+
+    # Refresh tokens must never be accepted as access tokens — they have a
+    # much longer lifetime and are only valid against /auth/refresh.
+    if payload.get("type") != "access":
+        raise UnauthorizedException("Invalid token type")
 
     user_id = payload.get("sub")
 
     if user_id is None:
-        from app.core.exceptions import UnauthorizedException
-
         raise UnauthorizedException("Invalid token payload")
 
-    user = db.get(Usuario, int(user_id))
+    try:
+        uid = int(user_id)
+    except (TypeError, ValueError):
+        raise UnauthorizedException("Invalid token payload")
+
+    user = db.get(Usuario, uid)
 
     if not user or not user.ativo:
-        from app.core.exceptions import UnauthorizedException
-
         raise UnauthorizedException("User not found or inactive")
 
     return user
@@ -47,8 +52,6 @@ def get_current_user(
 def require_role(required_role: str):
     def role_checker(current_user: Usuario = Depends(get_current_user)):
         if current_user.role.nome != required_role:
-            from app.core.exceptions import ForbiddenException
-
             raise ForbiddenException("Insufficient permissions")
         return current_user
 

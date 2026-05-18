@@ -12,7 +12,6 @@ class Settings(BaseSettings):
 
     # Auth
     SECRET_KEY: str
-    ALGORITHM: str
     ACCESS_TOKEN_EXPIRE_MINUTES: int = Field(default=30)
     REFRESH_TOKEN_EXPIRE_DAYS: int = Field(default=7)
 

@@ -1,5 +1,6 @@
 from app.core.exceptions import UnauthorizedException
 from app.core.security import (
+    DUMMY_PASSWORD_HASH,
     create_access_token,
     create_refresh_token,
     decode_token,
@@ -21,7 +22,10 @@ class AuthService:
     def authenticate(self, email: str, password: str) -> dict:
         user = self.usuario_repository.get_by_email(email)
 
+        # Always run bcrypt so response time doesn't reveal whether the
+        # email exists (timing-based account enumeration).
         if not user:
+            verify_password(password, DUMMY_PASSWORD_HASH)
             raise UnauthorizedException("Invalid credentials")
 
         if not verify_password(password, user.senha_hash):
