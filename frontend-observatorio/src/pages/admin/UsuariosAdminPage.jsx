@@ -1,8 +1,11 @@
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useMemo } from "react";
 import api from "../../services/api";
 import { useAuth } from "../../context/AuthContext";
 import { useToast } from "../../context/ToastContext";
 import { useEscapeKey } from "../../hooks/useEscapeKey";
+import { useSearchPagination } from "../../hooks/useSearchPagination";
+import AdminSearchInput from "../../components/nid/AdminSearchInput";
+import AdminPagination from "../../components/nid/AdminPagination";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   PlusIcon,
@@ -54,6 +57,25 @@ export default function UsuariosAdminPage() {
       .catch((err) => console.error("Erro ao carregar usuários:", err))
       .finally(() => setLoading(false));
   }, []);
+
+  // Join município name into each row so search can match it, and feed to the hook.
+  const usuariosWithMunicipio = useMemo(
+    () =>
+      usuarios.map((u) => ({
+        ...u,
+        _municipio_nome: municipios.find((m) => m.id === u.municipio_id)?.nome || "",
+      })),
+    [usuarios, municipios]
+  );
+  const sp = useSearchPagination(usuariosWithMunicipio, (u, q) => {
+    const norm = (s) => String(s ?? "").toLowerCase();
+    return (
+      norm(u.nome).includes(q) ||
+      norm(u.email).includes(q) ||
+      norm(u.role).includes(q) ||
+      norm(u._municipio_nome).includes(q)
+    );
+  });
 
   function handleChange(e) {
     const { name, value } = e.target;
@@ -152,23 +174,33 @@ export default function UsuariosAdminPage() {
       transition={{ duration: 0.25, ease: "easeOut" }}
       className="space-y-8"
     >
-      <div className="flex items-center justify-between">
+      <div className="flex items-start justify-between flex-wrap gap-4">
         <div>
           <h1 className="text-2xl font-extrabold tracking-tight text-[var(--text)]">
             Administração de Usuários
           </h1>
           <p className="text-sm text-slate-400 mt-1">
             Gerencie os usuários com acesso ao sistema.
+            {sp.search && sp.filtered.length !== usuarios.length &&
+              ` · ${sp.filtered.length} resultado${sp.filtered.length !== 1 ? "s" : ""} para "${sp.search}"`}
           </p>
         </div>
-        <button
-          type="button"
-          onClick={openCreate}
-          className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2.5 rounded-xl text-sm font-medium transition-colors cursor-pointer"
-        >
-          <PlusIcon className="w-4 h-4" aria-hidden="true" />
-          Novo Usuário
-        </button>
+        <div className="flex items-center gap-3">
+          <AdminSearchInput
+            value={sp.search}
+            onChange={sp.setSearch}
+            placeholder="Buscar nome, email, perfil, município…"
+            ariaLabel="Buscar usuários"
+          />
+          <button
+            type="button"
+            onClick={openCreate}
+            className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2.5 rounded-xl text-sm font-medium transition-colors cursor-pointer"
+          >
+            <PlusIcon className="w-4 h-4" aria-hidden="true" />
+            Novo Usuário
+          </button>
+        </div>
       </div>
 
       {/* Create / Edit form */}
@@ -351,14 +383,16 @@ export default function UsuariosAdminPage() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-[var(--border)]">
-                {usuarios.length === 0 ? (
+                {sp.filtered.length === 0 ? (
                   <tr>
                     <td colSpan={6} className="px-6 py-10 text-center text-slate-400">
-                      Nenhum usuário encontrado.
+                      {sp.search
+                        ? `Nenhum usuário encontrado para "${sp.search}".`
+                        : "Nenhum usuário encontrado."}
                     </td>
                   </tr>
                 ) : (
-                  usuarios.map((u) => (
+                  sp.paged.map((u) => (
                     <>
                       <tr key={u.id} className="hover:bg-[var(--panel-2)]/30 transition-colors">
                         <td className="px-3 py-3 md:px-6 font-medium text-[var(--text)]">{u.nome}</td>
@@ -437,6 +471,17 @@ export default function UsuariosAdminPage() {
           </div>
         )}
       </div>
+
+      {!loading && (
+        <AdminPagination
+          filteredCount={sp.filtered.length}
+          page={sp.page}
+          setPage={sp.setPage}
+          pageSize={sp.pageSize}
+          setPageSize={sp.setPageSize}
+          totalPages={sp.totalPages}
+        />
+      )}
     </motion.div>
   );
 }

@@ -7,6 +7,9 @@ import {
   TrashIcon,
   XMarkIcon,
 } from "@heroicons/react/24/outline";
+import { useSearchPagination } from "../../hooks/useSearchPagination";
+import AdminSearchInput from "../../components/nid/AdminSearchInput";
+import AdminPagination from "../../components/nid/AdminPagination";
 
 const TIPO_OPTIONS = [
   { value: "info", label: "Info" },
@@ -53,6 +56,15 @@ export default function NotificacoesAdminPage() {
     fetchNotifs();
     api.get("/municipios").then((r) => setMunicipios(r.data || [])).catch(() => {});
   }, []);
+
+  const sp = useSearchPagination(notifs, (n, q) => {
+    const norm = (s) => String(s ?? "").toLowerCase();
+    return (
+      norm(n.titulo).includes(q) ||
+      norm(n.mensagem).includes(q) ||
+      norm(n.tipo).includes(q)
+    );
+  });
 
   const openCreate = () => {
     setForm(EMPTY_FORM);
@@ -130,22 +142,32 @@ export default function NotificacoesAdminPage() {
       transition={{ duration: 0.3 }}
       className="space-y-6"
     >
-      <div className="flex items-center justify-between">
+      <div className="flex items-start justify-between flex-wrap gap-4">
         <div>
           <h1 className="text-2xl font-extrabold tracking-tight text-[var(--text)]">
             Notificações
           </h1>
           <p className="text-sm text-[var(--text-mute)] mt-1">
             Crie e gerencie notificações para os usuários da plataforma.
+            {sp.search && sp.filtered.length !== notifs.length &&
+              ` · ${sp.filtered.length} resultado${sp.filtered.length !== 1 ? "s" : ""} para "${sp.search}"`}
           </p>
         </div>
-        <button
-          onClick={openCreate}
-          className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold rounded-xl transition-colors"
-        >
-          <PlusIcon className="w-4 h-4" />
-          Nova Notificação
-        </button>
+        <div className="flex items-center gap-3">
+          <AdminSearchInput
+            value={sp.search}
+            onChange={sp.setSearch}
+            placeholder="Buscar título, mensagem, tipo…"
+            ariaLabel="Buscar notificações"
+          />
+          <button
+            onClick={openCreate}
+            className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold rounded-xl transition-colors"
+          >
+            <PlusIcon className="w-4 h-4" />
+            Nova Notificação
+          </button>
+        </div>
       </div>
 
       {/* Table */}
@@ -154,9 +176,11 @@ export default function NotificacoesAdminPage() {
           <div className="p-8 text-center text-[var(--text-mute)] text-sm animate-pulse">
             Carregando...
           </div>
-        ) : notifs.length === 0 ? (
+        ) : sp.filtered.length === 0 ? (
           <div className="p-8 text-center text-[var(--text-mute)] text-sm">
-            Nenhuma notificação criada.
+            {sp.search
+              ? `Nenhuma notificação encontrada para "${sp.search}".`
+              : "Nenhuma notificação criada."}
           </div>
         ) : (
           <table className="w-full text-sm">
@@ -181,7 +205,7 @@ export default function NotificacoesAdminPage() {
               </tr>
             </thead>
             <tbody className="divide-y divide-[var(--border)]">
-              {notifs.map((n) => (
+              {sp.paged.map((n) => (
                 <tr key={n.id} className="hover:bg-[var(--panel-2)]/40 transition-colors">
                   <td className="px-6 py-3 font-medium text-[var(--text)] max-w-xs">
                     <div className="truncate">{n.titulo}</div>
@@ -223,6 +247,17 @@ export default function NotificacoesAdminPage() {
           </table>
         )}
       </div>
+
+      {!loading && (
+        <AdminPagination
+          filteredCount={sp.filtered.length}
+          page={sp.page}
+          setPage={sp.setPage}
+          pageSize={sp.pageSize}
+          setPageSize={sp.setPageSize}
+          totalPages={sp.totalPages}
+        />
+      )}
 
       {/* Create / Edit Modal */}
       <AnimatePresence>

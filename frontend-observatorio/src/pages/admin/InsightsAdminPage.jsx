@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { motion } from "framer-motion";
 import api from "../../services/api";
 import {
@@ -12,6 +12,7 @@ import {
 import NidModal, { NidField } from "../../components/nid/NidModal";
 import StatusPill from "../../components/nid/StatusPill";
 import AdminStats from "../../components/nid/AdminStats";
+import AdminSearchInput from "../../components/nid/AdminSearchInput";
 
 // ─── Dataset registry ──────────────────────────────────────────────────────────
 const DATASETS = [
@@ -297,6 +298,18 @@ export default function InsightsAdminPage() {
   const [submittingManual,  setSubmittingManual]  = useState(false);
   const [prioridades,       setPrioridades]       = useState(null);
   const [generatingPrioridades, setGeneratingPrioridades] = useState(false);
+  const [search,            setSearch]            = useState("");
+
+  // Dataset list filtered by search (matches key / label / desc)
+  const visibleDatasets = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    if (!q) return DATASETS;
+    return DATASETS.filter((d) =>
+      d.key.toLowerCase().includes(q) ||
+      d.label.toLowerCase().includes(q) ||
+      (d.desc || "").toLowerCase().includes(q)
+    );
+  }, [search]);
 
   // Load municipality list once
   useEffect(() => {
@@ -517,13 +530,25 @@ export default function InsightsAdminPage() {
       className="space-y-6"
     >
       {/* Page header */}
-      <div>
-        <h1 className="text-2xl font-extrabold tracking-tight" style={{ color: "var(--text)" }}>
-          Insights IA{selectedId ? ` — ${municipioNome}` : ""}
-        </h1>
-        <p style={{ color: "var(--text-mute)", fontSize: 13, marginTop: 4 }}>
-          Gere insights, releases de imprensa e gerencie visibilidade por município.
-        </p>
+      <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 16, flexWrap: "wrap" }}>
+        <div>
+          <h1 className="text-2xl font-extrabold tracking-tight" style={{ color: "var(--text)" }}>
+            Insights IA{selectedId ? ` — ${municipioNome}` : ""}
+          </h1>
+          <p style={{ color: "var(--text-mute)", fontSize: 13, marginTop: 4 }}>
+            Gere insights, releases de imprensa e gerencie visibilidade por município.
+            {search && visibleDatasets.length !== DATASETS.length &&
+              ` · ${visibleDatasets.length} dataset${visibleDatasets.length !== 1 ? "s" : ""} para "${search}"`}
+          </p>
+        </div>
+        {selectedId && (
+          <AdminSearchInput
+            value={search}
+            onChange={setSearch}
+            placeholder="Buscar dataset…"
+            ariaLabel="Buscar datasets"
+          />
+        )}
       </div>
 
       {/* Municipality selector */}
@@ -679,9 +704,19 @@ export default function InsightsAdminPage() {
                   />
                 ))}
               </div>
+            ) : visibleDatasets.length === 0 ? (
+              <div style={{
+                padding: "32px 20px",
+                textAlign: "center",
+                color: "var(--text-mute)",
+                fontFamily: "var(--font-display)",
+                fontSize: 13,
+              }}>
+                Nenhum dataset encontrado para "{search}".
+              </div>
             ) : (
               <div className="nid-icards">
-                {DATASETS.map((d) => {
+                {visibleDatasets.map((d) => {
                   const insight = insights[d.key] || null;
                   const release = releases[d.key] || null;
                   const isActing = insight && acting[insight.id];

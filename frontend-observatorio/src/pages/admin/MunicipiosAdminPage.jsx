@@ -1,26 +1,24 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { motion } from "framer-motion";
 import api from "../../services/api";
-import { PhotoIcon, MagnifyingGlassIcon, XMarkIcon, ChevronLeftIcon, ChevronRightIcon } from "@heroicons/react/24/outline";
+import { PhotoIcon } from "@heroicons/react/24/outline";
 import AdminTable from "../../components/nid/AdminTable";
 import AdminStats from "../../components/nid/AdminStats";
 import BulkActions from "../../components/nid/BulkActions";
+import AdminSearchInput from "../../components/nid/AdminSearchInput";
+import AdminPagination from "../../components/nid/AdminPagination";
 import { useRowSelection } from "../../hooks/useRowSelection";
+import { useSearchPagination } from "../../hooks/useSearchPagination";
 
-const PAGE_SIZE_OPTIONS = [25, 50, 100, "all"];
-
-/** Case-insensitive, accent-fold-light substring match across nome / IBGE / UF */
-function matchesQuery(m, q) {
-  if (!q) return true;
+/** Match nome / código IBGE / UF (query already trimmed + lowercased by the hook) */
+const matchMunicipio = (m, q) => {
   const norm = (s) => String(s ?? "").toLowerCase();
-  const needle = norm(q).trim();
-  if (!needle) return true;
   return (
-    norm(m.nome).includes(needle) ||
-    norm(m.codigo_ibge).includes(needle) ||
-    norm(m.estado).includes(needle)
+    norm(m.nome).includes(q) ||
+    norm(m.codigo_ibge).includes(q) ||
+    norm(m.estado).includes(q)
   );
-}
+};
 
 // ─── helpers ──────────────────────────────────────────────────────────────────
 
@@ -107,29 +105,8 @@ export default function MunicipiosAdminPage() {
   const [saving, setSaving] = useState({}); // { [id]: bool, [brasao_id]: bool }
   const fileRefs = useRef({});
 
-  // Search + pagination
-  const [search, setSearch] = useState("");
-  const [pageSize, setPageSize] = useState(25);
-  const [page, setPage] = useState(0);
-
   const { selectedIds, setSelectedIds, clear, count } = useRowSelection();
-
-  // Filtered list (search applied)
-  const filtered = useMemo(
-    () => municipios.filter((m) => matchesQuery(m, search)),
-    [municipios, search]
-  );
-
-  // Paginated slice
-  const totalPages = pageSize === "all" ? 1 : Math.max(1, Math.ceil(filtered.length / pageSize));
-  const paged = useMemo(() => {
-    if (pageSize === "all") return filtered;
-    const start = page * pageSize;
-    return filtered.slice(start, start + pageSize);
-  }, [filtered, page, pageSize]);
-
-  // Reset page when filter or page size changes
-  useEffect(() => { setPage(0); }, [search, pageSize]);
+  const sp = useSearchPagination(municipios, matchMunicipio);
 
   // ── Load ──────────────────────────────────────────────────────────────────
   const load = () => {
@@ -346,33 +323,17 @@ export default function MunicipiosAdminPage() {
             {municipios.length} cadastrado{municipios.length !== 1 ? "s" : ""}
             {municipios.filter((m) => m.plano !== "free").length > 0 &&
               ` · ${municipios.filter((m) => m.plano !== "free").length} em plano pago`}
-            {search && filtered.length !== municipios.length &&
-              ` · ${filtered.length} resultado${filtered.length !== 1 ? "s" : ""} para "${search}"`}
+            {sp.search && sp.filtered.length !== municipios.length &&
+              ` · ${sp.filtered.length} resultado${sp.filtered.length !== 1 ? "s" : ""} para "${sp.search}"`}
           </p>
         </div>
 
-        {/* Search input */}
-        <div className="nid-admin-search">
-          <MagnifyingGlassIcon className="nid-admin-search__icon" />
-          <input
-            type="text"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            placeholder="Buscar município, UF, código IBGE…"
-            aria-label="Buscar municípios"
-            className="nid-admin-search__input"
-          />
-          {search && (
-            <button
-              type="button"
-              onClick={() => setSearch("")}
-              aria-label="Limpar busca"
-              className="nid-admin-search__clear"
-            >
-              <XMarkIcon style={{ width: 14, height: 14 }} />
-            </button>
-          )}
-        </div>
+        <AdminSearchInput
+          value={sp.search}
+          onChange={sp.setSearch}
+          placeholder="Buscar município, UF, código IBGE…"
+          ariaLabel="Buscar municípios"
+        />
       </div>
 
       {/* KPI strip */}
@@ -450,14 +411,14 @@ export default function MunicipiosAdminPage() {
         ) : (
           <AdminTable
             columns={columns}
-            data={paged}
+            data={sp.paged}
             rowKey={(row) => row.id}
             selectedIds={selectedIds}
             onSelectionChange={setSelectedIds}
             emptyState={
               <span style={{ fontSize: 13, color: "var(--text-mute)" }}>
-                {search
-                  ? `Nenhum município encontrado para "${search}".`
+                {sp.search
+                  ? `Nenhum município encontrado para "${sp.search}".`
                   : "Nenhum município cadastrado."}
               </span>
             }
@@ -465,68 +426,15 @@ export default function MunicipiosAdminPage() {
         )}
       </div>
 
-      {/* Pagination footer */}
-      {!loading && filtered.length > 0 && (
-        <div className="nid-admin-pagination">
-          <div className="nid-admin-pagination__range">
-            {pageSize === "all" ? (
-              <>Mostrando todos os {filtered.length}</>
-            ) : (
-              <>
-                {Math.min(page * pageSize + 1, filtered.length)}
-                –
-                {Math.min((page + 1) * pageSize, filtered.length)}
-                {" "}de{" "}{filtered.length}
-              </>
-            )}
-          </div>
-
-          <div className="nid-admin-pagination__controls">
-            <label className="nid-admin-pagination__label">
-              <span>Por página</span>
-              <select
-                value={pageSize}
-                onChange={(e) => {
-                  const v = e.target.value;
-                  setPageSize(v === "all" ? "all" : parseInt(v, 10));
-                }}
-                className="nid-admin-pagination__select"
-              >
-                {PAGE_SIZE_OPTIONS.map((opt) => (
-                  <option key={opt} value={opt}>
-                    {opt === "all" ? "Todos" : opt}
-                  </option>
-                ))}
-              </select>
-            </label>
-
-            {pageSize !== "all" && totalPages > 1 && (
-              <div className="nid-admin-pagination__pager">
-                <button
-                  type="button"
-                  onClick={() => setPage((p) => Math.max(0, p - 1))}
-                  disabled={page === 0}
-                  aria-label="Página anterior"
-                  className="nid-admin-pagination__btn"
-                >
-                  <ChevronLeftIcon style={{ width: 14, height: 14 }} />
-                </button>
-                <span className="nid-admin-pagination__page">
-                  {page + 1} / {totalPages}
-                </span>
-                <button
-                  type="button"
-                  onClick={() => setPage((p) => Math.min(totalPages - 1, p + 1))}
-                  disabled={page >= totalPages - 1}
-                  aria-label="Próxima página"
-                  className="nid-admin-pagination__btn"
-                >
-                  <ChevronRightIcon style={{ width: 14, height: 14 }} />
-                </button>
-              </div>
-            )}
-          </div>
-        </div>
+      {!loading && (
+        <AdminPagination
+          filteredCount={sp.filtered.length}
+          page={sp.page}
+          setPage={sp.setPage}
+          pageSize={sp.pageSize}
+          setPageSize={sp.setPageSize}
+          totalPages={sp.totalPages}
+        />
       )}
 
       {/* Hidden file inputs for brasão upload — one per row, rendered outside the table */}
