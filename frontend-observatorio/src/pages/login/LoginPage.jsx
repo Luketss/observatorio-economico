@@ -32,7 +32,6 @@ export default function LoginPage() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    setError("");
     setLoading(true);
     try {
       await login(email, senha);
@@ -119,7 +118,7 @@ export default function LoginPage() {
                   id="login-email"
                   type="email"
                   value={email}
-                  onChange={(e) => setEmail(e.target.value)}
+                  onChange={(e) => { setEmail(e.target.value); if (error) setError(""); }}
                   required
                   autoComplete="email"
                   autoFocus
@@ -139,7 +138,7 @@ export default function LoginPage() {
                     id="login-senha"
                     type={showPassword ? "text" : "password"}
                     value={senha}
-                    onChange={(e) => setSenha(e.target.value)}
+                    onChange={(e) => { setSenha(e.target.value); if (error) setError(""); }}
                     required
                     autoComplete="current-password"
                     placeholder="••••••••"
@@ -161,17 +160,14 @@ export default function LoginPage() {
 
               {/* Error message */}
               {error && (
-                <motion.div
-                  initial={{ opacity: 0, y: -4 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.2, ease: "easeOut" }}
+                <div
                   role="alert"
                   aria-live="polite"
                   className="flex items-start gap-2.5 bg-red-50 border border-red-100 text-red-700 text-xs px-4 py-3 rounded-xl"
                 >
                   <ExclamationCircleIcon className="w-4 h-4 shrink-0 mt-0.5 text-red-500" aria-hidden="true" />
                   {error}
-                </motion.div>
+                </div>
               )}
 
               {/* Submit */}
