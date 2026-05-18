@@ -1,14 +1,18 @@
 import { useEffect, useRef, useState } from "react";
 import { motion } from "framer-motion";
+import { useNavigate } from "react-router-dom";
 import api from "../../services/api";
-import { PhotoIcon } from "@heroicons/react/24/outline";
+import { PhotoIcon, PlusIcon } from "@heroicons/react/24/outline";
 import AdminTable from "../../components/nid/AdminTable";
 import AdminStats from "../../components/nid/AdminStats";
 import BulkActions from "../../components/nid/BulkActions";
 import AdminSearchInput from "../../components/nid/AdminSearchInput";
 import AdminPagination from "../../components/nid/AdminPagination";
+import NidModal, { NidField } from "../../components/nid/NidModal";
+import MunicipioPicker from "../../components/nid/MunicipioPicker";
 import { useRowSelection } from "../../hooks/useRowSelection";
 import { useSearchPagination } from "../../hooks/useSearchPagination";
+import { useViewAs } from "../../context/ViewAsContext";
 
 /** Match nome / código IBGE / UF (query already trimmed + lowercased by the hook) */
 const matchMunicipio = (m, q) => {
@@ -107,6 +111,18 @@ export default function MunicipiosAdminPage() {
 
   const { selectedIds, setSelectedIds, clear, count } = useRowSelection();
   const sp = useSearchPagination(municipios, matchMunicipio);
+  const navigate = useNavigate();
+  const { setViewAs } = useViewAs();
+
+  // Add-município modal
+  const [addOpen, setAddOpen] = useState(false);
+  const [addForm, setAddForm] = useState({ nome: "", estado: "", codigo_ibge: "", clone_from_id: "" });
+  const [addSubmitting, setAddSubmitting] = useState(false);
+  const [addError, setAddError] = useState("");
+
+  // Delete confirmation modal
+  const [deleteTarget, setDeleteTarget] = useState(null);  // { id, nome } | null
+  const [deleting, setDeleting] = useState(false);
 
   // ── Load ──────────────────────────────────────────────────────────────────
   const load = () => {
@@ -170,6 +186,61 @@ export default function MunicipiosAdminPage() {
       alert("Erro ao remover brasão.");
     } finally {
       setSaving((prev) => ({ ...prev, [`brasao_${municipio.id}`]: false }));
+    }
+  };
+
+  // ── Add município ─────────────────────────────────────────────────────────
+  const openAdd = () => {
+    setAddForm({ nome: "", estado: "", codigo_ibge: "", clone_from_id: "" });
+    setAddError("");
+    setAddOpen(true);
+  };
+
+  const submitAdd = async () => {
+    if (!addForm.nome.trim() || !addForm.estado.trim()) {
+      setAddError("Nome e UF são obrigatórios.");
+      return;
+    }
+    setAddSubmitting(true);
+    setAddError("");
+    try {
+      const body = {
+        nome: addForm.nome.trim(),
+        estado: addForm.estado.trim().toUpperCase().slice(0, 2),
+        codigo_ibge: addForm.codigo_ibge.trim() || null,
+        ativo: true,
+      };
+      if (addForm.clone_from_id) {
+        body.clone_from_id = parseInt(addForm.clone_from_id, 10);
+      }
+      await api.post("/municipios/", body);
+      setAddOpen(false);
+      load();
+    } catch (err) {
+      setAddError(err?.response?.data?.detail || "Erro ao criar município.");
+    } finally {
+      setAddSubmitting(false);
+    }
+  };
+
+  // ── View as (ADMIN_GLOBAL impersonation) ──────────────────────────────────
+  const enterViewAs = (row) => {
+    setViewAs(row.id, row.nome);
+    navigate("/app");
+  };
+
+  // ── Delete município (cascade) ────────────────────────────────────────────
+  const submitDelete = async () => {
+    if (!deleteTarget) return;
+    setDeleting(true);
+    try {
+      await api.delete(`/municipios/${deleteTarget.id}`);
+      setDeleteTarget(null);
+      setMunicipios((prev) => prev.filter((m) => m.id !== deleteTarget.id));
+    } catch (err) {
+      alert(err?.response?.data?.detail || "Erro ao excluir município.");
+    } finally {
+      setDeleting(false);
     }
   };
 
@@ -274,13 +345,17 @@ export default function MunicipiosAdminPage() {
     {
       key: "_actions",
       kind: "row-actions",
-      width: 100,
+      width: 180,
       actions: [
+        {
+          icon: "view",
+          label: "Visualizar como (modo demo)",
+          onClick: (row) => enterViewAs(row),
+        },
         {
           icon: "edit",
           label: "Editar brasão",
           onClick: (row) => {
-            // Trigger the hidden file input for this row
             fileRefs.current[row.id]?.click();
           },
         },
@@ -288,7 +363,6 @@ export default function MunicipiosAdminPage() {
           icon: "menu",
           label: "Mais ações",
           onClick: (row) => {
-            // Simple inline action menu via window prompt (ticket 22 will add a proper modal)
             const choice = window.prompt(
               `Ações para ${row.nome}:\n` +
               `1 — → ${planoLabel(nextPlano(row.plano))}\n` +
@@ -298,6 +372,11 @@ export default function MunicipiosAdminPage() {
             if (choice === "1") togglePlano(row);
             if (choice === "2" && row.brasao) removeBrasao(row);
           },
+        },
+        {
+          icon: "delete",
+          label: "Excluir município",
+          onClick: (row) => setDeleteTarget({ id: row.id, nome: row.nome }),
         },
       ],
     },
@@ -328,12 +407,33 @@ export default function MunicipiosAdminPage() {
           </p>
         </div>
 
-        <AdminSearchInput
-          value={sp.search}
-          onChange={sp.setSearch}
-          placeholder="Buscar município, UF, código IBGE…"
-          ariaLabel="Buscar municípios"
-        />
+        <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+          <AdminSearchInput
+            value={sp.search}
+            onChange={sp.setSearch}
+            placeholder="Buscar município, UF, código IBGE…"
+            ariaLabel="Buscar municípios"
+          />
+          <button
+            type="button"
+            onClick={openAdd}
+            style={{
+              display: "inline-flex", alignItems: "center", gap: 6,
+              padding: "8px 14px",
+              background: "var(--admin-accent)",
+              color: "#fff",
+              border: "none",
+              borderRadius: 10,
+              fontSize: 13,
+              fontWeight: 600,
+              cursor: "pointer",
+              fontFamily: "var(--font-display)",
+            }}
+          >
+            <PlusIcon style={{ width: 16, height: 16 }} />
+            Adicionar
+          </button>
+        </div>
       </div>
 
       {/* KPI strip */}
@@ -448,6 +548,169 @@ export default function MunicipiosAdminPage() {
           onChange={(e) => handleBrasaoChange(m, e.target.files?.[0])}
         />
       ))}
+
+      {/* Add município modal */}
+      <NidModal
+        open={addOpen}
+        onClose={() => !addSubmitting && setAddOpen(false)}
+        eyebrow="Novo município"
+        title="Adicionar município"
+        size="md"
+        footer={
+          <>
+            <button
+              type="button"
+              onClick={() => setAddOpen(false)}
+              disabled={addSubmitting}
+              style={{
+                padding: "8px 14px",
+                background: "transparent",
+                border: "1px solid var(--border)",
+                color: "var(--text-dim)",
+                borderRadius: 8,
+                fontSize: 13,
+                fontWeight: 500,
+                cursor: addSubmitting ? "not-allowed" : "pointer",
+              }}
+            >
+              Cancelar
+            </button>
+            <button
+              type="button"
+              onClick={submitAdd}
+              disabled={addSubmitting || !addForm.nome.trim() || !addForm.estado.trim()}
+              style={{
+                padding: "8px 14px",
+                background: "var(--admin-accent)",
+                border: "none",
+                color: "#fff",
+                borderRadius: 8,
+                fontSize: 13,
+                fontWeight: 600,
+                cursor: addSubmitting ? "wait" : "pointer",
+                opacity: addSubmitting || !addForm.nome.trim() || !addForm.estado.trim() ? 0.6 : 1,
+              }}
+            >
+              {addSubmitting
+                ? (addForm.clone_from_id ? "Clonando datasets…" : "Criando…")
+                : "Criar município"}
+            </button>
+          </>
+        }
+      >
+        <NidField label="Nome">
+          <input
+            type="text"
+            value={addForm.nome}
+            onChange={(e) => setAddForm((p) => ({ ...p, nome: e.target.value }))}
+            placeholder="Ex.: Demo · Cabo Verde"
+            disabled={addSubmitting}
+            autoFocus
+          />
+        </NidField>
+
+        <NidField label="UF">
+          <input
+            type="text"
+            value={addForm.estado}
+            onChange={(e) => setAddForm((p) => ({ ...p, estado: e.target.value.toUpperCase().slice(0, 2) }))}
+            placeholder="MG"
+            maxLength={2}
+            disabled={addSubmitting}
+            style={{ maxWidth: 100 }}
+          />
+        </NidField>
+
+        <NidField label="Código IBGE (opcional)">
+          <input
+            type="text"
+            value={addForm.codigo_ibge}
+            onChange={(e) => setAddForm((p) => ({ ...p, codigo_ibge: e.target.value }))}
+            placeholder="3109501"
+            disabled={addSubmitting}
+            style={{ maxWidth: 180 }}
+          />
+        </NidField>
+
+        <NidField label="Clonar dados de (opcional)">
+          <MunicipioPicker
+            municipios={municipios}
+            value={addForm.clone_from_id}
+            onChange={(id) => setAddForm((p) => ({ ...p, clone_from_id: id }))}
+            placeholder="Nenhum — município vazio"
+            ariaLabel="Clonar dados de outro município"
+          />
+          <p style={{ fontSize: 11, color: "var(--text-mute)", marginTop: 6, lineHeight: 1.4 }}>
+            Se selecionado, todos os datasets do município de origem (insights, séries históricas,
+            eventos, projetos) serão copiados para o novo município. Pode levar 10–30s.
+          </p>
+        </NidField>
+
+        {addError && (
+          <div style={{
+            marginTop: 8, padding: "10px 12px",
+            background: "color-mix(in oklab, var(--accent-2) 12%, transparent)",
+            border: "1px solid color-mix(in oklab, var(--accent-2) 28%, transparent)",
+            color: "var(--accent-2)", borderRadius: 8, fontSize: 12,
+          }}>
+            {addError}
+          </div>
+        )}
+      </NidModal>
+
+      {/* Delete confirmation modal */}
+      <NidModal
+        open={deleteTarget != null}
+        onClose={() => !deleting && setDeleteTarget(null)}
+        eyebrow="Atenção · ação irreversível"
+        title={deleteTarget ? `Excluir "${deleteTarget.nome}"?` : ""}
+        size="sm"
+        footer={
+          <>
+            <button
+              type="button"
+              onClick={() => setDeleteTarget(null)}
+              disabled={deleting}
+              style={{
+                padding: "8px 14px",
+                background: "transparent",
+                border: "1px solid var(--border)",
+                color: "var(--text-dim)",
+                borderRadius: 8,
+                fontSize: 13,
+                fontWeight: 500,
+                cursor: deleting ? "not-allowed" : "pointer",
+              }}
+            >
+              Cancelar
+            </button>
+            <button
+              type="button"
+              onClick={submitDelete}
+              disabled={deleting}
+              style={{
+                padding: "8px 14px",
+                background: "var(--accent-2)",
+                border: "none",
+                color: "#fff",
+                borderRadius: 8,
+                fontSize: 13,
+                fontWeight: 600,
+                cursor: deleting ? "wait" : "pointer",
+                opacity: deleting ? 0.6 : 1,
+              }}
+            >
+              {deleting ? "Excluindo…" : "Excluir definitivamente"}
+            </button>
+          </>
+        }
+      >
+        <p style={{ fontSize: 13, color: "var(--text-dim)", lineHeight: 1.6, margin: 0 }}>
+          Todos os dados deste município (insights, indicadores, séries históricas, eventos,
+          projetos, cards customizados) serão removidos permanentemente. Esta ação não pode
+          ser desfeita.
+        </p>
+      </NidModal>
     </motion.div>
   );
 }

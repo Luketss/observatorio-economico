@@ -7,6 +7,7 @@ import { useAuth } from "../../context/AuthContext";
 import { useTheme, THEMES } from "../../context/ThemeContext";
 import api from "../../services/api";
 import NotificationBell from "../../components/NotificationBell";
+import ViewAsBanner from "../../components/ViewAsBanner";
 import {
   HomeIcon,
   ChartBarIcon,
@@ -435,6 +436,7 @@ export default function DashboardLayout() {
 
         {/* Main */}
         <main className="flex-1 overflow-y-auto flex flex-col min-w-0">
+          <ViewAsBanner />
           <header
             className="px-4 md:px-8 py-4 flex items-center gap-3 flex-shrink-0"
             style={{
