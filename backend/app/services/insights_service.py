@@ -30,6 +30,49 @@ logger = logging.getLogger(__name__)
 
 MODEL = "claude-haiku-4-5-20251001"
 
+
+def _call_claude(prompt: str, max_tokens: int) -> str:
+    """Call Claude with consistent error handling.
+
+    Returns the response text. Translates SDK exceptions to HTTPException(503)
+    so the FastAPI CORS middleware still runs — otherwise an uncaught SDK error
+    yields a header-less 500 that the browser reports as "blocked by CORS".
+    Logs full tracebacks so Railway / production logs reveal the real cause.
+    """
+    client = anthropic.Anthropic(api_key=settings.ANTHROPIC_API_KEY)
+    try:
+        message = client.messages.create(
+            model=MODEL,
+            max_tokens=max_tokens,
+            messages=[{"role": "user", "content": prompt}],
+        )
+    except anthropic.APIStatusError as e:
+        logger.exception("Anthropic API error (status=%s)", getattr(e, "status_code", "?"))
+        raise HTTPException(
+            status_code=503,
+            detail=f"Erro temporário do provedor de IA (status {getattr(e, 'status_code', '?')}). Tente novamente em alguns segundos.",
+        )
+    except anthropic.APIConnectionError:
+        logger.exception("Anthropic connection error")
+        raise HTTPException(
+            status_code=503,
+            detail="Falha de conexão com o provedor de IA. Tente novamente em alguns segundos.",
+        )
+    except anthropic.APIError as e:
+        logger.exception("Anthropic SDK error")
+        raise HTTPException(
+            status_code=503,
+            detail=f"Erro do provedor de IA: {type(e).__name__}",
+        )
+    except Exception:
+        logger.exception("Unexpected error calling Anthropic")
+        raise HTTPException(
+            status_code=503,
+            detail="Erro inesperado ao chamar o provedor de IA. Tente novamente.",
+        )
+    return message.content[0].text.strip()
+
+
 DATASET_LABELS = {
     "arrecadacao": "Arrecadação Municipal (ICMS, IPVA, IPI)",
     "pib": "PIB Municipal",
@@ -508,14 +551,7 @@ Dados: {dados_json}
 Responda APENAS com um JSON array de 5 strings, cada string sendo um parágrafo completo e independente. Sem texto adicional fora do array.
 ["Parágrafo 1...", "Parágrafo 2...", "Parágrafo 3...", "Parágrafo 4...", "Parágrafo 5..."]"""
 
-    client = anthropic.Anthropic(api_key=settings.ANTHROPIC_API_KEY)
-    message = client.messages.create(
-        model=MODEL,
-        max_tokens=1024,
-        messages=[{"role": "user", "content": prompt}],
-    )
-
-    raw = message.content[0].text.strip()
+    raw = _call_claude(prompt, max_tokens=1024)
 
     if raw.startswith("```"):
         lines = raw.splitlines()
@@ -992,14 +1028,7 @@ def gerar_insight(db: Session, municipio_id: int, dataset: str) -> InsightIA:
 
     prompt = _build_prompt(dataset, municipio, dataset_label, dados_json)
 
-    client = anthropic.Anthropic(api_key=settings.ANTHROPIC_API_KEY)
-    message = client.messages.create(
-        model=MODEL,
-        max_tokens=900,
-        messages=[{"role": "user", "content": prompt}],
-    )
-
-    raw = message.content[0].text.strip()
+    raw = _call_claude(prompt, max_tokens=900)
 
     # Strip markdown code fences if Claude wrapped the response
     if raw.startswith("```"):
@@ -1119,14 +1148,7 @@ def gerar_prioridades(db: Session, municipio_id: int) -> InsightIA:
         + f"Dados consolidados:\n{json.dumps(dados_consolidados, ensure_ascii=False, default=str)}"
     )
 
-    client = anthropic.Anthropic(api_key=settings.ANTHROPIC_API_KEY)
-    message = client.messages.create(
-        model=MODEL,
-        max_tokens=1500,
-        messages=[{"role": "user", "content": prompt}],
-    )
-
-    raw = message.content[0].text.strip()
+    raw = _call_claude(prompt, max_tokens=1500)
     if raw.startswith("```"):
         lines = raw.splitlines()
         lines = [l for l in lines if not l.strip().startswith("```")]
