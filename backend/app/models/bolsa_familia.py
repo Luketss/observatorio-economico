@@ -1,10 +1,13 @@
 from app.db.base import Base
-from sqlalchemy import Float, ForeignKey, Integer
+from sqlalchemy import Float, ForeignKey, Integer, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 
 class BolsaFamiliaResumo(Base):
     __tablename__ = "bolsa_familia_resumo"
+    __table_args__ = (
+        UniqueConstraint("municipio_id", "ano", "mes", name="uq_bolsa_familia_resumo_municipio_ano_mes"),
+    )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
 

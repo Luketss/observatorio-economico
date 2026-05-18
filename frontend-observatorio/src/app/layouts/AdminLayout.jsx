@@ -20,6 +20,7 @@ import {
   CircleStackIcon,
   BellIcon,
   SwatchIcon,
+  TrashIcon,
 } from "@heroicons/react/24/outline";
 
 // ── Route → display name map ──────────────────────────────────────────────────
@@ -31,6 +32,7 @@ const ROUTE_LABELS = {
   "/admin/planos":        "Planos & Acesso",
   "/admin/usuarios":      "Usuários",
   "/admin/explorer":      "Explorador de Dados",
+  "/admin/datasets":      "Datasets",
   "/admin/notificacoes":  "Notificações",
   "/admin/projetos-eixos":"Eixos de Projetos",
   "/admin/mandato":       "Timeline do Mandato",
@@ -122,6 +124,7 @@ const GESTAO_ITEMS = [
 
 const DADOS_ITEMS = [
   { to: "/admin/explorer",       label: "Explorador de Dados", icon: CircleStackIcon },
+  { to: "/admin/datasets",       label: "Datasets",            icon: TrashIcon },
   { to: "/admin/notificacoes",   label: "Notificações",        icon: BellIcon },
 ];
 

@@ -2,6 +2,7 @@ import csv
 from collections import defaultdict
 from pathlib import Path
 
+from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.orm import Session
 
 from app.models.bolsa_familia import BolsaFamiliaResumo
@@ -42,27 +43,26 @@ def carregar(cidade_dir: Path, city_name: str, estado: str, db: Session) -> None
             if primeira_infancia > 0:
                 agregado[chave]["beneficiarios_primeira_infancia"] += 1
 
-    for (ano, mes), totais in agregado.items():
-        existente = (
-            db.query(BolsaFamiliaResumo)
-            .filter(
-                BolsaFamiliaResumo.municipio_id == municipio.id,
-                BolsaFamiliaResumo.ano == ano,
-                BolsaFamiliaResumo.mes == mes,
-            )
-            .first()
-        )
-        if existente:
-            continue
-        db.add(BolsaFamiliaResumo(
-            municipio_id=municipio.id,
-            ano=ano,
-            mes=mes,
-            total_beneficiarios=totais["beneficiarios"],
-            valor_total=totais["valor_total"],
-            valor_bolsa=totais["valor_bolsa"],
-            valor_primeira_infancia=totais["valor_primeira_infancia"],
-            beneficiarios_primeira_infancia=totais["beneficiarios_primeira_infancia"],
-        ))
+    if not agregado:
+        return
 
+    rows = [
+        {
+            "municipio_id": municipio.id,
+            "ano": ano,
+            "mes": mes,
+            "total_beneficiarios": totais["beneficiarios"],
+            "valor_total": totais["valor_total"],
+            "valor_bolsa": totais["valor_bolsa"],
+            "valor_primeira_infancia": totais["valor_primeira_infancia"],
+            "beneficiarios_primeira_infancia": totais["beneficiarios_primeira_infancia"],
+        }
+        for (ano, mes), totais in agregado.items()
+    ]
+
+    stmt = pg_insert(BolsaFamiliaResumo).values(rows)
+    stmt = stmt.on_conflict_do_nothing(
+        index_elements=["municipio_id", "ano", "mes"],
+    )
+    db.execute(stmt)
     db.commit()

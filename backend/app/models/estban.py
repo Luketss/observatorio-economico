@@ -1,10 +1,13 @@
 from app.db.base import Base
-from sqlalchemy import Date, Float, ForeignKey, Integer, String
+from sqlalchemy import Date, Float, ForeignKey, Integer, String, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 
 class EstbanMensal(Base):
     __tablename__ = "estban_mensal"
+    __table_args__ = (
+        UniqueConstraint("municipio_id", "data_referencia", name="uq_estban_mensal_municipio_data"),
+    )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
 
@@ -35,6 +38,12 @@ class EstbanMensal(Base):
 
 class EstbanPorInstituicao(Base):
     __tablename__ = "estban_por_instituicao"
+    __table_args__ = (
+        UniqueConstraint(
+            "municipio_id", "data_referencia", "nome_instituicao",
+            name="uq_estban_por_instituicao_municipio_data_nome",
+        ),
+    )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
     municipio_id: Mapped[int] = mapped_column(Integer, ForeignKey("municipios.id"), nullable=False, index=True)

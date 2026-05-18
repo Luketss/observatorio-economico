@@ -1,10 +1,13 @@
 from app.db.base import Base
-from sqlalchemy import Float, ForeignKey, Integer, String
+from sqlalchemy import Float, ForeignKey, Integer, String, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 
 class CagedMovimentacao(Base):
     __tablename__ = "caged_movimentacao"
+    __table_args__ = (
+        UniqueConstraint("municipio_id", "ano", "mes", name="uq_caged_movimentacao_municipio_ano_mes"),
+    )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
 
@@ -27,6 +30,9 @@ class CagedMovimentacao(Base):
 
 class CagedPorSexo(Base):
     __tablename__ = "caged_por_sexo"
+    __table_args__ = (
+        UniqueConstraint("municipio_id", "ano", "mes", "sexo", name="uq_caged_por_sexo_municipio_ano_mes_sexo"),
+    )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
     municipio_id: Mapped[int] = mapped_column(Integer, ForeignKey("municipios.id"), nullable=False, index=True)
@@ -42,6 +48,9 @@ class CagedPorSexo(Base):
 
 class CagedPorRaca(Base):
     __tablename__ = "caged_por_raca"
+    __table_args__ = (
+        UniqueConstraint("municipio_id", "ano", "mes", "raca_cor", name="uq_caged_por_raca_municipio_ano_mes_raca"),
+    )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
     municipio_id: Mapped[int] = mapped_column(Integer, ForeignKey("municipios.id"), nullable=False, index=True)
@@ -57,6 +66,9 @@ class CagedPorRaca(Base):
 
 class CagedSalario(Base):
     __tablename__ = "caged_salario"
+    __table_args__ = (
+        UniqueConstraint("municipio_id", "ano", "mes", name="uq_caged_salario_municipio_ano_mes"),
+    )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
     municipio_id: Mapped[int] = mapped_column(Integer, ForeignKey("municipios.id"), nullable=False, index=True)
@@ -70,6 +82,9 @@ class CagedSalario(Base):
 
 class CagedPorCnae(Base):
     __tablename__ = "caged_por_cnae"
+    __table_args__ = (
+        UniqueConstraint("municipio_id", "ano", "mes", "secao", name="uq_caged_por_cnae_municipio_ano_mes_secao"),
+    )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
     municipio_id: Mapped[int] = mapped_column(Integer, ForeignKey("municipios.id"), nullable=False, index=True)
@@ -86,6 +101,9 @@ class CagedPorCnae(Base):
 
 class CagedPorEscolaridade(Base):
     __tablename__ = "caged_por_escolaridade"
+    __table_args__ = (
+        UniqueConstraint("municipio_id", "ano", "mes", "grau_instrucao", name="uq_caged_por_escolaridade_municipio_ano_mes_grau"),
+    )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
     municipio_id: Mapped[int] = mapped_column(Integer, ForeignKey("municipios.id"), nullable=False, index=True)
@@ -101,6 +119,9 @@ class CagedPorEscolaridade(Base):
 
 class CagedPorFaixaEtaria(Base):
     __tablename__ = "caged_por_faixa_etaria"
+    __table_args__ = (
+        UniqueConstraint("municipio_id", "ano", "mes", "faixa_etaria", name="uq_caged_por_faixa_etaria_municipio_ano_mes_faixa"),
+    )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
     municipio_id: Mapped[int] = mapped_column(Integer, ForeignKey("municipios.id"), nullable=False, index=True)
@@ -116,6 +137,9 @@ class CagedPorFaixaEtaria(Base):
 
 class CagedPorTipoMovimentacao(Base):
     __tablename__ = "caged_por_tipo_movimentacao"
+    __table_args__ = (
+        UniqueConstraint("municipio_id", "ano", "mes", "tipo_movimentacao", name="uq_caged_por_tipo_movimentacao_municipio_ano_mes_tipo"),
+    )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
     municipio_id: Mapped[int] = mapped_column(Integer, ForeignKey("municipios.id"), nullable=False, index=True)
@@ -136,6 +160,9 @@ class CagedPorTipoMovimentacao(Base):
 class CagedPorTipoDeficiencia(Base):
     """Movimentações por tipo de deficiência (somente vínculos PCD)."""
     __tablename__ = "caged_por_tipo_deficiencia"
+    __table_args__ = (
+        UniqueConstraint("municipio_id", "ano", "mes", "tipo_deficiencia", name="uq_caged_por_tipo_deficiencia_municipio_ano_mes_tipo"),
+    )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
     municipio_id: Mapped[int] = mapped_column(Integer, ForeignKey("municipios.id"), nullable=False, index=True)
@@ -152,6 +179,9 @@ class CagedPorTipoDeficiencia(Base):
 class CagedPorTamanhoEstabelecimento(Base):
     """Movimentações por tamanho do estabelecimento (em janeiro do ano de referência)."""
     __tablename__ = "caged_por_tamanho_estabelecimento"
+    __table_args__ = (
+        UniqueConstraint("municipio_id", "ano", "mes", "tamanho", name="uq_caged_por_tamanho_estabelecimento_municipio_ano_mes_tamanho"),
+    )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
     municipio_id: Mapped[int] = mapped_column(Integer, ForeignKey("municipios.id"), nullable=False, index=True)
@@ -168,6 +198,9 @@ class CagedPorTamanhoEstabelecimento(Base):
 class CagedPorTipoEmpregador(Base):
     """Movimentações por tipo de empregador (CNPJ, CPF, particular, rural CEI...)."""
     __tablename__ = "caged_por_tipo_empregador"
+    __table_args__ = (
+        UniqueConstraint("municipio_id", "ano", "mes", "tipo_empregador", name="uq_caged_por_tipo_empregador_municipio_ano_mes_tipo"),
+    )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
     municipio_id: Mapped[int] = mapped_column(Integer, ForeignKey("municipios.id"), nullable=False, index=True)
@@ -184,6 +217,9 @@ class CagedPorTipoEmpregador(Base):
 class CagedPorTipoEstabelecimento(Base):
     """Movimentações por tipo de estabelecimento (privado, público, doméstico...)."""
     __tablename__ = "caged_por_tipo_estabelecimento"
+    __table_args__ = (
+        UniqueConstraint("municipio_id", "ano", "mes", "tipo_estabelecimento", name="uq_caged_por_tipo_estabelecimento_municipio_ano_mes_tipo"),
+    )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
     municipio_id: Mapped[int] = mapped_column(Integer, ForeignKey("municipios.id"), nullable=False, index=True)
@@ -201,6 +237,9 @@ class CagedIndicadoresContrato(Base):
     """Aggregate annual counts for contract-quality indicators
     (parcial / intermitente / aprendiz / PCD / fora-do-prazo)."""
     __tablename__ = "caged_indicadores_contrato"
+    __table_args__ = (
+        UniqueConstraint("municipio_id", "ano", name="uq_caged_indicadores_contrato_municipio_ano"),
+    )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
     municipio_id: Mapped[int] = mapped_column(Integer, ForeignKey("municipios.id"), nullable=False, index=True)

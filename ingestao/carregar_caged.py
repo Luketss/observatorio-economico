@@ -2,6 +2,7 @@ import csv
 from collections import defaultdict
 from pathlib import Path
 
+from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.orm import Session
 
 from app.models.caged import (
@@ -134,6 +135,14 @@ CNAE_SECAO_DESC = {
 }
 
 
+def _upsert(db: Session, model, rows: list[dict], conflict_cols: list[str]) -> None:
+    if not rows:
+        return
+    stmt = pg_insert(model).values(rows)
+    stmt = stmt.on_conflict_do_nothing(index_elements=conflict_cols)
+    db.execute(stmt)
+
+
 def carregar(cidade_dir: Path, city_name: str, estado: str, db: Session) -> None:
     caminho = cidade_dir / "caged.csv"
     if not caminho.exists():
@@ -141,42 +150,20 @@ def carregar(cidade_dir: Path, city_name: str, estado: str, db: Session) -> None
         return
     municipio = obter_ou_criar_municipio(db, city_name, estado)
 
-    mensal: dict[tuple, dict] = defaultdict(
-        lambda: {"admissoes": 0, "desligamentos": 0}
-    )
-    por_sexo: dict[tuple, dict] = defaultdict(
-        lambda: {"admissoes": 0, "desligamentos": 0}
-    )
-    por_raca: dict[tuple, dict] = defaultdict(
-        lambda: {"admissoes": 0, "desligamentos": 0}
-    )
+    mensal: dict[tuple, dict] = defaultdict(lambda: {"admissoes": 0, "desligamentos": 0})
+    por_sexo: dict[tuple, dict] = defaultdict(lambda: {"admissoes": 0, "desligamentos": 0})
+    por_raca: dict[tuple, dict] = defaultdict(lambda: {"admissoes": 0, "desligamentos": 0})
     salario_agg: dict[tuple, dict] = defaultdict(
         lambda: {"sum_adm": 0.0, "cnt_adm": 0, "sum_des": 0.0, "cnt_des": 0}
     )
-    por_cnae: dict[tuple, dict] = defaultdict(
-        lambda: {"admissoes": 0, "desligamentos": 0}
-    )
-    por_escolaridade: dict[tuple, dict] = defaultdict(
-        lambda: {"admissoes": 0, "desligamentos": 0}
-    )
-    por_faixa_etaria: dict[tuple, dict] = defaultdict(
-        lambda: {"admissoes": 0, "desligamentos": 0}
-    )
-    por_tipo_mov: dict[tuple, dict] = defaultdict(
-        lambda: {"admissoes": 0, "desligamentos": 0}
-    )
-    por_tipo_def: dict[tuple, dict] = defaultdict(
-        lambda: {"admissoes": 0, "desligamentos": 0}
-    )
-    por_tamanho: dict[tuple, dict] = defaultdict(
-        lambda: {"admissoes": 0, "desligamentos": 0}
-    )
-    por_tipo_emp: dict[tuple, dict] = defaultdict(
-        lambda: {"admissoes": 0, "desligamentos": 0}
-    )
-    por_tipo_estab: dict[tuple, dict] = defaultdict(
-        lambda: {"admissoes": 0, "desligamentos": 0}
-    )
+    por_cnae: dict[tuple, dict] = defaultdict(lambda: {"admissoes": 0, "desligamentos": 0})
+    por_escolaridade: dict[tuple, dict] = defaultdict(lambda: {"admissoes": 0, "desligamentos": 0})
+    por_faixa_etaria: dict[tuple, dict] = defaultdict(lambda: {"admissoes": 0, "desligamentos": 0})
+    por_tipo_mov: dict[tuple, dict] = defaultdict(lambda: {"admissoes": 0, "desligamentos": 0})
+    por_tipo_def: dict[tuple, dict] = defaultdict(lambda: {"admissoes": 0, "desligamentos": 0})
+    por_tamanho: dict[tuple, dict] = defaultdict(lambda: {"admissoes": 0, "desligamentos": 0})
+    por_tipo_emp: dict[tuple, dict] = defaultdict(lambda: {"admissoes": 0, "desligamentos": 0})
+    por_tipo_estab: dict[tuple, dict] = defaultdict(lambda: {"admissoes": 0, "desligamentos": 0})
     indicadores: dict[int, dict] = defaultdict(lambda: {
         "total": 0, "parcial": 0, "intermitente": 0,
         "aprendiz": 0, "pcd": 0, "fora_prazo": 0,
@@ -260,9 +247,6 @@ def carregar(cidade_dir: Path, city_name: str, estado: str, db: Session) -> None
             else:
                 por_tipo_mov[chave_tipo]["desligamentos"] += abs(saldo)
 
-            # ── New aggregations (2026-05) ──
-
-            # Tipo deficiência (somente PCD: tipo_deficiencia > 0)
             def_raw = str(row.get("tipo_deficiencia", "") or "").strip()
             if def_raw and def_raw != "0":
                 def_label = TIPO_DEFICIENCIA_MAP.get(def_raw, "Outras")
@@ -273,7 +257,6 @@ def carregar(cidade_dir: Path, city_name: str, estado: str, db: Session) -> None
                     por_tipo_def[chave_def]["desligamentos"] += abs(saldo)
                 indicadores[ano]["pcd"] += abs(saldo)
 
-            # Tamanho do estabelecimento (em janeiro)
             tam_raw = str(row.get("tamanho_estabelecimento_janeiro", "") or "").strip()
             tam_label = TAMANHO_ESTAB_MAP.get(tam_raw)
             if tam_label:
@@ -283,7 +266,6 @@ def carregar(cidade_dir: Path, city_name: str, estado: str, db: Session) -> None
                 else:
                     por_tamanho[chave_tam]["desligamentos"] += abs(saldo)
 
-            # Tipo empregador
             emp_raw = str(row.get("tipo_empregador", "") or "").strip()
             emp_label = TIPO_EMPREGADOR_MAP.get(emp_raw)
             if emp_label:
@@ -293,7 +275,6 @@ def carregar(cidade_dir: Path, city_name: str, estado: str, db: Session) -> None
                 else:
                     por_tipo_emp[chave_emp]["desligamentos"] += abs(saldo)
 
-            # Tipo estabelecimento
             te_raw = str(row.get("tipo_estabelecimento", "") or "").strip()
             te_label = TIPO_ESTABELECIMENTO_MAP.get(te_raw)
             if te_label:
@@ -303,7 +284,6 @@ def carregar(cidade_dir: Path, city_name: str, estado: str, db: Session) -> None
                 else:
                     por_tipo_estab[chave_te]["desligamentos"] += abs(saldo)
 
-            # Annual contract-quality indicators
             move_count = abs(saldo)
             indicadores[ano]["total"] += move_count
             if str(row.get("indicador_trabalho_parcial", "") or "").strip() == "1":
@@ -315,195 +295,101 @@ def carregar(cidade_dir: Path, city_name: str, estado: str, db: Session) -> None
             if str(row.get("indicador_fora_prazo", "") or "").strip() == "1":
                 indicadores[ano]["fora_prazo"] += move_count
 
-    for (ano, mes), totais in mensal.items():
-        adm = totais["admissoes"]
-        des = totais["desligamentos"]
-        if db.query(CagedMovimentacao).filter(
-            CagedMovimentacao.municipio_id == municipio.id,
-            CagedMovimentacao.ano == ano,
-            CagedMovimentacao.mes == mes,
-        ).first():
-            continue
-        db.add(CagedMovimentacao(
-            municipio_id=municipio.id, ano=ano, mes=mes,
-            admissoes=adm, desligamentos=des, saldo=adm - des,
-        ))
+    mid = municipio.id
+    _upsert(db, CagedMovimentacao, [
+        {"municipio_id": mid, "ano": ano, "mes": mes,
+         "admissoes": t["admissoes"], "desligamentos": t["desligamentos"],
+         "saldo": t["admissoes"] - t["desligamentos"]}
+        for (ano, mes), t in mensal.items()
+    ], ["municipio_id", "ano", "mes"])
 
-    for (ano, mes, sexo_label), totais in por_sexo.items():
-        adm = totais["admissoes"]
-        des = totais["desligamentos"]
-        if db.query(CagedPorSexo).filter(
-            CagedPorSexo.municipio_id == municipio.id,
-            CagedPorSexo.ano == ano,
-            CagedPorSexo.mes == mes,
-            CagedPorSexo.sexo == sexo_label,
-        ).first():
-            continue
-        db.add(CagedPorSexo(
-            municipio_id=municipio.id, ano=ano, mes=mes,
-            sexo=sexo_label, admissoes=adm, desligamentos=des, saldo=adm - des,
-        ))
+    _upsert(db, CagedPorSexo, [
+        {"municipio_id": mid, "ano": ano, "mes": mes, "sexo": sexo,
+         "admissoes": t["admissoes"], "desligamentos": t["desligamentos"],
+         "saldo": t["admissoes"] - t["desligamentos"]}
+        for (ano, mes, sexo), t in por_sexo.items()
+    ], ["municipio_id", "ano", "mes", "sexo"])
 
-    for (ano, mes, raca_label), totais in por_raca.items():
-        adm = totais["admissoes"]
-        des = totais["desligamentos"]
-        if db.query(CagedPorRaca).filter(
-            CagedPorRaca.municipio_id == municipio.id,
-            CagedPorRaca.ano == ano,
-            CagedPorRaca.mes == mes,
-            CagedPorRaca.raca_cor == raca_label,
-        ).first():
-            continue
-        db.add(CagedPorRaca(
-            municipio_id=municipio.id, ano=ano, mes=mes,
-            raca_cor=raca_label, admissoes=adm, desligamentos=des, saldo=adm - des,
-        ))
+    _upsert(db, CagedPorRaca, [
+        {"municipio_id": mid, "ano": ano, "mes": mes, "raca_cor": raca,
+         "admissoes": t["admissoes"], "desligamentos": t["desligamentos"],
+         "saldo": t["admissoes"] - t["desligamentos"]}
+        for (ano, mes, raca), t in por_raca.items()
+    ], ["municipio_id", "ano", "mes", "raca_cor"])
 
-    for (ano, mes), agg in salario_agg.items():
-        sal_adm = agg["sum_adm"] / agg["cnt_adm"] if agg["cnt_adm"] > 0 else None
-        sal_des = agg["sum_des"] / agg["cnt_des"] if agg["cnt_des"] > 0 else None
-        if db.query(CagedSalario).filter(
-            CagedSalario.municipio_id == municipio.id,
-            CagedSalario.ano == ano,
-            CagedSalario.mes == mes,
-        ).first():
-            continue
-        db.add(CagedSalario(
-            municipio_id=municipio.id, ano=ano, mes=mes,
-            salario_medio_admissoes=sal_adm, salario_medio_desligamentos=sal_des,
-        ))
+    _upsert(db, CagedSalario, [
+        {"municipio_id": mid, "ano": ano, "mes": mes,
+         "salario_medio_admissoes": (agg["sum_adm"] / agg["cnt_adm"]) if agg["cnt_adm"] > 0 else None,
+         "salario_medio_desligamentos": (agg["sum_des"] / agg["cnt_des"]) if agg["cnt_des"] > 0 else None}
+        for (ano, mes), agg in salario_agg.items()
+    ], ["municipio_id", "ano", "mes"])
 
-    for (ano, mes, secao, desc), totais in por_cnae.items():
-        adm = totais["admissoes"]
-        des = totais["desligamentos"]
-        if db.query(CagedPorCnae).filter(
-            CagedPorCnae.municipio_id == municipio.id,
-            CagedPorCnae.ano == ano,
-            CagedPorCnae.mes == mes,
-            CagedPorCnae.secao == secao,
-        ).first():
-            continue
-        db.add(CagedPorCnae(
-            municipio_id=municipio.id, ano=ano, mes=mes,
-            secao=secao, descricao_secao=desc,
-            admissoes=adm, desligamentos=des, saldo=adm - des,
-        ))
+    _upsert(db, CagedPorCnae, [
+        {"municipio_id": mid, "ano": ano, "mes": mes,
+         "secao": secao, "descricao_secao": desc,
+         "admissoes": t["admissoes"], "desligamentos": t["desligamentos"],
+         "saldo": t["admissoes"] - t["desligamentos"]}
+        for (ano, mes, secao, desc), t in por_cnae.items()
+    ], ["municipio_id", "ano", "mes", "secao"])
 
-    for (ano, mes, grau), totais in por_escolaridade.items():
-        adm = totais["admissoes"]
-        des = totais["desligamentos"]
-        if db.query(CagedPorEscolaridade).filter(
-            CagedPorEscolaridade.municipio_id == municipio.id,
-            CagedPorEscolaridade.ano == ano,
-            CagedPorEscolaridade.mes == mes,
-            CagedPorEscolaridade.grau_instrucao == grau,
-        ).first():
-            continue
-        db.add(CagedPorEscolaridade(
-            municipio_id=municipio.id, ano=ano, mes=mes,
-            grau_instrucao=grau, admissoes=adm, desligamentos=des, saldo=adm - des,
-        ))
+    _upsert(db, CagedPorEscolaridade, [
+        {"municipio_id": mid, "ano": ano, "mes": mes, "grau_instrucao": grau,
+         "admissoes": t["admissoes"], "desligamentos": t["desligamentos"],
+         "saldo": t["admissoes"] - t["desligamentos"]}
+        for (ano, mes, grau), t in por_escolaridade.items()
+    ], ["municipio_id", "ano", "mes", "grau_instrucao"])
 
-    for (ano, mes, faixa), totais in por_faixa_etaria.items():
-        adm = totais["admissoes"]
-        des = totais["desligamentos"]
-        if db.query(CagedPorFaixaEtaria).filter(
-            CagedPorFaixaEtaria.municipio_id == municipio.id,
-            CagedPorFaixaEtaria.ano == ano,
-            CagedPorFaixaEtaria.mes == mes,
-            CagedPorFaixaEtaria.faixa_etaria == faixa,
-        ).first():
-            continue
-        db.add(CagedPorFaixaEtaria(
-            municipio_id=municipio.id, ano=ano, mes=mes,
-            faixa_etaria=faixa, admissoes=adm, desligamentos=des, saldo=adm - des,
-        ))
+    _upsert(db, CagedPorFaixaEtaria, [
+        {"municipio_id": mid, "ano": ano, "mes": mes, "faixa_etaria": faixa,
+         "admissoes": t["admissoes"], "desligamentos": t["desligamentos"],
+         "saldo": t["admissoes"] - t["desligamentos"]}
+        for (ano, mes, faixa), t in por_faixa_etaria.items()
+    ], ["municipio_id", "ano", "mes", "faixa_etaria"])
 
-    for (ano, mes, tipo), totais in por_tipo_mov.items():
-        adm = totais["admissoes"]
-        des = totais["desligamentos"]
-        if db.query(CagedPorTipoMovimentacao).filter(
-            CagedPorTipoMovimentacao.municipio_id == municipio.id,
-            CagedPorTipoMovimentacao.ano == ano,
-            CagedPorTipoMovimentacao.mes == mes,
-            CagedPorTipoMovimentacao.tipo_movimentacao == tipo,
-        ).first():
-            continue
-        db.add(CagedPorTipoMovimentacao(
-            municipio_id=municipio.id, ano=ano, mes=mes,
-            tipo_movimentacao=tipo, admissoes=adm, desligamentos=des, saldo=adm - des,
-        ))
+    _upsert(db, CagedPorTipoMovimentacao, [
+        {"municipio_id": mid, "ano": ano, "mes": mes, "tipo_movimentacao": tipo,
+         "admissoes": t["admissoes"], "desligamentos": t["desligamentos"],
+         "saldo": t["admissoes"] - t["desligamentos"]}
+        for (ano, mes, tipo), t in por_tipo_mov.items()
+    ], ["municipio_id", "ano", "mes", "tipo_movimentacao"])
 
-    for (ano, mes, label), totais in por_tipo_def.items():
-        adm = totais["admissoes"]; des = totais["desligamentos"]
-        if db.query(CagedPorTipoDeficiencia).filter(
-            CagedPorTipoDeficiencia.municipio_id == municipio.id,
-            CagedPorTipoDeficiencia.ano == ano,
-            CagedPorTipoDeficiencia.mes == mes,
-            CagedPorTipoDeficiencia.tipo_deficiencia == label,
-        ).first():
-            continue
-        db.add(CagedPorTipoDeficiencia(
-            municipio_id=municipio.id, ano=ano, mes=mes,
-            tipo_deficiencia=label, admissoes=adm, desligamentos=des, saldo=adm - des,
-        ))
+    _upsert(db, CagedPorTipoDeficiencia, [
+        {"municipio_id": mid, "ano": ano, "mes": mes, "tipo_deficiencia": label,
+         "admissoes": t["admissoes"], "desligamentos": t["desligamentos"],
+         "saldo": t["admissoes"] - t["desligamentos"]}
+        for (ano, mes, label), t in por_tipo_def.items()
+    ], ["municipio_id", "ano", "mes", "tipo_deficiencia"])
 
-    for (ano, mes, label), totais in por_tamanho.items():
-        adm = totais["admissoes"]; des = totais["desligamentos"]
-        if db.query(CagedPorTamanhoEstabelecimento).filter(
-            CagedPorTamanhoEstabelecimento.municipio_id == municipio.id,
-            CagedPorTamanhoEstabelecimento.ano == ano,
-            CagedPorTamanhoEstabelecimento.mes == mes,
-            CagedPorTamanhoEstabelecimento.tamanho == label,
-        ).first():
-            continue
-        db.add(CagedPorTamanhoEstabelecimento(
-            municipio_id=municipio.id, ano=ano, mes=mes,
-            tamanho=label, admissoes=adm, desligamentos=des, saldo=adm - des,
-        ))
+    _upsert(db, CagedPorTamanhoEstabelecimento, [
+        {"municipio_id": mid, "ano": ano, "mes": mes, "tamanho": label,
+         "admissoes": t["admissoes"], "desligamentos": t["desligamentos"],
+         "saldo": t["admissoes"] - t["desligamentos"]}
+        for (ano, mes, label), t in por_tamanho.items()
+    ], ["municipio_id", "ano", "mes", "tamanho"])
 
-    for (ano, mes, label), totais in por_tipo_emp.items():
-        adm = totais["admissoes"]; des = totais["desligamentos"]
-        if db.query(CagedPorTipoEmpregador).filter(
-            CagedPorTipoEmpregador.municipio_id == municipio.id,
-            CagedPorTipoEmpregador.ano == ano,
-            CagedPorTipoEmpregador.mes == mes,
-            CagedPorTipoEmpregador.tipo_empregador == label,
-        ).first():
-            continue
-        db.add(CagedPorTipoEmpregador(
-            municipio_id=municipio.id, ano=ano, mes=mes,
-            tipo_empregador=label, admissoes=adm, desligamentos=des, saldo=adm - des,
-        ))
+    _upsert(db, CagedPorTipoEmpregador, [
+        {"municipio_id": mid, "ano": ano, "mes": mes, "tipo_empregador": label,
+         "admissoes": t["admissoes"], "desligamentos": t["desligamentos"],
+         "saldo": t["admissoes"] - t["desligamentos"]}
+        for (ano, mes, label), t in por_tipo_emp.items()
+    ], ["municipio_id", "ano", "mes", "tipo_empregador"])
 
-    for (ano, mes, label), totais in por_tipo_estab.items():
-        adm = totais["admissoes"]; des = totais["desligamentos"]
-        if db.query(CagedPorTipoEstabelecimento).filter(
-            CagedPorTipoEstabelecimento.municipio_id == municipio.id,
-            CagedPorTipoEstabelecimento.ano == ano,
-            CagedPorTipoEstabelecimento.mes == mes,
-            CagedPorTipoEstabelecimento.tipo_estabelecimento == label,
-        ).first():
-            continue
-        db.add(CagedPorTipoEstabelecimento(
-            municipio_id=municipio.id, ano=ano, mes=mes,
-            tipo_estabelecimento=label, admissoes=adm, desligamentos=des, saldo=adm - des,
-        ))
+    _upsert(db, CagedPorTipoEstabelecimento, [
+        {"municipio_id": mid, "ano": ano, "mes": mes, "tipo_estabelecimento": label,
+         "admissoes": t["admissoes"], "desligamentos": t["desligamentos"],
+         "saldo": t["admissoes"] - t["desligamentos"]}
+        for (ano, mes, label), t in por_tipo_estab.items()
+    ], ["municipio_id", "ano", "mes", "tipo_estabelecimento"])
 
-    for ano, ind in indicadores.items():
-        if db.query(CagedIndicadoresContrato).filter(
-            CagedIndicadoresContrato.municipio_id == municipio.id,
-            CagedIndicadoresContrato.ano == ano,
-        ).first():
-            continue
-        db.add(CagedIndicadoresContrato(
-            municipio_id=municipio.id, ano=ano,
-            total_movimentacoes=ind["total"],
-            total_parcial=ind["parcial"],
-            total_intermitente=ind["intermitente"],
-            total_aprendiz=ind["aprendiz"],
-            total_pcd=ind["pcd"],
-            total_fora_prazo=ind["fora_prazo"],
-        ))
+    _upsert(db, CagedIndicadoresContrato, [
+        {"municipio_id": mid, "ano": ano,
+         "total_movimentacoes": ind["total"],
+         "total_parcial": ind["parcial"],
+         "total_intermitente": ind["intermitente"],
+         "total_aprendiz": ind["aprendiz"],
+         "total_pcd": ind["pcd"],
+         "total_fora_prazo": ind["fora_prazo"]}
+        for ano, ind in indicadores.items()
+    ], ["municipio_id", "ano"])
 
     db.commit()

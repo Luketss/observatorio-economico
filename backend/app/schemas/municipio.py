@@ -59,3 +59,22 @@ class MunicipioCreatedResult(BaseModel):
 class MunicipioDeletedResult(BaseModel):
     deleted: int
     summary: Dict[str, int]
+
+
+class DatasetDescriptor(BaseModel):
+    """A dataset key + human-readable label, listed by GET /municipios/datasets."""
+    key: str
+    label: str
+
+
+class MunicipioDatasetSummary(BaseModel):
+    """Row counts per dataset for one município (for the Datasets admin page)."""
+    municipio_id: int
+    counts: Dict[str, int]
+
+
+class DatasetDeletedResult(BaseModel):
+    """Response shape for DELETE /municipios/{id}/datasets/{key}."""
+    municipio_id: int
+    dataset_key: str
+    summary: Dict[str, int]

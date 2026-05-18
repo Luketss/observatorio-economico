@@ -3,12 +3,28 @@ from collections import defaultdict
 from datetime import datetime
 from pathlib import Path
 
+from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.orm import Session
 
 from app.models.estban import EstbanMensal, EstbanPorInstituicao
 from ingestao.utils import obter_ou_criar_municipio
 
 FILENAME = "estban.csv"
+
+_TOTAIS_ZERO = {
+    "qtd_agencias": 0,
+    "valor_operacoes_credito": 0.0,
+    "valor_depositos_vista": 0.0,
+    "valor_poupanca": 0.0,
+    "valor_depositos_prazo": 0.0,
+    "emprestimos_titulos_descontados": 0.0,
+    "financiamentos_gerais": 0.0,
+    "financiamento_agropecuario": 0.0,
+    "financiamentos_imobiliarios": 0.0,
+    "arrendamento_mercantil": 0.0,
+    "emprestimos_setor_publico": 0.0,
+    "outros_creditos": 0.0,
+}
 
 
 def carregar(cidade_dir: Path, city_name: str, estado: str, db: Session) -> None:
@@ -18,38 +34,8 @@ def carregar(cidade_dir: Path, city_name: str, estado: str, db: Session) -> None
         return
     municipio = obter_ou_criar_municipio(db, city_name, estado)
 
-    agregado: dict[str, dict] = defaultdict(
-        lambda: {
-            "qtd_agencias": 0,
-            "valor_operacoes_credito": 0.0,
-            "valor_depositos_vista": 0.0,
-            "valor_poupanca": 0.0,
-            "valor_depositos_prazo": 0.0,
-            "emprestimos_titulos_descontados": 0.0,
-            "financiamentos_gerais": 0.0,
-            "financiamento_agropecuario": 0.0,
-            "financiamentos_imobiliarios": 0.0,
-            "arrendamento_mercantil": 0.0,
-            "emprestimos_setor_publico": 0.0,
-            "outros_creditos": 0.0,
-        }
-    )
-    agregado_inst: dict[tuple[str, str], dict] = defaultdict(
-        lambda: {
-            "qtd_agencias": 0,
-            "valor_operacoes_credito": 0.0,
-            "valor_depositos_vista": 0.0,
-            "valor_poupanca": 0.0,
-            "valor_depositos_prazo": 0.0,
-            "emprestimos_titulos_descontados": 0.0,
-            "financiamentos_gerais": 0.0,
-            "financiamento_agropecuario": 0.0,
-            "financiamentos_imobiliarios": 0.0,
-            "arrendamento_mercantil": 0.0,
-            "emprestimos_setor_publico": 0.0,
-            "outros_creditos": 0.0,
-        }
-    )
+    agregado: dict[str, dict] = defaultdict(lambda: dict(_TOTAIS_ZERO))
+    agregado_inst: dict[tuple[str, str], dict] = defaultdict(lambda: dict(_TOTAIS_ZERO))
 
     with open(caminho, newline="", encoding="utf-8-sig") as csvfile:
         reader = csv.DictReader(csvfile, delimiter=";")
@@ -85,44 +71,35 @@ def carregar(cidade_dir: Path, city_name: str, estado: str, db: Session) -> None
             agregado_inst[chave_inst]["emprestimos_setor_publico"] += float(row.get("EMPRESTIMOS_SETOR_PUBLICO") or 0)
             agregado_inst[chave_inst]["outros_creditos"] += float(row.get("OUTROS_CREDITOS") or 0)
 
-    for data_ref_str, totais in agregado.items():
-        data_referencia = datetime.strptime(data_ref_str, "%Y-%m-%d").date()
-        existente = (
-            db.query(EstbanMensal)
-            .filter(
-                EstbanMensal.municipio_id == municipio.id,
-                EstbanMensal.data_referencia == data_referencia,
-            )
-            .first()
+    if agregado:
+        rows = [
+            {
+                "municipio_id": municipio.id,
+                "data_referencia": datetime.strptime(data_ref_str, "%Y-%m-%d").date(),
+                **totais,
+            }
+            for data_ref_str, totais in agregado.items()
+        ]
+        stmt = pg_insert(EstbanMensal).values(rows)
+        stmt = stmt.on_conflict_do_nothing(
+            index_elements=["municipio_id", "data_referencia"],
         )
-        if existente:
-            continue
-        db.add(EstbanMensal(
-            municipio_id=municipio.id,
-            data_referencia=data_referencia,
-            **totais,
-        ))
+        db.execute(stmt)
+        db.commit()
 
-    db.commit()
-
-    for (data_ref_str, nome_instituicao), totais in agregado_inst.items():
-        data_referencia = datetime.strptime(data_ref_str, "%Y-%m-%d").date()
-        existente = (
-            db.query(EstbanPorInstituicao)
-            .filter(
-                EstbanPorInstituicao.municipio_id == municipio.id,
-                EstbanPorInstituicao.data_referencia == data_referencia,
-                EstbanPorInstituicao.nome_instituicao == nome_instituicao,
-            )
-            .first()
+    if agregado_inst:
+        rows = [
+            {
+                "municipio_id": municipio.id,
+                "data_referencia": datetime.strptime(data_ref_str, "%Y-%m-%d").date(),
+                "nome_instituicao": nome_instituicao,
+                **totais,
+            }
+            for (data_ref_str, nome_instituicao), totais in agregado_inst.items()
+        ]
+        stmt = pg_insert(EstbanPorInstituicao).values(rows)
+        stmt = stmt.on_conflict_do_nothing(
+            index_elements=["municipio_id", "data_referencia", "nome_instituicao"],
         )
-        if existente:
-            continue
-        db.add(EstbanPorInstituicao(
-            municipio_id=municipio.id,
-            data_referencia=data_referencia,
-            nome_instituicao=nome_instituicao,
-            **totais,
-        ))
-
-    db.commit()
+        db.execute(stmt)
+        db.commit()

@@ -1,11 +1,14 @@
 from app.db.base import Base
-from sqlalchemy import BigInteger, Float, ForeignKey, Integer, String
+from sqlalchemy import BigInteger, Float, ForeignKey, Integer, String, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 
 class PixMensal(Base):
     """PIX transaction aggregates per municipality per month (BCB open data)."""
     __tablename__ = "pix_mensal"
+    __table_args__ = (
+        UniqueConstraint("municipio_id", "ano", "mes", name="uq_pix_mensal_municipio_ano_mes"),
+    )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
     municipio_id: Mapped[int] = mapped_column(Integer, ForeignKey("municipios.id"), nullable=False, index=True)

@@ -1,10 +1,13 @@
 from app.db.base import Base
-from sqlalchemy import Boolean, Date, Float, ForeignKey, Integer, String
+from sqlalchemy import Boolean, Date, Float, ForeignKey, Integer, String, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 
 class Empresa(Base):
     __tablename__ = "empresas"
+    __table_args__ = (
+        UniqueConstraint("municipio_id", "cnpj_basico", name="uq_empresas_municipio_cnpj"),
+    )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
 

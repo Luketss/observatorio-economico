@@ -1,10 +1,13 @@
 from app.db.base import Base
-from sqlalchemy import Float, ForeignKey, Integer, String
+from sqlalchemy import Float, ForeignKey, Integer, String, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 
 class PibAnual(Base):
     __tablename__ = "pib_anual"
+    __table_args__ = (
+        UniqueConstraint("municipio_id", "ano", "tipo_dado", name="uq_pib_anual_municipio_ano_tipo"),
+    )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
 

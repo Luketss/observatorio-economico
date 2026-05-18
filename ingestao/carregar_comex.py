@@ -3,6 +3,7 @@ from collections import defaultdict
 from datetime import datetime
 from pathlib import Path
 
+from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.orm import Session
 
 from app.models.comex import ComexMensal, ComexPorPais, ComexPorProduto
@@ -46,41 +47,56 @@ def carregar(cidade_dir: Path, city_name: str, estado: str, db: Session) -> None
             agregado_produto[(ano, tipo_operacao, produto)]["peso_kg"] += peso_kg
             agregado_pais[(ano, tipo_operacao, pais)]["valor_usd"] += valor_usd
 
-    for (ano, mes, tipo_operacao), totais in agregado.items():
-        existente = db.query(ComexMensal).filter(
-            ComexMensal.municipio_id == municipio.id,
-            ComexMensal.ano == ano,
-            ComexMensal.mes == mes,
-            ComexMensal.tipo_operacao == tipo_operacao,
-        ).first()
-        if not existente:
-            db.add(ComexMensal(
-                municipio_id=municipio.id,
-                ano=ano,
-                mes=mes,
-                tipo_operacao=tipo_operacao,
-                valor_usd=totais["valor_usd"],
-                peso_kg=totais["peso_kg"],
-            ))
+    if agregado:
+        rows = [
+            {
+                "municipio_id": municipio.id,
+                "ano": ano,
+                "mes": mes,
+                "tipo_operacao": tipo_operacao,
+                **totais,
+            }
+            for (ano, mes, tipo_operacao), totais in agregado.items()
+        ]
+        stmt = pg_insert(ComexMensal).values(rows)
+        stmt = stmt.on_conflict_do_nothing(
+            index_elements=["municipio_id", "ano", "mes", "tipo_operacao"],
+        )
+        db.execute(stmt)
+        db.commit()
 
-    for (ano, tipo_operacao, produto), totais in agregado_produto.items():
-        existente = db.query(ComexPorProduto).filter(
-            ComexPorProduto.municipio_id == municipio.id,
-            ComexPorProduto.ano == ano,
-            ComexPorProduto.tipo_operacao == tipo_operacao,
-            ComexPorProduto.produto == produto,
-        ).first()
-        if not existente:
-            db.add(ComexPorProduto(municipio_id=municipio.id, ano=ano, tipo_operacao=tipo_operacao, produto=produto, **totais))
+    if agregado_produto:
+        rows = [
+            {
+                "municipio_id": municipio.id,
+                "ano": ano,
+                "tipo_operacao": tipo_operacao,
+                "produto": produto,
+                **totais,
+            }
+            for (ano, tipo_operacao, produto), totais in agregado_produto.items()
+        ]
+        stmt = pg_insert(ComexPorProduto).values(rows)
+        stmt = stmt.on_conflict_do_nothing(
+            index_elements=["municipio_id", "ano", "tipo_operacao", "produto"],
+        )
+        db.execute(stmt)
+        db.commit()
 
-    for (ano, tipo_operacao, pais), totais in agregado_pais.items():
-        existente = db.query(ComexPorPais).filter(
-            ComexPorPais.municipio_id == municipio.id,
-            ComexPorPais.ano == ano,
-            ComexPorPais.tipo_operacao == tipo_operacao,
-            ComexPorPais.pais == pais,
-        ).first()
-        if not existente:
-            db.add(ComexPorPais(municipio_id=municipio.id, ano=ano, tipo_operacao=tipo_operacao, pais=pais, **totais))
-
-    db.commit()
+    if agregado_pais:
+        rows = [
+            {
+                "municipio_id": municipio.id,
+                "ano": ano,
+                "tipo_operacao": tipo_operacao,
+                "pais": pais,
+                **totais,
+            }
+            for (ano, tipo_operacao, pais), totais in agregado_pais.items()
+        ]
+        stmt = pg_insert(ComexPorPais).values(rows)
+        stmt = stmt.on_conflict_do_nothing(
+            index_elements=["municipio_id", "ano", "tipo_operacao", "pais"],
+        )
+        db.execute(stmt)
+        db.commit()

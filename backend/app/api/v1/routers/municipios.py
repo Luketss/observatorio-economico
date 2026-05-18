@@ -3,14 +3,21 @@ from typing import List
 from app.api.deps import get_current_user, get_db, require_role
 from app.models.municipio import Municipio
 from app.schemas.municipio import (
+    DatasetDeletedResult,
+    DatasetDescriptor,
     MunicipioCreate,
     MunicipioCreatedResult,
+    MunicipioDatasetSummary,
     MunicipioDeletedResult,
     MunicipioOut,
     MunicipioUpdate,
 )
 from app.services.municipio_management import (
+    DATASET_LABELS,
+    DATASET_REGISTRY,
     clone_municipio_data,
+    count_dataset_rows_for_municipio,
+    delete_dataset_for_municipio,
     delete_municipio_cascade,
 )
 from fastapi import APIRouter, Depends, HTTPException, status
@@ -113,3 +120,47 @@ def excluir_municipio(
 ):
     summary = delete_municipio_cascade(db, municipio_id)
     return MunicipioDeletedResult(deleted=municipio_id, summary=summary)
+
+
+# ==============================
+# Datasets — catalog + per-município row counts + per-dataset wipe
+# ==============================
+@router.get("/datasets", response_model=List[DatasetDescriptor])
+def listar_datasets(current_user=Depends(get_current_user)):
+    """Catalog of all datasets the admin can target. Open to any logged-in
+    user (cheap metadata)."""
+    return [
+        DatasetDescriptor(key=key, label=DATASET_LABELS.get(key, key))
+        for key in DATASET_REGISTRY.keys()
+    ]
+
+
+@router.get(
+    "/{municipio_id}/datasets-summary",
+    response_model=MunicipioDatasetSummary,
+)
+def resumir_datasets_municipio(
+    municipio_id: int,
+    db: Session = Depends(get_db),
+    current_user=Depends(require_role("ADMIN_GLOBAL")),
+):
+    counts = count_dataset_rows_for_municipio(db, municipio_id)
+    return MunicipioDatasetSummary(municipio_id=municipio_id, counts=counts)
+
+
+@router.delete(
+    "/{municipio_id}/datasets/{dataset_key}",
+    response_model=DatasetDeletedResult,
+)
+def excluir_dataset_municipio(
+    municipio_id: int,
+    dataset_key: str,
+    db: Session = Depends(get_db),
+    current_user=Depends(require_role("ADMIN_GLOBAL")),
+):
+    summary = delete_dataset_for_municipio(db, municipio_id, dataset_key)
+    return DatasetDeletedResult(
+        municipio_id=municipio_id,
+        dataset_key=dataset_key,
+        summary=summary,
+    )

@@ -2,7 +2,10 @@ import csv
 from datetime import datetime
 from pathlib import Path
 from tqdm import tqdm
+
+from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.orm import Session
+
 from app.models.empresa import Empresa
 from ingestao.utils import obter_ou_criar_municipio
 
@@ -44,6 +47,17 @@ def _read_csv_keyed(path: Path) -> dict[str, dict]:
     return result
 
 
+def _flush(db: Session, batch: list[dict]) -> None:
+    if not batch:
+        return
+    stmt = pg_insert(Empresa).values(batch)
+    stmt = stmt.on_conflict_do_nothing(
+        index_elements=["municipio_id", "cnpj_basico"],
+    )
+    db.execute(stmt)
+    db.commit()
+
+
 def carregar(cidade_dir: Path, city_name: str, estado: str, db: Session) -> None:
     estab_path = cidade_dir / "estabelecimentos.csv"
     if not estab_path.exists():
@@ -52,45 +66,40 @@ def carregar(cidade_dir: Path, city_name: str, estado: str, db: Session) -> None
 
     municipio = obter_ou_criar_municipio(db, city_name, estado)
 
-    # Load existing CNPJs for this municipality to avoid duplicates
-    existentes: set[str] = {
-        r[0] for r in db.query(Empresa.cnpj_basico).filter(Empresa.municipio_id == municipio.id).all()
-    }
-
-    # Read lookup tables from the other two files
     empresas = _read_csv_keyed(cidade_dir / "empresas.csv") if (cidade_dir / "empresas.csv").exists() else {}
     simples = _read_csv_keyed(cidade_dir / "simples.csv") if (cidade_dir / "simples.csv").exists() else {}
 
-    pendente = 0
+    # Dedup CNPJs within this CSV so each batch doesn't conflict with itself.
+    seen_in_csv: set[str] = set()
+    batch: list[dict] = []
+
     with open(estab_path, newline="", encoding="utf-8-sig") as f:
         reader = csv.DictReader(f, delimiter=";")
         for row in tqdm(reader, desc="    Empresas", unit="reg", leave=False):
             cnpj_basico = row.get("cnpj_basico", "").strip()
-            if not cnpj_basico or cnpj_basico in existentes:
+            if not cnpj_basico or cnpj_basico in seen_in_csv:
                 continue
+            seen_in_csv.add(cnpj_basico)
 
-            existentes.add(cnpj_basico)
             emp = empresas.get(cnpj_basico, {})
             simp = simples.get(cnpj_basico, {})
 
-            db.add(Empresa(
-                municipio_id=municipio.id,
-                cnpj_basico=cnpj_basico,
-                razao_social=emp.get("razao_social", "").strip() or None,
-                nome_fantasia=row.get("nome_fantasia", "").strip() or None,
-                situacao=row.get("situacao", "").strip() or None,
-                data_inicio=_parse_data(row.get("data_inicio", "")),
-                cnae_fiscal=row.get("cnae_fiscal", "").strip() or None,
-                porte=emp.get("porte", "").strip() or None,
-                capital_social=_parse_capital(emp.get("capital_social", "")),
-                opcao_simples=_parse_bool(simp.get("opcao_simples", "")),
-                opcao_mei=_parse_bool(simp.get("opcao_mei", "")),
-            ))
-            pendente += 1
+            batch.append({
+                "municipio_id": municipio.id,
+                "cnpj_basico": cnpj_basico,
+                "razao_social": emp.get("razao_social", "").strip() or None,
+                "nome_fantasia": row.get("nome_fantasia", "").strip() or None,
+                "situacao": row.get("situacao", "").strip() or None,
+                "data_inicio": _parse_data(row.get("data_inicio", "")),
+                "cnae_fiscal": row.get("cnae_fiscal", "").strip() or None,
+                "porte": emp.get("porte", "").strip() or None,
+                "capital_social": _parse_capital(emp.get("capital_social", "")),
+                "opcao_simples": _parse_bool(simp.get("opcao_simples", "")),
+                "opcao_mei": _parse_bool(simp.get("opcao_mei", "")),
+            })
 
-            if pendente >= BATCH_SIZE:
-                db.commit()
-                pendente = 0
+            if len(batch) >= BATCH_SIZE:
+                _flush(db, batch)
+                batch = []
 
-    if pendente:
-        db.commit()
+    _flush(db, batch)

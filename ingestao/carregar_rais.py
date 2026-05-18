@@ -3,6 +3,7 @@ from collections import defaultdict
 from pathlib import Path
 
 from tqdm import tqdm
+from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.orm import Session
 
 from app.models.rais import (
@@ -13,6 +14,14 @@ from app.models.rais import (
     RaisPorTamanhoEstabelecimento, RaisPorNaturezaJuridica, RaisTurnoverMensal,
 )
 from ingestao.utils import obter_ou_criar_municipio
+
+
+def _upsert(db: Session, model, rows: list[dict], conflict_cols: list[str]) -> None:
+    if not rows:
+        return
+    stmt = pg_insert(model).values(rows)
+    stmt = stmt.on_conflict_do_nothing(index_elements=conflict_cols)
+    db.execute(stmt)
 
 SEXO_MAP = {
     "1": "Masculino",
@@ -413,119 +422,107 @@ def carregar(cidade_dir: Path, city_name: str, estado: str, db: Session) -> None
                 grupo = NATUREZA_JURIDICA_GRUPO_MAP[nat_raw[0]]
                 por_natureza[(ano, grupo)] += 1
 
-    def _exists(model, **kwargs):
-        return db.query(model).filter_by(**kwargs).first() is not None
+    mid = municipio.id
 
-    for ano, total_vinculos in contagem_por_ano.items():
-        if _exists(RaisVinculo, municipio_id=municipio.id, ano=ano):
-            continue
-        rem_media = remun_agg[ano]["soma"] / remun_agg[ano]["cnt"] if remun_agg[ano]["cnt"] else None
-        db.add(RaisVinculo(municipio_id=municipio.id, ano=ano, total_vinculos=total_vinculos, remuneracao_media=rem_media))
+    _upsert(db, RaisVinculo, [
+        {"municipio_id": mid, "ano": ano, "total_vinculos": cnt,
+         "remuneracao_media": (remun_agg[ano]["soma"] / remun_agg[ano]["cnt"]) if remun_agg[ano]["cnt"] else None}
+        for ano, cnt in contagem_por_ano.items()
+    ], ["municipio_id", "ano"])
 
-    for (ano, label), agg in por_sexo.items():
-        if _exists(RaisPorSexo, municipio_id=municipio.id, ano=ano, sexo=label):
-            continue
-        rem_media = agg["soma_rem"] / agg["cnt_rem"] if agg["cnt_rem"] else None
-        db.add(RaisPorSexo(municipio_id=municipio.id, ano=ano, sexo=label, total_vinculos=agg["vinculos"], remuneracao_media=rem_media))
+    _upsert(db, RaisPorSexo, [
+        {"municipio_id": mid, "ano": ano, "sexo": label,
+         "total_vinculos": agg["vinculos"],
+         "remuneracao_media": (agg["soma_rem"] / agg["cnt_rem"]) if agg["cnt_rem"] else None}
+        for (ano, label), agg in por_sexo.items()
+    ], ["municipio_id", "ano", "sexo"])
 
-    for (ano, label), agg in por_raca.items():
-        if _exists(RaisPorRaca, municipio_id=municipio.id, ano=ano, raca_cor=label):
-            continue
-        rem_media = agg["soma_rem"] / agg["cnt_rem"] if agg["cnt_rem"] else None
-        db.add(RaisPorRaca(municipio_id=municipio.id, ano=ano, raca_cor=label, total_vinculos=agg["vinculos"], remuneracao_media=rem_media))
+    _upsert(db, RaisPorRaca, [
+        {"municipio_id": mid, "ano": ano, "raca_cor": label,
+         "total_vinculos": agg["vinculos"],
+         "remuneracao_media": (agg["soma_rem"] / agg["cnt_rem"]) if agg["cnt_rem"] else None}
+        for (ano, label), agg in por_raca.items()
+    ], ["municipio_id", "ano", "raca_cor"])
 
-    for (ano, secao, desc), agg in por_cnae.items():
-        if _exists(RaisPorCnae, municipio_id=municipio.id, ano=ano, secao=secao):
-            continue
-        rem_media = agg["soma_rem"] / agg["cnt_rem"] if agg["cnt_rem"] else None
-        db.add(RaisPorCnae(municipio_id=municipio.id, ano=ano, secao=secao, descricao_secao=desc, total_vinculos=agg["vinculos"], remuneracao_media=rem_media))
+    _upsert(db, RaisPorCnae, [
+        {"municipio_id": mid, "ano": ano, "secao": secao, "descricao_secao": desc,
+         "total_vinculos": agg["vinculos"],
+         "remuneracao_media": (agg["soma_rem"] / agg["cnt_rem"]) if agg["cnt_rem"] else None}
+        for (ano, secao, desc), agg in por_cnae.items()
+    ], ["municipio_id", "ano", "secao"])
 
-    for (ano, label), agg in por_faixa_etaria.items():
-        if _exists(RaisPorFaixaEtaria, municipio_id=municipio.id, ano=ano, faixa_etaria=label):
-            continue
-        rem_media = agg["soma_rem"] / agg["cnt_rem"] if agg["cnt_rem"] else None
-        db.add(RaisPorFaixaEtaria(municipio_id=municipio.id, ano=ano, faixa_etaria=label, total_vinculos=agg["vinculos"], remuneracao_media=rem_media))
+    _upsert(db, RaisPorFaixaEtaria, [
+        {"municipio_id": mid, "ano": ano, "faixa_etaria": label,
+         "total_vinculos": agg["vinculos"],
+         "remuneracao_media": (agg["soma_rem"] / agg["cnt_rem"]) if agg["cnt_rem"] else None}
+        for (ano, label), agg in por_faixa_etaria.items()
+    ], ["municipio_id", "ano", "faixa_etaria"])
 
-    for (ano, label), agg in por_escolaridade.items():
-        if _exists(RaisPorEscolaridade, municipio_id=municipio.id, ano=ano, grau_instrucao=label):
-            continue
-        rem_media = agg["soma_rem"] / agg["cnt_rem"] if agg["cnt_rem"] else None
-        db.add(RaisPorEscolaridade(municipio_id=municipio.id, ano=ano, grau_instrucao=label, total_vinculos=agg["vinculos"], remuneracao_media=rem_media))
+    _upsert(db, RaisPorEscolaridade, [
+        {"municipio_id": mid, "ano": ano, "grau_instrucao": label,
+         "total_vinculos": agg["vinculos"],
+         "remuneracao_media": (agg["soma_rem"] / agg["cnt_rem"]) if agg["cnt_rem"] else None}
+        for (ano, label), agg in por_escolaridade.items()
+    ], ["municipio_id", "ano", "grau_instrucao"])
 
-    for (ano, label), cnt in por_faixa_rem.items():
-        if _exists(RaisPorFaixaRemuneracao, municipio_id=municipio.id, ano=ano, faixa_remuneracao_sm=label):
-            continue
-        db.add(RaisPorFaixaRemuneracao(municipio_id=municipio.id, ano=ano, faixa_remuneracao_sm=label, total_vinculos=cnt))
+    _upsert(db, RaisPorFaixaRemuneracao, [
+        {"municipio_id": mid, "ano": ano, "faixa_remuneracao_sm": label, "total_vinculos": cnt}
+        for (ano, label), cnt in por_faixa_rem.items()
+    ], ["municipio_id", "ano", "faixa_remuneracao_sm"])
 
-    for (ano, label), cnt in por_faixa_tempo.items():
-        if _exists(RaisPorFaixaTempoEmprego, municipio_id=municipio.id, ano=ano, faixa_tempo_emprego=label):
-            continue
-        db.add(RaisPorFaixaTempoEmprego(municipio_id=municipio.id, ano=ano, faixa_tempo_emprego=label, total_vinculos=cnt))
+    _upsert(db, RaisPorFaixaTempoEmprego, [
+        {"municipio_id": mid, "ano": ano, "faixa_tempo_emprego": label, "total_vinculos": cnt}
+        for (ano, label), cnt in por_faixa_tempo.items()
+    ], ["municipio_id", "ano", "faixa_tempo_emprego"])
 
-    for ano, m in metricas.items():
-        if _exists(RaisMetricasAnuais, municipio_id=municipio.id, ano=ano):
-            continue
-        media_af = m["afastamento_soma"] / m["afastamento_cnt"] if m["afastamento_cnt"] else None
-        db.add(RaisMetricasAnuais(
-            municipio_id=municipio.id,
-            ano=ano,
-            total_vinculos=m["total"],
-            total_pcd=m["pcd"],
-            total_outro_municipio=m["outro_municipio"],
-            media_dias_afastamento=media_af,
-            total_ativo_dezembro=m["ativo_dezembro"],
-            total_parcial=m["parcial"],
-            total_intermitente=m["intermitente"],
-            total_simples=m["simples"],
-            total_aprendiz_estimado=m["aprendiz_estimado"],
-        ))
+    _upsert(db, RaisMetricasAnuais, [
+        {"municipio_id": mid, "ano": ano,
+         "total_vinculos": m["total"],
+         "total_pcd": m["pcd"],
+         "total_outro_municipio": m["outro_municipio"],
+         "media_dias_afastamento": (m["afastamento_soma"] / m["afastamento_cnt"]) if m["afastamento_cnt"] else None,
+         "total_ativo_dezembro": m["ativo_dezembro"],
+         "total_parcial": m["parcial"],
+         "total_intermitente": m["intermitente"],
+         "total_simples": m["simples"],
+         "total_aprendiz_estimado": m["aprendiz_estimado"]}
+        for ano, m in metricas.items()
+    ], ["municipio_id", "ano"])
 
-    for (ano, motivo), cnt in por_motivo.items():
-        if _exists(RaisPorMotivoDesligamento, municipio_id=municipio.id, ano=ano, motivo=motivo):
-            continue
-        db.add(RaisPorMotivoDesligamento(
-            municipio_id=municipio.id, ano=ano, motivo=motivo, total_desligamentos=cnt,
-        ))
+    _upsert(db, RaisPorMotivoDesligamento, [
+        {"municipio_id": mid, "ano": ano, "motivo": motivo, "total_desligamentos": cnt}
+        for (ano, motivo), cnt in por_motivo.items()
+    ], ["municipio_id", "ano", "motivo"])
 
-    for (ano, tipo), cnt in por_tipo_admissao.items():
-        if _exists(RaisPorTipoAdmissao, municipio_id=municipio.id, ano=ano, tipo=tipo):
-            continue
-        db.add(RaisPorTipoAdmissao(
-            municipio_id=municipio.id, ano=ano, tipo=tipo, total_admissoes=cnt,
-        ))
+    _upsert(db, RaisPorTipoAdmissao, [
+        {"municipio_id": mid, "ano": ano, "tipo": tipo, "total_admissoes": cnt}
+        for (ano, tipo), cnt in por_tipo_admissao.items()
+    ], ["municipio_id", "ano", "tipo"])
 
-    for (ano, fam), agg in por_cbo.items():
-        if _exists(RaisPorCbo, municipio_id=municipio.id, ano=ano, cbo_familia=fam):
-            continue
-        rem_media = agg["soma_rem"] / agg["cnt_rem"] if agg["cnt_rem"] else None
-        db.add(RaisPorCbo(
-            municipio_id=municipio.id, ano=ano,
-            cbo_familia=fam, descricao=CBO_FAMILIA_DESC.get(fam),
-            total_vinculos=agg["vinculos"], remuneracao_media=rem_media,
-        ))
+    _upsert(db, RaisPorCbo, [
+        {"municipio_id": mid, "ano": ano, "cbo_familia": fam,
+         "descricao": CBO_FAMILIA_DESC.get(fam),
+         "total_vinculos": agg["vinculos"],
+         "remuneracao_media": (agg["soma_rem"] / agg["cnt_rem"]) if agg["cnt_rem"] else None}
+        for (ano, fam), agg in por_cbo.items()
+    ], ["municipio_id", "ano", "cbo_familia"])
 
-    for (ano, label), agg in por_tamanho.items():
-        if _exists(RaisPorTamanhoEstabelecimento, municipio_id=municipio.id, ano=ano, tamanho=label):
-            continue
-        rem_media = agg["soma_rem"] / agg["cnt_rem"] if agg["cnt_rem"] else None
-        db.add(RaisPorTamanhoEstabelecimento(
-            municipio_id=municipio.id, ano=ano, tamanho=label,
-            total_vinculos=agg["vinculos"], remuneracao_media=rem_media,
-        ))
+    _upsert(db, RaisPorTamanhoEstabelecimento, [
+        {"municipio_id": mid, "ano": ano, "tamanho": label,
+         "total_vinculos": agg["vinculos"],
+         "remuneracao_media": (agg["soma_rem"] / agg["cnt_rem"]) if agg["cnt_rem"] else None}
+        for (ano, label), agg in por_tamanho.items()
+    ], ["municipio_id", "ano", "tamanho"])
 
-    for (ano, grupo), cnt in por_natureza.items():
-        if _exists(RaisPorNaturezaJuridica, municipio_id=municipio.id, ano=ano, grupo=grupo):
-            continue
-        db.add(RaisPorNaturezaJuridica(
-            municipio_id=municipio.id, ano=ano, grupo=grupo, total_vinculos=cnt,
-        ))
+    _upsert(db, RaisPorNaturezaJuridica, [
+        {"municipio_id": mid, "ano": ano, "grupo": grupo, "total_vinculos": cnt}
+        for (ano, grupo), cnt in por_natureza.items()
+    ], ["municipio_id", "ano", "grupo"])
 
-    for (ano, mes), counts in turnover.items():
-        if _exists(RaisTurnoverMensal, municipio_id=municipio.id, ano=ano, mes=mes):
-            continue
-        db.add(RaisTurnoverMensal(
-            municipio_id=municipio.id, ano=ano, mes=mes,
-            total_admissoes=counts["adm"], total_desligamentos=counts["des"],
-        ))
+    _upsert(db, RaisTurnoverMensal, [
+        {"municipio_id": mid, "ano": ano, "mes": mes,
+         "total_admissoes": counts["adm"], "total_desligamentos": counts["des"]}
+        for (ano, mes), counts in turnover.items()
+    ], ["municipio_id", "ano", "mes"])
 
     db.commit()

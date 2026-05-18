@@ -2,6 +2,7 @@ import csv
 from collections import defaultdict
 from pathlib import Path
 
+from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.orm import Session
 
 from app.models.pe_de_meia import PeDeMeiaEtapa, PeDeMeiaResumo
@@ -38,50 +39,40 @@ def carregar(cidade_dir: Path, city_name: str, estado: str, db: Session) -> None
             agregado_etapa[chave_etapa]["estudantes"] += 1
             agregado_etapa[chave_etapa]["valor_total"] += valor_parcela
 
-    for (ano, mes), totais in agregado.items():
-        existente = (
-            db.query(PeDeMeiaResumo)
-            .filter(
-                PeDeMeiaResumo.municipio_id == municipio.id,
-                PeDeMeiaResumo.ano == ano,
-                PeDeMeiaResumo.mes == mes,
-            )
-            .first()
+    if agregado:
+        resumo_rows = [
+            {
+                "municipio_id": municipio.id,
+                "ano": ano,
+                "mes": mes,
+                "total_estudantes": totais["estudantes"],
+                "valor_total": totais["valor_total"],
+            }
+            for (ano, mes), totais in agregado.items()
+        ]
+        stmt = pg_insert(PeDeMeiaResumo).values(resumo_rows)
+        stmt = stmt.on_conflict_do_nothing(
+            index_elements=["municipio_id", "ano", "mes"],
         )
-        if existente:
-            continue
-        db.add(PeDeMeiaResumo(
-            municipio_id=municipio.id,
-            ano=ano,
-            mes=mes,
-            total_estudantes=totais["estudantes"],
-            valor_total=totais["valor_total"],
-        ))
+        db.execute(stmt)
+        db.commit()
 
-    db.commit()
-
-    for (ano, mes, etapa_ensino, tipo_incentivo), totais in agregado_etapa.items():
-        existente = (
-            db.query(PeDeMeiaEtapa)
-            .filter(
-                PeDeMeiaEtapa.municipio_id == municipio.id,
-                PeDeMeiaEtapa.ano == ano,
-                PeDeMeiaEtapa.mes == mes,
-                PeDeMeiaEtapa.etapa_ensino == etapa_ensino,
-                PeDeMeiaEtapa.tipo_incentivo == tipo_incentivo,
-            )
-            .first()
+    if agregado_etapa:
+        etapa_rows = [
+            {
+                "municipio_id": municipio.id,
+                "ano": ano,
+                "mes": mes,
+                "etapa_ensino": etapa_ensino,
+                "tipo_incentivo": tipo_incentivo,
+                "total_estudantes": totais["estudantes"],
+                "valor_total": totais["valor_total"],
+            }
+            for (ano, mes, etapa_ensino, tipo_incentivo), totais in agregado_etapa.items()
+        ]
+        stmt = pg_insert(PeDeMeiaEtapa).values(etapa_rows)
+        stmt = stmt.on_conflict_do_nothing(
+            index_elements=["municipio_id", "ano", "mes", "etapa_ensino", "tipo_incentivo"],
         )
-        if existente:
-            continue
-        db.add(PeDeMeiaEtapa(
-            municipio_id=municipio.id,
-            ano=ano,
-            mes=mes,
-            etapa_ensino=etapa_ensino,
-            tipo_incentivo=tipo_incentivo,
-            total_estudantes=totais["estudantes"],
-            valor_total=totais["valor_total"],
-        ))
-
-    db.commit()
+        db.execute(stmt)
+        db.commit()
