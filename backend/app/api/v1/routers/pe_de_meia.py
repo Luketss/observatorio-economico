@@ -96,6 +96,7 @@ def comparativo_pe_de_meia(
             func.sum(PeDeMeiaResumoModel.total_estudantes).label("total_estudantes"),
         )
         .join(PeDeMeiaResumoModel, PeDeMeiaResumoModel.municipio_id == Municipio.id)
+        .filter(Municipio.is_demo.is_(False))
     )
     if ano:
         query = query.filter(PeDeMeiaResumoModel.ano == ano)

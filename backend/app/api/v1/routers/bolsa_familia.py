@@ -62,6 +62,7 @@ def comparativo_bolsa_familia(
             func.sum(BFModel.valor_total).label("valor_total"),
         )
         .join(BFModel, BFModel.municipio_id == Municipio.id)
+        .filter(Municipio.is_demo.is_(False))
     )
     if ano:
         query = query.filter(BFModel.ano == ano)

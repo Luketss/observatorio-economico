@@ -189,6 +189,22 @@ export default function MunicipiosAdminPage() {
     }
   };
 
+  // ── Toggle is_demo (hides/shows município in cross-município analytics) ────
+  const toggleDemo = async (municipio) => {
+    const next = !municipio.is_demo;
+    setSaving((prev) => ({ ...prev, [municipio.id]: true }));
+    try {
+      await api.put(`/municipios/${municipio.id}`, { is_demo: next });
+      setMunicipios((prev) =>
+        prev.map((m) => (m.id === municipio.id ? { ...m, is_demo: next } : m))
+      );
+    } catch {
+      alert("Erro ao alterar status demo.");
+    } finally {
+      setSaving((prev) => ({ ...prev, [municipio.id]: false }));
+    }
+  };
+
   // ── Add município ─────────────────────────────────────────────────────────
   const openAdd = () => {
     setAddForm({ nome: "", estado: "", codigo_ibge: "", clone_from_id: "" });
@@ -297,7 +313,32 @@ export default function MunicipiosAdminPage() {
       kind: "avatar+text",
       render: (row) => ({
         avatar: <BrasaoCell m={row} />,
-        primary: row.nome,
+        primary: (
+          <span style={{ display: "inline-flex", alignItems: "center", gap: 8 }}>
+            {row.nome}
+            {row.is_demo && (
+              <span
+                title="Município de demonstração — oculto dos comparativos públicos"
+                style={{
+                  display: "inline-flex",
+                  alignItems: "center",
+                  padding: "2px 6px",
+                  fontSize: 9.5,
+                  fontWeight: 700,
+                  letterSpacing: "0.08em",
+                  textTransform: "uppercase",
+                  color: "var(--admin-accent)",
+                  background: "var(--admin-accent-soft)",
+                  border: "1px solid color-mix(in oklab, var(--admin-accent) 35%, transparent)",
+                  borderRadius: 4,
+                  fontFamily: "var(--font-mono)",
+                }}
+              >
+                DEMO
+              </span>
+            )}
+          </span>
+        ),
         secondary: row.codigo_ibge || undefined,
       }),
     },
@@ -363,14 +404,17 @@ export default function MunicipiosAdminPage() {
           icon: "menu",
           label: "Mais ações",
           onClick: (row) => {
+            const demoLabel = row.is_demo ? "Desmarcar demo (mostrar em comparativos)" : "Marcar como demo (ocultar dos comparativos)";
             const choice = window.prompt(
               `Ações para ${row.nome}:\n` +
               `1 — → ${planoLabel(nextPlano(row.plano))}\n` +
               `2 — Remover brasão${row.brasao ? "" : " (sem brasão)"}\n` +
+              `3 — ${demoLabel}\n` +
               `\nDigite o número da ação:`
             );
             if (choice === "1") togglePlano(row);
             if (choice === "2" && row.brasao) removeBrasao(row);
+            if (choice === "3") toggleDemo(row);
           },
         },
         {
@@ -643,6 +687,9 @@ export default function MunicipiosAdminPage() {
           <p style={{ fontSize: 11, color: "var(--text-mute)", marginTop: 6, lineHeight: 1.4 }}>
             Se selecionado, todos os datasets do município de origem (insights, séries históricas,
             eventos, projetos) serão copiados para o novo município. Pode levar 10–30s.
+            <br />
+            <strong style={{ color: "var(--admin-accent)" }}>O novo município é marcado como demo automaticamente</strong>{" "}
+            e fica oculto dos comparativos públicos. Você pode desmarcar pelo menu "Mais ações" depois.
           </p>
         </NidField>
 

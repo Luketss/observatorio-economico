@@ -56,6 +56,7 @@ def comparativo_inss(
             func.sum(InssAnual.valor_anual).label("valor_total"),
         )
         .join(InssAnual, InssAnual.municipio_id == Municipio.id)
+        .filter(Municipio.is_demo.is_(False))
     )
     if ano:
         query = query.filter(InssAnual.ano == ano)

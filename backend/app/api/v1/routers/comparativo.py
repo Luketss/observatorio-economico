@@ -27,6 +27,7 @@ def comparativo_arrecadacao(
             func.sum(ArrecadacaoMensal.valor_total).label("total"),
         )
         .join(ArrecadacaoMensal, ArrecadacaoMensal.municipio_id == Municipio.id)
+        .filter(Municipio.is_demo.is_(False))
         .filter(ArrecadacaoMensal.ano == ano)
     )
     if estado:
@@ -57,6 +58,7 @@ def comparativo_caged(
             func.sum(CagedMovimentacao.saldo).label("saldo_total"),
         )
         .join(CagedMovimentacao, CagedMovimentacao.municipio_id == Municipio.id)
+        .filter(Municipio.is_demo.is_(False))
         .filter(CagedMovimentacao.ano == ano)
     )
     if estado:
@@ -87,6 +89,7 @@ def comparativo_rais(
             func.sum(RaisVinculo.total_vinculos).label("total_vinculos"),
         )
         .join(RaisVinculo, RaisVinculo.municipio_id == Municipio.id)
+        .filter(Municipio.is_demo.is_(False))
         .filter(RaisVinculo.ano == ano)
     )
     if estado:

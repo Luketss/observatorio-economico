@@ -237,6 +237,7 @@ def comparativo_empresas(
             func.count(Empresa.id).label("total_empresas"),
         )
         .join(Empresa, Empresa.municipio_id == Municipio.id)
+        .filter(Municipio.is_demo.is_(False))
         .filter(Empresa.situacao == "02")
     )
     if estado:

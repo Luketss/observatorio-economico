@@ -8,11 +8,17 @@ class MunicipioBase(BaseModel):
     estado: str
     codigo_ibge: Optional[str] = None
     ativo: bool = True
+    # When True, this município is hidden from cross-município analytics.
+    # Sentinel `None` (the default on Create) means "decide based on
+    # whether a clone source was provided" — auto-set to True if cloning.
+    is_demo: Optional[bool] = None
 
 
 class MunicipioCreate(MunicipioBase):
     # If set, clone all dataset rows from the source município into the
-    # newly-created município after it is persisted.
+    # newly-created município after it is persisted. When cloning AND
+    # is_demo wasn't explicitly provided, the new município is marked as
+    # demo by default.
     clone_from_id: Optional[int] = None
 
 
@@ -23,6 +29,7 @@ class MunicipioUpdate(BaseModel):
     ativo: Optional[bool] = None
     plano: Optional[str] = None
     brasao: Optional[str] = None
+    is_demo: Optional[bool] = None
 
 
 class MunicipioOut(BaseModel):
@@ -33,6 +40,7 @@ class MunicipioOut(BaseModel):
     ativo: bool
     plano: str = "paid"
     brasao: Optional[str] = None
+    is_demo: bool = False
 
     class Config:
         from_attributes = True

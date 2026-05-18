@@ -46,6 +46,7 @@ def listar_municipios(
     query = (
         db.query(Municipio.id, Municipio.nome, Municipio.estado)
         .join(IpsMunicipio, IpsMunicipio.municipio_id == Municipio.id)
+        .filter(Municipio.is_demo.is_(False))
         .filter(IpsMunicipio.ano == ano)
     )
     if estado:
@@ -117,11 +118,15 @@ def ranking(
 
     total_nacional = (
         db.query(func.count(IpsMunicipio.id))
+        .join(Municipio, IpsMunicipio.municipio_id == Municipio.id)
+        .filter(Municipio.is_demo.is_(False))
         .filter(IpsMunicipio.ano == ano, IpsMunicipio.ips_geral.isnot(None))
         .scalar() or 0
     )
     above_nacional = (
         db.query(func.count(IpsMunicipio.id))
+        .join(Municipio, IpsMunicipio.municipio_id == Municipio.id)
+        .filter(Municipio.is_demo.is_(False))
         .filter(IpsMunicipio.ano == ano, IpsMunicipio.ips_geral > city.ips_geral)
         .scalar() or 0
     )
@@ -131,12 +136,14 @@ def ranking(
         total_estadual = (
             db.query(func.count(IpsMunicipio.id))
             .join(Municipio, IpsMunicipio.municipio_id == Municipio.id)
+            .filter(Municipio.is_demo.is_(False))
             .filter(IpsMunicipio.ano == ano, Municipio.estado == estado, IpsMunicipio.ips_geral.isnot(None))
             .scalar() or 0
         )
         above_estadual = (
             db.query(func.count(IpsMunicipio.id))
             .join(Municipio, IpsMunicipio.municipio_id == Municipio.id)
+            .filter(Municipio.is_demo.is_(False))
             .filter(IpsMunicipio.ano == ano, Municipio.estado == estado, IpsMunicipio.ips_geral > city.ips_geral)
             .scalar() or 0
         )
@@ -167,6 +174,7 @@ def comparativo(
     rows = (
         db.query(IpsMunicipio, Municipio.nome, Municipio.estado)
         .join(Municipio, IpsMunicipio.municipio_id == Municipio.id)
+        .filter(Municipio.is_demo.is_(False))
         .filter(IpsMunicipio.municipio_id.in_(ids), IpsMunicipio.ano == ano)
         .all()
     )
@@ -199,12 +207,18 @@ def destaques(
     if not city:
         raise HTTPException(status_code=404, detail="IPS data not found")
 
-    # Compute all 12 component averages in a single query
+    # Compute all 12 component averages in a single query (excluding demos)
     avg_cols = [
         func.avg(getattr(IpsMunicipio, campo)).label(campo)
         for campo, _ in COMPONENTS
     ]
-    avg_row = db.query(*avg_cols).filter(IpsMunicipio.ano == ano).first()
+    avg_row = (
+        db.query(*avg_cols)
+        .join(Municipio, IpsMunicipio.municipio_id == Municipio.id)
+        .filter(Municipio.is_demo.is_(False))
+        .filter(IpsMunicipio.ano == ano)
+        .first()
+    )
 
     resultados = []
     for campo, label in COMPONENTS:
@@ -248,6 +262,7 @@ def sugestoes(
     rows = (
         db.query(IpsMunicipio, Municipio.nome, Municipio.estado)
         .join(Municipio, IpsMunicipio.municipio_id == Municipio.id)
+        .filter(Municipio.is_demo.is_(False))
         .filter(
             IpsMunicipio.ano == ano,
             IpsMunicipio.municipio_id != municipio_id,

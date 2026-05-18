@@ -47,11 +47,21 @@ def criar_municipio(
     db: Session = Depends(get_db),
     current_user=Depends(require_role("ADMIN_GLOBAL")),
 ):
+    # When the caller is cloning AND didn't explicitly set is_demo, default
+    # to True — cloning is overwhelmingly used to create demo data. The
+    # caller can still pass is_demo=False explicitly to opt out.
+    is_demo_resolved = (
+        data.is_demo
+        if data.is_demo is not None
+        else (data.clone_from_id is not None)
+    )
+
     novo = Municipio(
         nome=data.nome,
         estado=data.estado,
         codigo_ibge=data.codigo_ibge,
         ativo=data.ativo,
+        is_demo=is_demo_resolved,
     )
 
     db.add(novo)

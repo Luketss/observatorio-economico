@@ -85,6 +85,7 @@ def comparativo_pix(
             ).label("volume_total"),
         )
         .join(PixMensal, PixMensal.municipio_id == Municipio.id)
+        .filter(Municipio.is_demo.is_(False))
     )
     if ano:
         query = query.filter(PixMensal.ano == ano)
