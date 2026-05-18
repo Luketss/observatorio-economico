@@ -2,7 +2,17 @@ from typing import List
 
 from app.api.deps import get_current_user, get_db, require_role
 from app.models.municipio import Municipio
-from app.schemas.municipio import MunicipioCreate, MunicipioOut, MunicipioUpdate
+from app.schemas.municipio import (
+    MunicipioCreate,
+    MunicipioCreatedResult,
+    MunicipioDeletedResult,
+    MunicipioOut,
+    MunicipioUpdate,
+)
+from app.services.municipio_management import (
+    clone_municipio_data,
+    delete_municipio_cascade,
+)
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
@@ -29,9 +39,9 @@ def listar_municipios(
 
 
 # ==============================
-# Criar município
+# Criar município (opcionalmente clonando dados de outro)
 # ==============================
-@router.post("/", response_model=MunicipioOut)
+@router.post("/", response_model=MunicipioCreatedResult)
 def criar_municipio(
     data: MunicipioCreate,
     db: Session = Depends(get_db),
@@ -48,7 +58,14 @@ def criar_municipio(
     db.commit()
     db.refresh(novo)
 
-    return novo
+    clone_summary = None
+    if data.clone_from_id is not None:
+        # If cloning fails the new município row stays; admin can delete it.
+        clone_summary = clone_municipio_data(
+            db, source_id=data.clone_from_id, target_id=novo.id
+        )
+
+    return MunicipioCreatedResult(municipio=novo, clone_summary=clone_summary)
 
 
 # ==============================
@@ -73,3 +90,16 @@ def atualizar_municipio(
     db.refresh(municipio)
 
     return municipio
+
+
+# ==============================
+# Excluir município (cascade — wipes 55 dependent tables)
+# ==============================
+@router.delete("/{municipio_id}", response_model=MunicipioDeletedResult)
+def excluir_municipio(
+    municipio_id: int,
+    db: Session = Depends(get_db),
+    current_user=Depends(require_role("ADMIN_GLOBAL")),
+):
+    summary = delete_municipio_cascade(db, municipio_id)
+    return MunicipioDeletedResult(deleted=municipio_id, summary=summary)

@@ -1,4 +1,4 @@
-from typing import Optional
+from typing import Dict, Optional
 
 from pydantic import BaseModel
 
@@ -11,7 +11,9 @@ class MunicipioBase(BaseModel):
 
 
 class MunicipioCreate(MunicipioBase):
-    pass
+    # If set, clone all dataset rows from the source município into the
+    # newly-created município after it is persisted.
+    clone_from_id: Optional[int] = None
 
 
 class MunicipioUpdate(BaseModel):
@@ -34,3 +36,18 @@ class MunicipioOut(BaseModel):
 
     class Config:
         from_attributes = True
+
+
+class MunicipioCreatedResult(BaseModel):
+    """Response shape for POST /municipios when clone_from_id may be set.
+
+    `clone_summary` is None when no clone was requested, otherwise maps
+    each model class name to the number of rows copied.
+    """
+    municipio: MunicipioOut
+    clone_summary: Optional[Dict[str, int]] = None
+
+
+class MunicipioDeletedResult(BaseModel):
+    deleted: int
+    summary: Dict[str, int]
