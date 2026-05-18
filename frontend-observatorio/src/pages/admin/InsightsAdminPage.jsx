@@ -13,6 +13,7 @@ import NidModal, { NidField } from "../../components/nid/NidModal";
 import StatusPill from "../../components/nid/StatusPill";
 import AdminStats from "../../components/nid/AdminStats";
 import AdminSearchInput from "../../components/nid/AdminSearchInput";
+import MunicipioPicker from "../../components/nid/MunicipioPicker";
 
 // ─── Dataset registry ──────────────────────────────────────────────────────────
 const DATASETS = [
@@ -574,28 +575,12 @@ export default function InsightsAdminPage() {
         >
           Município
         </label>
-        <select
+        <MunicipioPicker
+          municipios={municipios}
           value={selectedId}
-          onChange={(e) => setSelectedId(e.target.value)}
-          style={{
-            width: "100%",
-            maxWidth: 360,
-            padding: "9px 12px",
-            background: "var(--panel-2)",
-            border: "1px solid var(--border)",
-            borderRadius: 8,
-            color: "var(--text)",
-            fontFamily: "var(--font-display)",
-            fontSize: 13,
-          }}
-        >
-          <option value="">Selecione um município...</option>
-          {municipios.map((m) => (
-            <option key={m.id} value={m.id}>
-              {m.nome} — {m.estado}
-            </option>
-          ))}
-        </select>
+          onChange={setSelectedId}
+          ariaLabel="Selecionar município para gerenciar insights"
+        />
       </div>
 
       {/* AdminStats strip — only when a município is selected */}

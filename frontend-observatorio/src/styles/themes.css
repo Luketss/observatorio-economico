@@ -2300,3 +2300,135 @@ body.theme-light .nid-filterbar [aria-pressed="true"] {
   letter-spacing: 0.04em;
 }
 
+/* ─── MunicipioPicker — searchable combobox ──────────────────── */
+.nid-municipio-picker {
+  position: relative;
+  width: 100%;
+  max-width: 360px;
+}
+.nid-municipio-picker__trigger {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  height: 40px;
+  padding: 0 10px;
+  background: var(--panel-2);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  cursor: pointer;
+  text-align: left;
+  transition: border-color 0.15s, background 0.15s;
+  font-family: var(--font-display);
+}
+.nid-municipio-picker__trigger:hover,
+.nid-municipio-picker__trigger.is-open {
+  border-color: color-mix(in oklab, var(--admin-accent) 35%, transparent);
+  background: var(--panel);
+}
+.nid-municipio-picker__icon {
+  width: 16px; height: 16px;
+  color: var(--text-mute);
+  flex-shrink: 0;
+}
+.nid-municipio-picker__input {
+  flex: 1;
+  min-width: 0;
+  background: transparent;
+  border: none;
+  outline: none;
+  font: 500 13px/1.4 var(--font-display);
+  color: var(--text);
+  padding: 0;
+}
+.nid-municipio-picker__input::placeholder { color: var(--text-mute); }
+.nid-municipio-picker__display {
+  flex: 1;
+  min-width: 0;
+  font: 500 13px/1.4 var(--font-display);
+  color: var(--text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.nid-municipio-picker__display.is-placeholder { color: var(--text-mute); }
+.nid-municipio-picker__clear {
+  background: transparent;
+  border: none;
+  padding: 4px;
+  border-radius: 6px;
+  color: var(--text-dim);
+  display: inline-flex;
+  align-items: center;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+.nid-municipio-picker__clear:hover { color: var(--text); background: var(--panel-2); }
+.nid-municipio-picker__chevron {
+  width: 14px; height: 14px;
+  color: var(--text-mute);
+  flex-shrink: 0;
+  transition: transform 0.15s;
+}
+.nid-municipio-picker__trigger.is-open .nid-municipio-picker__chevron {
+  transform: rotate(180deg);
+}
+.nid-municipio-picker__list {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  right: 0;
+  z-index: 50;
+  margin: 0;
+  padding: 4px;
+  background: var(--panel);
+  border: 1px solid var(--border-strong);
+  border-radius: 10px;
+  box-shadow: var(--shadow-card);
+  list-style: none;
+  max-height: 320px;
+  overflow-y: auto;
+  backdrop-filter: blur(12px);
+}
+.nid-municipio-picker__option {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 8px 10px;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: background 0.12s;
+}
+.nid-municipio-picker__option.is-active {
+  background: var(--panel-2);
+}
+.nid-municipio-picker__option.is-selected {
+  background: color-mix(in oklab, var(--admin-accent) 14%, transparent);
+}
+.nid-municipio-picker__option.is-selected.is-active {
+  background: color-mix(in oklab, var(--admin-accent) 22%, transparent);
+}
+.nid-municipio-picker__nome {
+  font: 500 13px/1.4 var(--font-display);
+  color: var(--text);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.nid-municipio-picker__uf {
+  font: 600 10.5px/1 var(--font-mono);
+  color: var(--text-mute);
+  letter-spacing: 0.1em;
+  flex-shrink: 0;
+}
+.nid-municipio-picker__option.is-selected .nid-municipio-picker__uf {
+  color: var(--admin-accent);
+}
+.nid-municipio-picker__empty {
+  padding: 12px;
+  text-align: center;
+  font: 500 12px/1.4 var(--font-display);
+  color: var(--text-mute);
+}
+

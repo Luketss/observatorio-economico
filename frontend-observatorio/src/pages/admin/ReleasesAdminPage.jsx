@@ -9,6 +9,7 @@ import {
   TrashIcon,
   XMarkIcon,
 } from "@heroicons/react/24/outline";
+import MunicipioPicker from "../../components/nid/MunicipioPicker";
 
 const DATASETS = [
   { key: "geral", label: "Visão Geral" },
@@ -198,18 +199,12 @@ export default function ReleasesAdminPage() {
         <label className="block text-xs font-semibold text-[var(--text-dim)] uppercase tracking-wider mb-2">
           Município
         </label>
-        <select
+        <MunicipioPicker
+          municipios={municipios}
           value={selectedId}
-          onChange={(e) => setSelectedId(e.target.value)}
-          className="w-full max-w-sm border border-[var(--border)] rounded-xl px-4 py-2.5 text-sm   focus:outline-none focus:ring-2 focus:ring-teal-500"
-        >
-          <option value="">Selecione um município...</option>
-          {municipios.map((m) => (
-            <option key={m.id} value={m.id}>
-              {m.nome} — {m.estado}
-            </option>
-          ))}
-        </select>
+          onChange={setSelectedId}
+          ariaLabel="Selecionar município para gerenciar releases"
+        />
       </div>
 
       {/* Releases list */}
