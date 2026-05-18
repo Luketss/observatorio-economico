@@ -2,7 +2,14 @@ import { useEffect, useRef, useState } from "react";
 import { motion } from "framer-motion";
 import { useNavigate } from "react-router-dom";
 import api from "../../services/api";
-import { PhotoIcon, PlusIcon } from "@heroicons/react/24/outline";
+import {
+  PhotoIcon,
+  PlusIcon,
+  ArrowUpCircleIcon,
+  ShieldExclamationIcon,
+  EyeIcon,
+  EyeSlashIcon,
+} from "@heroicons/react/24/outline";
 import AdminTable from "../../components/nid/AdminTable";
 import AdminStats from "../../components/nid/AdminStats";
 import BulkActions from "../../components/nid/BulkActions";
@@ -123,6 +130,9 @@ export default function MunicipiosAdminPage() {
   // Delete confirmation modal
   const [deleteTarget, setDeleteTarget] = useState(null);  // { id, nome } | null
   const [deleting, setDeleting] = useState(false);
+
+  // "Mais ações" modal — the row whose "..." was clicked, or null
+  const [actionsTarget, setActionsTarget] = useState(null);
 
   // ── Load ──────────────────────────────────────────────────────────────────
   const load = () => {
@@ -403,19 +413,7 @@ export default function MunicipiosAdminPage() {
         {
           icon: "menu",
           label: "Mais ações",
-          onClick: (row) => {
-            const demoLabel = row.is_demo ? "Desmarcar demo (mostrar em comparativos)" : "Marcar como demo (ocultar dos comparativos)";
-            const choice = window.prompt(
-              `Ações para ${row.nome}:\n` +
-              `1 — → ${planoLabel(nextPlano(row.plano))}\n` +
-              `2 — Remover brasão${row.brasao ? "" : " (sem brasão)"}\n` +
-              `3 — ${demoLabel}\n` +
-              `\nDigite o número da ação:`
-            );
-            if (choice === "1") togglePlano(row);
-            if (choice === "2" && row.brasao) removeBrasao(row);
-            if (choice === "3") toggleDemo(row);
-          },
+          onClick: (row) => setActionsTarget(row),
         },
         {
           icon: "delete",
@@ -758,6 +756,104 @@ export default function MunicipiosAdminPage() {
           ser desfeita.
         </p>
       </NidModal>
+
+      {/* Mais ações modal — plano cycle / remove brasão / toggle demo */}
+      <NidModal
+        open={actionsTarget != null}
+        onClose={() => setActionsTarget(null)}
+        eyebrow="Mais ações"
+        title={actionsTarget ? actionsTarget.nome : ""}
+        size="sm"
+        footer={
+          <button
+            type="button"
+            onClick={() => setActionsTarget(null)}
+            style={{
+              padding: "8px 14px",
+              background: "transparent",
+              border: "1px solid var(--border)",
+              color: "var(--text-dim)",
+              borderRadius: 8,
+              fontSize: 13,
+              fontWeight: 500,
+              cursor: "pointer",
+            }}
+          >
+            Cancelar
+          </button>
+        }
+      >
+        {actionsTarget && (
+          <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+            <ActionRow
+              icon={ArrowUpCircleIcon}
+              label={`Mudar plano para ${planoLabel(nextPlano(actionsTarget.plano))}`}
+              hint={`Atual: ${planoLabel(actionsTarget.plano)} · cicla Free → Pro → Premium → Free`}
+              onClick={() => {
+                togglePlano(actionsTarget);
+                setActionsTarget(null);
+              }}
+            />
+            <ActionRow
+              icon={ShieldExclamationIcon}
+              label="Remover brasão"
+              hint={actionsTarget.brasao ? "Volta ao placeholder padrão" : "Município não tem brasão"}
+              disabled={!actionsTarget.brasao}
+              onClick={() => {
+                removeBrasao(actionsTarget);
+                setActionsTarget(null);
+              }}
+            />
+            <ActionRow
+              icon={actionsTarget.is_demo ? EyeIcon : EyeSlashIcon}
+              label={actionsTarget.is_demo ? "Desmarcar como demo" : "Marcar como demo"}
+              hint={
+                actionsTarget.is_demo
+                  ? "Voltar a aparecer nos comparativos"
+                  : "Ocultar dos comparativos públicos"
+              }
+              onClick={() => {
+                toggleDemo(actionsTarget);
+                setActionsTarget(null);
+              }}
+            />
+          </div>
+        )}
+      </NidModal>
     </motion.div>
+  );
+}
+
+function ActionRow({ icon: Icon, label, hint, onClick, disabled = false }) {
+  const [hover, setHover] = useState(false);
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      disabled={disabled}
+      onMouseEnter={() => setHover(true)}
+      onMouseLeave={() => setHover(false)}
+      style={{
+        display: "flex",
+        alignItems: "flex-start",
+        gap: 12,
+        width: "100%",
+        padding: "12px 14px",
+        borderRadius: 10,
+        border: "1px solid var(--border)",
+        background: !disabled && hover ? "var(--panel-2)" : "transparent",
+        color: "var(--text)",
+        textAlign: "left",
+        cursor: disabled ? "not-allowed" : "pointer",
+        opacity: disabled ? 0.5 : 1,
+        transition: "background 120ms ease",
+      }}
+    >
+      <Icon style={{ width: 20, height: 20, color: "var(--admin-accent)", flexShrink: 0, marginTop: 1 }} />
+      <span style={{ display: "flex", flexDirection: "column", gap: 2, minWidth: 0 }}>
+        <span style={{ fontSize: 13, fontWeight: 600, color: "var(--text)" }}>{label}</span>
+        <span style={{ fontSize: 11, color: "var(--text-dim)", lineHeight: 1.4 }}>{hint}</span>
+      </span>
+    </button>
   );
 }
