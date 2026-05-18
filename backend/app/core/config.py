@@ -24,6 +24,11 @@ class Settings(BaseSettings):
 
     class Config:
         env_file = (".env", ".env.local")  # .env.local overrides .env for local dev
+        # Tolerate unknown env vars so a stale .env (e.g. legacy ALGORITHM=HS256
+        # after the JWT helper was hardcoded) doesn't crash Settings load.
+        # Pydantic v2 defaults to "forbid", which broke alembic / pytest / the
+        # whole API after that auth refactor.
+        extra = "ignore"
 
 
 settings = Settings()
