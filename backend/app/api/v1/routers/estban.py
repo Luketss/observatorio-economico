@@ -155,6 +155,7 @@ def comparativo_estban(
             func.sum(EstbanMensal.valor_operacoes_credito).label("credito_total"),
         )
         .join(EstbanMensal, EstbanMensal.municipio_id == Municipio.id)
+        .filter(Municipio.is_demo.is_(False))
     )
     if ano:
         query = query.filter(extract("year", EstbanMensal.data_referencia) == ano)

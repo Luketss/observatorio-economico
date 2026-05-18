@@ -144,6 +144,7 @@ def ranking_pib(
             func.sum(PibAnual.pib_total).label("pib_total"),
         )
         .join(PibAnual, PibAnual.municipio_id == Municipio.id)
+        .filter(Municipio.is_demo.is_(False))
     )
     if ano:
         query = query.filter(PibAnual.ano == ano)

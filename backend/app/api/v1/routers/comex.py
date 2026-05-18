@@ -129,6 +129,7 @@ def comparativo_comex(
             func.sum(ComexMensal.valor_usd).label("exportacoes"),
         )
         .join(ComexMensal, ComexMensal.municipio_id == Municipio.id)
+        .filter(Municipio.is_demo.is_(False))
         .filter(ComexMensal.tipo_operacao == "export")
     )
     if ano:
