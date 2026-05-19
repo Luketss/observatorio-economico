@@ -106,10 +106,11 @@ def comparativo_pib(
             for r in registros
         ]
 
-    # ADMIN_GLOBAL vê todos
+    # ADMIN_GLOBAL vê todos (exceto municípios demo)
     registros = (
         db.query(PibAnual, Municipio.nome)
         .join(Municipio, PibAnual.municipio_id == Municipio.id)
+        .filter(Municipio.is_demo.is_(False))
         .order_by(PibAnual.ano)
         .all()
     )
