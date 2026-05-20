@@ -13,6 +13,8 @@ class LoginAuditOut(BaseModel):
     ip: Optional[str] = None
     user_agent: Optional[str] = None
     criado_em: datetime
+    nome: Optional[str] = None
+    papel: Optional[str] = None
 
     model_config = ConfigDict(from_attributes=True)
 

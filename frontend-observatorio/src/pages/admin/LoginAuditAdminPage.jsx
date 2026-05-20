@@ -28,6 +28,19 @@ const MOTIVO_LABELS = {
   inactive: "Conta inativa",
 };
 
+const ROLE_LABELS = {
+  ADMIN_GLOBAL: "Admin Global",
+  ADMIN_MUNICIPIO: "Admin Município",
+  VISUALIZADOR: "Visualizador",
+};
+
+const ROLE_OPTIONS = [
+  { value: "", label: "Todos os papéis" },
+  { value: "ADMIN_GLOBAL", label: "Admin Global" },
+  { value: "ADMIN_MUNICIPIO", label: "Admin Município" },
+  { value: "VISUALIZADOR", label: "Visualizador" },
+];
+
 const FILTERS = [
   { value: "all", label: "Todos", sucesso: undefined },
   { value: "fail", label: "Falhas", sucesso: false },
@@ -40,6 +53,9 @@ export default function LoginAuditAdminPage() {
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(0);
   const [filter, setFilter] = useState("all");
+  const [emailInput, setEmailInput] = useState("");
+  const [emailQuery, setEmailQuery] = useState("");
+  const [role, setRole] = useState("");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
 
@@ -51,16 +67,24 @@ export default function LoginAuditAdminPage() {
       .catch(() => {});
   }, []);
 
-  // Reset to first page when the filter changes.
+  // Debounce the email search input.
+  useEffect(() => {
+    const t = setTimeout(() => setEmailQuery(emailInput.trim()), 350);
+    return () => clearTimeout(t);
+  }, [emailInput]);
+
+  // Reset to first page when any filter changes.
   useEffect(() => {
     setPage(0);
-  }, [filter]);
+  }, [filter, emailQuery, role]);
 
   // List reloads on page / filter change.
   useEffect(() => {
     const f = FILTERS.find((x) => x.value === filter);
     const params = { skip: page * PAGE_SIZE, limit: PAGE_SIZE };
     if (f?.sucesso !== undefined) params.sucesso = f.sucesso;
+    if (emailQuery) params.email = emailQuery;
+    if (role) params.role = role;
 
     setLoading(true);
     setError(false);
@@ -72,7 +96,7 @@ export default function LoginAuditAdminPage() {
       })
       .catch(() => setError(true))
       .finally(() => setLoading(false));
-  }, [page, filter]);
+  }, [page, filter, emailQuery, role]);
 
   const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
 
@@ -90,8 +114,8 @@ export default function LoginAuditAdminPage() {
             Logins / Auditoria
           </h1>
           <p className="text-sm text-[var(--text-mute)] mt-1">
-            Atividade de login das contas de administrador global — últimos acessos
-            e tentativas de autenticação.
+            Atividade de login de todas as contas — últimos acessos e tentativas
+            de autenticação.
           </p>
         </div>
       </div>
@@ -128,21 +152,45 @@ export default function LoginAuditAdminPage() {
         ))}
       </div>
 
-      {/* Filter chips */}
-      <div className="flex items-center gap-2">
-        {FILTERS.map((f) => (
-          <button
-            key={f.value}
-            onClick={() => setFilter(f.value)}
-            className={`text-xs font-semibold px-3 py-1.5 rounded-full border transition-colors ${
-              filter === f.value
-                ? "bg-blue-600 border-blue-600 text-white"
-                : "border-[var(--border)] text-[var(--text-dim)] hover:bg-[var(--panel-2)]"
-            }`}
-          >
-            {f.label}
-          </button>
-        ))}
+      {/* Filters */}
+      <div className="flex items-center gap-3 flex-wrap">
+        <div className="flex items-center gap-2">
+          {FILTERS.map((f) => (
+            <button
+              key={f.value}
+              onClick={() => setFilter(f.value)}
+              className={`text-xs font-semibold px-3 py-1.5 rounded-full border transition-colors ${
+                filter === f.value
+                  ? "bg-blue-600 border-blue-600 text-white"
+                  : "border-[var(--border)] text-[var(--text-dim)] hover:bg-[var(--panel-2)]"
+              }`}
+            >
+              {f.label}
+            </button>
+          ))}
+        </div>
+
+        <input
+          type="search"
+          value={emailInput}
+          onChange={(e) => setEmailInput(e.target.value)}
+          placeholder="Buscar por e-mail..."
+          aria-label="Buscar por e-mail"
+          className="text-sm rounded-lg border border-[var(--border)] bg-[var(--panel)] text-[var(--text)] px-3 py-1.5 focus:outline-none focus:ring-2 focus:ring-blue-500 min-w-[220px]"
+        />
+
+        <select
+          value={role}
+          onChange={(e) => setRole(e.target.value)}
+          aria-label="Filtrar por papel"
+          className="text-sm rounded-lg border border-[var(--border)] bg-[var(--panel)] text-[var(--text)] px-3 py-1.5 focus:outline-none focus:ring-2 focus:ring-blue-500"
+        >
+          {ROLE_OPTIONS.map((o) => (
+            <option key={o.value} value={o.value}>
+              {o.label}
+            </option>
+          ))}
+        </select>
       </div>
 
       {/* Table */}
@@ -171,6 +219,12 @@ export default function LoginAuditAdminPage() {
                     E-mail
                   </th>
                   <th className="text-left px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider">
+                    Usuário
+                  </th>
+                  <th className="text-left px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider">
+                    Papel
+                  </th>
+                  <th className="text-left px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider">
                     Resultado
                   </th>
                   <th className="text-left px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider">
@@ -189,6 +243,12 @@ export default function LoginAuditAdminPage() {
                     </td>
                     <td className="px-4 py-3 font-medium text-[var(--text)]">
                       {r.email_tentado}
+                    </td>
+                    <td className="px-4 py-3 text-[var(--text-dim)]">
+                      {r.nome || "—"}
+                    </td>
+                    <td className="px-4 py-3 text-[var(--text-dim)] text-xs">
+                      {r.papel ? ROLE_LABELS[r.papel] || r.papel : "—"}
                     </td>
                     <td className="px-4 py-3">
                       {r.sucesso ? (

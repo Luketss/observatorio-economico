@@ -12,7 +12,7 @@ from app.schemas.login_audit import (
     LoginAuditOut,
 )
 from fastapi import APIRouter, Depends
-from sqlalchemy import func, or_, select
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 router = APIRouter(prefix="/admin/login-audit", tags=["Admin - Login Audit"])
@@ -32,30 +32,27 @@ def listar_login_audit(
     skip: int = 0,
     limit: int = 20,
     sucesso: bool | None = None,
+    email: str | None = None,
+    role: str | None = None,
     db: Session = Depends(get_db),
     current_user: Usuario = Depends(require_role("ADMIN_GLOBAL")),
 ):
-    admins = _admin_global_users(db)
-    admin_ids = [u.id for u in admins]
-    admin_emails = [u.email for u in admins]
-
-    # Scope to ADMIN_GLOBAL activity: either the attempt resolved to an
-    # ADMIN_GLOBAL account, or the submitted email belongs to one (failed
-    # attempts against an admin account, even with a wrong password).
-    scope_conditions = []
-    if admin_ids:
-        scope_conditions.append(LoginAudit.usuario_id.in_(admin_ids))
-    if admin_emails:
-        scope_conditions.append(LoginAudit.email_tentado.in_(admin_emails))
-
-    if not scope_conditions:
-        # No ADMIN_GLOBAL accounts exist — nothing to show.
-        return PaginatedResponse(items=[], total=0, skip=skip, limit=limit)
-
-    query = db.query(LoginAudit).filter(or_(*scope_conditions))
+    # Login activity for ALL accounts (the page itself is ADMIN_GLOBAL-only).
+    # LEFT join the account so each row carries the user's name + role;
+    # usuario_id is null for attempts on unknown emails.
+    query = (
+        db.query(LoginAudit, Usuario.nome, Role.nome)
+        .outerjoin(Usuario, LoginAudit.usuario_id == Usuario.id)
+        .outerjoin(Role, Usuario.role_id == Role.id)
+    )
 
     if sucesso is not None:
         query = query.filter(LoginAudit.sucesso == sucesso)
+    if email:
+        query = query.filter(LoginAudit.email_tentado.ilike(f"%{email}%"))
+    if role:
+        # Filtering by role naturally excludes unknown-email rows (no account).
+        query = query.filter(Role.nome == role)
 
     total = query.count()
     rows = (
@@ -65,7 +62,21 @@ def listar_login_audit(
         .all()
     )
 
-    items = [LoginAuditOut.model_validate(r) for r in rows]
+    items = [
+        LoginAuditOut(
+            id=la.id,
+            usuario_id=la.usuario_id,
+            email_tentado=la.email_tentado,
+            sucesso=la.sucesso,
+            motivo=la.motivo,
+            ip=la.ip,
+            user_agent=la.user_agent,
+            criado_em=la.criado_em,
+            nome=nome,
+            papel=papel,
+        )
+        for la, nome, papel in rows
+    ]
 
     return PaginatedResponse(items=items, total=total, skip=skip, limit=limit)
 
