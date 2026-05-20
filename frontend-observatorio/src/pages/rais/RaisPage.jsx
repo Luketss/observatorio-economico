@@ -10,6 +10,7 @@ import {
   AreaLineChart, StackedBarChart, TwinBarChart, DonutChart, HBarChart,
   fmtNumber, fmtNumberShort, fmtMoneyFull,
 } from "../../components/nid/charts";
+import InfoTooltip from "../../components/InfoTooltip";
 
 const A1 = "var(--accent-1)";
 const A2 = "var(--accent-2)";
@@ -270,7 +271,7 @@ export default function RaisPage() {
       transition={{ duration: 0.3 }}
     >
       <NidPageHeader
-        title="RAIS — Vínculos Empregatícios Formais"
+        title={<>RAIS — Vínculos Empregatícios Formais <InfoTooltip dataset="rais" /></>}
         sub="Estoque anual de empregos com carteira · Ministério do Trabalho"
         badge={anoAtivo ? `Foco · ${anoAtivo}` : null}
       />

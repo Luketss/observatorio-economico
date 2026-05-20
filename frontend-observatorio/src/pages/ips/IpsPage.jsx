@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import api from "../../services/api";
 import { useAuth } from "../../context/AuthContext";
 import { HBarChart, MultiLineChart } from "../../components/nid/charts";
+import InfoTooltip from "../../components/InfoTooltip";
 
 function fmt(v) {
   if (v == null) return "—";
@@ -194,8 +195,9 @@ export default function IpsPage() {
     <div className="max-w-6xl mx-auto space-y-8 pb-12">
       {/* Header */}
       <div>
-        <h1 className="text-2xl font-bold text-[var(--text)]">
+        <h1 className="text-2xl font-bold text-[var(--text)] flex items-center gap-1">
           Índice de Progresso Social
+          <InfoTooltip dataset="ips" />
         </h1>
         <p className="text-sm text-[var(--text-dim)] mt-1">
           Avaliação multidimensional da qualidade de vida — escala de 0 a 100

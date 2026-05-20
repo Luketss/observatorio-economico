@@ -55,6 +55,7 @@ def get_me(
             nome=current_user.nome,
             email=current_user.email,
             municipio_id=current_user.municipio_id,
+            estado=current_user.municipio.estado if current_user.municipio else None,
             role=current_user.role.nome,
             ativo=current_user.ativo,
         )

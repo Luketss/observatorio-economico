@@ -21,6 +21,7 @@ import CustomCardsAdminPage from "../../pages/admin/CustomCardsAdminPage";
 import PlanoConfigAdminPage from "../../pages/admin/PlanoConfigAdminPage";
 import ExplorerPage from "../../pages/admin/ExplorerPage";
 import DatasetsAdminPage from "../../pages/admin/DatasetsAdminPage";
+import DatasetFontesAdminPage from "../../pages/admin/DatasetFontesAdminPage";
 import BolsaFamiliaPage from "../../pages/beneficios/BolsaFamiliaPage";
 import PeDeMeiaPage from "../../pages/beneficios/PeDeMeiaPage";
 import InssPage from "../../pages/inss/InssPage";
@@ -157,6 +158,10 @@ export default function AppRouter() {
           <Route
             path="datasets"
             element={<AdminRoute><DatasetsAdminPage /></AdminRoute>}
+          />
+          <Route
+            path="fontes"
+            element={<AdminRoute><DatasetFontesAdminPage /></AdminRoute>}
           />
           <Route
             path="notificacoes"

@@ -11,6 +11,7 @@ import {
   fmtNumber, fmtNumberShort,
 } from "../../components/nid/charts";
 import ChartState from "../../components/nid/ChartState.jsx";
+import InfoTooltip from "../../components/InfoTooltip";
 
 const A1 = "var(--accent-1)";
 const A2 = "var(--accent-2)";
@@ -296,7 +297,7 @@ export default function CagedPage() {
       transition={{ duration: 0.3 }}
     >
       <NidPageHeader
-        title="CAGED — Movimentações de Emprego Formal"
+        title={<>CAGED — Movimentações de Emprego Formal <InfoTooltip dataset="caged" /></>}
         sub="Admissões e desligamentos mensais · Ministério do Trabalho"
         badge={anoAtivo ? `Foco · ${anoAtivo}` : null}
       />
