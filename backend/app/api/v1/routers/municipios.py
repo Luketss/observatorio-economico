@@ -20,7 +20,7 @@ from app.services.municipio_management import (
     delete_dataset_for_municipio,
     delete_municipio_cascade,
 )
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.orm import Session
 
 router = APIRouter(prefix="/municipios", tags=["Municípios"])
@@ -33,10 +33,14 @@ router = APIRouter(prefix="/municipios", tags=["Municípios"])
 def listar_municipios(
     db: Session = Depends(get_db),
     current_user=Depends(get_current_user),
+    include_demo: bool = Query(True, description="Incluir municípios demo (padrão True; passe False para listas voltadas a comparativos)"),
 ):
     # ADMIN_GLOBAL vê todos
     if current_user.role.nome == "ADMIN_GLOBAL":
-        municipios = db.query(Municipio).all()
+        query = db.query(Municipio)
+        if not include_demo:
+            query = query.filter(Municipio.is_demo.is_(False))
+        municipios = query.all()
     else:
         municipios = (
             db.query(Municipio).filter(Municipio.id == current_user.municipio_id).all()

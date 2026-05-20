@@ -56,7 +56,7 @@ export default function BenchmarkPage() {
 
   // Fetch unique state list from /municipios on mount
   useEffect(() => {
-    api.get("/municipios").then((res) => {
+    api.get("/municipios", { params: { include_demo: false } }).then((res) => {
       const ufs = [...new Set((res.data || []).map((m) => m.estado).filter(Boolean))].sort();
       setEstados(ufs);
     }).catch(() => {});
