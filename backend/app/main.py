@@ -11,6 +11,7 @@ import app.api.v1.routers.dataset_info as dataset_info
 import app.api.v1.routers.admin_explorer as admin_explorer
 import app.api.v1.routers.indicadores as indicadores
 import app.api.v1.routers.notificacoes as notificacoes
+import app.api.v1.routers.login_audit as login_audit
 import app.api.v1.routers.auth as auth
 import app.api.v1.routers.bolsa_familia as bolsa_familia
 import app.api.v1.routers.caged as caged
@@ -29,15 +30,30 @@ from app.api.error_handlers import register_exception_handlers
 from app.api.middleware import AuditMiddleware
 from app.core.config import settings
 from app.core.logging import setup_logging
+from app.core.rate_limit import limiter
 from app.db.base import Base
 from app.db.session import engine
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from slowapi import _rate_limit_exceeded_handler
+from slowapi.errors import RateLimitExceeded
 
 # Setup logging
 setup_logging()
 
-app = FastAPI(title="Observatório Econômico API", version="1.0.0")
+# In production, hide the interactive docs and the OpenAPI schema so the
+# full API surface (routes, table names) isn't publicly enumerable.
+_docs_kwargs = (
+    {"docs_url": None, "redoc_url": None, "openapi_url": None}
+    if settings.ENVIRONMENT == "production"
+    else {}
+)
+
+app = FastAPI(title="Observatório Econômico API", version="1.0.0", **_docs_kwargs)
+
+# Rate limiting (slowapi) — see app/core/rate_limit.py
+app.state.limiter = limiter
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
 # Register global exception handlers
 register_exception_handlers(app)
@@ -84,6 +100,7 @@ app.include_router(dataset_info.router, prefix=API_PREFIX)
 app.include_router(admin_explorer.router, prefix=API_PREFIX)
 app.include_router(indicadores.router, prefix=API_PREFIX)
 app.include_router(notificacoes.router, prefix=API_PREFIX)
+app.include_router(login_audit.router, prefix=API_PREFIX)
 app.include_router(projetos.router, prefix=API_PREFIX)
 app.include_router(dados_internos.router, prefix=API_PREFIX)
 app.include_router(desenvolvimento_economico.router, prefix=API_PREFIX)

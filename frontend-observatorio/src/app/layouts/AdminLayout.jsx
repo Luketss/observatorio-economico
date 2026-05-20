@@ -21,6 +21,7 @@ import {
   BellIcon,
   SwatchIcon,
   TrashIcon,
+  FingerPrintIcon,
 } from "@heroicons/react/24/outline";
 
 // ── Route → display name map ──────────────────────────────────────────────────
@@ -31,6 +32,7 @@ const ROUTE_LABELS = {
   "/admin/cards":         "Cards Customizados",
   "/admin/planos":        "Planos & Acesso",
   "/admin/usuarios":      "Usuários",
+  "/admin/login-audit":   "Logins / Auditoria",
   "/admin/explorer":      "Explorador de Dados",
   "/admin/datasets":      "Datasets",
   "/admin/notificacoes":  "Notificações",
@@ -120,6 +122,7 @@ const GESTAO_ITEMS = [
   { to: "/admin/cards",          label: "Cards Customizados",icon: Squares2X2Icon },
   { to: "/admin/planos",         label: "Planos & Acesso",   icon: ShieldCheckIcon },
   { to: "/admin/usuarios",       label: "Usuários",          icon: UsersIcon },
+  { to: "/admin/login-audit",    label: "Logins / Auditoria",icon: FingerPrintIcon },
 ];
 
 const DADOS_ITEMS = [

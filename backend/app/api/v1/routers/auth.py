@@ -1,8 +1,9 @@
 from app.api.deps import get_current_user, get_db
 from app.api.response import SuccessResponse
+from app.core.rate_limit import limiter
 from app.schemas.auth import AuthenticatedUser
 from app.services.auth_service import AuthService
-from fastapi import APIRouter, Body, Depends
+from fastapi import APIRouter, Body, Depends, Request
 from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy.orm import Session
 
@@ -10,15 +11,28 @@ router = APIRouter(prefix="/auth", tags=["Auth"])
 
 
 @router.post("/login")
+@limiter.limit("5/minute")
+@limiter.limit("20/hour")
 def login(
+    request: Request,
     form_data: OAuth2PasswordRequestForm = Depends(),
     db: Session = Depends(get_db),
 ):
     service = AuthService(db)
 
+    # Prefer the client IP forwarded by a reverse proxy, falling back to the
+    # direct socket peer.
+    fwd = request.headers.get("x-forwarded-for")
+    ip = fwd.split(",")[0].strip() if fwd else (
+        request.client.host if request.client else None
+    )
+    user_agent = request.headers.get("user-agent")
+
     return service.authenticate(
         email=form_data.username,
         password=form_data.password,
+        ip=ip,
+        user_agent=user_agent,
     )
 
 

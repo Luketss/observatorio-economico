@@ -1,5 +1,5 @@
 from app.db.base import Base
-from sqlalchemy import Boolean, ForeignKey, Integer, String
+from sqlalchemy import Boolean, DateTime, ForeignKey, Integer, String
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 
@@ -26,6 +26,10 @@ class Usuario(Base):
     )
 
     ativo: Mapped[bool] = mapped_column(Boolean, default=True)
+
+    last_login: Mapped[object | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
 
     municipio = relationship("Municipio", back_populates="usuarios")
     role = relationship("Role", back_populates="usuarios")
