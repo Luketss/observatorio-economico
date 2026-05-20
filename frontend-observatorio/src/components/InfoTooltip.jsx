@@ -43,15 +43,17 @@ export default function InfoTooltip({ dataset }) {
     }
   };
 
-  // Don't render anything if no text and not admin
-  if (!isGlobal && (!info?.conteudo)) return null;
+  const hasContent = info?.conteudo || info?.fonte || info?.data_atualizacao;
+
+  // Don't render anything if no info and not admin
+  if (!isGlobal && !hasContent) return null;
 
   return (
     <div className="relative inline-block" ref={ref}>
       <button
         onClick={() => { setOpen((v) => !v); setEditing(false); }}
         className={`p-1 rounded-lg transition-colors ${
-          info?.conteudo
+          hasContent
             ? "text-blue-500 hover:bg-[var(--panel-2)]"
             : "text-[var(--text-mute)] hover:text-[var(--text-dim)] hover:bg-[var(--panel-2)]"
         }`}
@@ -125,6 +127,20 @@ export default function InfoTooltip({ dataset }) {
                 <p className="text-sm text-[var(--text-mute)] italic">
                   Nenhuma informação configurada. Clique no lápis para adicionar.
                 </p>
+              )}
+              {(info?.fonte || info?.data_atualizacao) && (
+                <div className="mt-3 pt-3 border-t border-[var(--border)] space-y-1">
+                  {info?.fonte && (
+                    <p className="text-xs text-[var(--text-dim)]">
+                      <span className="font-semibold">Fonte:</span> {info.fonte}
+                    </p>
+                  )}
+                  {info?.data_atualizacao && (
+                    <p className="text-xs text-[var(--text-dim)]">
+                      <span className="font-semibold">Atualizado em:</span> {info.data_atualizacao}
+                    </p>
+                  )}
+                </div>
               )}
             </div>
           )}

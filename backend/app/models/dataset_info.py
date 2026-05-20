@@ -10,6 +10,8 @@ class DatasetInfo(Base):
     dataset: Mapped[str] = mapped_column(String(50), nullable=False, unique=True)
     titulo: Mapped[str] = mapped_column(String(150), nullable=False, default="")
     conteudo: Mapped[str] = mapped_column(Text, nullable=False, default="")
+    fonte: Mapped[str | None] = mapped_column(String(200), nullable=True)
+    data_atualizacao: Mapped[str | None] = mapped_column(String(60), nullable=True)
     atualizado_em: Mapped[DateTime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
     )

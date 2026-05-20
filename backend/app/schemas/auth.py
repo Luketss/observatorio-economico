@@ -6,6 +6,7 @@ class AuthenticatedUser(BaseModel):
     nome: str
     email: str
     municipio_id: int | None
+    estado: str | None = None
     role: str
     ativo: bool
 
