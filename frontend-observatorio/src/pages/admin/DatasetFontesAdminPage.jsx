@@ -16,7 +16,7 @@ export default function DatasetFontesAdminPage() {
   const [savingKey, setSavingKey] = useState(null);
 
   useEffect(() => {
-    Promise.all([api.get("/datasets"), api.get("/dataset-info/all")])
+    Promise.all([api.get("/municipios/datasets"), api.get("/dataset-info/all")])
       .then(([catalogRes, infoRes]) => {
         const infoByKey = Object.fromEntries(
           (infoRes.data || []).map((i) => [i.dataset, i])
