@@ -119,6 +119,14 @@ def _to_response(insight) -> InsightResponse:
             except json.JSONDecodeError:
                 pass
 
+    # Defense in depth: InsightResponse.bullets is list[str]. A row whose conteudo
+    # holds a non-string format (e.g. the "prioridades" dataset, a list of dicts)
+    # must not 500 the whole listing endpoint — keep only string items.
+    if isinstance(bullets, list):
+        bullets = [b for b in bullets if isinstance(b, str)]
+    else:
+        bullets = [str(bullets)]
+
     return InsightResponse(
         id=insight.id,
         municipio_id=insight.municipio_id,
@@ -225,6 +233,7 @@ def listar_insights_admin(
         .filter(
             InsightModel.municipio_id == municipio_id,
             ~InsightModel.dataset.like("release_%"),
+            InsightModel.dataset != "prioridades",
         )
         .order_by(InsightModel.dataset, InsightModel.gerado_em.desc())
         .all()
