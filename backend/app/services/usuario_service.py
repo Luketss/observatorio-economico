@@ -20,7 +20,7 @@ class UsuarioService:
     def create(self, data: UsuarioCreate) -> Usuario:
         existing = self.repository.get_by_email(data.email)
         if existing:
-            raise ConflictException("Email already registered")
+            raise ConflictException("E-mail já cadastrado.")
 
         hashed_password = hash_password(data.senha)
 
@@ -62,7 +62,7 @@ class UsuarioService:
             if new_email != usuario.email:
                 existing = self.repository.get_by_email(new_email)
                 if existing:
-                    raise ConflictException("Email already in use")
+                    raise ConflictException("E-mail já está em uso.")
             updates["email"] = new_email
 
         if "senha" in payload and payload["senha"]:
@@ -78,7 +78,7 @@ class UsuarioService:
 
     def delete(self, usuario_id: int, requesting_user_id: int) -> None:
         if usuario_id == requesting_user_id:
-            raise ConflictException("Cannot delete your own account")
+            raise ConflictException("Você não pode excluir a própria conta.")
         usuario = self.get_by_id(usuario_id)
         self.repository.delete(usuario)
 

@@ -39,6 +39,16 @@ api.interceptors.response.use(
       localStorage.removeItem("access_token");
       window.location.href = "/login";
     }
+
+    // Normalize error shapes so callers can always read `data.detail`.
+    // Domain errors (AppException) come as { success:false, error:{ code, message } };
+    // FastAPI-native errors come as { detail }. Surface the domain message under
+    // `detail` when it's the only thing present.
+    const data = error.response?.data;
+    if (data && data.detail == null && data.error?.message) {
+      data.detail = data.error.message;
+    }
+
     return Promise.reject(error);
   }
 );
