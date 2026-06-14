@@ -50,6 +50,7 @@ from app.models.municipio import Municipio
 from app.models.pe_de_meia import PeDeMeiaEtapa, PeDeMeiaResumo
 from app.models.pib import PibAnual
 from app.models.pix import PixMensal
+from app.models.vaf import VafAnual
 from app.models.projeto import Projeto
 from app.models.rais import (
     RaisMetricasAnuais,
@@ -75,7 +76,7 @@ logger = logging.getLogger(__name__)
 
 # Time-series / domain data — full copy is the value of the demo município.
 DATASET_MODELS = [
-    ArrecadacaoMensal, PibAnual, BolsaFamiliaResumo, PeDeMeiaResumo, PeDeMeiaEtapa,
+    ArrecadacaoMensal, PibAnual, VafAnual, BolsaFamiliaResumo, PeDeMeiaResumo, PeDeMeiaEtapa,
     InssAnual, EstbanMensal, EstbanPorInstituicao,
     ComexMensal, ComexPorProduto, ComexPorPais,
     Empresa, PixMensal, IpsMunicipio,
@@ -114,6 +115,7 @@ ALL_MODELS = DATASET_MODELS + OPERATIONAL_MODELS
 DATASET_REGISTRY: Dict[str, list] = {
     "arrecadacao":   [ArrecadacaoMensal],
     "pib":           [PibAnual],
+    "vaf":           [VafAnual],
     "bolsa_familia": [BolsaFamiliaResumo],
     "pe_de_meia":    [PeDeMeiaResumo, PeDeMeiaEtapa],
     "inss":          [InssAnual],
@@ -140,6 +142,7 @@ DATASET_REGISTRY: Dict[str, list] = {
 DATASET_LABELS: Dict[str, str] = {
     "arrecadacao":   "Arrecadação Municipal (ICMS, IPVA, IPI)",
     "pib":           "PIB Municipal",
+    "vaf":           "VAF — Valor Adicionado Fiscal (IPM)",
     "caged":         "CAGED — Movimentação de Empregos Formais",
     "rais":          "RAIS — Vínculos Empregatícios",
     "bolsa_familia": "Bolsa Família — Beneficiários e Valores",

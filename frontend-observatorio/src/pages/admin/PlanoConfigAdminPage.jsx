@@ -6,6 +6,7 @@ const MODULOS = [
   { key: "geral", label: "Dashboard Geral" },
   { key: "arrecadacao", label: "Arrecadação Municipal" },
   { key: "pib", label: "PIB Municipal" },
+  { key: "vaf", label: "VAF — Valor Adicionado Fiscal (IPM)" },
   { key: "caged", label: "CAGED — Empregos Formais" },
   { key: "rais", label: "RAIS — Vínculos Empregatícios" },
   { key: "bolsa_familia", label: "Bolsa Família" },

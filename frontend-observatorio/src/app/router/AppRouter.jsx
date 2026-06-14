@@ -7,6 +7,7 @@ import LoginPage from "../../pages/login/LoginPage";
 import DashboardGeralPage from "../../pages/DashboardGeralPage";
 import ArrecadacaoPage from "../../pages/arrecadacao/ArrecadacaoPage";
 import PibPage from "../../pages/pib/PibPage";
+import VafPage from "../../pages/vaf/VafPage";
 import CagedPage from "../../pages/caged/CagedPage";
 import RaisPage from "../../pages/rais/RaisPage";
 import BenchmarkPage from "../../pages/comparativo/ComparativoPage";
@@ -86,6 +87,7 @@ export default function AppRouter() {
           <Route index element={<DashboardGeralPage />} />
           <Route path="arrecadacao" element={<ArrecadacaoPage />} />
           <Route path="pib" element={<PibPage />} />
+          <Route path="vaf" element={<VafPage />} />
           <Route path="caged" element={<CagedPage />} />
           <Route path="rais" element={<RaisPage />} />
           <Route path="benchmark" element={<BenchmarkPage />} />
