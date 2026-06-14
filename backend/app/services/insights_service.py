@@ -76,6 +76,7 @@ def _call_claude(prompt: str, max_tokens: int) -> str:
 DATASET_LABELS = {
     "arrecadacao": "Arrecadação Municipal (ICMS, IPVA, IPI)",
     "pib": "PIB Municipal",
+    "vaf": "VAF — Valor Adicionado Fiscal (IPM)",
     "caged": "CAGED — Movimentação de Empregos Formais",
     "rais": "RAIS — Vínculos Empregatícios",
     "bolsa_familia": "Bolsa Família — Beneficiários e Valores",

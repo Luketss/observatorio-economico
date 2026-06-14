@@ -22,6 +22,7 @@ import ingestao.carregar_pe_de_meia as pe_de_meia
 import ingestao.carregar_pib as pib
 import ingestao.carregar_pix as pix
 import ingestao.carregar_rais as rais
+import ingestao.carregar_vaf as vaf
 from ingestao.utils import obter_ou_criar_municipio
 
 
@@ -34,6 +35,7 @@ def build_loader_list() -> list[tuple[str, object]]:
     return [
         ("Arrecadação", arrecadacao),
         ("PIB", pib),
+        ("VAF", vaf),
         ("CAGED", caged),
         ("RAIS", rais),
         ("Bolsa Família", bolsa_familia),

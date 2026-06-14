@@ -27,6 +27,7 @@ from app.models.municipio import Municipio
 from app.models.pe_de_meia import PeDeMeiaResumo
 from app.models.pib import PibAnual
 from app.models.pix import PixMensal
+from app.models.vaf import VafAnual
 from app.models.rais import (
     RaisVinculo, RaisPorSexo, RaisPorRaca, RaisPorCnae,
     RaisPorFaixaEtaria, RaisPorEscolaridade, RaisPorFaixaRemuneracao,
@@ -54,6 +55,7 @@ __all__ = [
     "CagedSalario",
     "CagedPorCnae",
     "PibAnual",
+    "VafAnual",
     "RaisVinculo",
     "RaisPorSexo",
     "RaisPorRaca",

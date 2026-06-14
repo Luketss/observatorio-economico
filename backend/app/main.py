@@ -25,6 +25,7 @@ import app.api.v1.routers.pe_de_meia as pe_de_meia
 import app.api.v1.routers.pib as pib
 import app.api.v1.routers.pix as pix
 import app.api.v1.routers.rais as rais
+import app.api.v1.routers.vaf as vaf
 import app.api.v1.routers.usuarios as usuarios
 from app.api.error_handlers import register_exception_handlers
 from app.api.middleware import AuditMiddleware
@@ -82,6 +83,7 @@ app.include_router(usuarios.router, prefix=API_PREFIX)
 app.include_router(municipios.router, prefix=API_PREFIX)
 app.include_router(arrecadacao.router, prefix=API_PREFIX)
 app.include_router(pib.router, prefix=API_PREFIX)
+app.include_router(vaf.router, prefix=API_PREFIX)
 app.include_router(caged.router, prefix=API_PREFIX)
 app.include_router(rais.router, prefix=API_PREFIX)
 app.include_router(pix.router, prefix=API_PREFIX)
