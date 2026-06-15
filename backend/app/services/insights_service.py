@@ -523,13 +523,13 @@ def gerar_release(db: Session, municipio_id: int, dataset: str) -> InsightIA:
 
     dados, periodo = _fetch_dados(db, municipio_id, dataset)
 
-    if not dados:
-        raise HTTPException(
-            status_code=404, detail="Sem dados suficientes para gerar o release."
-        )
-
     release_dataset = f"release_{dataset}"
     dataset_label = DATASET_LABELS.get(dataset, dataset)
+
+    if not dados:
+        return _insight_sem_dados(
+            municipio_id, release_dataset, dataset_label, municipio.nome
+        )
     dados_json = json.dumps(dados, ensure_ascii=False, default=str)
 
     prompt = f"""Atue como um assessor de imprensa especializado em comunicação institucional pública no Brasil.
@@ -1007,6 +1007,37 @@ def _build_prompt(dataset: str, municipio: Municipio, dataset_label: str, dados_
     )
 
 
+def _insight_sem_dados(
+    municipio_id: int,
+    dataset: str,
+    label: str,
+    nome_municipio: str,
+    periodo: str = "sem-dados",
+) -> InsightIA:
+    """Build a transient (NOT persisted) InsightIA carrying a friendly
+    "no data yet" message, so generation degrades gracefully instead of 404ing
+    when a município has no rows for the requested dataset.
+
+    Never added to the session → no flush, no DB row. `gerado_em`/`ativo` are set
+    explicitly because their column defaults only apply on flush, and the
+    InsightResponse schema requires non-null id/gerado_em."""
+    msg = (
+        f"Ainda não há dados de {label} para {nome_municipio}. "
+        f"Carregue os dados deste indicador para gerar análises de IA."
+    )
+    return InsightIA(
+        id=0,
+        municipio_id=municipio_id,
+        dataset=dataset,
+        periodo=periodo,
+        conteudo=json.dumps([msg], ensure_ascii=False),
+        modelo="n/a",
+        ativo=True,
+        gerado_em=datetime.now(timezone.utc),
+        oculto_planos=None,
+    )
+
+
 def gerar_insight(db: Session, municipio_id: int, dataset: str) -> InsightIA:
     if not settings.ANTHROPIC_API_KEY:
         raise HTTPException(
@@ -1020,8 +1051,8 @@ def gerar_insight(db: Session, municipio_id: int, dataset: str) -> InsightIA:
     dados, periodo = _fetch_dados(db, municipio_id, dataset)
 
     if not dados:
-        raise HTTPException(
-            status_code=404, detail="Sem dados suficientes para gerar insights."
+        return _insight_sem_dados(
+            municipio_id, dataset, DATASET_LABELS.get(dataset, dataset), municipio.nome
         )
 
     dataset_label = DATASET_LABELS.get(dataset, dataset)
@@ -1134,8 +1165,30 @@ def gerar_prioridades(db: Session, municipio_id: int) -> InsightIA:
         dados_consolidados[dataset_key] = dados
 
     if not dados_consolidados:
-        raise HTTPException(
-            status_code=400, detail="Sem dados suficientes para gerar prioridades."
+        # Sem nenhum dataset com dados: degrada graciosamente (200) em vez de 400.
+        # Transitório, no formato de prioridades lido por _to_prioridades_response.
+        return InsightIA(
+            id=0,
+            municipio_id=municipio_id,
+            dataset="prioridades",
+            periodo=datetime.now(timezone.utc).strftime("%Y-%m"),
+            conteudo=json.dumps(
+                [
+                    {
+                        "titulo": "Sem dados",
+                        "observacao": (
+                            f"Ainda não há dados carregados para {municipio.nome}. "
+                            f"Carregue os datasets do município para gerar prioridades de IA."
+                        ),
+                        "dataset_referencia": None,
+                    }
+                ],
+                ensure_ascii=False,
+            ),
+            modelo="n/a",
+            ativo=True,
+            gerado_em=datetime.now(timezone.utc),
+            oculto_planos=None,
         )
 
     prompt = (
