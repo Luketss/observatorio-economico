@@ -50,9 +50,21 @@
   - Frontend `/app/ips`: seletor estado→cidade, scorecard, radar chart, drill-down, evolução, comparativo com pares similares
 - **Refactor de ingestão**: estrutura por município (`dados/{city}/`) com scripts padronizados; `--ibge` para código IBGE na ingestão
 
+### v1.6 — CAGED Expandido
+- **3 novos breakdowns CAGED**: escolaridade, faixa etária e tipo de movimentação
+  - Tabelas: `caged_por_escolaridade`, `caged_por_faixa_etaria`, `caged_por_tipo_movimentacao`
+  - 3 novos endpoints: `/caged/por_escolaridade`, `/caged/por_faixa_etaria`, `/caged/por_tipo_movimentacao`
+  - 3 novos gráficos na página CAGED: educação, idade e motivo de entrada/saída
+- **Correções de bugs no frontend CAGED**:
+  - Filtro de mês/ano corrigido (era comparado isoladamente, agora usa `ano*100+mes`)
+  - Null guards em todas as agregações (`?? 0`)
+  - Skeletons de carregamento em todos os gráficos
+  - Banner de erro visível quando API falha (antes silenciava no console)
+  - Chave `item["admissões"]` (com acento) corrigida para `item.admissoes`
+
 ---
 
-## Próximo (v1.6)
+## Próximo (v1.7)
 
 - **Exportação de dados**: CSV download por página/dataset
 - **Busca textual**: filtro por nome em listagens admin
