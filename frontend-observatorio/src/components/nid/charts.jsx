@@ -1447,7 +1447,7 @@ export function TwinBarChart({
 
 // ────────── DonutChartCore (inner implementation) ──────────
 function DonutChartCore({
-  data, colors, height = 220, glow = "hover", centerLabel, centerSub,
+  data, colors, height = 220, glow = "hover", centerLabel, centerSub, legend = false,
 }) {
   const id = useId().replace(/:/g, "");
   const [hoverSlice, setHoverSlice] = useState(null);
@@ -1478,7 +1478,14 @@ function DonutChartCore({
     return { ...d, path, color: colors[i % colors.length], pct: d.value / total };
   });
   return (
-    <div className="nid-chart-wrap" style={{ display: "grid", placeItems: "center" }}>
+    <div
+      className="nid-chart-wrap"
+      style={
+        legend
+          ? { display: "flex", flexDirection: "column", alignItems: "center", gap: 18 }
+          : { display: "grid", placeItems: "center" }
+      }
+    >
       <svg viewBox={`0 0 ${size} ${size}`} style={{ maxWidth: size, width: size }}
         onMouseLeave={() => setHoverSlice(null)}>
         <defs>
@@ -1504,6 +1511,36 @@ function DonutChartCore({
           </text>
         )}
       </svg>
+
+      {legend && (
+        <ul
+          style={{ listStyle: "none", margin: 0, padding: 0, width: "100%", display: "flex", flexDirection: "column", gap: 10 }}
+          onMouseLeave={() => setHoverSlice(null)}
+        >
+          {slices.map((s, i) => (
+            <li
+              key={i}
+              onMouseEnter={() => setHoverSlice(i)}
+              style={{
+                display: "flex", alignItems: "center", gap: 10, fontSize: 13,
+                opacity: hoverSlice != null && hoverSlice !== i ? 0.5 : 1,
+                transition: "opacity 120ms ease",
+              }}
+            >
+              <span style={{ width: 11, height: 11, borderRadius: 3, background: s.color, flexShrink: 0 }} />
+              <span style={{ flex: 1, color: "var(--text)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                {s.label}
+              </span>
+              <span style={{ color: "var(--text-dim)", fontVariantNumeric: "tabular-nums" }}>
+                {fmtNumber(s.value)}
+              </span>
+              <span style={{ color: "var(--text-mute)", fontVariantNumeric: "tabular-nums", minWidth: 52, textAlign: "right" }}>
+                {(s.pct * 100).toFixed(1)}%
+              </span>
+            </li>
+          ))}
+        </ul>
+      )}
     </div>
   );
 }
@@ -1589,7 +1626,7 @@ function PercentBarChart({ data, baseColor, centerLabel, centerSub }) {
 // ────────── DonutChart (public — auto-falls back to PercentBarChart) ──────────
 export function DonutChart({
   data, baseColor, prefer = "auto", threshold = 4,
-  colors, height, glow, centerLabel, centerSub,
+  colors, height, glow, centerLabel, centerSub, legend = false,
   loading,
   emptyMessage,
   emptyAction,
@@ -1630,6 +1667,7 @@ export function DonutChart({
         glow={glow}
         centerLabel={centerLabel}
         centerSub={centerSub}
+        legend={legend}
       />
     );
 }

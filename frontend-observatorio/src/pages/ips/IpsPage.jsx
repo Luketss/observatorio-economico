@@ -170,7 +170,7 @@ export default function IpsPage() {
   const radarData = useMemo(
     () =>
       COMPONENTS.map((c) => ({
-        subject: c.label.split(" ").slice(0, 2).join(" "),
+        subject: c.label,
         valor: scorecard?.[c.key] ?? 0,
         fullMark: 100,
       })),
