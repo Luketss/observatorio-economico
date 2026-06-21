@@ -344,6 +344,49 @@ tr:not(:last-child) {
 .nid-data-table-wrap {
   overflow-x: auto;
 }
+.nid-data-table-pager {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  padding: 12px 14px 2px;
+}
+.nid-data-table-pager .nid-pager-info {
+  font: 500 11px/1 var(--font-mono);
+  letter-spacing: 0.04em;
+  color: var(--text-mute);
+}
+.nid-data-table-pager .nid-pager-controls {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.nid-data-table-pager .nid-pager-page {
+  font: 600 11px/1 var(--font-mono);
+  letter-spacing: 0.06em;
+  color: var(--text-dim);
+  min-width: 56px;
+  text-align: center;
+}
+.nid-data-table-pager button {
+  padding: 6px 12px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: var(--panel-2);
+  color: var(--text);
+  font: 600 12px/1 var(--font-display);
+  cursor: pointer;
+  transition: background 120ms ease, border-color 120ms ease;
+}
+.nid-data-table-pager button:hover:not(:disabled) {
+  border-color: var(--border-strong);
+  background: var(--panel);
+}
+.nid-data-table-pager button:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
 .nid-data-table {
   width: 100%;
   border-collapse: collapse;

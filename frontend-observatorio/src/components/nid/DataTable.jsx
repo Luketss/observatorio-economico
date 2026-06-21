@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Sparkline } from "./charts";
 
 // ─────────────────────────────────────────────────────────
@@ -19,9 +19,15 @@ import { Sparkline } from "./charts";
 //   pink near min, transparent mid-range).
 //
 // ownIndex: optional row index that gets a "você" tag.
+//
+// pageSize: optional. When set (> 0), the table paginates with prev/next
+//   controls. Enrichment (delta/trend/heatmap) is computed over the FULL
+//   dataset first, so values stay correct across page boundaries — only the
+//   visible slice is rendered.
 // ─────────────────────────────────────────────────────────
 
-export default function DataTable({ columns, data, ownIndex }) {
+export default function DataTable({ columns, data, ownIndex, pageSize }) {
+  const [page, setPage] = useState(0);
   const enriched = useMemo(() => {
     if (!data || data.length === 0) return [];
 
@@ -78,7 +84,21 @@ export default function DataTable({ columns, data, ownIndex }) {
     });
   }, [data, columns]);
 
+  const paginate = pageSize > 0;
+  const pageCount = paginate ? Math.max(1, Math.ceil(enriched.length / pageSize)) : 1;
+
+  // Clamp the page if the dataset shrinks (e.g. a filter change).
+  useEffect(() => {
+    if (page > pageCount - 1) setPage(0);
+  }, [pageCount, page]);
+
   if (!data || data.length === 0) return null;
+
+  const safePage = Math.min(page, pageCount - 1);
+  const startIdx = paginate ? safePage * pageSize : 0;
+  const visible = paginate
+    ? enriched.slice(startIdx, startIdx + pageSize)
+    : enriched;
 
   return (
     <div className="nid-data-table-wrap">
@@ -96,21 +116,53 @@ export default function DataTable({ columns, data, ownIndex }) {
           </tr>
         </thead>
         <tbody>
-          {enriched.map((row, i) => (
-            <tr key={i} style={{ background: row.__heatBg }}>
-              {columns.map((c) => (
-                <td
-                  key={c.key}
-                  style={{ textAlign: c.align || "left" }}
-                  className={c.mono ? "mono" : ""}
-                >
-                  <Cell row={row} col={c} isOwn={i === ownIndex} />
-                </td>
-              ))}
-            </tr>
-          ))}
+          {visible.map((row, i) => {
+            const absIdx = startIdx + i;
+            return (
+              <tr key={absIdx} style={{ background: row.__heatBg }}>
+                {columns.map((c) => (
+                  <td
+                    key={c.key}
+                    style={{ textAlign: c.align || "left" }}
+                    className={c.mono ? "mono" : ""}
+                  >
+                    <Cell row={row} col={c} isOwn={absIdx === ownIndex} />
+                  </td>
+                ))}
+              </tr>
+            );
+          })}
         </tbody>
       </table>
+
+      {paginate && pageCount > 1 && (
+        <div className="nid-data-table-pager">
+          <span className="nid-pager-info">
+            {startIdx + 1}–{startIdx + visible.length} de {enriched.length}
+          </span>
+          <div className="nid-pager-controls">
+            <button
+              type="button"
+              onClick={() => setPage((p) => Math.max(0, p - 1))}
+              disabled={safePage === 0}
+              aria-label="Página anterior"
+            >
+              ← Anterior
+            </button>
+            <span className="nid-pager-page">
+              {safePage + 1} / {pageCount}
+            </span>
+            <button
+              type="button"
+              onClick={() => setPage((p) => Math.min(pageCount - 1, p + 1))}
+              disabled={safePage >= pageCount - 1}
+              aria-label="Próxima página"
+            >
+              Próxima →
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
