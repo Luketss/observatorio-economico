@@ -21,6 +21,7 @@ from app.models.municipio import Municipio
 from app.models.pe_de_meia import PeDeMeiaEtapa, PeDeMeiaResumo
 from app.models.pib import PibAnual
 from app.models.pix import PixMensal
+from app.models.vaf import VafAnual
 from app.models.rais import RaisPorCnae, RaisPorEscolaridade, RaisPorSexo, RaisVinculo
 from fastapi import HTTPException
 from sqlalchemy import func
@@ -154,6 +155,28 @@ def _fetch_dados(
             for r in rows
         ]
         periodo = str(rows[0].ano) if rows else "geral"
+
+    elif dataset == "vaf":
+        rows = (
+            db.query(VafAnual)
+            .filter(VafAnual.municipio_id == municipio_id)
+            .order_by(VafAnual.ano_base.desc())
+            .limit(10)
+            .all()
+        )
+        dados = [
+            {
+                "ano_base": r.ano_base,
+                "ano_aplicacao": r.ano_aplicacao,
+                "indice": r.indice,
+                "pct_indice": r.pct_indice,
+                "indice_medio": r.indice_medio,
+                "indice_participacao_municipal": r.indice_participacao_municipal,
+                "pct_ipm": r.pct_ipm,
+            }
+            for r in rows
+        ]
+        periodo = str(rows[0].ano_base) if rows else "geral"
 
     elif dataset == "caged":
         rows = (
@@ -975,9 +998,17 @@ Mais Pix pode significar mais uso do sistema, não necessariamente mais riqueza.
 ESTILO: português do Brasil, tom executivo e técnico, sem menção a IA ou automação.
 """
 
+_PROMPT_VAF = """Você é um analista estratégico sênior da Uaizi, especialista em finanças públicas municipais e no Índice de Participação dos Municípios (IPM), que rege o rateio do ICMS estadual.
+
+Analise a evolução do VAF (Valor Adicionado Fiscal) e do IPM de {nome} ({estado}): a tendência do índice de participação municipal, do índice anual e do índice médio (média móvel que entra no cálculo) e as variações ano a ano. Lembre que o ano-base reflete no repasse de ICMS dois anos depois (ano de aplicação).
+
+Destaque: ganhos ou perdas de participação relativa frente ao estado, anos de inflexão, e implicações concretas para a previsão de receita de ICMS do município.
+"""
+
 _DATASET_PROMPT_MAP = {
     "geral": _PROMPT_BASE,
     "pib": _PROMPT_PIB,
+    "vaf": _PROMPT_VAF,
     "arrecadacao": _PROMPT_ARRECADACAO,
     "caged": _PROMPT_CAGED,
     "rais": _PROMPT_RAIS,
