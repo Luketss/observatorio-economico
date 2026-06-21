@@ -21,6 +21,7 @@ from app.services.municipio_management import (
     delete_all_datasets_for_municipio,
     delete_dataset_for_municipio,
     delete_municipio_cascade,
+    record_ingestao_audit,
 )
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.orm import Session
@@ -163,6 +164,11 @@ def excluir_ingestao_municipio(
     """Apaga TODA a ingestão (todos os datasets) do município, preservando
     dados operacionais e a própria linha do município."""
     summary = delete_all_datasets_for_municipio(db, municipio_id)
+    record_ingestao_audit(
+        db, municipio_id=municipio_id, usuario_id=current_user.id, dataset=None,
+        acao="delete_ingestao", num_linhas=sum(summary.values()), status="ok",
+        detalhe=f"{len(summary)} tabela(s)",
+    )
     return IngestaoDeletedResult(municipio_id=municipio_id, summary=summary)
 
 
@@ -177,6 +183,10 @@ def excluir_dataset_municipio(
     current_user=Depends(require_role("ADMIN_GLOBAL")),
 ):
     summary = delete_dataset_for_municipio(db, municipio_id, dataset_key)
+    record_ingestao_audit(
+        db, municipio_id=municipio_id, usuario_id=current_user.id, dataset=dataset_key,
+        acao="delete_dataset", num_linhas=sum(summary.values()), status="ok",
+    )
     return DatasetDeletedResult(
         municipio_id=municipio_id,
         dataset_key=dataset_key,

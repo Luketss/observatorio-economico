@@ -10,6 +10,7 @@ Do NOT import models inside db/base.py to avoid circular imports.
 
 from app.models.arrecadacao import ArrecadacaoMensal
 from app.models.login_audit import LoginAudit
+from app.models.ingestao_audit import IngestaoAudit
 from app.models.notificacao import Notificacao, NotificacaoLida
 from app.models.bolsa_familia import BolsaFamiliaResumo
 from app.models.caged import CagedMovimentacao, CagedPorSexo, CagedPorRaca, CagedSalario, CagedPorCnae
@@ -81,6 +82,7 @@ __all__ = [
     "Notificacao",
     "NotificacaoLida",
     "LoginAudit",
+    "IngestaoAudit",
     "InvestimentoFunil",
     "EmpresaRetencao",
     "VisitaRetencao",

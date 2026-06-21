@@ -303,6 +303,37 @@ def delete_dataset_for_municipio(
     return summary
 
 
+def record_ingestao_audit(
+    db: Session,
+    *,
+    municipio_id: int | None,
+    usuario_id: int | None,
+    dataset: str | None,
+    acao: str,
+    num_linhas: int = 0,
+    status: str = "ok",
+    detalhe: str | None = None,
+) -> None:
+    """Append a row to the ingestão audit trail. Best-effort: never let an audit
+    failure break the operation it is recording."""
+    from app.models.ingestao_audit import IngestaoAudit
+
+    try:
+        db.add(IngestaoAudit(
+            municipio_id=municipio_id,
+            usuario_id=usuario_id,
+            dataset=dataset,
+            acao=acao,
+            num_linhas=num_linhas,
+            status=status,
+            detalhe=detalhe,
+        ))
+        db.commit()
+    except Exception:
+        db.rollback()
+        logger.exception("Failed to record ingestao_audit (%s, mun=%s, ds=%s)", acao, municipio_id, dataset)
+
+
 def delete_all_datasets_for_municipio(
     db: Session, municipio_id: int
 ) -> Dict[str, int]:
