@@ -1,10 +1,12 @@
 from typing import List
 
 from app.api.deps import get_current_user, get_db, scoped_modulo
+from app.models.arrecadacao import ArrecadacaoMensal
 from app.models.municipio import Municipio
 from app.models.vaf import VafAnual
-from app.schemas.vaf import VafComparativoItem, VafItem, VafResumo
+from app.schemas.vaf import IcmsProjetadoItem, VafComparativoItem, VafItem, VafResumo
 from fastapi import APIRouter, Depends
+from sqlalchemy import func
 from sqlalchemy.orm import Session
 
 router = APIRouter(prefix="/vaf", tags=["VAF"])
@@ -80,6 +82,62 @@ def resumo_vaf(
         ipm_ultimo_ano=ultimo.indice_participacao_municipal or 0,
         variacao_ipm_percentual=round(ultimo.pct_ipm or 0, 2),
     )
+
+
+# ==============================
+# ICMS projetado a partir do IPM (ancorado no ICMS realizado)
+# ==============================
+@router.get("/icms_projetado", response_model=List[IcmsProjetadoItem])
+def icms_projetado_vaf(
+    mid: int | None = Depends(scoped_modulo("vaf")),
+    db: Session = Depends(get_db),
+):
+    """Projeta o repasse de ICMS por ano de aplicação escalando o ICMS realizado
+    (Arrecadação) pela razão do IPM: projetado = ICMS_base × (IPM_ano / IPM_base).
+    O ano-base do VAF reflete no repasse 2 anos depois (ano de aplicação)."""
+    if mid is None:
+        return []
+
+    vaf_rows = (
+        db.query(VafAnual)
+        .filter(VafAnual.municipio_id == mid)
+        .order_by(VafAnual.ano_base)
+        .all()
+    )
+    if not vaf_rows:
+        return []
+
+    # ICMS realizado por ano (soma anual de valor_icms da arrecadação)
+    icms_por_ano = dict(
+        db.query(ArrecadacaoMensal.ano, func.sum(ArrecadacaoMensal.valor_icms))
+        .filter(ArrecadacaoMensal.municipio_id == mid)
+        .group_by(ArrecadacaoMensal.ano)
+        .all()
+    )
+    icms_por_ano = {a: float(v or 0) for a, v in icms_por_ano.items() if v}
+    if not icms_por_ano:
+        return []  # sem ICMS realizado não há âncora para projetar
+
+    baseline_year = max(icms_por_ano)
+    baseline_icms = icms_por_ano[baseline_year]
+
+    # IPM aplicado no ano-base do ICMS = linha VAF com ano_aplicacao == baseline_year
+    by_aplic = {r.ano_aplicacao: r for r in vaf_rows if r.ano_aplicacao}
+    base_row = by_aplic.get(baseline_year) or vaf_rows[-1]
+    baseline_ipm = base_row.indice_participacao_municipal or 0
+    if not baseline_ipm:
+        return []
+
+    return [
+        IcmsProjetadoItem(
+            ano_base=r.ano_base,
+            ano_aplicacao=r.ano_aplicacao,
+            ipm=r.indice_participacao_municipal,
+            icms_projetado=round(baseline_icms * ((r.indice_participacao_municipal or 0) / baseline_ipm), 2),
+            realizado=icms_por_ano.get(r.ano_aplicacao),
+        )
+        for r in vaf_rows
+    ]
 
 
 # ==============================

@@ -24,3 +24,15 @@ class VafResumo(BaseModel):
     ultimo_ano: int
     ipm_ultimo_ano: float
     variacao_ipm_percentual: float
+
+
+class IcmsProjetadoItem(BaseModel):
+    """ICMS repasse projected from the IPM trend, anchored on realized ICMS.
+
+    projetado(ano_aplicacao) = ICMS_realizado_baseline × (IPM_ano / IPM_baseline).
+    `realizado` is filled for years we already have actual ICMS receipts."""
+    ano_base: int
+    ano_aplicacao: int | None = None
+    ipm: float | None = None
+    icms_projetado: float
+    realizado: float | None = None

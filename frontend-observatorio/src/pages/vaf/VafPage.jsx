@@ -40,6 +40,7 @@ export default function VafPage() {
   const [rawSerie, setRawSerie] = useState([]);
   const [resumo, setResumo] = useState(null);
   const [comparativo, setComparativo] = useState([]);
+  const [icmsProj, setIcmsProj] = useState([]);
   const [loading, setLoading] = useState(true);
   const [filters, setFilters] = useState({ yearFrom: "", yearTo: "" });
 
@@ -48,15 +49,28 @@ export default function VafPage() {
       api.get("/vaf/serie"),
       api.get("/vaf/resumo"),
       api.get("/vaf/comparativo"),
+      api.get("/vaf/icms_projetado").catch(() => ({ data: [] })),
     ])
-      .then(([serieRes, resumoRes, compRes]) => {
+      .then(([serieRes, resumoRes, compRes, icmsRes]) => {
         setRawSerie(serieRes.data || []);
         setResumo(resumoRes.data);
         setComparativo(compRes.data || []);
+        setIcmsProj(icmsRes.data || []);
       })
       .catch((err) => console.error("Erro ao carregar VAF:", err))
       .finally(() => setLoading(false));
   }, []);
+
+  // ICMS projetado a partir do IPM (ancorado no ICMS realizado)
+  const icmsChart = useMemo(
+    () =>
+      icmsProj.map((d) => ({
+        label: String(d.ano_aplicacao ?? d.ano_base),
+        "Projetado": d.icms_projetado,
+        "Realizado": d.realizado,
+      })),
+    [icmsProj]
+  );
 
   const years = useMemo(() => rawSerie.map((d) => d.ano_base).sort(), [rawSerie]);
 
@@ -225,6 +239,29 @@ export default function VafPage() {
           forecast={{ steps: 1, method: "linear-6" }}
         />
       </NidPanel>
+
+      {/* ICMS projetado a partir do IPM */}
+      {icmsChart.length > 0 && (
+        <NidPanel
+          title="ICMS Projetado a partir do IPM"
+          sub="repasse estimado por ano de aplicação · escala o ICMS realizado pela razão do IPM"
+        >
+          <NidLegend
+            items={[
+              { name: "Projetado", color: "var(--accent-1)" },
+              { name: "Realizado", color: "var(--accent-5)" },
+            ]}
+          />
+          <MultiLineChart
+            data={icmsChart}
+            series={["Projetado", "Realizado"]}
+            colors={["var(--accent-1)", "var(--accent-5)"]}
+            height={280}
+            yFmt={fmtMoneyShort}
+            tipFmt={fmtMoneyFull}
+          />
+        </NidPanel>
+      )}
 
       {/* Índice vs Índice Médio */}
       {serie.length > 0 && (
