@@ -5,6 +5,7 @@ from app.models.municipio import Municipio
 from app.schemas.municipio import (
     DatasetDeletedResult,
     DatasetDescriptor,
+    IngestaoDeletedResult,
     MunicipioCreate,
     MunicipioCreatedResult,
     MunicipioDatasetSummary,
@@ -17,6 +18,7 @@ from app.services.municipio_management import (
     DATASET_REGISTRY,
     clone_municipio_data,
     count_dataset_rows_for_municipio,
+    delete_all_datasets_for_municipio,
     delete_dataset_for_municipio,
     delete_municipio_cascade,
 )
@@ -150,6 +152,18 @@ def resumir_datasets_municipio(
 ):
     counts = count_dataset_rows_for_municipio(db, municipio_id)
     return MunicipioDatasetSummary(municipio_id=municipio_id, counts=counts)
+
+
+@router.delete("/{municipio_id}/datasets", response_model=IngestaoDeletedResult)
+def excluir_ingestao_municipio(
+    municipio_id: int,
+    db: Session = Depends(get_db),
+    current_user=Depends(require_role("ADMIN_GLOBAL")),
+):
+    """Apaga TODA a ingestão (todos os datasets) do município, preservando
+    dados operacionais e a própria linha do município."""
+    summary = delete_all_datasets_for_municipio(db, municipio_id)
+    return IngestaoDeletedResult(municipio_id=municipio_id, summary=summary)
 
 
 @router.delete(

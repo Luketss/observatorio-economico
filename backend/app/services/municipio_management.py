@@ -303,6 +303,54 @@ def delete_dataset_for_municipio(
     return summary
 
 
+def delete_all_datasets_for_municipio(
+    db: Session, municipio_id: int
+) -> Dict[str, int]:
+    """Wipe EVERY dataset table for `municipio_id` in one shot — the whole
+    ingestion. Operational tables (Marco, Projeto, IndicadorInterno, custom
+    cards, insights, etc.) and the município row itself are left untouched, so
+    the município can be re-ingested with the correct CSVs.
+
+    Iterates the unique models across DATASET_REGISTRY (the same source used by
+    count_dataset_rows_for_municipio), so the deleted total matches the counts
+    shown in the Datasets admin page. Returns a {ModelClassName: rows_deleted}
+    summary."""
+    if not db.get(Municipio, municipio_id):
+        raise HTTPException(status_code=404, detail="Município não encontrado.")
+
+    summary: Dict[str, int] = {}
+    seen: set = set()
+    for models in DATASET_REGISTRY.values():
+        for model in models:
+            if model in seen:
+                continue
+            seen.add(model)
+            deleted = (
+                db.query(model)
+                .filter(model.municipio_id == municipio_id)
+                .delete(synchronize_session=False)
+            )
+            if deleted:
+                summary[model.__name__] = deleted
+
+    try:
+        db.commit()
+    except Exception:
+        db.rollback()
+        logger.exception(
+            "Full ingestion delete failed for municipio_id=%s", municipio_id
+        )
+        raise HTTPException(
+            status_code=500,
+            detail="Falha ao apagar a ingestão do município.",
+        )
+
+    logger.info(
+        "Cleared ALL datasets for município %s — %s", municipio_id, summary
+    )
+    return summary
+
+
 def count_dataset_rows_for_municipio(
     db: Session, municipio_id: int
 ) -> Dict[str, int]:
