@@ -86,3 +86,19 @@ class IngestaoDeletedResult(BaseModel):
     and the município row."""
     municipio_id: int
     summary: Dict[str, int]
+
+
+class SanidadeItem(BaseModel):
+    """One data-sanity finding for a município."""
+    dataset: str
+    nivel: str  # 'ok' | 'aviso' | 'erro'
+    mensagem: str
+
+
+class ReingestResult(BaseModel):
+    """Response shape for POST /municipios/{id}/datasets/{key}/reingest."""
+    municipio_id: int
+    dataset_key: str
+    linhas_removidas: int
+    linhas_inseridas: int
+    detalhe: Optional[str] = None
