@@ -6,6 +6,7 @@ import { useEscapeKey } from "../../hooks/useEscapeKey";
 import { useSearchPagination } from "../../hooks/useSearchPagination";
 import AdminSearchInput from "../../components/nid/AdminSearchInput";
 import AdminPagination from "../../components/nid/AdminPagination";
+import MunicipioPicker from "../../components/nid/MunicipioPicker";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   PlusIcon,
@@ -308,18 +309,11 @@ export default function UsuariosAdminPage() {
 
               <div className="flex flex-col gap-1">
                 <label htmlFor="u-municipio" className="text-xs font-medium text-slate-500 uppercase tracking-wider">Município</label>
-                <select
-                  id="u-municipio"
-                  name="municipio_id"
+                <MunicipioPicker
+                  municipios={municipiosFiltrados}
                   value={form.municipio_id}
-                  onChange={handleChange}
-                  className="px-3 py-2 rounded-lg border border-[var(--border)] text-sm focus:outline-none focus:ring-2 focus:ring-blue-500  "
-                >
-                  <option value="">— Sem município —</option>
-                  {municipiosFiltrados.map((m) => (
-                    <option key={m.id} value={m.id}>{m.nome}{m.estado ? ` (${m.estado})` : ""}</option>
-                  ))}
-                </select>
+                  onChange={(id) => setForm((prev) => ({ ...prev, municipio_id: id }))}
+                />
               </div>
 
               <div className="flex flex-col gap-1">
