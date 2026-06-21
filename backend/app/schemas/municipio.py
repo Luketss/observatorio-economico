@@ -78,3 +78,11 @@ class DatasetDeletedResult(BaseModel):
     municipio_id: int
     dataset_key: str
     summary: Dict[str, int]
+
+
+class IngestaoDeletedResult(BaseModel):
+    """Response shape for DELETE /municipios/{id}/datasets — wipes every
+    dataset (the whole ingestion) for the município, keeping operational data
+    and the município row."""
+    municipio_id: int
+    summary: Dict[str, int]

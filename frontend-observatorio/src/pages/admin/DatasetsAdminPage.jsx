@@ -26,6 +26,11 @@ export default function DatasetsAdminPage() {
   const [confirmInput, setConfirmInput] = useState("");
   const [submitting, setSubmitting] = useState(false);
 
+  // Bulk: wipe the whole ingestion (all datasets) for the município
+  const [bulkOpen, setBulkOpen] = useState(false);
+  const [bulkConfirm, setBulkConfirm] = useState("");
+  const [bulkSubmitting, setBulkSubmitting] = useState(false);
+
   // Bootstrap: load municípios + dataset catalog
   useEffect(() => {
     let cancelled = false;
@@ -72,6 +77,39 @@ export default function DatasetsAdminPage() {
   }, [selectedMunId, refreshSummary]);
 
   const selectedMun = municipios.find((m) => String(m.id) === String(selectedMunId));
+
+  const totalRows = Object.values(counts).reduce((a, b) => a + (b || 0), 0);
+
+  const closeBulk = () => {
+    if (bulkSubmitting) return;
+    setBulkOpen(false);
+    setBulkConfirm("");
+  };
+
+  const confirmBulkDelete = async () => {
+    if (!selectedMun || bulkConfirm.trim() !== selectedMun.nome) return;
+    setBulkSubmitting(true);
+    try {
+      const res = await api.delete(`/municipios/${selectedMunId}/datasets`);
+      const totalDeleted = Object.values(res.data?.summary || {}).reduce(
+        (a, b) => a + b, 0
+      );
+      addToast(
+        `Ingestão de ${selectedMun.nome} apagada: ${formatCount(totalDeleted)} linha(s) removida(s)`,
+        "success"
+      );
+      setBulkOpen(false);
+      setBulkConfirm("");
+      await refreshSummary(selectedMunId);
+    } catch (err) {
+      addToast(
+        err.response?.data?.detail || "Falha ao apagar a ingestão",
+        "error"
+      );
+    } finally {
+      setBulkSubmitting(false);
+    }
+  };
 
   const openDelete = (dataset) => {
     setDeleteTarget(dataset);
@@ -131,9 +169,10 @@ export default function DatasetsAdminPage() {
         </h3>
         <p className="text-sm mt-1" style={{ color: "var(--text-dim)" }}>
           Apague todas as linhas de um dataset (por exemplo, Arrecadação) para um
-          município específico, sem afetar outros datasets ou dados operacionais
-          (projetos, indicadores internos, cards). Útil para reingerir um CSV
-          corrigido. <b>Ação irreversível.</b>
+          município específico — ou use <b>"Apagar toda a ingestão"</b> para limpar
+          todos os datasets de uma vez. Em ambos os casos, os dados operacionais
+          (projetos, indicadores internos, cards) e o município são preservados.
+          Útil para reingerir CSVs corrigidos. <b>Ação irreversível.</b>
         </p>
       </div>
 
@@ -173,6 +212,20 @@ export default function DatasetsAdminPage() {
             </option>
           ))}
         </select>
+
+        {selectedMunId && (
+          <button
+            onClick={() => { setBulkConfirm(""); setBulkOpen(true); }}
+            disabled={loadingSummary || totalRows === 0}
+            className="inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg text-sm font-semibold cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
+            style={{ background: "#ef4444", color: "#fff", border: "1px solid #dc2626" }}
+            aria-label="Apagar toda a ingestão do município"
+            title={totalRows === 0 ? "Município sem dados de ingestão" : "Apagar todos os datasets deste município"}
+          >
+            <TrashIcon className="w-4 h-4" />
+            Apagar toda a ingestão
+          </button>
+        )}
       </div>
 
       {/* Datasets table */}
@@ -329,6 +382,79 @@ export default function DatasetsAdminPage() {
                   color: "var(--text)",
                   fontFamily: "var(--font-mono)",
                   letterSpacing: "0.08em",
+                }}
+              />
+            </NidField>
+          </div>
+        )}
+      </NidModal>
+
+      {/* Bulk confirm modal — wipe the whole ingestion */}
+      <NidModal
+        open={bulkOpen}
+        onClose={closeBulk}
+        eyebrow="Atenção · ação irreversível"
+        title={selectedMun ? `Apagar toda a ingestão de ${selectedMun.nome}` : ""}
+        size="md"
+        footer={
+          <>
+            <button
+              onClick={closeBulk}
+              disabled={bulkSubmitting}
+              className="px-4 py-2 rounded-lg text-sm cursor-pointer"
+              style={{
+                background: "var(--panel-2)",
+                border: "1px solid var(--border)",
+                color: "var(--text-dim)",
+              }}
+            >
+              Cancelar
+            </button>
+            <button
+              onClick={confirmBulkDelete}
+              disabled={bulkSubmitting || !selectedMun || bulkConfirm.trim() !== selectedMun.nome}
+              className="px-4 py-2 rounded-lg text-sm font-semibold cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
+              style={{
+                background: "#ef4444",
+                color: "#fff",
+                border: "1px solid #dc2626",
+              }}
+            >
+              {bulkSubmitting ? "Apagando…" : "Apagar definitivamente"}
+            </button>
+          </>
+        }
+      >
+        {selectedMun && (
+          <div className="space-y-3">
+            <p style={{ color: "var(--text-dim)" }}>
+              Você vai apagar <b>todos os datasets</b> (toda a ingestão) de{" "}
+              <b style={{ color: "var(--text)" }}>
+                {selectedMun.nome} ({selectedMun.estado})
+              </b>
+              . Dados operacionais (projetos, indicadores internos, marcos, insights,
+              cards) e o município <b>são preservados</b>. Em seguida, rode os loaders
+              de ingestão para repopular com os CSVs corretos.
+            </p>
+            <p style={{ color: "var(--text-dim)" }}>
+              Linhas a remover:{" "}
+              <b style={{ color: "var(--text)" }}>{formatCount(totalRows)}</b>.
+            </p>
+            <NidField label={`Digite o nome do município (${selectedMun.nome}) para confirmar`}>
+              <input
+                type="text"
+                value={bulkConfirm}
+                onChange={(e) => setBulkConfirm(e.target.value)}
+                autoFocus
+                spellCheck={false}
+                autoComplete="off"
+                className="w-full px-3 py-2 rounded-lg text-sm"
+                style={{
+                  background: "var(--panel-2)",
+                  border: "1px solid var(--border-strong)",
+                  color: "var(--text)",
+                  fontFamily: "var(--font-mono)",
+                  letterSpacing: "0.04em",
                 }}
               />
             </NidField>
