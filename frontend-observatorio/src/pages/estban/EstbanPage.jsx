@@ -184,6 +184,7 @@ export default function EstbanPage() {
           series={["Operações de Crédito", "Poupança", "Depósitos a Prazo"]}
           colors={["#3b82f6", "#10b981", "#f59e0b"]}
           height={280}
+          legend
           yFmt={(v) => `R$ ${(v / 1_000_000).toLocaleString("pt-BR", { maximumFractionDigits: 0 })}M`}
           tipFmt={fmtBRL}
           loading={loading}
@@ -206,6 +207,7 @@ export default function EstbanPage() {
           series={["Depósitos à Vista", "Poupança", "Depósitos a Prazo"]}
           colors={["#3b82f6", "#10b981", "#f59e0b"]}
           height={280}
+          legend
           yFmt={(v) => `R$ ${(v / 1_000_000).toLocaleString("pt-BR", { maximumFractionDigits: 0 })}M`}
           tipFmt={fmtBRL}
           loading={loading}
@@ -227,6 +229,7 @@ export default function EstbanPage() {
           series={["Operações de Crédito", "Total Captação"]}
           colors={["#3b82f6", "#10b981"]}
           height={240}
+          legend
           yFmt={(v) => `R$ ${(v / 1_000_000).toLocaleString("pt-BR", { maximumFractionDigits: 0 })}M`}
           tipFmt={fmtBRL}
           loading={loading}
@@ -253,6 +256,7 @@ export default function EstbanPage() {
           keys={["Empréstimos/Títulos", "Financiamentos Gerais", "Financiamentos Imobiliários", "Financiamento Agropecuário", "Arrendamento Mercantil", "Setor Público", "Outros Créditos"]}
           colors={["#3b82f6", "#10b981", "#f59e0b", "#84cc16", "#8b5cf6", "#06b6d4", "#94a3b8"]}
           height={280}
+          legend
           yFmt={(v) => `R$ ${(v / 1_000_000).toLocaleString("pt-BR", { maximumFractionDigits: 0 })}M`}
           tipFmt={fmtBRL}
           loading={loading}
@@ -295,6 +299,7 @@ export default function EstbanPage() {
             keys={["Empréstimos/Títulos", "Financiamentos Gerais", "Imobiliário", "Agropecuário", "Arrendamento", "Setor Público", "Outros"]}
             colors={["#3b82f6", "#10b981", "#f59e0b", "#84cc16", "#8b5cf6", "#06b6d4", "#94a3b8"]}
             height={280}
+            legend
             yFmt={(v) => `R$ ${(v / 1_000_000).toLocaleString("pt-BR", { maximumFractionDigits: 0 })}M`}
             tipFmt={fmtBRL}
           />

@@ -171,6 +171,7 @@ export default function PixPage() {
           series={["Volume PF", "Volume PJ"]}
           colors={["#3b82f6", "#10b981"]}
           height={280}
+          legend
           yFmt={(v) => `R$ ${(v / 1_000_000).toLocaleString("pt-BR", { maximumFractionDigits: 0 })}M`}
           tipFmt={fmtBRL}
         />
@@ -183,6 +184,7 @@ export default function PixPage() {
           series={["Recebimento PF", "Recebimento PJ"]}
           colors={["#8b5cf6", "#f59e0b"]}
           height={240}
+          legend
           yFmt={(v) => `R$ ${(v / 1_000_000).toLocaleString("pt-BR", { maximumFractionDigits: 0 })}M`}
           tipFmt={fmtBRL}
         />
@@ -195,6 +197,7 @@ export default function PixPage() {
           keys={["Transações PF", "Transações PJ"]}
           colors={["#3b82f6", "#10b981"]}
           height={240}
+          legend
           yFmt={(v) => Number(v).toLocaleString("pt-BR")}
           tipFmt={(v) => Number(v).toLocaleString("pt-BR")}
         />
@@ -207,6 +210,7 @@ export default function PixPage() {
           series={["Pessoas PF", "Pessoas PJ"]}
           colors={["#8b5cf6", "#f97316"]}
           height={240}
+          legend
           yFmt={(v) => Number(v).toLocaleString("pt-BR")}
           tipFmt={(v) => Number(v).toLocaleString("pt-BR")}
         />
@@ -219,6 +223,7 @@ export default function PixPage() {
           series={["Recebedores PF", "Recebedores PJ"]}
           colors={["#06b6d4", "#f43f5e"]}
           height={240}
+          legend
           yFmt={(v) => Number(v).toLocaleString("pt-BR")}
           tipFmt={(v) => Number(v).toLocaleString("pt-BR")}
         />

@@ -469,11 +469,32 @@ const opacityScale = (i) => {
   return stops[i] ?? 0.10;
 };
 
+// Legenda inline simples (swatch + nome) para gráficos multi-série.
+function InlineLegend({ items }) {
+  if (!items || items.length === 0) return null;
+  return (
+    <ul
+      style={{
+        listStyle: "none", margin: "12px 0 0", padding: 0, width: "100%",
+        display: "flex", flexWrap: "wrap", gap: "6px 16px", justifyContent: "center",
+      }}
+    >
+      {items.map((it, i) => (
+        <li key={i} style={{ display: "flex", alignItems: "center", gap: 7, fontSize: 12, color: "var(--text-dim)" }}>
+          <span style={{ width: 10, height: 10, borderRadius: 3, background: it.color, flexShrink: 0 }} />
+          <span style={{ whiteSpace: "nowrap" }}>{it.name}</span>
+        </li>
+      ))}
+    </ul>
+  );
+}
+
 export function StackedBarChart({
   data, keys, colors, height = 280, glow = "hover",
   yFmt = fmtMoneyShort, tipFmt = fmtMoneyFull,
   yCaption,
   baseColor, showTotalLabel = false, highlightLast = false,
+  legend = false,
   loading,
   emptyMessage,
   emptyAction,
@@ -623,6 +644,9 @@ export function StackedBarChart({
           })}
         </div>
       )}
+      {legend && (
+        <InlineLegend items={keys.map((k, i) => ({ name: k, color: baseColor || resolvedColors[i % (resolvedColors.length || 1)] }))} />
+      )}
     </div>
   );
 }
@@ -641,6 +665,7 @@ export function MultiLineChart({
   focusColor,   // defaults to var(--accent-2)
   showMedian,   // boolean — draw dashed peer-median line
   showBand,     // boolean — draw peer min/max band
+  legend = false, // render an inline series legend below the chart
   loading,
   emptyMessage,
   emptyAction,
@@ -1102,6 +1127,9 @@ export function MultiLineChart({
             ))
           )}
         </div>
+      )}
+      {legend && (
+        <InlineLegend items={series.map((s, si) => ({ name: s, color: (colors || [])[si] || "var(--accent-1)" }))} />
       )}
     </div>
   );
@@ -1715,7 +1743,7 @@ export function HBarChart({
                 className={`bar${isOwn ? " own" : ""}`}
                 style={{ width: `${pct}%`, "--bar": barColor }}
               />
-              <span className={`city${isOwn ? " own" : ""}`}>{d.label}</span>
+              <span className={`city${isOwn ? " own" : ""}`} title={d.label}>{d.label}</span>
             </div>
             <span className={`val${isOwn ? " own" : ""}`}>{fmt(d.value)}</span>
           </div>

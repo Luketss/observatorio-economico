@@ -259,6 +259,7 @@ export default function VafPage() {
             focusSeries={ownCity}
             showMedian
             showBand
+            legend
           />
         </NidPanel>
       )}

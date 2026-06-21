@@ -176,6 +176,7 @@ export default function EmpresasPage() {
           <DonutChart
             data={porPorte.map((d) => ({ label: d.name, value: d.value }))}
             baseColor="var(--accent-1)"
+            legend
             height={220}
             loading={loading}
             emptyMessage="Sem dados disponíveis"
@@ -212,6 +213,7 @@ export default function EmpresasPage() {
           }))}
           keys={["Ativas", "Fechadas/Baixadas"]}
           colors={["#10b981", "#ef4444"]}
+          legend
           height={280}
           yFmt={(v) => Number(v).toLocaleString("pt-BR")}
           tipFmt={(v) => Number(v).toLocaleString("pt-BR")}

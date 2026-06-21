@@ -223,6 +223,7 @@ export default function ComexPage() {
           }))}
           series={["Exportações", "Importações"]}
           colors={["#10b981", "#f97316"]}
+          legend
           height={280}
           yFmt={(v) => `US$ ${(v / 1_000_000).toLocaleString("pt-BR", { maximumFractionDigits: 1 })}M`}
           tipFmt={fmtUSD}
@@ -262,6 +263,7 @@ export default function ComexPage() {
             }))}
             series={["Peso Exportado", "Peso Importado"]}
             colors={["#10b981", "#f97316"]}
+            legend
             height={240}
             yFmt={(v) => v >= 1_000_000 ? `${(v / 1_000_000).toFixed(1)}M kg` : v >= 1_000 ? `${(v / 1_000).toFixed(0)}t` : `${v} kg`}
             tipFmt={(v) => `${Number(v).toLocaleString("pt-BR")} kg`}

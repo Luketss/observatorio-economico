@@ -178,6 +178,7 @@ export default function BolsaFamiliaPage() {
           }))}
           series={["Total Beneficiários", "Primeira Infância"]}
           colors={["#3b82f6", "#8b5cf6"]}
+          legend
           height={280}
           yFmt={(v) => Number(v).toLocaleString("pt-BR")}
           tipFmt={(v) => Number(v).toLocaleString("pt-BR")}
@@ -199,6 +200,7 @@ export default function BolsaFamiliaPage() {
           }))}
           keys={["Valor Bolsa", "Primeira Infância"]}
           colors={["#3b82f6", "#8b5cf6"]}
+          legend
           height={280}
           yFmt={(v) => `R$ ${(v / 1000).toLocaleString("pt-BR", { maximumFractionDigits: 0 })}k`}
           tipFmt={fmtBRL}

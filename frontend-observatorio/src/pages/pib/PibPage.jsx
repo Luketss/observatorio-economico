@@ -265,6 +265,7 @@ export default function PibPage() {
             focusSeries={ownCity}
             showMedian
             showBand
+            legend
           />
         </NidPanel>
       )}
