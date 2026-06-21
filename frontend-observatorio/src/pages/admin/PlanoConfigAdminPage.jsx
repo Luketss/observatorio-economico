@@ -4,6 +4,7 @@ import api from "../../services/api";
 
 const MODULOS = [
   { key: "geral", label: "Dashboard Geral" },
+  { key: "benchmark", label: "Benchmark — Comparativo entre Municípios" },
   { key: "arrecadacao", label: "Arrecadação Municipal" },
   { key: "pib", label: "PIB Municipal" },
   { key: "vaf", label: "VAF — Valor Adicionado Fiscal (IPM)" },
@@ -20,9 +21,11 @@ const MODULOS = [
   { key: "insights_ia", label: "Insights IA" },
   { key: "timeline_mandato", label: "Timeline do Mandato" },
   { key: "projetos", label: "Projetos Municipais" },
+  { key: "desenvolvimento_economico", label: "Desenvolvimento Econômico (Funil, Retenção, Captação, Escrita, Premiações)" },
   { key: "dados_internos.indicadores", label: "Dados Internos — Indicadores" },
   { key: "dados_internos.plano_gov", label: "Dados Internos — Plano de Governo" },
   { key: "dados_internos.calendario", label: "Dados Internos — Calendário" },
+  { key: "releases", label: "Releases" },
 ];
 
 const COMPONENTES = [
@@ -30,14 +33,12 @@ const COMPONENTES = [
   { key: "caged.por_sexo", label: "CAGED — Por Sexo" },
   { key: "caged.por_raca", label: "CAGED — Por Raça/Cor" },
   { key: "caged.por_cnae", label: "CAGED — Por Setor (CNAE)" },
-  { key: "caged.salario", label: "CAGED — Análise Salarial" },
   { key: "rais.por_sexo", label: "RAIS — Por Sexo" },
   { key: "rais.por_raca", label: "RAIS — Por Raça/Cor" },
   { key: "rais.por_cnae", label: "RAIS — Por Setor (CNAE)" },
   { key: "rais.por_faixa_etaria", label: "RAIS — Por Faixa Etária" },
   { key: "rais.por_escolaridade", label: "RAIS — Por Escolaridade" },
   { key: "rais.por_remuneracao", label: "RAIS — Por Faixa Salarial" },
-  { key: "rais.metricas", label: "RAIS — Métricas Avançadas" },
   { key: "estban.por_instituicao", label: "Estban — Por Instituição" },
   { key: "comex.por_produto", label: "Comex — Por Produto" },
   { key: "comex.por_pais", label: "Comex — Por País" },

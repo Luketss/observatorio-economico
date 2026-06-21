@@ -43,8 +43,8 @@ import {
 
 const NAV_STRUCTURE = [
   { type: "link", to: "/app", label: "Dashboard", icon: HomeIcon, end: true, modulo: "geral" },
-  { type: "link", to: "/app/benchmark", label: "Benchmark", icon: ChartBarSquareIcon, modulo: null },
-  { type: "link", to: "/app/ips", label: "IPS", icon: PresentationChartBarIcon, modulo: null },
+  { type: "link", to: "/app/benchmark", label: "Benchmark", icon: ChartBarSquareIcon, modulo: "benchmark" },
+  { type: "link", to: "/app/ips", label: "IPS", icon: PresentationChartBarIcon, modulo: "ips" },
   {
     type: "group", label: "Economia", icon: ChartBarIcon,
     children: [
@@ -77,27 +77,27 @@ const NAV_STRUCTURE = [
       { to: "/app/pix", label: "PIX", icon: BanknotesIcon, modulo: "pix" },
     ],
   },
-  { type: "link", to: "/app/projetos", label: "Projetos", icon: FolderOpenIcon, modulo: null },
+  { type: "link", to: "/app/projetos", label: "Projetos", icon: FolderOpenIcon, modulo: "projetos" },
   {
     type: "group", label: "Desenv. Econômico", icon: ChartBarIcon,
     children: [
-      { to: "/app/desenvolvimento-economico/funil",      label: "Funil de Investimentos", icon: FunnelIcon,          modulo: null },
-      { to: "/app/desenvolvimento-economico/retencao",   label: "Retenção & Expansão",    icon: BuildingOffice2Icon, modulo: null },
-      { to: "/app/desenvolvimento-economico/captacao",   label: "Captação de Recursos",   icon: BanknotesIcon,       modulo: null },
-      { to: "/app/desenvolvimento-economico/escrita",    label: "Escrita de Projetos",    icon: PencilSquareIcon,    modulo: null },
-      { to: "/app/desenvolvimento-economico/premiacoes", label: "Premiações",             icon: TrophyIcon,          modulo: null },
+      { to: "/app/desenvolvimento-economico/funil",      label: "Funil de Investimentos", icon: FunnelIcon,          modulo: "desenvolvimento_economico" },
+      { to: "/app/desenvolvimento-economico/retencao",   label: "Retenção & Expansão",    icon: BuildingOffice2Icon, modulo: "desenvolvimento_economico" },
+      { to: "/app/desenvolvimento-economico/captacao",   label: "Captação de Recursos",   icon: BanknotesIcon,       modulo: "desenvolvimento_economico" },
+      { to: "/app/desenvolvimento-economico/escrita",    label: "Escrita de Projetos",    icon: PencilSquareIcon,    modulo: "desenvolvimento_economico" },
+      { to: "/app/desenvolvimento-economico/premiacoes", label: "Premiações",             icon: TrophyIcon,          modulo: "desenvolvimento_economico" },
     ],
   },
   { type: "link", to: "/app/timeline", label: "Timeline", icon: CalendarDaysIcon, modulo: "timeline_mandato" },
   {
     type: "group", label: "Dados Internos", icon: CircleStackIcon,
     children: [
-      { to: "/app/dados-internos/indicadores", label: "Indicadores", icon: ChartPieIcon, modulo: null },
-      { to: "/app/dados-internos/plano-gov", label: "Plano de Governo", icon: ClipboardDocumentListIcon, modulo: null },
-      { to: "/app/dados-internos/calendario", label: "Calendário", icon: CalendarIcon, modulo: null },
+      { to: "/app/dados-internos/indicadores", label: "Indicadores", icon: ChartPieIcon, modulo: "dados_internos.indicadores" },
+      { to: "/app/dados-internos/plano-gov", label: "Plano de Governo", icon: ClipboardDocumentListIcon, modulo: "dados_internos.plano_gov" },
+      { to: "/app/dados-internos/calendario", label: "Calendário", icon: CalendarIcon, modulo: "dados_internos.calendario" },
     ],
   },
-  { type: "link", to: "/app/releases", label: "Releases", icon: NewspaperIcon, modulo: null, hideForAdmin: true },
+  { type: "link", to: "/app/releases", label: "Releases", icon: NewspaperIcon, modulo: "releases", hideForAdmin: true },
 ];
 
 function isChildActive(children, pathname) {

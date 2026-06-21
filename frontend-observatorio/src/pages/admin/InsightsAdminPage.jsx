@@ -20,6 +20,7 @@ const DATASETS = [
   { key: "geral",        label: "Visão Geral",       desc: "Síntese cruzando todos os dados" },
   { key: "arrecadacao",  label: "Arrecadação",        desc: "Receitas municipais" },
   { key: "pib",          label: "PIB",                desc: "Produto Interno Bruto" },
+  { key: "vaf",          label: "VAF",                desc: "Valor Adicionado Fiscal / IPM" },
   { key: "caged",        label: "CAGED",              desc: "Mercado formal de trabalho" },
   { key: "rais",         label: "RAIS",               desc: "Relação anual de informações sociais" },
   { key: "bolsa_familia",label: "Bolsa Família",      desc: "Programa de transferência de renda" },
