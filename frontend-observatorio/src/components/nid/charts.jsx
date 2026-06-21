@@ -1560,7 +1560,7 @@ function DonutChartCore({
             >
               <span style={{ width: 11, height: 11, borderRadius: 3, background: s.color, flexShrink: 0 }} />
               <span style={{ flex: 1, color: "var(--text)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                {s.label}
+                {s.label ?? s.name}
               </span>
               <span style={{ color: "var(--text-dim)", fontVariantNumeric: "tabular-nums" }}>
                 {fmtNumber(s.value)}
@@ -1577,12 +1577,18 @@ function DonutChartCore({
 }
 
 // ────────── PercentBarChart (100% stacked horizontal bar) ──────────
-function PercentBarChart({ data, baseColor, centerLabel, centerSub }) {
+function PercentBarChart({ data, baseColor, colors, centerLabel, centerSub }) {
   const [hoverSeg, setHoverSeg] = useState(null);
   if (!data || data.length === 0) return null;
   const total = data.reduce((s, d) => s + d.value, 0) || 1;
-  const sorted = [...data].sort((a, b) => b.value - a.value);
+  // When a distinct `colors` palette is supplied, each segment keeps its own
+  // color (mapped by original index so it matches an external legend built from
+  // the same palette+order). Otherwise fall back to a monochrome opacity ramp.
+  const useColors = Array.isArray(colors) && colors.length > 0;
+  const sorted = [...data.map((d, i) => ({ ...d, _i: i }))].sort((a, b) => b.value - a.value);
   const opacityScale = [0.95, 0.7, 0.5, 0.35, 0.25, 0.18];
+  const segColor = (d) => (useColors ? colors[d._i % colors.length] : baseColor);
+  const nameOf = (d) => d.label ?? d.name ?? "";
 
   return (
     <div className="nid-pct-wrap">
@@ -1603,25 +1609,26 @@ function PercentBarChart({ data, baseColor, centerLabel, centerSub }) {
       >
         {sorted.map((d, i) => {
           const pct = (d.value / total) * 100;
-          const opacity = opacityScale[i] ?? 0.12;
+          const rampOpacity = opacityScale[i] ?? 0.12;
+          const opacity = useColors ? 1 : rampOpacity;
           const isHovered = hoverSeg === i;
           const isDimmed = hoverSeg != null && !isHovered;
           return (
             <div
-              key={d.label}
+              key={nameOf(d) || i}
               className="nid-pct-seg"
               style={{
                 flex: pct,
-                background: baseColor,
+                background: segColor(d),
                 opacity: isHovered ? 1 : isDimmed ? opacity * 0.5 : opacity,
                 outline: isHovered ? "2px solid var(--border-strong)" : "none",
                 outlineOffset: "-2px",
               }}
-              title={`${d.label}: ${d.value.toLocaleString("pt-BR")} · ${pct.toFixed(1)}%`}
+              title={`${nameOf(d)}: ${d.value.toLocaleString("pt-BR")} · ${pct.toFixed(1)}%`}
               onMouseEnter={() => setHoverSeg(i)}
             >
               {/* Inline label only when segment is wide enough and opaque enough to be readable */}
-              {pct > 12 && opacity >= 0.4 && (
+              {pct > 12 && (useColors || rampOpacity >= 0.4) && (
                 <span className="nid-pct-seg-label">{pct.toFixed(0)}%</span>
               )}
             </div>
@@ -1633,16 +1640,16 @@ function PercentBarChart({ data, baseColor, centerLabel, centerSub }) {
       <ul className="nid-pct-legend">
         {sorted.map((d, i) => {
           const pct = (d.value / total) * 100;
-          const opacity = opacityScale[i] ?? 0.12;
+          const opacity = useColors ? 1 : (opacityScale[i] ?? 0.12);
           return (
             <li
-              key={d.label}
+              key={nameOf(d) || i}
               style={{ opacity: hoverSeg != null && hoverSeg !== i ? 0.45 : 1 }}
               onMouseEnter={() => setHoverSeg(i)}
               onMouseLeave={() => setHoverSeg(null)}
             >
-              <span className="sw" style={{ background: baseColor, opacity }} />
-              <span className="label">{d.label}</span>
+              <span className="sw" style={{ background: segColor(d), opacity }} />
+              <span className="label">{nameOf(d)}</span>
               <span className="val">
                 {d.value.toLocaleString("pt-BR")} · {pct.toFixed(1)}%
               </span>
@@ -1686,6 +1693,7 @@ export function DonutChart({
       <PercentBarChart
         data={data}
         baseColor={baseColor || "var(--accent-1)"}
+        colors={colors}
         centerLabel={centerLabel}
         centerSub={centerSub}
       />

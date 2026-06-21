@@ -492,15 +492,13 @@ export default function CagedPage() {
               <DonutChart
                 data={cnaeSaldoAno}
                 colors={palette}
+                legend
                 glow
                 height={210}
                 centerLabel={fmtNumberShort(totaisAno.admissoes)}
                 centerSub="ADMISSÕES"
               />
             ) : <EmptyMsg height={210} />}
-            <NidLegend items={cnaeSaldoAno.map((s, i) => ({
-              name: s.name, color: palette[i % palette.length],
-            }))} />
           </NidPanel>
         </PlanGate>
       </div>
@@ -599,11 +597,10 @@ export default function CagedPage() {
         <PlanGate planKey="caged.por_raca">
           <NidPanel title="Admissões por Raça/Cor" sub={`Distribuição · ${anoAtivo || ""}`}>
             {racaAno.length > 0 ? (
-              <DonutChart data={racaAno} colors={palette} glow height={210}
+              <DonutChart data={racaAno} colors={palette} legend glow height={210}
                 centerLabel={fmtNumberShort(racaAno.reduce((s, d) => s + d.value, 0))}
                 centerSub="ADMISSÕES" />
             ) : <EmptyMsg height={210} />}
-            <NidLegend items={racaAno.map((d, i) => ({ name: d.name, color: palette[i % palette.length] }))} />
           </NidPanel>
         </PlanGate>
       </div>
