@@ -1,6 +1,6 @@
 from typing import List
 
-from app.api.deps import get_current_user, get_db, municipio_scope
+from app.api.deps import get_current_user, get_db, scoped_modulo
 from app.models.empresa import Empresa
 from app.schemas.empresa import EmpresaResumo, EmpresaPorPorteItem, EmpresaPorCnaeItem
 from fastapi import APIRouter, Depends
@@ -86,7 +86,7 @@ router = APIRouter(prefix="/empresas", tags=["Empresas"])
 
 
 @router.get("/resumo", response_model=EmpresaResumo)
-def resumo_empresas(mid: int | None = Depends(municipio_scope), db: Session = Depends(get_db)):
+def resumo_empresas(mid: int | None = Depends(scoped_modulo("empresas")), db: Session = Depends(get_db)):
     if mid is None:
         return EmpresaResumo(total_empresas=0, total_ativas=0, total_mei=0, total_simples=0)
     query = db.query(Empresa).filter(Empresa.municipio_id == mid)
@@ -99,7 +99,7 @@ def resumo_empresas(mid: int | None = Depends(municipio_scope), db: Session = De
 
 
 @router.get("/por_porte", response_model=List[EmpresaPorPorteItem])
-def por_porte(mid: int | None = Depends(municipio_scope), db: Session = Depends(get_db)):
+def por_porte(mid: int | None = Depends(scoped_modulo("empresas")), db: Session = Depends(get_db)):
     if mid is None:
         return []
     query = db.query(Empresa.porte, func.count(Empresa.id).label("total")).filter(
@@ -116,7 +116,7 @@ def por_porte(mid: int | None = Depends(municipio_scope), db: Session = Depends(
 
 
 @router.get("/por_cnae", response_model=List[EmpresaPorCnaeItem])
-def por_cnae(mid: int | None = Depends(municipio_scope), db: Session = Depends(get_db)):
+def por_cnae(mid: int | None = Depends(scoped_modulo("empresas")), db: Session = Depends(get_db)):
     if mid is None:
         return []
     query = db.query(Empresa.cnae_fiscal, func.count(Empresa.id).label("total")).filter(
@@ -133,7 +133,7 @@ def por_cnae(mid: int | None = Depends(municipio_scope), db: Session = Depends(g
 
 
 @router.get("/por_situacao")
-def por_situacao(mid: int | None = Depends(municipio_scope), db: Session = Depends(get_db)):
+def por_situacao(mid: int | None = Depends(scoped_modulo("empresas")), db: Session = Depends(get_db)):
     """Count of companies grouped by situacao (active, closed, etc.)."""
     if mid is None:
         return []
@@ -152,7 +152,7 @@ def por_situacao(mid: int | None = Depends(municipio_scope), db: Session = Depen
 
 
 @router.get("/situacao_por_porte")
-def situacao_por_porte(mid: int | None = Depends(municipio_scope), db: Session = Depends(get_db)):
+def situacao_por_porte(mid: int | None = Depends(scoped_modulo("empresas")), db: Session = Depends(get_db)):
     """Per-porte breakdown of active vs. closed companies."""
     if mid is None:
         return []
@@ -176,7 +176,7 @@ def situacao_por_porte(mid: int | None = Depends(municipio_scope), db: Session =
 
 
 @router.get("/por_cnae_secao")
-def por_cnae_secao(mid: int | None = Depends(municipio_scope), db: Session = Depends(get_db)):
+def por_cnae_secao(mid: int | None = Depends(scoped_modulo("empresas")), db: Session = Depends(get_db)):
     """Count of companies by CNAE 2-digit division with human-readable description."""
     if mid is None:
         return []
@@ -205,7 +205,7 @@ def por_cnae_secao(mid: int | None = Depends(municipio_scope), db: Session = Dep
 
 
 @router.get("/capital_por_porte")
-def capital_por_porte(mid: int | None = Depends(municipio_scope), db: Session = Depends(get_db)):
+def capital_por_porte(mid: int | None = Depends(scoped_modulo("empresas")), db: Session = Depends(get_db)):
     """Average and total capital social grouped by porte (active companies only)."""
     if mid is None:
         return []

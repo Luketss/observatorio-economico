@@ -1,6 +1,6 @@
 from typing import List
 
-from app.api.deps import get_current_user, get_db, municipio_scope
+from app.api.deps import get_current_user, get_db, scoped_modulo
 from app.models.bolsa_familia import BolsaFamiliaResumo as BFModel
 from app.schemas.bolsa_familia import BolsaFamiliaSerieItem, BolsaFamiliaResumo
 from fastapi import APIRouter, Depends
@@ -11,7 +11,7 @@ router = APIRouter(prefix="/bolsa_familia", tags=["Bolsa Família"])
 
 @router.get("/serie", response_model=List[BolsaFamiliaSerieItem])
 def serie_bolsa_familia(
-    mid: int | None = Depends(municipio_scope),
+    mid: int | None = Depends(scoped_modulo("bolsa_familia")),
     db: Session = Depends(get_db),
 ):
     if mid is None:
@@ -38,7 +38,7 @@ def serie_bolsa_familia(
 
 @router.get("/resumo", response_model=BolsaFamiliaResumo)
 def resumo_bolsa_familia(
-    mid: int | None = Depends(municipio_scope),
+    mid: int | None = Depends(scoped_modulo("bolsa_familia")),
     db: Session = Depends(get_db),
 ):
     registros = (

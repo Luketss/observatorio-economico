@@ -1,6 +1,6 @@
 from typing import List
 
-from app.api.deps import get_current_user, get_db, municipio_scope
+from app.api.deps import get_current_user, get_db, scoped_modulo
 from app.models.inss import InssAnual
 from app.schemas.inss import InssItem, InssResumo
 from fastapi import APIRouter, Depends
@@ -11,7 +11,7 @@ router = APIRouter(prefix="/inss", tags=["INSS"])
 
 @router.get("/serie", response_model=List[InssItem])
 def serie_inss(
-    mid: int | None = Depends(municipio_scope),
+    mid: int | None = Depends(scoped_modulo("inss")),
     db: Session = Depends(get_db),
 ):
     if mid is None:
@@ -35,7 +35,7 @@ def serie_inss(
 
 @router.get("/resumo", response_model=InssResumo)
 def resumo_inss(
-    mid: int | None = Depends(municipio_scope),
+    mid: int | None = Depends(scoped_modulo("inss")),
     db: Session = Depends(get_db),
 ):
     registros = (

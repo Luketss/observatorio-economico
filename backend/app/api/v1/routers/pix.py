@@ -1,6 +1,6 @@
 from typing import List
 
-from app.api.deps import get_current_user, get_db, municipio_scope
+from app.api.deps import get_current_user, get_db, scoped_modulo
 from app.models.pix import PixMensal
 from app.schemas.pix import PixMensalItem, PixResumo
 from fastapi import APIRouter, Depends, Query
@@ -11,7 +11,7 @@ router = APIRouter(prefix="/pix", tags=["PIX"])
 
 @router.get("/serie", response_model=List[PixMensalItem])
 def serie_pix(
-    mid: int | None = Depends(municipio_scope),
+    mid: int | None = Depends(scoped_modulo("pix")),
     db: Session = Depends(get_db),
 ):
     if mid is None:
@@ -41,7 +41,7 @@ def serie_pix(
 
 @router.get("/resumo", response_model=PixResumo)
 def resumo_pix(
-    mid: int | None = Depends(municipio_scope),
+    mid: int | None = Depends(scoped_modulo("pix")),
     db: Session = Depends(get_db),
 ):
     if mid is None:

@@ -1,6 +1,6 @@
 from typing import List
 
-from app.api.deps import get_db, municipio_scope
+from app.api.deps import get_db, scoped_modulo
 from app.models.rais import (
     RaisVinculo, RaisPorCnae, RaisPorRaca, RaisPorSexo,
     RaisPorFaixaEtaria, RaisPorEscolaridade, RaisPorFaixaRemuneracao,
@@ -23,7 +23,7 @@ router = APIRouter(prefix="/rais", tags=["RAIS"])
 
 @router.get("/serie", response_model=List[RaisItem])
 def serie_rais(
-    mid: int | None = Depends(municipio_scope),
+    mid: int | None = Depends(scoped_modulo("rais")),
     db: Session = Depends(get_db),
 ):
     if mid is None:
@@ -46,7 +46,7 @@ def serie_rais(
 
 @router.get("/resumo", response_model=RaisResumo)
 def resumo_rais(
-    mid: int | None = Depends(municipio_scope),
+    mid: int | None = Depends(scoped_modulo("rais")),
     db: Session = Depends(get_db),
 ):
     registros = (
@@ -63,7 +63,7 @@ def resumo_rais(
 @router.get("/por_sexo", response_model=List[RaisSexoItem])
 def por_sexo(
     ano: int = Query(None),
-    mid: int | None = Depends(municipio_scope),
+    mid: int | None = Depends(scoped_modulo("rais")),
     db: Session = Depends(get_db),
 ):
     if mid is None:
@@ -86,7 +86,7 @@ def por_sexo(
 @router.get("/por_raca", response_model=List[RaisRacaItem])
 def por_raca(
     ano: int = Query(None),
-    mid: int | None = Depends(municipio_scope),
+    mid: int | None = Depends(scoped_modulo("rais")),
     db: Session = Depends(get_db),
 ):
     if mid is None:
@@ -109,7 +109,7 @@ def por_raca(
 @router.get("/por_cnae", response_model=List[RaisCnaeItem])
 def por_cnae(
     ano: int = Query(None),
-    mid: int | None = Depends(municipio_scope),
+    mid: int | None = Depends(scoped_modulo("rais")),
     db: Session = Depends(get_db),
 ):
     if mid is None:
@@ -133,7 +133,7 @@ def por_cnae(
 @router.get("/por_faixa_etaria", response_model=List[RaisFaixaEtariaItem])
 def por_faixa_etaria(
     ano: int = Query(None),
-    mid: int | None = Depends(municipio_scope),
+    mid: int | None = Depends(scoped_modulo("rais")),
     db: Session = Depends(get_db),
 ):
     if mid is None:
@@ -156,7 +156,7 @@ def por_faixa_etaria(
 @router.get("/por_escolaridade", response_model=List[RaisEscolaridadeItem])
 def por_escolaridade(
     ano: int = Query(None),
-    mid: int | None = Depends(municipio_scope),
+    mid: int | None = Depends(scoped_modulo("rais")),
     db: Session = Depends(get_db),
 ):
     if mid is None:
@@ -179,7 +179,7 @@ def por_escolaridade(
 @router.get("/por_faixa_remuneracao", response_model=List[RaisFaixaRemuneracaoItem])
 def por_faixa_remuneracao(
     ano: int = Query(None),
-    mid: int | None = Depends(municipio_scope),
+    mid: int | None = Depends(scoped_modulo("rais")),
     db: Session = Depends(get_db),
 ):
     if mid is None:
@@ -201,7 +201,7 @@ def por_faixa_remuneracao(
 @router.get("/por_faixa_tempo_emprego", response_model=List[RaisFaixaTempoEmpregoItem])
 def por_faixa_tempo_emprego(
     ano: int = Query(None),
-    mid: int | None = Depends(municipio_scope),
+    mid: int | None = Depends(scoped_modulo("rais")),
     db: Session = Depends(get_db),
 ):
     if mid is None:
@@ -222,7 +222,7 @@ def por_faixa_tempo_emprego(
 
 @router.get("/metricas_anuais", response_model=List[RaisMetricasAnuaisItem])
 def metricas_anuais(
-    mid: int | None = Depends(municipio_scope),
+    mid: int | None = Depends(scoped_modulo("rais")),
     db: Session = Depends(get_db),
 ):
     if mid is None:
@@ -257,7 +257,7 @@ def metricas_anuais(
 @router.get("/por_motivo_desligamento", response_model=List[RaisMotivoDesligamentoItem])
 def por_motivo_desligamento(
     ano: int = Query(None),
-    mid: int | None = Depends(municipio_scope),
+    mid: int | None = Depends(scoped_modulo("rais")),
     db: Session = Depends(get_db),
 ):
     """Why people leave — counts only rows where mes_desligamento > 0 in the year."""
@@ -279,7 +279,7 @@ def por_motivo_desligamento(
 @router.get("/por_tipo_admissao", response_model=List[RaisTipoAdmissaoItem])
 def por_tipo_admissao(
     ano: int = Query(None),
-    mid: int | None = Depends(municipio_scope),
+    mid: int | None = Depends(scoped_modulo("rais")),
     db: Session = Depends(get_db),
 ):
     """How people are hired (primeiro emprego, reemprego, transferência, etc.)."""
@@ -302,7 +302,7 @@ def por_tipo_admissao(
 def por_cbo(
     ano: int = Query(None),
     limite: int = Query(20, ge=1, le=100),
-    mid: int | None = Depends(municipio_scope),
+    mid: int | None = Depends(scoped_modulo("rais")),
     db: Session = Depends(get_db),
 ):
     """Top occupations by CBO 2002 family code."""
@@ -324,7 +324,7 @@ def por_cbo(
 @router.get("/por_tamanho_estabelecimento", response_model=List[RaisTamanhoEstabelecimentoItem])
 def por_tamanho_estabelecimento(
     ano: int = Query(None),
-    mid: int | None = Depends(municipio_scope),
+    mid: int | None = Depends(scoped_modulo("rais")),
     db: Session = Depends(get_db),
 ):
     """Workforce share by establishment size band."""
@@ -346,7 +346,7 @@ def por_tamanho_estabelecimento(
 @router.get("/por_natureza_juridica", response_model=List[RaisNaturezaJuridicaItem])
 def por_natureza_juridica(
     ano: int = Query(None),
-    mid: int | None = Depends(municipio_scope),
+    mid: int | None = Depends(scoped_modulo("rais")),
     db: Session = Depends(get_db),
 ):
     """Public / private / nonprofit composition of the formal workforce."""
@@ -365,7 +365,7 @@ def por_natureza_juridica(
 @router.get("/turnover_mensal", response_model=List[RaisTurnoverMensalItem])
 def turnover_mensal(
     ano: int = Query(None),
-    mid: int | None = Depends(municipio_scope),
+    mid: int | None = Depends(scoped_modulo("rais")),
     db: Session = Depends(get_db),
 ):
     """Monthly admissions vs desligamentos derived from mes_admissao / mes_desligamento."""

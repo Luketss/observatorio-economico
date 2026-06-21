@@ -1,6 +1,6 @@
 from typing import List
 
-from app.api.deps import get_current_user, get_db, municipio_scope
+from app.api.deps import get_current_user, get_db, scoped_modulo
 from app.models.pe_de_meia import PeDeMeiaResumo as PeDeMeiaResumoModel
 from app.models.pe_de_meia import PeDeMeiaEtapa
 from app.schemas.pe_de_meia import PeDeMeiaResumoItem, PeDeMeiaResumo, PeDeMeiaEtapaItem, PeDeMeiaIncentivo
@@ -13,7 +13,7 @@ router = APIRouter(prefix="/pe_de_meia", tags=["Pé-de-Meia"])
 
 @router.get("/serie", response_model=List[PeDeMeiaResumoItem])
 def serie_pe_de_meia(
-    mid: int | None = Depends(municipio_scope),
+    mid: int | None = Depends(scoped_modulo("pe_de_meia")),
     db: Session = Depends(get_db),
 ):
     if mid is None:
@@ -32,7 +32,7 @@ def serie_pe_de_meia(
 
 @router.get("/resumo", response_model=PeDeMeiaResumo)
 def resumo_pe_de_meia(
-    mid: int | None = Depends(municipio_scope),
+    mid: int | None = Depends(scoped_modulo("pe_de_meia")),
     db: Session = Depends(get_db),
 ):
     registros = (
@@ -47,7 +47,7 @@ def resumo_pe_de_meia(
 
 @router.get("/por_etapa", response_model=List[PeDeMeiaEtapaItem])
 def por_etapa(
-    mid: int | None = Depends(municipio_scope),
+    mid: int | None = Depends(scoped_modulo("pe_de_meia")),
     db: Session = Depends(get_db),
 ):
     if mid is None:
@@ -75,7 +75,7 @@ def por_etapa(
 
 @router.get("/por_incentivo", response_model=List[PeDeMeiaIncentivo])
 def por_incentivo(
-    mid: int | None = Depends(municipio_scope),
+    mid: int | None = Depends(scoped_modulo("pe_de_meia")),
     db: Session = Depends(get_db),
 ):
     if mid is None:

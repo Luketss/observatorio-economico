@@ -1,6 +1,6 @@
 from typing import List, Optional
 
-from app.api.deps import get_current_user, get_db, municipio_scope
+from app.api.deps import get_current_user, get_db, scoped_modulo
 from app.models.comex import ComexMensal, ComexPorProduto as ComexProdModel, ComexPorPais as ComexPaisModel
 from app.schemas.comex import ComexSerieItem, ComexResumo, ComexPorProdutoItem, ComexPorPaisItem
 from fastapi import APIRouter, Depends, Query
@@ -11,7 +11,7 @@ router = APIRouter(prefix="/comex", tags=["Comex"])
 
 
 @router.get("/serie", response_model=List[ComexSerieItem])
-def serie_comex(mid: int | None = Depends(municipio_scope), db: Session = Depends(get_db)):
+def serie_comex(mid: int | None = Depends(scoped_modulo("comex")), db: Session = Depends(get_db)):
     if mid is None:
         return []
     query = db.query(ComexMensal).filter(ComexMensal.municipio_id == mid)
@@ -29,7 +29,7 @@ def serie_comex(mid: int | None = Depends(municipio_scope), db: Session = Depend
 
 
 @router.get("/resumo", response_model=ComexResumo)
-def resumo_comex(mid: int | None = Depends(municipio_scope), db: Session = Depends(get_db)):
+def resumo_comex(mid: int | None = Depends(scoped_modulo("comex")), db: Session = Depends(get_db)):
     if mid is None:
         return ComexResumo(total_exportado_usd=0, total_importado_usd=0, balanca_comercial=0)
     query = db.query(ComexMensal).filter(ComexMensal.municipio_id == mid)
@@ -46,7 +46,7 @@ def resumo_comex(mid: int | None = Depends(municipio_scope), db: Session = Depen
 @router.get("/por_produto", response_model=List[ComexPorProdutoItem])
 def por_produto(
     ano: Optional[int] = Query(None),
-    mid: int | None = Depends(municipio_scope),
+    mid: int | None = Depends(scoped_modulo("comex")),
     db: Session = Depends(get_db),
 ):
     if mid is None:
@@ -68,7 +68,7 @@ def por_produto(
 
 
 @router.get("/saldo_mensal")
-def saldo_mensal(mid: int | None = Depends(municipio_scope), db: Session = Depends(get_db)):
+def saldo_mensal(mid: int | None = Depends(scoped_modulo("comex")), db: Session = Depends(get_db)):
     """Monthly export, import and trade balance (exports − imports)."""
     if mid is None:
         return []
@@ -94,7 +94,7 @@ def saldo_mensal(mid: int | None = Depends(municipio_scope), db: Session = Depen
 @router.get("/por_pais", response_model=List[ComexPorPaisItem])
 def por_pais(
     ano: Optional[int] = Query(None),
-    mid: int | None = Depends(municipio_scope),
+    mid: int | None = Depends(scoped_modulo("comex")),
     db: Session = Depends(get_db),
 ):
     if mid is None:

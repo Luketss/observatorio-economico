@@ -1,6 +1,6 @@
 from typing import List
 
-from app.api.deps import get_db, municipio_scope
+from app.api.deps import get_db, scoped_modulo
 from app.models.arrecadacao import ArrecadacaoMensal
 from app.schemas.arrecadacao import ArrecadacaoItem, ArrecadacaoResumo
 from fastapi import APIRouter, Depends
@@ -14,7 +14,7 @@ router = APIRouter(prefix="/arrecadacao", tags=["Arrecadação"])
 # ==============================
 @router.get("/serie", response_model=List[ArrecadacaoItem])
 def serie_mensal(
-    mid: int | None = Depends(municipio_scope),
+    mid: int | None = Depends(scoped_modulo("arrecadacao")),
     db: Session = Depends(get_db),
 ):
     if mid is None:
@@ -51,7 +51,7 @@ def serie_mensal(
 # ==============================
 @router.get("/por_tipo")
 def por_tipo(
-    mid: int | None = Depends(municipio_scope),
+    mid: int | None = Depends(scoped_modulo("arrecadacao")),
     db: Session = Depends(get_db),
 ):
     """Returns each period's ICMS, IPVA and IPI as separate labeled rows for stacked charts."""
@@ -77,7 +77,7 @@ def por_tipo(
 # ==============================
 @router.get("/resumo", response_model=ArrecadacaoResumo)
 def resumo_arrecadacao(
-    mid: int | None = Depends(municipio_scope),
+    mid: int | None = Depends(scoped_modulo("arrecadacao")),
     db: Session = Depends(get_db),
 ):
     registros = (

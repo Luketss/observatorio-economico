@@ -1,6 +1,6 @@
 from typing import List
 
-from app.api.deps import get_current_user, get_db, municipio_scope
+from app.api.deps import get_current_user, get_db, scoped_modulo
 from app.models.municipio import Municipio
 from app.models.vaf import VafAnual
 from app.schemas.vaf import VafComparativoItem, VafItem, VafResumo
@@ -32,7 +32,7 @@ def _to_item(r: VafAnual) -> VafItem:
 # ==============================
 @router.get("/serie", response_model=List[VafItem])
 def serie_vaf(
-    mid: int | None = Depends(municipio_scope),
+    mid: int | None = Depends(scoped_modulo("vaf")),
     db: Session = Depends(get_db),
 ):
     if mid is None:
@@ -54,7 +54,7 @@ def serie_vaf(
 # ==============================
 @router.get("/resumo", response_model=VafResumo)
 def resumo_vaf(
-    mid: int | None = Depends(municipio_scope),
+    mid: int | None = Depends(scoped_modulo("vaf")),
     db: Session = Depends(get_db),
 ):
     registros = (
