@@ -12,6 +12,7 @@ import {
 } from "../../components/nid/charts";
 import ChartState from "../../components/nid/ChartState.jsx";
 import InfoTooltip from "../../components/InfoTooltip";
+import PlanGate from "../../components/PlanGate";
 import { useAuth } from "../../context/AuthContext";
 import { useViewAs } from "../../context/ViewAsContext";
 
@@ -471,33 +472,37 @@ export default function CagedPage() {
 
       {/* CNAE saldo + composition */}
       <div className="nid-grid-1-1">
-        <NidPanel title="Setores · Saldo do Ano" sub={`${anoAtivo || ""} · admissões − desligamentos`}>
-          {cnaeRanking.length > 0 ? (
-            <HBarChart
-              data={cnaeRanking.slice(0, 8).map((d) => ({ label: d.label, value: d.value }))}
-              color={A1}
-              glow
-              height={260}
-              fmt={(v) => `${v > 0 ? "+" : ""}${fmtBR(v)}`}
-            />
-          ) : <EmptyMsg height={260} />}
-        </NidPanel>
+        <PlanGate planKey="caged.por_cnae">
+          <NidPanel title="Setores · Saldo do Ano" sub={`${anoAtivo || ""} · admissões − desligamentos`}>
+            {cnaeRanking.length > 0 ? (
+              <HBarChart
+                data={cnaeRanking.slice(0, 8).map((d) => ({ label: d.label, value: d.value }))}
+                color={A1}
+                glow
+                height={260}
+                fmt={(v) => `${v > 0 ? "+" : ""}${fmtBR(v)}`}
+              />
+            ) : <EmptyMsg height={260} />}
+          </NidPanel>
+        </PlanGate>
 
-        <NidPanel title="Composição Setorial" sub={`Admissões por setor · ${anoAtivo || ""}`}>
-          {cnaeSaldoAno.length > 0 ? (
-            <DonutChart
-              data={cnaeSaldoAno}
-              colors={palette}
-              glow
-              height={210}
-              centerLabel={fmtNumberShort(totaisAno.admissoes)}
-              centerSub="ADMISSÕES"
-            />
-          ) : <EmptyMsg height={210} />}
-          <NidLegend items={cnaeSaldoAno.map((s, i) => ({
-            name: s.name, color: palette[i % palette.length],
-          }))} />
-        </NidPanel>
+        <PlanGate planKey="caged.por_cnae">
+          <NidPanel title="Composição Setorial" sub={`Admissões por setor · ${anoAtivo || ""}`}>
+            {cnaeSaldoAno.length > 0 ? (
+              <DonutChart
+                data={cnaeSaldoAno}
+                colors={palette}
+                glow
+                height={210}
+                centerLabel={fmtNumberShort(totaisAno.admissoes)}
+                centerSub="ADMISSÕES"
+              />
+            ) : <EmptyMsg height={210} />}
+            <NidLegend items={cnaeSaldoAno.map((s, i) => ({
+              name: s.name, color: palette[i % palette.length],
+            }))} />
+          </NidPanel>
+        </PlanGate>
       </div>
 
       {/* NEW: Tamanho estab + PCD tipo deficiência */}
@@ -560,41 +565,47 @@ export default function CagedPage() {
 
       {/* CNAE stacked over time */}
       {cnaeStacked.data.length > 0 && cnaeStacked.keys.length > 0 && (
-        <div style={{ marginBottom: 22 }}>
-          <NidPanel title="Movimentações por Setor · Histórico" sub="Top 5 setores · admissões + desligamentos por ano">
-            <StackedBarChart
-              data={cnaeStacked.data}
-              keys={cnaeStacked.keys}
-              colors={palette}
-              glow
-              height={280}
-              yFmt={fmtNumberShort}
-              tipFmt={fmtNumber}
-            />
-            <NidLegend items={cnaeStacked.keys.map((k, i) => ({ name: k, color: palette[i % palette.length] }))} />
-          </NidPanel>
-        </div>
+        <PlanGate planKey="caged.por_cnae">
+          <div style={{ marginBottom: 22 }}>
+            <NidPanel title="Movimentações por Setor · Histórico" sub="Top 5 setores · admissões + desligamentos por ano">
+              <StackedBarChart
+                data={cnaeStacked.data}
+                keys={cnaeStacked.keys}
+                colors={palette}
+                glow
+                height={280}
+                yFmt={fmtNumberShort}
+                tipFmt={fmtNumber}
+              />
+              <NidLegend items={cnaeStacked.keys.map((k, i) => ({ name: k, color: palette[i % palette.length] }))} />
+            </NidPanel>
+          </div>
+        </PlanGate>
       )}
 
       {/* Sexo + Raça */}
       <div className="nid-grid-1-1">
-        <NidPanel title="Admissões por Sexo" sub={`Distribuição · ${anoAtivo || ""}`}>
-          {sexoAno.length > 0 ? (
-            <DonutChart data={sexoAno} colors={[A1, A2, A3]} glow height={210}
-              centerLabel={fmtNumberShort(sexoAno.reduce((s, d) => s + d.value, 0))}
-              centerSub="ADMISSÕES" />
-          ) : <EmptyMsg height={210} />}
-          <NidLegend items={sexoAno.map((d, i) => ({ name: d.name, color: [A1, A2, A3][i % 3] }))} />
-        </NidPanel>
+        <PlanGate planKey="caged.por_sexo">
+          <NidPanel title="Admissões por Sexo" sub={`Distribuição · ${anoAtivo || ""}`}>
+            {sexoAno.length > 0 ? (
+              <DonutChart data={sexoAno} colors={[A1, A2, A3]} glow height={210}
+                centerLabel={fmtNumberShort(sexoAno.reduce((s, d) => s + d.value, 0))}
+                centerSub="ADMISSÕES" />
+            ) : <EmptyMsg height={210} />}
+            <NidLegend items={sexoAno.map((d, i) => ({ name: d.name, color: [A1, A2, A3][i % 3] }))} />
+          </NidPanel>
+        </PlanGate>
 
-        <NidPanel title="Admissões por Raça/Cor" sub={`Distribuição · ${anoAtivo || ""}`}>
-          {racaAno.length > 0 ? (
-            <DonutChart data={racaAno} colors={palette} glow height={210}
-              centerLabel={fmtNumberShort(racaAno.reduce((s, d) => s + d.value, 0))}
-              centerSub="ADMISSÕES" />
-          ) : <EmptyMsg height={210} />}
-          <NidLegend items={racaAno.map((d, i) => ({ name: d.name, color: palette[i % palette.length] }))} />
-        </NidPanel>
+        <PlanGate planKey="caged.por_raca">
+          <NidPanel title="Admissões por Raça/Cor" sub={`Distribuição · ${anoAtivo || ""}`}>
+            {racaAno.length > 0 ? (
+              <DonutChart data={racaAno} colors={palette} glow height={210}
+                centerLabel={fmtNumberShort(racaAno.reduce((s, d) => s + d.value, 0))}
+                centerSub="ADMISSÕES" />
+            ) : <EmptyMsg height={210} />}
+            <NidLegend items={racaAno.map((d, i) => ({ name: d.name, color: palette[i % palette.length] }))} />
+          </NidPanel>
+        </PlanGate>
       </div>
 
       {/* Faixa etária + Escolaridade */}

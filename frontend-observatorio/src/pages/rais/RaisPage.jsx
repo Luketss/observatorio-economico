@@ -11,6 +11,7 @@ import {
   fmtNumber, fmtNumberShort, fmtMoneyFull,
 } from "../../components/nid/charts";
 import InfoTooltip from "../../components/InfoTooltip";
+import PlanGate from "../../components/PlanGate";
 import { useAuth } from "../../context/AuthContext";
 import { useViewAs } from "../../context/ViewAsContext";
 
@@ -423,23 +424,25 @@ export default function RaisPage() {
           <NidLegend items={[{ name: "Vínculos formais", color: A1 }]} />
         </NidPanel>
 
-        <NidPanel title="Top Setores (CNAE)" sub={`Composição ${anoAtivo || ""}`}>
-          {porCnae.filter((d) => d.ano === anoAtivo).length > 0 ? (
-            <DonutChart
-              data={aggregateByYear(porCnae.filter((d) => d.ano === anoAtivo), "descricao_secao").slice(0, 6)}
-              colors={palette}
-              glow
-              height={210}
-              centerLabel={fmtNumberShort(metricasAtual?.total_vinculos || 0)}
-              centerSub="VÍNCULOS"
-            />
-          ) : (
-            <EmptyMsg height={210} />
-          )}
-          <NidLegend items={aggregateByYear(porCnae.filter((d) => d.ano === anoAtivo), "descricao_secao").slice(0, 6).map((s, i) => ({
-            name: `${s.name}`, color: palette[i % palette.length],
-          }))} />
-        </NidPanel>
+        <PlanGate planKey="rais.por_cnae">
+          <NidPanel title="Top Setores (CNAE)" sub={`Composição ${anoAtivo || ""}`}>
+            {porCnae.filter((d) => d.ano === anoAtivo).length > 0 ? (
+              <DonutChart
+                data={aggregateByYear(porCnae.filter((d) => d.ano === anoAtivo), "descricao_secao").slice(0, 6)}
+                colors={palette}
+                glow
+                height={210}
+                centerLabel={fmtNumberShort(metricasAtual?.total_vinculos || 0)}
+                centerSub="VÍNCULOS"
+              />
+            ) : (
+              <EmptyMsg height={210} />
+            )}
+            <NidLegend items={aggregateByYear(porCnae.filter((d) => d.ano === anoAtivo), "descricao_secao").slice(0, 6).map((s, i) => ({
+              name: `${s.name}`, color: palette[i % palette.length],
+            }))} />
+          </NidPanel>
+        </PlanGate>
       </div>
 
       {/* Turnover + Motivos de Desligamento (NEW) */}
@@ -532,67 +535,79 @@ export default function RaisPage() {
 
       {/* CNAE stacked over time */}
       {cnaeStacked.data.length > 0 && cnaeStacked.keys.length > 0 && (
-        <div style={{ marginBottom: 22 }}>
-          <NidPanel title="Evolução por Setor" sub="Top 5 setores · estoque por ano">
-            <StackedBarChart
-              data={cnaeStacked.data}
-              keys={cnaeStacked.keys}
-              colors={palette}
-              glow
-              height={280}
-              yFmt={fmtNumberShort}
-              tipFmt={fmtNumber}
-            />
-            <NidLegend items={cnaeStacked.keys.map((k, i) => ({
-              name: k, color: palette[i % palette.length],
-            }))} />
-          </NidPanel>
-        </div>
+        <PlanGate planKey="rais.por_cnae">
+          <div style={{ marginBottom: 22 }}>
+            <NidPanel title="Evolução por Setor" sub="Top 5 setores · estoque por ano">
+              <StackedBarChart
+                data={cnaeStacked.data}
+                keys={cnaeStacked.keys}
+                colors={palette}
+                glow
+                height={280}
+                yFmt={fmtNumberShort}
+                tipFmt={fmtNumber}
+              />
+              <NidLegend items={cnaeStacked.keys.map((k, i) => ({
+                name: k, color: palette[i % palette.length],
+              }))} />
+            </NidPanel>
+          </div>
+        </PlanGate>
       )}
 
       {/* Demographic breakdowns: Sexo + Raça */}
       <div className="nid-grid-1-1">
-        <NidPanel title="Vínculos por Sexo" sub={`Distribuição · ${anoAtivo || ""}`}>
-          {sexoAno.length > 0 ? (
-            <DonutChart data={sexoAno} colors={[A1, A2, A3]} glow height={210}
-              centerLabel={fmtNumberShort(sexoAno.reduce((s, d) => s + d.value, 0))}
-              centerSub="VÍNCULOS" />
-          ) : <EmptyMsg height={210} />}
-          <NidLegend items={sexoAno.map((d, i) => ({ name: d.name, color: [A1, A2, A3][i % 3] }))} />
-        </NidPanel>
+        <PlanGate planKey="rais.por_sexo">
+          <NidPanel title="Vínculos por Sexo" sub={`Distribuição · ${anoAtivo || ""}`}>
+            {sexoAno.length > 0 ? (
+              <DonutChart data={sexoAno} colors={[A1, A2, A3]} glow height={210}
+                centerLabel={fmtNumberShort(sexoAno.reduce((s, d) => s + d.value, 0))}
+                centerSub="VÍNCULOS" />
+            ) : <EmptyMsg height={210} />}
+            <NidLegend items={sexoAno.map((d, i) => ({ name: d.name, color: [A1, A2, A3][i % 3] }))} />
+          </NidPanel>
+        </PlanGate>
 
-        <NidPanel title="Vínculos por Raça/Cor" sub={`Distribuição · ${anoAtivo || ""}`}>
-          {racaAno.length > 0 ? (
-            <DonutChart data={racaAno} colors={palette} glow height={210}
-              centerLabel={fmtNumberShort(racaAno.reduce((s, d) => s + d.value, 0))}
-              centerSub="VÍNCULOS" />
-          ) : <EmptyMsg height={210} />}
-          <NidLegend items={racaAno.map((d, i) => ({ name: d.name, color: palette[i % palette.length] }))} />
-        </NidPanel>
+        <PlanGate planKey="rais.por_raca">
+          <NidPanel title="Vínculos por Raça/Cor" sub={`Distribuição · ${anoAtivo || ""}`}>
+            {racaAno.length > 0 ? (
+              <DonutChart data={racaAno} colors={palette} glow height={210}
+                centerLabel={fmtNumberShort(racaAno.reduce((s, d) => s + d.value, 0))}
+                centerSub="VÍNCULOS" />
+            ) : <EmptyMsg height={210} />}
+            <NidLegend items={racaAno.map((d, i) => ({ name: d.name, color: palette[i % palette.length] }))} />
+          </NidPanel>
+        </PlanGate>
       </div>
 
       {/* Faixa etária + Escolaridade */}
       <div className="nid-grid-1-1">
-        <NidPanel title="Faixa Etária" sub={`Distribuição · ${anoAtivo || ""}`}>
-          {faixaEtariaAgg.length > 0 ? (
-            <HBarChart data={faixaEtariaAgg} color={A3} glow height={260} fmt={fmtNumber} />
-          ) : <EmptyMsg height={260} />}
-        </NidPanel>
+        <PlanGate planKey="rais.por_faixa_etaria">
+          <NidPanel title="Faixa Etária" sub={`Distribuição · ${anoAtivo || ""}`}>
+            {faixaEtariaAgg.length > 0 ? (
+              <HBarChart data={faixaEtariaAgg} color={A3} glow height={260} fmt={fmtNumber} />
+            ) : <EmptyMsg height={260} />}
+          </NidPanel>
+        </PlanGate>
 
-        <NidPanel title="Grau de Instrução" sub={`Escolaridade · ${anoAtivo || ""}`}>
-          {escolaridadeAgg.length > 0 ? (
-            <HBarChart data={escolaridadeAgg.slice(0, 8)} color={A4} glow height={260} fmt={fmtNumber} />
-          ) : <EmptyMsg height={260} />}
-        </NidPanel>
+        <PlanGate planKey="rais.por_escolaridade">
+          <NidPanel title="Grau de Instrução" sub={`Escolaridade · ${anoAtivo || ""}`}>
+            {escolaridadeAgg.length > 0 ? (
+              <HBarChart data={escolaridadeAgg.slice(0, 8)} color={A4} glow height={260} fmt={fmtNumber} />
+            ) : <EmptyMsg height={260} />}
+          </NidPanel>
+        </PlanGate>
       </div>
 
       {/* Faixa salarial + Tempo emprego */}
       <div className="nid-grid-1-1">
-        <NidPanel title="Faixa Salarial (Salários Mínimos)" sub={`Distribuição · ${anoAtivo || ""}`}>
-          {faixaRemAgg.length > 0 ? (
-            <HBarChart data={faixaRemAgg.slice(0, 10)} color={A1} glow height={280} fmt={fmtNumber} />
-          ) : <EmptyMsg height={280} />}
-        </NidPanel>
+        <PlanGate planKey="rais.por_remuneracao">
+          <NidPanel title="Faixa Salarial (Salários Mínimos)" sub={`Distribuição · ${anoAtivo || ""}`}>
+            {faixaRemAgg.length > 0 ? (
+              <HBarChart data={faixaRemAgg.slice(0, 10)} color={A1} glow height={280} fmt={fmtNumber} />
+            ) : <EmptyMsg height={280} />}
+          </NidPanel>
+        </PlanGate>
 
         <NidPanel title="Tempo de Emprego" sub={`Permanência no vínculo · ${anoAtivo || ""}`}>
           {tempoEmpregoAgg.length > 0 ? (
