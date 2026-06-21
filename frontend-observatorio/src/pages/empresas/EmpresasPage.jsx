@@ -175,7 +175,7 @@ export default function EmpresasPage() {
           </h3>
           <DonutChart
             data={porPorte.map((d) => ({ label: d.name, value: d.value }))}
-            baseColor="var(--accent-1)"
+            colors={["var(--accent-1)", "var(--accent-3)", "var(--accent-5)", "var(--accent-4)", "var(--accent-2)"]}
             legend
             height={220}
             loading={loading}

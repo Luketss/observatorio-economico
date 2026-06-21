@@ -36,6 +36,19 @@ def _parse_bool(valor: str) -> bool:
     return valor.strip().upper() in ("S", "SIM", "1", "TRUE")
 
 
+def _parse_mei(valor: str) -> bool:
+    """MEI flag. The Receita Federal "Simples" extract used here stores the MEI
+    opt-in DATE (AAAAMMDD) in the opcao_mei column, not an S/N flag — a real
+    date (e.g. "20090701") means the company is MEI, while "00000000"/empty
+    means it is not. A plain S/N flag is still accepted for robustness."""
+    v = valor.strip().upper()
+    if v in ("S", "SIM", "TRUE"):
+        return True
+    if v in ("", "N", "NAO", "NÃO", "0", "00000000"):
+        return False
+    return v.isdigit() and len(v) == 8  # AAAAMMDD opt-in date
+
+
 def _read_csv_keyed(path: Path) -> dict[str, dict]:
     """Read a CSV keyed by cnpj_basico, keeping first row on duplicates."""
     result: dict[str, dict] = {}
@@ -95,7 +108,7 @@ def carregar(cidade_dir: Path, city_name: str, estado: str, db: Session) -> None
                 "porte": emp.get("porte", "").strip() or None,
                 "capital_social": _parse_capital(emp.get("capital_social", "")),
                 "opcao_simples": _parse_bool(simp.get("opcao_simples", "")),
-                "opcao_mei": _parse_bool(simp.get("opcao_mei", "")),
+                "opcao_mei": _parse_mei(simp.get("opcao_mei", "")),
             })
 
             if len(batch) >= BATCH_SIZE:
