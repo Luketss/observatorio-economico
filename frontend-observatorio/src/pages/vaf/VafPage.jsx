@@ -299,6 +299,7 @@ export default function VafPage() {
               { key: "pct_ipm",                       label: "Var. IPM",       align: "right", fmt: fmtPct, mono: true },
             ]}
             data={serie.slice().reverse()}
+            pageSize={12}
           />
         </NidPanel>
       )}

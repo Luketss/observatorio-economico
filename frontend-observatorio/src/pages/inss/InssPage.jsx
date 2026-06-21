@@ -204,6 +204,7 @@ export default function InssPage() {
               { key: "valor_anual",           label: "Valor Anual",    align: "right", fmt: fmtMoneyShort, mono: true, heatmap: true },
             ]}
             data={tableData}
+            pageSize={12}
           />
         </NidPanel>
       )}

@@ -282,6 +282,7 @@ export default function PibPage() {
               { key: "tipo_dado", label: "Tipo",         align: "right", kind: "code", mono: true },
             ]}
             data={serie.slice().reverse()}
+            pageSize={12}
           />
         </NidPanel>
       )}
