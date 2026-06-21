@@ -81,11 +81,11 @@ const NAV_STRUCTURE = [
   {
     type: "group", label: "Desenv. Econômico", icon: ChartBarIcon,
     children: [
-      { to: "/app/desenvolvimento-economico/funil",      label: "Funil de Investimentos", icon: FunnelIcon,          modulo: "desenvolvimento_economico" },
-      { to: "/app/desenvolvimento-economico/retencao",   label: "Retenção & Expansão",    icon: BuildingOffice2Icon, modulo: "desenvolvimento_economico" },
-      { to: "/app/desenvolvimento-economico/captacao",   label: "Captação de Recursos",   icon: BanknotesIcon,       modulo: "desenvolvimento_economico" },
-      { to: "/app/desenvolvimento-economico/escrita",    label: "Escrita de Projetos",    icon: PencilSquareIcon,    modulo: "desenvolvimento_economico" },
-      { to: "/app/desenvolvimento-economico/premiacoes", label: "Premiações",             icon: TrophyIcon,          modulo: "desenvolvimento_economico" },
+      { to: "/app/desenvolvimento-economico/funil",      label: "Funil de Investimentos", icon: FunnelIcon,          modulo: "desenvolvimento_economico.funil" },
+      { to: "/app/desenvolvimento-economico/retencao",   label: "Retenção & Expansão",    icon: BuildingOffice2Icon, modulo: "desenvolvimento_economico.retencao" },
+      { to: "/app/desenvolvimento-economico/captacao",   label: "Captação de Recursos",   icon: BanknotesIcon,       modulo: "desenvolvimento_economico.captacao" },
+      { to: "/app/desenvolvimento-economico/escrita",    label: "Escrita de Projetos",    icon: PencilSquareIcon,    modulo: "desenvolvimento_economico.escrita" },
+      { to: "/app/desenvolvimento-economico/premiacoes", label: "Premiações",             icon: TrophyIcon,          modulo: "desenvolvimento_economico.premiacoes" },
     ],
   },
   { type: "link", to: "/app/timeline", label: "Timeline", icon: CalendarDaysIcon, modulo: "timeline_mandato" },

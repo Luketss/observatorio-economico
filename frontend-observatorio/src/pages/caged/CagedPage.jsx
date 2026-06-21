@@ -121,15 +121,30 @@ export default function CagedPage() {
       .map(([ano, v]) => ({ label: String(ano), value: v }));
   }, [serie]);
 
+  // Monthly saldo (fallback when there's only a single year — an annual chart
+  // with one point looks empty; the monthly breakdown shows a real trend).
+  const saldoMensal = useMemo(() => {
+    return [...serie]
+      .sort((a, b) => (a.ano - b.ano) || ((a.mes || 0) - (b.mes || 0)))
+      .map((d) => ({
+        label: `${MES_LABEL[(d.mes || 1) - 1]}/${String(d.ano).slice(2)}`,
+        value: d.saldo || 0,
+      }));
+  }, [serie]);
+
+  // Show annual when there are ≥2 years, otherwise fall back to monthly.
+  const usarSaldoMensal = saldoAnual.length < 2;
+  const saldoSerie = usarSaldoMensal ? saldoMensal : saldoAnual;
+
   // Auto-annotate extremes on the saldo chart (ticket 04)
   const saldoAnnotations = useMemo(() => {
-    if (!saldoAnual || saldoAnual.length < 2) return [];
-    const sorted = [...saldoAnual].sort((a, b) => a.value - b.value);
+    if (!saldoSerie || saldoSerie.length < 2) return [];
+    const sorted = [...saldoSerie].sort((a, b) => a.value - b.value);
     return [
       { x: sorted[0].label, kind: "negative", label: "mínimo" },
       { x: sorted[sorted.length - 1].label, kind: "positive", label: "máximo" },
     ];
-  }, [saldoAnual]);
+  }, [saldoSerie]);
 
   // Spark series
   const admissoesSpark = useMemo(() => {
@@ -425,9 +440,12 @@ export default function CagedPage() {
 
       {/* Saldo histórico + Turnover mensal */}
       <div className="nid-grid-2">
-        <NidPanel title="Saldo Anual" sub="Empregos formais líquidos por ano">
+        <NidPanel
+          title={usarSaldoMensal ? "Saldo Mensal" : "Saldo Anual"}
+          sub={usarSaldoMensal ? "Empregos formais líquidos por mês" : "Empregos formais líquidos por ano"}
+        >
           <AreaLineChart
-            data={saldoAnual}
+            data={saldoSerie}
             color={A5}
             glow
             height={280}
