@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { motion } from "framer-motion";
-import { TrashIcon } from "@heroicons/react/24/outline";
+import { TrashIcon, ArrowUpTrayIcon, ExclamationTriangleIcon } from "@heroicons/react/24/outline";
 import api from "../../services/api";
 import NidModal, { NidField } from "../../components/nid/NidModal";
 import MunicipioPicker from "../../components/nid/MunicipioPicker";
@@ -32,6 +32,14 @@ export default function DatasetsAdminPage() {
   const [bulkConfirm, setBulkConfirm] = useState("");
   const [bulkSubmitting, setBulkSubmitting] = useState(false);
 
+  // Data-sanity findings for the selected município
+  const [sanidade, setSanidade] = useState([]);
+
+  // Re-ingestion (CSV upload) per dataset
+  const [reingestTarget, setReingestTarget] = useState(null);
+  const [reingestFiles, setReingestFiles] = useState(null);
+  const [reingestSubmitting, setReingestSubmitting] = useState(false);
+
   // Bootstrap: load municípios + dataset catalog
   useEffect(() => {
     let cancelled = false;
@@ -59,19 +67,56 @@ export default function DatasetsAdminPage() {
   const refreshSummary = useCallback(async (mid) => {
     if (!mid) {
       setCounts({});
+      setSanidade([]);
       return;
     }
     setLoadingSummary(true);
     try {
-      const res = await api.get(`/municipios/${mid}/datasets-summary`);
-      setCounts(res.data?.counts || {});
+      const [sumRes, sanRes] = await Promise.all([
+        api.get(`/municipios/${mid}/datasets-summary`),
+        api.get(`/municipios/${mid}/sanidade`),
+      ]);
+      setCounts(sumRes.data?.counts || {});
+      setSanidade(sanRes.data || []);
     } catch (err) {
       addToast("Falha ao carregar resumo de datasets", "error");
       setCounts({});
+      setSanidade([]);
     } finally {
       setLoadingSummary(false);
     }
   }, [addToast]);
+
+  const closeReingest = () => {
+    if (reingestSubmitting) return;
+    setReingestTarget(null);
+    setReingestFiles(null);
+  };
+
+  const confirmReingest = async () => {
+    if (!reingestTarget || !selectedMunId || !reingestFiles?.length) return;
+    setReingestSubmitting(true);
+    try {
+      const fd = new FormData();
+      Array.from(reingestFiles).forEach((f) => fd.append("files", f));
+      const res = await api.post(
+        `/municipios/${selectedMunId}/datasets/${reingestTarget.key}/reingest`,
+        fd,
+        { headers: { "Content-Type": "multipart/form-data" } }
+      );
+      addToast(
+        `${reingestTarget.label}: ${formatCount(res.data?.linhas_inseridas || 0)} linha(s) reingeridas (removidas ${formatCount(res.data?.linhas_removidas || 0)})`,
+        "success"
+      );
+      setReingestTarget(null);
+      setReingestFiles(null);
+      await refreshSummary(selectedMunId);
+    } catch (err) {
+      addToast(err.response?.data?.detail || "Falha ao reprocessar dataset", "error");
+    } finally {
+      setReingestSubmitting(false);
+    }
+  };
 
   useEffect(() => {
     refreshSummary(selectedMunId);
@@ -216,6 +261,34 @@ export default function DatasetsAdminPage() {
         )}
       </div>
 
+      {/* Data-sanity diagnostics */}
+      {selectedMunId && sanidade.length > 0 && (
+        <div
+          className="rounded-xl p-4"
+          style={{
+            background: "var(--panel)",
+            border: "1px solid color-mix(in oklab, #f59e0b 40%, var(--border))",
+          }}
+        >
+          <h3 className="text-sm font-semibold flex items-center gap-2" style={{ color: "var(--text)" }}>
+            <ExclamationTriangleIcon className="w-4 h-4" style={{ color: "#f59e0b" }} />
+            Diagnóstico de dados ({sanidade.length})
+          </h3>
+          <ul className="mt-2 space-y-1.5">
+            {sanidade.map((s, i) => (
+              <li key={i} className="flex items-start gap-2 text-sm">
+                <span style={{ color: s.nivel === "erro" ? "#ef4444" : "#f59e0b", lineHeight: 1.5 }}>
+                  {s.nivel === "erro" ? "✕" : "⚠"}
+                </span>
+                <span style={{ color: "var(--text-dim)" }}>
+                  <b style={{ color: "var(--text)" }}>{s.dataset}</b> — {s.mensagem}
+                </span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+
       {/* Datasets table */}
       {selectedMunId ? (
         <div
@@ -259,21 +332,38 @@ export default function DatasetsAdminPage() {
                     >
                       {loadingSummary ? "…" : formatCount(count || 0)}
                     </td>
-                    <td className="px-4 py-3 text-right">
-                      <button
-                        onClick={() => openDelete(ds)}
-                        disabled={empty || loadingSummary}
-                        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
-                        style={{
-                          background: "color-mix(in oklab, #ef4444 12%, transparent)",
-                          border: "1px solid color-mix(in oklab, #ef4444 35%, transparent)",
-                          color: "#ef4444",
-                        }}
-                        aria-label={`Limpar dados de ${ds.label}`}
-                      >
-                        <TrashIcon className="w-4 h-4" />
-                        Limpar dados
-                      </button>
+                    <td className="px-4 py-3">
+                      <div className="flex items-center justify-end gap-2">
+                        <button
+                          onClick={() => { setReingestTarget(ds); setReingestFiles(null); }}
+                          disabled={loadingSummary}
+                          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
+                          style={{
+                            background: "color-mix(in oklab, var(--admin-accent, #3b82f6) 12%, transparent)",
+                            border: "1px solid color-mix(in oklab, var(--admin-accent, #3b82f6) 35%, transparent)",
+                            color: "var(--admin-accent, #3b82f6)",
+                          }}
+                          aria-label={`Reprocessar ${ds.label}`}
+                          title="Enviar CSV corrigido e reingerir"
+                        >
+                          <ArrowUpTrayIcon className="w-4 h-4" />
+                          Reprocessar
+                        </button>
+                        <button
+                          onClick={() => openDelete(ds)}
+                          disabled={empty || loadingSummary}
+                          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
+                          style={{
+                            background: "color-mix(in oklab, #ef4444 12%, transparent)",
+                            border: "1px solid color-mix(in oklab, #ef4444 35%, transparent)",
+                            color: "#ef4444",
+                          }}
+                          aria-label={`Limpar dados de ${ds.label}`}
+                        >
+                          <TrashIcon className="w-4 h-4" />
+                          Limpar dados
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 );
@@ -446,6 +536,66 @@ export default function DatasetsAdminPage() {
                 }}
               />
             </NidField>
+          </div>
+        )}
+      </NidModal>
+
+      {/* Re-ingestion (CSV upload) modal */}
+      <NidModal
+        open={Boolean(reingestTarget)}
+        onClose={closeReingest}
+        eyebrow="Reprocessar dataset"
+        title={reingestTarget ? `Reingerir ${reingestTarget.label}` : ""}
+        size="md"
+        footer={
+          <>
+            <button
+              onClick={closeReingest}
+              disabled={reingestSubmitting}
+              className="px-4 py-2 rounded-lg text-sm cursor-pointer"
+              style={{ background: "var(--panel-2)", border: "1px solid var(--border)", color: "var(--text-dim)" }}
+            >
+              Cancelar
+            </button>
+            <button
+              onClick={confirmReingest}
+              disabled={reingestSubmitting || !reingestFiles?.length}
+              className="px-4 py-2 rounded-lg text-sm font-semibold cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
+              style={{ background: "var(--admin-accent, #3b82f6)", color: "#fff", border: "1px solid color-mix(in oklab, var(--admin-accent, #3b82f6) 70%, black)" }}
+            >
+              {reingestSubmitting ? "Reingerindo…" : "Enviar e reingerir"}
+            </button>
+          </>
+        }
+      >
+        {reingestTarget && selectedMun && (
+          <div className="space-y-3">
+            <p style={{ color: "var(--text-dim)" }}>
+              Envie o(s) CSV(s) corrigido(s) de{" "}
+              <b style={{ color: "var(--text)" }}>{reingestTarget.label}</b> para{" "}
+              <b style={{ color: "var(--text)" }}>{selectedMun.nome} ({selectedMun.estado})</b>.
+              O sistema valida o <b>codigo_ibge</b> do arquivo contra o município (bloqueia
+              carga na cidade errada), apaga as linhas atuais do dataset e reingere.
+            </p>
+            <p className="text-xs" style={{ color: "var(--text-mute)" }}>
+              Use os mesmos nomes de arquivo do loader (ex.: <code>{reingestTarget.key}.csv</code>;
+              para Empresas: <code>estabelecimentos.csv</code>, <code>empresas.csv</code>, <code>simples.csv</code>).
+            </p>
+            <NidField label="Arquivo(s) CSV">
+              <input
+                type="file"
+                accept=".csv"
+                multiple
+                onChange={(e) => setReingestFiles(e.target.files)}
+                className="w-full text-sm"
+                style={{ color: "var(--text)" }}
+              />
+            </NidField>
+            {reingestFiles?.length > 0 && (
+              <p className="text-xs" style={{ color: "var(--text-dim)" }}>
+                {reingestFiles.length} arquivo(s): {Array.from(reingestFiles).map((f) => f.name).join(", ")}
+              </p>
+            )}
           </div>
         )}
       </NidModal>
