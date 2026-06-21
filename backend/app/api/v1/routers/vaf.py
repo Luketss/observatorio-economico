@@ -1,6 +1,6 @@
 from typing import List
 
-from app.api.deps import get_current_user, get_db
+from app.api.deps import get_current_user, get_db, municipio_scope
 from app.models.municipio import Municipio
 from app.models.vaf import VafAnual
 from app.schemas.vaf import VafComparativoItem, VafItem, VafResumo
@@ -32,15 +32,19 @@ def _to_item(r: VafAnual) -> VafItem:
 # ==============================
 @router.get("/serie", response_model=List[VafItem])
 def serie_vaf(
+    mid: int | None = Depends(municipio_scope),
     db: Session = Depends(get_db),
-    current_user=Depends(get_current_user),
 ):
-    query = db.query(VafAnual)
+    if mid is None:
+        # ADMIN_GLOBAL sem município selecionado — front exibe "selecione um município".
+        return []
 
-    if current_user.role.nome != "ADMIN_GLOBAL":
-        query = query.filter(VafAnual.municipio_id == current_user.municipio_id)
-
-    registros = query.order_by(VafAnual.ano_base).all()
+    registros = (
+        db.query(VafAnual)
+        .filter(VafAnual.municipio_id == mid)
+        .order_by(VafAnual.ano_base)
+        .all()
+    )
 
     return [_to_item(r) for r in registros]
 
@@ -50,15 +54,17 @@ def serie_vaf(
 # ==============================
 @router.get("/resumo", response_model=VafResumo)
 def resumo_vaf(
+    mid: int | None = Depends(municipio_scope),
     db: Session = Depends(get_db),
-    current_user=Depends(get_current_user),
 ):
-    query = db.query(VafAnual)
-
-    if current_user.role.nome != "ADMIN_GLOBAL":
-        query = query.filter(VafAnual.municipio_id == current_user.municipio_id)
-
-    registros = query.order_by(VafAnual.ano_base).all()
+    registros = (
+        db.query(VafAnual)
+        .filter(VafAnual.municipio_id == mid)
+        .order_by(VafAnual.ano_base)
+        .all()
+        if mid is not None
+        else []
+    )
 
     if not registros:
         return VafResumo(

@@ -7,6 +7,8 @@ import InfoTooltip from "../../components/InfoTooltip";
 import FilterBar from "../../components/FilterBar";
 import KpiCard from "../../components/KpiCard";
 import { AreaLineChart, HBarChart, DonutChart } from "../../components/nid/charts";
+import { useAuth } from "../../context/AuthContext";
+import { useViewAs } from "../../context/ViewAsContext";
 
 
 const fmtBRL = (v) =>
@@ -17,6 +19,13 @@ const fmtBRL = (v) =>
 const fmtNum = (v) => (v != null ? Number(v).toLocaleString("pt-BR") : "—");
 
 export default function PeDeMeiaPage() {
+  const { user } = useAuth();
+  const { viewAsId } = useViewAs();
+  // ADMIN_GLOBAL precisa de um município selecionado (view-as) para escopar os
+  // gráficos do dashboard; sem seleção, pedimos para escolher em vez de
+  // sobrepor todos os municípios no mesmo gráfico.
+  const needsMunicipio = user?.role === "ADMIN_GLOBAL" && viewAsId == null;
+
   const [rawSerie, setRawSerie] = useState([]);
   const [resumo, setResumo] = useState(null);
   const [porEtapa, setPorEtapa] = useState([]);
@@ -107,6 +116,25 @@ export default function PeDeMeiaPage() {
         </p>
       </div>
 
+      {needsMunicipio ? (
+        <div
+          className="rounded-2xl p-10 text-center"
+          style={{
+            background: "var(--panel)",
+            border: "1px dashed var(--border-strong)",
+            color: "var(--text-dim)",
+          }}
+        >
+          <p className="text-base font-semibold" style={{ color: "var(--text)" }}>
+            Selecione um município
+          </p>
+          <p className="text-sm mt-1">
+            Use <b>"Ver como"</b> na administração de Municípios para escolher um
+            município e visualizar os dados de Pé-de-Meia.
+          </p>
+        </div>
+      ) : (
+      <>
       <InsightsPanel dataset="pe_de_meia" />
 
       <FilterBar years={years} showMonths value={filters} onChange={setFilters} />
@@ -169,12 +197,15 @@ export default function PeDeMeiaPage() {
             data={porIncentivo.map((d) => ({ label: d.name, value: d.value }))}
             baseColor="var(--accent-5)"
             height={220}
+            legend
             loading={loading}
             emptyMessage="Sem dados disponíveis"
           />
         </div>
       </div>
       <ReleasesPanel dataset="pe_de_meia" />
+      </>
+      )}
 
     </motion.div>
   );

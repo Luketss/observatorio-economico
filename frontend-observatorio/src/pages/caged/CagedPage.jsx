@@ -12,6 +12,8 @@ import {
 } from "../../components/nid/charts";
 import ChartState from "../../components/nid/ChartState.jsx";
 import InfoTooltip from "../../components/InfoTooltip";
+import { useAuth } from "../../context/AuthContext";
+import { useViewAs } from "../../context/ViewAsContext";
 
 const A1 = "var(--accent-1)";
 const A2 = "var(--accent-2)";
@@ -27,6 +29,13 @@ const fmtCurrency = (v) => v != null
 const pct = (n, d) => d > 0 ? `${((n / d) * 100).toFixed(1)}%` : "—";
 
 export default function CagedPage() {
+  const { user } = useAuth();
+  const { viewAsId } = useViewAs();
+  // ADMIN_GLOBAL precisa de um município selecionado (view-as) para escopar os
+  // gráficos do dashboard; sem seleção, pedimos para escolher em vez de
+  // sobrepor todos os municípios no mesmo gráfico.
+  const needsMunicipio = user?.role === "ADMIN_GLOBAL" && viewAsId == null;
+
   const [serie, setSerie] = useState([]);
   const [resumo, setResumo] = useState(null);
   const [porSexo, setPorSexo] = useState([]);
@@ -302,6 +311,25 @@ export default function CagedPage() {
         badge={anoAtivo ? `Foco · ${anoAtivo}` : null}
       />
 
+      {needsMunicipio ? (
+        <div
+          className="rounded-2xl p-10 text-center"
+          style={{
+            background: "var(--panel)",
+            border: "1px dashed var(--border-strong)",
+            color: "var(--text-dim)",
+          }}
+        >
+          <p className="text-base font-semibold" style={{ color: "var(--text)" }}>
+            Selecione um município
+          </p>
+          <p className="text-sm mt-1">
+            Use <b>"Ver como"</b> na administração de Municípios para escolher um
+            município e visualizar os dados de CAGED.
+          </p>
+        </div>
+      ) : (
+      <>
       {years.length > 0 && (
         <div style={{ display: "flex", gap: 6, marginBottom: 18, flexWrap: "wrap" }}>
           {years.map((y) => (
@@ -633,6 +661,8 @@ export default function CagedPage() {
       <div style={{ marginTop: 8 }}>
         <ReleasesPanel dataset="caged" />
       </div>
+      </>
+      )}
     </motion.div>
   );
 }

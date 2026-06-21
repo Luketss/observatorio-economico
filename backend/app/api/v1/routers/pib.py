@@ -1,6 +1,6 @@
 from typing import List
 
-from app.api.deps import get_current_user, get_db
+from app.api.deps import get_current_user, get_db, municipio_scope
 from app.models.municipio import Municipio
 from app.models.pib import PibAnual
 from app.schemas.pib import PibComparativoItem, PibItem, PibResumo
@@ -15,15 +15,19 @@ router = APIRouter(prefix="/pib", tags=["PIB"])
 # ==============================
 @router.get("/serie", response_model=List[PibItem])
 def serie_pib(
+    mid: int | None = Depends(municipio_scope),
     db: Session = Depends(get_db),
-    current_user=Depends(get_current_user),
 ):
-    query = db.query(PibAnual)
+    if mid is None:
+        # ADMIN_GLOBAL sem município selecionado — front exibe "selecione um município".
+        return []
 
-    if current_user.role.nome != "ADMIN_GLOBAL":
-        query = query.filter(PibAnual.municipio_id == current_user.municipio_id)
-
-    registros = query.order_by(PibAnual.ano).all()
+    registros = (
+        db.query(PibAnual)
+        .filter(PibAnual.municipio_id == mid)
+        .order_by(PibAnual.ano)
+        .all()
+    )
 
     return [
         PibItem(
@@ -40,15 +44,17 @@ def serie_pib(
 # ==============================
 @router.get("/resumo", response_model=PibResumo)
 def resumo_pib(
+    mid: int | None = Depends(municipio_scope),
     db: Session = Depends(get_db),
-    current_user=Depends(get_current_user),
 ):
-    query = db.query(PibAnual)
-
-    if current_user.role.nome != "ADMIN_GLOBAL":
-        query = query.filter(PibAnual.municipio_id == current_user.municipio_id)
-
-    registros = query.order_by(PibAnual.ano).all()
+    registros = (
+        db.query(PibAnual)
+        .filter(PibAnual.municipio_id == mid)
+        .order_by(PibAnual.ano)
+        .all()
+        if mid is not None
+        else []
+    )
 
     if not registros:
         return PibResumo(

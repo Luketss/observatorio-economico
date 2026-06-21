@@ -1,6 +1,6 @@
 from typing import List
 
-from app.api.deps import get_current_user, get_db
+from app.api.deps import get_current_user, get_db, municipio_scope
 from app.models.pix import PixMensal
 from app.schemas.pix import PixMensalItem, PixResumo
 from fastapi import APIRouter, Depends, Query
@@ -9,18 +9,14 @@ from sqlalchemy.orm import Session
 router = APIRouter(prefix="/pix", tags=["PIX"])
 
 
-def _municipio_filter(query, current_user):
-    if current_user.role.nome != "ADMIN_GLOBAL":
-        query = query.filter(PixMensal.municipio_id == current_user.municipio_id)
-    return query
-
-
 @router.get("/serie", response_model=List[PixMensalItem])
 def serie_pix(
+    mid: int | None = Depends(municipio_scope),
     db: Session = Depends(get_db),
-    current_user=Depends(get_current_user),
 ):
-    query = _municipio_filter(db.query(PixMensal), current_user)
+    if mid is None:
+        return []
+    query = db.query(PixMensal).filter(PixMensal.municipio_id == mid)
     registros = query.order_by(PixMensal.ano, PixMensal.mes).all()
     return [
         PixMensalItem(
@@ -45,10 +41,12 @@ def serie_pix(
 
 @router.get("/resumo", response_model=PixResumo)
 def resumo_pix(
+    mid: int | None = Depends(municipio_scope),
     db: Session = Depends(get_db),
-    current_user=Depends(get_current_user),
 ):
-    query = _municipio_filter(db.query(PixMensal), current_user)
+    if mid is None:
+        return PixResumo()
+    query = db.query(PixMensal).filter(PixMensal.municipio_id == mid)
     registros = query.all()
     if not registros:
         return PixResumo()

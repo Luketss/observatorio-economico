@@ -1,6 +1,6 @@
 from typing import List
 
-from app.api.deps import get_current_user, get_db
+from app.api.deps import get_current_user, get_db, municipio_scope
 from app.models.inss import InssAnual
 from app.schemas.inss import InssItem, InssResumo
 from fastapi import APIRouter, Depends
@@ -10,11 +10,18 @@ router = APIRouter(prefix="/inss", tags=["INSS"])
 
 
 @router.get("/serie", response_model=List[InssItem])
-def serie_inss(db: Session = Depends(get_db), current_user=Depends(get_current_user)):
-    query = db.query(InssAnual)
-    if current_user.role.nome != "ADMIN_GLOBAL":
-        query = query.filter(InssAnual.municipio_id == current_user.municipio_id)
-    registros = query.order_by(InssAnual.ano, InssAnual.categoria).all()
+def serie_inss(
+    mid: int | None = Depends(municipio_scope),
+    db: Session = Depends(get_db),
+):
+    if mid is None:
+        return []
+    registros = (
+        db.query(InssAnual)
+        .filter(InssAnual.municipio_id == mid)
+        .order_by(InssAnual.ano, InssAnual.categoria)
+        .all()
+    )
     return [
         InssItem(
             ano=r.ano,
@@ -27,11 +34,15 @@ def serie_inss(db: Session = Depends(get_db), current_user=Depends(get_current_u
 
 
 @router.get("/resumo", response_model=InssResumo)
-def resumo_inss(db: Session = Depends(get_db), current_user=Depends(get_current_user)):
-    query = db.query(InssAnual)
-    if current_user.role.nome != "ADMIN_GLOBAL":
-        query = query.filter(InssAnual.municipio_id == current_user.municipio_id)
-    registros = query.all()
+def resumo_inss(
+    mid: int | None = Depends(municipio_scope),
+    db: Session = Depends(get_db),
+):
+    registros = (
+        db.query(InssAnual).filter(InssAnual.municipio_id == mid).all()
+        if mid is not None
+        else []
+    )
     return InssResumo(
         total_beneficios=sum(r.quantidade_beneficios for r in registros),
         valor_total=sum(r.valor_anual for r in registros),

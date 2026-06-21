@@ -1,6 +1,6 @@
 from typing import List
 
-from app.api.deps import get_current_user, get_db
+from app.api.deps import get_current_user, get_db, municipio_scope
 from app.models.bolsa_familia import BolsaFamiliaResumo as BFModel
 from app.schemas.bolsa_familia import BolsaFamiliaSerieItem, BolsaFamiliaResumo
 from fastapi import APIRouter, Depends
@@ -10,11 +10,18 @@ router = APIRouter(prefix="/bolsa_familia", tags=["Bolsa Família"])
 
 
 @router.get("/serie", response_model=List[BolsaFamiliaSerieItem])
-def serie_bolsa_familia(db: Session = Depends(get_db), current_user=Depends(get_current_user)):
-    query = db.query(BFModel)
-    if current_user.role.nome != "ADMIN_GLOBAL":
-        query = query.filter(BFModel.municipio_id == current_user.municipio_id)
-    registros = query.order_by(BFModel.ano, BFModel.mes).all()
+def serie_bolsa_familia(
+    mid: int | None = Depends(municipio_scope),
+    db: Session = Depends(get_db),
+):
+    if mid is None:
+        return []
+    registros = (
+        db.query(BFModel)
+        .filter(BFModel.municipio_id == mid)
+        .order_by(BFModel.ano, BFModel.mes)
+        .all()
+    )
     return [
         BolsaFamiliaSerieItem(
             ano=r.ano,
@@ -30,11 +37,15 @@ def serie_bolsa_familia(db: Session = Depends(get_db), current_user=Depends(get_
 
 
 @router.get("/resumo", response_model=BolsaFamiliaResumo)
-def resumo_bolsa_familia(db: Session = Depends(get_db), current_user=Depends(get_current_user)):
-    query = db.query(BFModel)
-    if current_user.role.nome != "ADMIN_GLOBAL":
-        query = query.filter(BFModel.municipio_id == current_user.municipio_id)
-    registros = query.all()
+def resumo_bolsa_familia(
+    mid: int | None = Depends(municipio_scope),
+    db: Session = Depends(get_db),
+):
+    registros = (
+        db.query(BFModel).filter(BFModel.municipio_id == mid).all()
+        if mid is not None
+        else []
+    )
     return BolsaFamiliaResumo(
         total_beneficiarios=sum(r.total_beneficiarios for r in registros),
         valor_total=sum(r.valor_total for r in registros),

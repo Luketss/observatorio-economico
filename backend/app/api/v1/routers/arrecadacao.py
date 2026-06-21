@@ -1,26 +1,12 @@
 from typing import List
 
-from app.api.deps import get_current_user, get_db
+from app.api.deps import get_db, municipio_scope
 from app.models.arrecadacao import ArrecadacaoMensal
 from app.schemas.arrecadacao import ArrecadacaoItem, ArrecadacaoResumo
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 
 router = APIRouter(prefix="/arrecadacao", tags=["Arrecadação"])
-
-
-def _resolver_municipio_id(current_user, municipio_id):
-    """Resolve which município to scope to.
-
-    Non-ADMIN_GLOBAL users are always scoped to their own município (the
-    `municipio_id` query param is ignored). ADMIN_GLOBAL uses the param sent by
-    the front's "view-as" override; when absent (no município selected) the
-    caller should return empty so the UI prompts for a selection instead of
-    dumping every município onto the same chart.
-    """
-    if current_user.role.nome != "ADMIN_GLOBAL":
-        return current_user.municipio_id
-    return municipio_id
 
 
 # ==============================
@@ -28,11 +14,9 @@ def _resolver_municipio_id(current_user, municipio_id):
 # ==============================
 @router.get("/serie", response_model=List[ArrecadacaoItem])
 def serie_mensal(
-    municipio_id: int | None = Query(default=None),
+    mid: int | None = Depends(municipio_scope),
     db: Session = Depends(get_db),
-    current_user=Depends(get_current_user),
 ):
-    mid = _resolver_municipio_id(current_user, municipio_id)
     if mid is None:
         # ADMIN_GLOBAL sem município selecionado — front exibe "selecione um município".
         return []
@@ -67,14 +51,18 @@ def serie_mensal(
 # ==============================
 @router.get("/por_tipo")
 def por_tipo(
+    mid: int | None = Depends(municipio_scope),
     db: Session = Depends(get_db),
-    current_user=Depends(get_current_user),
 ):
     """Returns each period's ICMS, IPVA and IPI as separate labeled rows for stacked charts."""
-    query = db.query(ArrecadacaoMensal)
-    if current_user.role.nome != "ADMIN_GLOBAL":
-        query = query.filter(ArrecadacaoMensal.municipio_id == current_user.municipio_id)
-    registros = query.order_by(ArrecadacaoMensal.ano, ArrecadacaoMensal.mes).all()
+    if mid is None:
+        return []
+    registros = (
+        db.query(ArrecadacaoMensal)
+        .filter(ArrecadacaoMensal.municipio_id == mid)
+        .order_by(ArrecadacaoMensal.ano, ArrecadacaoMensal.mes)
+        .all()
+    )
     result = []
     for r in registros:
         periodo = f"{r.ano}-{str(r.mes).zfill(2)}"
@@ -89,12 +77,9 @@ def por_tipo(
 # ==============================
 @router.get("/resumo", response_model=ArrecadacaoResumo)
 def resumo_arrecadacao(
-    municipio_id: int | None = Query(default=None),
+    mid: int | None = Depends(municipio_scope),
     db: Session = Depends(get_db),
-    current_user=Depends(get_current_user),
 ):
-    mid = _resolver_municipio_id(current_user, municipio_id)
-
     registros = (
         db.query(ArrecadacaoMensal).filter(ArrecadacaoMensal.municipio_id == mid).all()
         if mid is not None

@@ -1,6 +1,6 @@
 from typing import List
 
-from app.api.deps import get_current_user, get_db
+from app.api.deps import get_current_user, get_db, municipio_scope
 from app.models.empresa import Empresa
 from app.schemas.empresa import EmpresaResumo, EmpresaPorPorteItem, EmpresaPorCnaeItem
 from fastapi import APIRouter, Depends
@@ -86,10 +86,10 @@ router = APIRouter(prefix="/empresas", tags=["Empresas"])
 
 
 @router.get("/resumo", response_model=EmpresaResumo)
-def resumo_empresas(db: Session = Depends(get_db), current_user=Depends(get_current_user)):
-    query = db.query(Empresa)
-    if current_user.role.nome != "ADMIN_GLOBAL":
-        query = query.filter(Empresa.municipio_id == current_user.municipio_id)
+def resumo_empresas(mid: int | None = Depends(municipio_scope), db: Session = Depends(get_db)):
+    if mid is None:
+        return EmpresaResumo(total_empresas=0, total_ativas=0, total_mei=0, total_simples=0)
+    query = db.query(Empresa).filter(Empresa.municipio_id == mid)
     registros = query.all()
     total = len(registros)
     ativas = sum(1 for r in registros if r.situacao == "02")
@@ -99,10 +99,12 @@ def resumo_empresas(db: Session = Depends(get_db), current_user=Depends(get_curr
 
 
 @router.get("/por_porte", response_model=List[EmpresaPorPorteItem])
-def por_porte(db: Session = Depends(get_db), current_user=Depends(get_current_user)):
-    query = db.query(Empresa.porte, func.count(Empresa.id).label("total"))
-    if current_user.role.nome != "ADMIN_GLOBAL":
-        query = query.filter(Empresa.municipio_id == current_user.municipio_id)
+def por_porte(mid: int | None = Depends(municipio_scope), db: Session = Depends(get_db)):
+    if mid is None:
+        return []
+    query = db.query(Empresa.porte, func.count(Empresa.id).label("total")).filter(
+        Empresa.municipio_id == mid
+    )
     resultados = query.group_by(Empresa.porte).order_by(func.count(Empresa.id).desc()).all()
     return [
         EmpresaPorPorteItem(
@@ -114,10 +116,12 @@ def por_porte(db: Session = Depends(get_db), current_user=Depends(get_current_us
 
 
 @router.get("/por_cnae", response_model=List[EmpresaPorCnaeItem])
-def por_cnae(db: Session = Depends(get_db), current_user=Depends(get_current_user)):
-    query = db.query(Empresa.cnae_fiscal, func.count(Empresa.id).label("total"))
-    if current_user.role.nome != "ADMIN_GLOBAL":
-        query = query.filter(Empresa.municipio_id == current_user.municipio_id)
+def por_cnae(mid: int | None = Depends(municipio_scope), db: Session = Depends(get_db)):
+    if mid is None:
+        return []
+    query = db.query(Empresa.cnae_fiscal, func.count(Empresa.id).label("total")).filter(
+        Empresa.municipio_id == mid
+    )
     resultados = (
         query.filter(Empresa.cnae_fiscal.isnot(None))
         .group_by(Empresa.cnae_fiscal)
@@ -129,11 +133,13 @@ def por_cnae(db: Session = Depends(get_db), current_user=Depends(get_current_use
 
 
 @router.get("/por_situacao")
-def por_situacao(db: Session = Depends(get_db), current_user=Depends(get_current_user)):
+def por_situacao(mid: int | None = Depends(municipio_scope), db: Session = Depends(get_db)):
     """Count of companies grouped by situacao (active, closed, etc.)."""
-    query = db.query(Empresa.situacao, func.count(Empresa.id).label("total"))
-    if current_user.role.nome != "ADMIN_GLOBAL":
-        query = query.filter(Empresa.municipio_id == current_user.municipio_id)
+    if mid is None:
+        return []
+    query = db.query(Empresa.situacao, func.count(Empresa.id).label("total")).filter(
+        Empresa.municipio_id == mid
+    )
     resultados = query.group_by(Empresa.situacao).order_by(func.count(Empresa.id).desc()).all()
     return [
         {
@@ -146,16 +152,16 @@ def por_situacao(db: Session = Depends(get_db), current_user=Depends(get_current
 
 
 @router.get("/situacao_por_porte")
-def situacao_por_porte(db: Session = Depends(get_db), current_user=Depends(get_current_user)):
+def situacao_por_porte(mid: int | None = Depends(municipio_scope), db: Session = Depends(get_db)):
     """Per-porte breakdown of active vs. closed companies."""
+    if mid is None:
+        return []
     query = db.query(
         Empresa.porte,
         func.count(Empresa.id).label("total"),
         func.sum(case((Empresa.situacao == "02", 1), else_=0)).label("ativas"),
         func.sum(case((Empresa.situacao != "02", 1), else_=0)).label("fechadas"),
-    )
-    if current_user.role.nome != "ADMIN_GLOBAL":
-        query = query.filter(Empresa.municipio_id == current_user.municipio_id)
+    ).filter(Empresa.municipio_id == mid)
     resultados = query.group_by(Empresa.porte).order_by(func.count(Empresa.id).desc()).all()
     return [
         {
@@ -170,11 +176,13 @@ def situacao_por_porte(db: Session = Depends(get_db), current_user=Depends(get_c
 
 
 @router.get("/por_cnae_secao")
-def por_cnae_secao(db: Session = Depends(get_db), current_user=Depends(get_current_user)):
+def por_cnae_secao(mid: int | None = Depends(municipio_scope), db: Session = Depends(get_db)):
     """Count of companies by CNAE 2-digit division with human-readable description."""
-    query = db.query(Empresa.cnae_fiscal, func.count(Empresa.id).label("total"))
-    if current_user.role.nome != "ADMIN_GLOBAL":
-        query = query.filter(Empresa.municipio_id == current_user.municipio_id)
+    if mid is None:
+        return []
+    query = db.query(Empresa.cnae_fiscal, func.count(Empresa.id).label("total")).filter(
+        Empresa.municipio_id == mid
+    )
     resultados = (
         query.filter(Empresa.cnae_fiscal.isnot(None))
         .group_by(Empresa.cnae_fiscal)
@@ -197,16 +205,20 @@ def por_cnae_secao(db: Session = Depends(get_db), current_user=Depends(get_curre
 
 
 @router.get("/capital_por_porte")
-def capital_por_porte(db: Session = Depends(get_db), current_user=Depends(get_current_user)):
+def capital_por_porte(mid: int | None = Depends(municipio_scope), db: Session = Depends(get_db)):
     """Average and total capital social grouped by porte (active companies only)."""
+    if mid is None:
+        return []
     query = db.query(
         Empresa.porte,
         func.avg(Empresa.capital_social).label("capital_medio"),
         func.sum(Empresa.capital_social).label("capital_total"),
         func.count(Empresa.id).label("total"),
-    ).filter(Empresa.capital_social.isnot(None), Empresa.capital_social > 0)
-    if current_user.role.nome != "ADMIN_GLOBAL":
-        query = query.filter(Empresa.municipio_id == current_user.municipio_id)
+    ).filter(
+        Empresa.capital_social.isnot(None),
+        Empresa.capital_social > 0,
+        Empresa.municipio_id == mid,
+    )
     resultados = query.group_by(Empresa.porte).order_by(func.sum(Empresa.capital_social).desc()).all()
     return [
         {

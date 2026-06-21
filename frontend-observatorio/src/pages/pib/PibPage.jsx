@@ -10,6 +10,7 @@ import KpiCard from "../../components/KpiCard";
 import PlanGate from "../../components/PlanGate";
 import { NidPanel, NidLegend, NidPageHeader } from "../../components/nid/Panel";
 import { useAuth } from "../../context/AuthContext";
+import { useViewAs } from "../../context/ViewAsContext";
 import ChartState from "../../components/nid/ChartState.jsx";
 import {
   AreaLineChart,
@@ -27,7 +28,12 @@ const fmtBRL = (v) =>
 
 export default function PibPage() {
   const { user } = useAuth();
+  const { viewAsId } = useViewAs();
   const ownCity = user?.municipio?.nome;
+  // ADMIN_GLOBAL precisa de um município selecionado (view-as) para escopar os
+  // gráficos do dashboard; sem seleção, pedimos para escolher em vez de
+  // sobrepor todos os municípios no mesmo gráfico.
+  const needsMunicipio = user?.role === "ADMIN_GLOBAL" && viewAsId == null;
 
   const [rawSerie, setRawSerie] = useState([]);
   const [resumo, setResumo] = useState(null);
@@ -164,6 +170,25 @@ export default function PibPage() {
         }] : null}
       />
 
+      {needsMunicipio ? (
+        <div
+          className="rounded-2xl p-10 text-center"
+          style={{
+            background: "var(--panel)",
+            border: "1px dashed var(--border-strong)",
+            color: "var(--text-dim)",
+          }}
+        >
+          <p className="text-base font-semibold" style={{ color: "var(--text)" }}>
+            Selecione um município
+          </p>
+          <p className="text-sm mt-1">
+            Use <b>"Ver como"</b> na administração de Municípios para escolher um
+            município e visualizar os dados de PIB.
+          </p>
+        </div>
+      ) : (
+      <>
       <InsightsPanel dataset="pib" />
 
       <FilterBar id="filter-bar-pib" years={years} value={filters} onChange={setFilters} />
@@ -240,6 +265,7 @@ export default function PibPage() {
             focusSeries={ownCity}
             showMedian
             showBand
+            legend
           />
         </NidPanel>
       )}
@@ -256,6 +282,7 @@ export default function PibPage() {
               { key: "tipo_dado", label: "Tipo",         align: "right", kind: "code", mono: true },
             ]}
             data={serie.slice().reverse()}
+            pageSize={12}
           />
         </NidPanel>
       )}
@@ -275,6 +302,8 @@ export default function PibPage() {
       />
 
       <ReleasesPanel dataset="pib" />
+      </>
+      )}
 
     </motion.div>
   );

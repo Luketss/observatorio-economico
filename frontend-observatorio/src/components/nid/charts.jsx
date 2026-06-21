@@ -12,10 +12,13 @@ function resolveGlow(glow) {
 }
 
 // ────────── x-axis label thinning ──────────
-// Always show up to 12 labels; beyond that show ~10 evenly spaced + the last.
-function shouldShowXLabel(i, total) {
-  if (total <= 12) return true;
-  const stride = Math.ceil(total / 10);
+// Width-aware: fit roughly one label per 64px of chart width (so narrow/mobile
+// viewports thin out more aggressively and labels don't overlap), always
+// keeping the first and last. Falls back to ~12 labels when width is unknown.
+function shouldShowXLabel(i, total, width) {
+  const maxLabels = width ? Math.max(3, Math.floor(width / 64)) : 12;
+  if (total <= maxLabels) return true;
+  const stride = Math.ceil(total / maxLabels);
   return i % stride === 0 || i === total - 1;
 }
 
@@ -312,7 +315,7 @@ export function AreaLineChart({
         {/* X-axis labels — show every ~10th real label + all forecast labels */}
         {allLabels.map((lbl, i) => {
           const isReal = i < data.length;
-          if (isReal && !(i % Math.ceil(data.length / 10) === 0 || i === data.length - 1)) return null;
+          if (isReal && !shouldShowXLabel(i, data.length, w)) return null;
           return (
             <text key={i} x={sx(i)} y={height - padB + 18}
               className="nid-axis-text" textAnchor="middle"
@@ -469,11 +472,32 @@ const opacityScale = (i) => {
   return stops[i] ?? 0.10;
 };
 
+// Legenda inline simples (swatch + nome) para gráficos multi-série.
+function InlineLegend({ items }) {
+  if (!items || items.length === 0) return null;
+  return (
+    <ul
+      style={{
+        listStyle: "none", margin: "12px 0 0", padding: 0, width: "100%",
+        display: "flex", flexWrap: "wrap", gap: "6px 16px", justifyContent: "center",
+      }}
+    >
+      {items.map((it, i) => (
+        <li key={i} style={{ display: "flex", alignItems: "center", gap: 7, fontSize: 12, color: "var(--text-dim)" }}>
+          <span style={{ width: 10, height: 10, borderRadius: 3, background: it.color, flexShrink: 0 }} />
+          <span style={{ whiteSpace: "nowrap" }}>{it.name}</span>
+        </li>
+      ))}
+    </ul>
+  );
+}
+
 export function StackedBarChart({
   data, keys, colors, height = 280, glow = "hover",
   yFmt = fmtMoneyShort, tipFmt = fmtMoneyFull,
   yCaption,
   baseColor, showTotalLabel = false, highlightLast = false,
+  legend = false,
   loading,
   emptyMessage,
   emptyAction,
@@ -594,7 +618,7 @@ export function StackedBarChart({
                   width={barWidth + 4} height={padT + innerH - top + 4}
                   fill="none" stroke="var(--accent-2)" strokeWidth="1.5" rx="3" />
               )}
-              {shouldShowXLabel(i, data.length) && (
+              {shouldShowXLabel(i, data.length, w) && (
                 <text x={sx(i)} y={height - padB + 18} className="nid-axis-text" textAnchor="middle">{d.label}</text>
               )}
             </g>
@@ -623,6 +647,9 @@ export function StackedBarChart({
           })}
         </div>
       )}
+      {legend && (
+        <InlineLegend items={keys.map((k, i) => ({ name: k, color: baseColor || resolvedColors[i % (resolvedColors.length || 1)] }))} />
+      )}
     </div>
   );
 }
@@ -641,6 +668,7 @@ export function MultiLineChart({
   focusColor,   // defaults to var(--accent-2)
   showMedian,   // boolean — draw dashed peer-median line
   showBand,     // boolean — draw peer min/max band
+  legend = false, // render an inline series legend below the chart
   loading,
   emptyMessage,
   emptyAction,
@@ -836,7 +864,7 @@ export function MultiLineChart({
         {/* X-axis labels */}
         {allLabels.map((lbl, i) => {
           const isReal = i < data.length;
-          if (isReal && !(i % Math.ceil(data.length / 10) === 0 || i === data.length - 1)) return null;
+          if (isReal && !shouldShowXLabel(i, data.length, w)) return null;
           return (
             <text key={i} x={sx(i)} y={height - padB + 18}
               className="nid-axis-text" textAnchor="middle"
@@ -1103,6 +1131,9 @@ export function MultiLineChart({
           )}
         </div>
       )}
+      {legend && (
+        <InlineLegend items={series.map((s, si) => ({ name: s, color: (colors || [])[si] || "var(--accent-1)" }))} />
+      )}
     </div>
   );
 }
@@ -1198,7 +1229,7 @@ function TwinBarBrutoChart({
                 fill={`url(#tup-${id})`} stroke={colorUp} strokeWidth="1" opacity={hover != null && !isH ? 0.4 : 1} />
               <rect x={xDn} y={yDn} width={barW} height={hDn} rx={4}
                 fill={`url(#tdn-${id})`} stroke={colorDown} strokeWidth="1" opacity={hover != null && !isH ? 0.4 : 1} />
-              {shouldShowXLabel(i, data.length) && (
+              {shouldShowXLabel(i, data.length, w) && (
                 <text x={cx} y={height - padB + 18} className="nid-axis-text" textAnchor="middle">{d.label}</text>
               )}
             </g>
@@ -1349,7 +1380,7 @@ function TwinBarSaldoChart({
                 fill={fill}
                 opacity={hover != null && !isH ? 0.35 : 0.9}
               />
-              {shouldShowXLabel(i, data.length) && (
+              {shouldShowXLabel(i, data.length, w) && (
                 <text x={cx} y={height - padB + 18} className="nid-axis-text" textAnchor="middle">
                   {d.label}
                 </text>
@@ -1447,7 +1478,7 @@ export function TwinBarChart({
 
 // ────────── DonutChartCore (inner implementation) ──────────
 function DonutChartCore({
-  data, colors, height = 220, glow = "hover", centerLabel, centerSub,
+  data, colors, height = 220, glow = "hover", centerLabel, centerSub, legend = false,
 }) {
   const id = useId().replace(/:/g, "");
   const [hoverSlice, setHoverSlice] = useState(null);
@@ -1478,7 +1509,14 @@ function DonutChartCore({
     return { ...d, path, color: colors[i % colors.length], pct: d.value / total };
   });
   return (
-    <div className="nid-chart-wrap" style={{ display: "grid", placeItems: "center" }}>
+    <div
+      className="nid-chart-wrap"
+      style={
+        legend
+          ? { display: "flex", flexDirection: "column", alignItems: "center", gap: 18 }
+          : { display: "grid", placeItems: "center" }
+      }
+    >
       <svg viewBox={`0 0 ${size} ${size}`} style={{ maxWidth: size, width: size }}
         onMouseLeave={() => setHoverSlice(null)}>
         <defs>
@@ -1504,6 +1542,36 @@ function DonutChartCore({
           </text>
         )}
       </svg>
+
+      {legend && (
+        <ul
+          style={{ listStyle: "none", margin: 0, padding: 0, width: "100%", display: "flex", flexDirection: "column", gap: 10 }}
+          onMouseLeave={() => setHoverSlice(null)}
+        >
+          {slices.map((s, i) => (
+            <li
+              key={i}
+              onMouseEnter={() => setHoverSlice(i)}
+              style={{
+                display: "flex", alignItems: "center", gap: 10, fontSize: 13,
+                opacity: hoverSlice != null && hoverSlice !== i ? 0.5 : 1,
+                transition: "opacity 120ms ease",
+              }}
+            >
+              <span style={{ width: 11, height: 11, borderRadius: 3, background: s.color, flexShrink: 0 }} />
+              <span style={{ flex: 1, color: "var(--text)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                {s.label}
+              </span>
+              <span style={{ color: "var(--text-dim)", fontVariantNumeric: "tabular-nums" }}>
+                {fmtNumber(s.value)}
+              </span>
+              <span style={{ color: "var(--text-mute)", fontVariantNumeric: "tabular-nums", minWidth: 52, textAlign: "right" }}>
+                {(s.pct * 100).toFixed(1)}%
+              </span>
+            </li>
+          ))}
+        </ul>
+      )}
     </div>
   );
 }
@@ -1589,7 +1657,7 @@ function PercentBarChart({ data, baseColor, centerLabel, centerSub }) {
 // ────────── DonutChart (public — auto-falls back to PercentBarChart) ──────────
 export function DonutChart({
   data, baseColor, prefer = "auto", threshold = 4,
-  colors, height, glow, centerLabel, centerSub,
+  colors, height, glow, centerLabel, centerSub, legend = false,
   loading,
   emptyMessage,
   emptyAction,
@@ -1630,6 +1698,7 @@ export function DonutChart({
         glow={glow}
         centerLabel={centerLabel}
         centerSub={centerSub}
+        legend={legend}
       />
     );
 }
@@ -1677,7 +1746,7 @@ export function HBarChart({
                 className={`bar${isOwn ? " own" : ""}`}
                 style={{ width: `${pct}%`, "--bar": barColor }}
               />
-              <span className={`city${isOwn ? " own" : ""}`}>{d.label}</span>
+              <span className={`city${isOwn ? " own" : ""}`} title={d.label}>{d.label}</span>
             </div>
             <span className={`val${isOwn ? " own" : ""}`}>{fmt(d.value)}</span>
           </div>

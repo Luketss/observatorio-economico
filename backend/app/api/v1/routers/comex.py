@@ -1,6 +1,6 @@
 from typing import List, Optional
 
-from app.api.deps import get_current_user, get_db
+from app.api.deps import get_current_user, get_db, municipio_scope
 from app.models.comex import ComexMensal, ComexPorProduto as ComexProdModel, ComexPorPais as ComexPaisModel
 from app.schemas.comex import ComexSerieItem, ComexResumo, ComexPorProdutoItem, ComexPorPaisItem
 from fastapi import APIRouter, Depends, Query
@@ -11,10 +11,10 @@ router = APIRouter(prefix="/comex", tags=["Comex"])
 
 
 @router.get("/serie", response_model=List[ComexSerieItem])
-def serie_comex(db: Session = Depends(get_db), current_user=Depends(get_current_user)):
-    query = db.query(ComexMensal)
-    if current_user.role.nome != "ADMIN_GLOBAL":
-        query = query.filter(ComexMensal.municipio_id == current_user.municipio_id)
+def serie_comex(mid: int | None = Depends(municipio_scope), db: Session = Depends(get_db)):
+    if mid is None:
+        return []
+    query = db.query(ComexMensal).filter(ComexMensal.municipio_id == mid)
     registros = query.order_by(ComexMensal.ano, ComexMensal.mes).all()
     return [
         ComexSerieItem(
@@ -29,10 +29,10 @@ def serie_comex(db: Session = Depends(get_db), current_user=Depends(get_current_
 
 
 @router.get("/resumo", response_model=ComexResumo)
-def resumo_comex(db: Session = Depends(get_db), current_user=Depends(get_current_user)):
-    query = db.query(ComexMensal)
-    if current_user.role.nome != "ADMIN_GLOBAL":
-        query = query.filter(ComexMensal.municipio_id == current_user.municipio_id)
+def resumo_comex(mid: int | None = Depends(municipio_scope), db: Session = Depends(get_db)):
+    if mid is None:
+        return ComexResumo(total_exportado_usd=0, total_importado_usd=0, balanca_comercial=0)
+    query = db.query(ComexMensal).filter(ComexMensal.municipio_id == mid)
     registros = query.all()
     exportado = sum(r.valor_usd for r in registros if r.tipo_operacao == "export")
     importado = sum(r.valor_usd for r in registros if r.tipo_operacao == "import")
@@ -46,16 +46,16 @@ def resumo_comex(db: Session = Depends(get_db), current_user=Depends(get_current
 @router.get("/por_produto", response_model=List[ComexPorProdutoItem])
 def por_produto(
     ano: Optional[int] = Query(None),
+    mid: int | None = Depends(municipio_scope),
     db: Session = Depends(get_db),
-    current_user=Depends(get_current_user),
 ):
+    if mid is None:
+        return []
     query = db.query(
         ComexProdModel.produto,
         func.sum(ComexProdModel.valor_usd).label("valor_usd"),
         func.sum(ComexProdModel.peso_kg).label("peso_kg"),
-    )
-    if current_user.role.nome != "ADMIN_GLOBAL":
-        query = query.filter(ComexProdModel.municipio_id == current_user.municipio_id)
+    ).filter(ComexProdModel.municipio_id == mid)
     if ano:
         query = query.filter(ComexProdModel.ano == ano)
     resultados = query.group_by(ComexProdModel.produto).order_by(
@@ -68,11 +68,11 @@ def por_produto(
 
 
 @router.get("/saldo_mensal")
-def saldo_mensal(db: Session = Depends(get_db), current_user=Depends(get_current_user)):
+def saldo_mensal(mid: int | None = Depends(municipio_scope), db: Session = Depends(get_db)):
     """Monthly export, import and trade balance (exports − imports)."""
-    query = db.query(ComexMensal)
-    if current_user.role.nome != "ADMIN_GLOBAL":
-        query = query.filter(ComexMensal.municipio_id == current_user.municipio_id)
+    if mid is None:
+        return []
+    query = db.query(ComexMensal).filter(ComexMensal.municipio_id == mid)
     registros = query.order_by(ComexMensal.ano, ComexMensal.mes).all()
     periodos: dict = {}
     for r in registros:
@@ -94,15 +94,15 @@ def saldo_mensal(db: Session = Depends(get_db), current_user=Depends(get_current
 @router.get("/por_pais", response_model=List[ComexPorPaisItem])
 def por_pais(
     ano: Optional[int] = Query(None),
+    mid: int | None = Depends(municipio_scope),
     db: Session = Depends(get_db),
-    current_user=Depends(get_current_user),
 ):
+    if mid is None:
+        return []
     query = db.query(
         ComexPaisModel.pais,
         func.sum(ComexPaisModel.valor_usd).label("valor_usd"),
-    )
-    if current_user.role.nome != "ADMIN_GLOBAL":
-        query = query.filter(ComexPaisModel.municipio_id == current_user.municipio_id)
+    ).filter(ComexPaisModel.municipio_id == mid)
     if ano:
         query = query.filter(ComexPaisModel.ano == ano)
     resultados = query.group_by(ComexPaisModel.pais).order_by(
