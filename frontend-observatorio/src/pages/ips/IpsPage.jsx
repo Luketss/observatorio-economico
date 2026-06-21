@@ -3,6 +3,7 @@ import api from "../../services/api";
 import { useAuth } from "../../context/AuthContext";
 import { HBarChart, MultiLineChart } from "../../components/nid/charts";
 import InfoTooltip from "../../components/InfoTooltip";
+import MunicipioPicker from "../../components/nid/MunicipioPicker";
 
 function fmt(v) {
   if (v == null) return "—";
@@ -222,17 +223,11 @@ export default function IpsPage() {
         </div>
         <div className="min-w-[220px]">
           <label className="block text-xs text-slate-500 mb-1">Município</label>
-          <select
+          <MunicipioPicker
+            municipios={municipios.map((m) => ({ ...m, id: m.municipio_id }))}
             value={selectedMunicipioId ?? ""}
-            onChange={(e) => setSelectedMunicipioId(Number(e.target.value))}
-            className="w-full rounded-lg border border-[var(--border)] bg-[var(--panel)] text-[var(--text)] px-3 py-2 text-sm"
-          >
-            {municipios.map((m) => (
-              <option key={m.municipio_id} value={m.municipio_id}>
-                {m.nome}
-              </option>
-            ))}
-          </select>
+            onChange={(id) => setSelectedMunicipioId(id ? Number(id) : null)}
+          />
         </div>
         <div>
           <label className="block text-xs text-slate-500 mb-1">Ano</label>

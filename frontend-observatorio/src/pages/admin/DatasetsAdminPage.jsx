@@ -3,6 +3,7 @@ import { motion } from "framer-motion";
 import { TrashIcon } from "@heroicons/react/24/outline";
 import api from "../../services/api";
 import NidModal, { NidField } from "../../components/nid/NidModal";
+import MunicipioPicker from "../../components/nid/MunicipioPicker";
 import { useToast } from "../../context/ToastContext";
 
 const CONFIRM_PHRASE = "DELETAR";
@@ -191,27 +192,14 @@ export default function DatasetsAdminPage() {
         >
           Município:
         </label>
-        <select
-          id="municipio-select"
-          value={selectedMunId}
-          onChange={(e) => setSelectedMunId(e.target.value)}
-          disabled={loadingMun}
-          className="flex-1 px-3 py-2 rounded-lg text-sm cursor-pointer"
-          style={{
-            background: "var(--panel-2)",
-            border: "1px solid var(--border)",
-            color: "var(--text)",
-          }}
-        >
-          <option value="">
-            {loadingMun ? "Carregando…" : "— selecione um município —"}
-          </option>
-          {municipios.map((m) => (
-            <option key={m.id} value={m.id}>
-              {m.nome} ({m.estado}){m.is_demo ? " · demo" : ""}
-            </option>
-          ))}
-        </select>
+        <div className="flex-1">
+          <MunicipioPicker
+            municipios={municipios}
+            value={selectedMunId}
+            onChange={setSelectedMunId}
+            placeholder={loadingMun ? "Carregando…" : "— selecione um município —"}
+          />
+        </div>
 
         {selectedMunId && (
           <button
