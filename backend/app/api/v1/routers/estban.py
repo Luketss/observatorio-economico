@@ -1,6 +1,6 @@
 from typing import List
 
-from app.api.deps import get_current_user, get_db
+from app.api.deps import get_current_user, get_db, municipio_scope
 from app.models.estban import EstbanMensal, EstbanPorInstituicao as EstbanInstModel
 from app.schemas.estban import EstbanSerieItem, EstbanPorInstituicaoItem, EstbanResumo
 from fastapi import APIRouter, Depends
@@ -11,10 +11,10 @@ router = APIRouter(prefix="/estban", tags=["Estban"])
 
 
 @router.get("/serie", response_model=List[EstbanSerieItem])
-def serie_estban(db: Session = Depends(get_db), current_user=Depends(get_current_user)):
-    query = db.query(EstbanMensal)
-    if current_user.role.nome != "ADMIN_GLOBAL":
-        query = query.filter(EstbanMensal.municipio_id == current_user.municipio_id)
+def serie_estban(mid: int | None = Depends(municipio_scope), db: Session = Depends(get_db)):
+    if mid is None:
+        return []
+    query = db.query(EstbanMensal).filter(EstbanMensal.municipio_id == mid)
     registros = query.order_by(EstbanMensal.data_referencia).all()
     return [
         EstbanSerieItem(
@@ -37,10 +37,10 @@ def serie_estban(db: Session = Depends(get_db), current_user=Depends(get_current
 
 
 @router.get("/resumo", response_model=EstbanResumo)
-def resumo_estban(db: Session = Depends(get_db), current_user=Depends(get_current_user)):
-    query = db.query(EstbanMensal)
-    if current_user.role.nome != "ADMIN_GLOBAL":
-        query = query.filter(EstbanMensal.municipio_id == current_user.municipio_id)
+def resumo_estban(mid: int | None = Depends(municipio_scope), db: Session = Depends(get_db)):
+    if mid is None:
+        return EstbanResumo(total_operacoes_credito=0, total_depositos=0, qtd_agencias=0)
+    query = db.query(EstbanMensal).filter(EstbanMensal.municipio_id == mid)
     registros = query.all()
     if not registros:
         return EstbanResumo(total_operacoes_credito=0, total_depositos=0, qtd_agencias=0)
@@ -54,11 +54,11 @@ def resumo_estban(db: Session = Depends(get_db), current_user=Depends(get_curren
 
 
 @router.get("/captacao_serie")
-def captacao_serie(db: Session = Depends(get_db), current_user=Depends(get_current_user)):
+def captacao_serie(mid: int | None = Depends(municipio_scope), db: Session = Depends(get_db)):
     """Total deposits (vista + poupança + prazo) and credit by date."""
-    query = db.query(EstbanMensal)
-    if current_user.role.nome != "ADMIN_GLOBAL":
-        query = query.filter(EstbanMensal.municipio_id == current_user.municipio_id)
+    if mid is None:
+        return []
+    query = db.query(EstbanMensal).filter(EstbanMensal.municipio_id == mid)
     registros = query.order_by(EstbanMensal.data_referencia).all()
     return [
         {
@@ -74,7 +74,9 @@ def captacao_serie(db: Session = Depends(get_db), current_user=Depends(get_curre
 
 
 @router.get("/por_instituicao", response_model=List[EstbanPorInstituicaoItem])
-def por_instituicao(db: Session = Depends(get_db), current_user=Depends(get_current_user)):
+def por_instituicao(mid: int | None = Depends(municipio_scope), db: Session = Depends(get_db)):
+    if mid is None:
+        return []
     query = db.query(
         EstbanInstModel.nome_instituicao,
         func.sum(EstbanInstModel.qtd_agencias).label("qtd_agencias"),
@@ -89,9 +91,7 @@ def por_instituicao(db: Session = Depends(get_db), current_user=Depends(get_curr
         func.sum(EstbanInstModel.arrendamento_mercantil).label("arrendamento_mercantil"),
         func.sum(EstbanInstModel.emprestimos_setor_publico).label("emprestimos_setor_publico"),
         func.sum(EstbanInstModel.outros_creditos).label("outros_creditos"),
-    )
-    if current_user.role.nome != "ADMIN_GLOBAL":
-        query = query.filter(EstbanInstModel.municipio_id == current_user.municipio_id)
+    ).filter(EstbanInstModel.municipio_id == mid)
     resultados = query.group_by(EstbanInstModel.nome_instituicao).order_by(
         func.sum(EstbanInstModel.valor_operacoes_credito).desc()
     ).all()
@@ -116,11 +116,11 @@ def por_instituicao(db: Session = Depends(get_db), current_user=Depends(get_curr
 
 
 @router.get("/composicao_credito")
-def composicao_credito(db: Session = Depends(get_db), current_user=Depends(get_current_user)):
+def composicao_credito(mid: int | None = Depends(municipio_scope), db: Session = Depends(get_db)):
     """Credit breakdown by type over time (latest record per month)."""
-    query = db.query(EstbanMensal)
-    if current_user.role.nome != "ADMIN_GLOBAL":
-        query = query.filter(EstbanMensal.municipio_id == current_user.municipio_id)
+    if mid is None:
+        return []
+    query = db.query(EstbanMensal).filter(EstbanMensal.municipio_id == mid)
     registros = query.order_by(EstbanMensal.data_referencia).all()
     return [
         {

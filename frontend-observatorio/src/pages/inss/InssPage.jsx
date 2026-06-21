@@ -11,6 +11,8 @@ import { NidPanel, NidPageHeader } from "../../components/nid/Panel";
 import { HBarChart, AreaLineChart, fmtMoneyShort } from "../../components/nid/charts";
 import DataTable from "../../components/nid/DataTable";
 import ChartState from "../../components/nid/ChartState.jsx";
+import { useAuth } from "../../context/AuthContext";
+import { useViewAs } from "../../context/ViewAsContext";
 
 
 const fmtBRL = (v) =>
@@ -21,6 +23,13 @@ const fmtBRL = (v) =>
 const fmtNum = (v) => (v != null ? Number(v).toLocaleString("pt-BR") : "—");
 
 export default function InssPage() {
+  const { user } = useAuth();
+  const { viewAsId } = useViewAs();
+  // ADMIN_GLOBAL precisa de um município selecionado (view-as) para escopar os
+  // gráficos do dashboard; sem seleção, pedimos para escolher em vez de
+  // sobrepor todos os municípios no mesmo gráfico.
+  const needsMunicipio = user?.role === "ADMIN_GLOBAL" && viewAsId == null;
+
   const [rawSerie, setRawSerie] = useState([]);
   const [resumo, setResumo] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -112,6 +121,25 @@ export default function InssPage() {
         }] : null}
       />
 
+      {needsMunicipio ? (
+        <div
+          className="rounded-2xl p-10 text-center"
+          style={{
+            background: "var(--panel)",
+            border: "1px dashed var(--border-strong)",
+            color: "var(--text-dim)",
+          }}
+        >
+          <p className="text-base font-semibold" style={{ color: "var(--text)" }}>
+            Selecione um município
+          </p>
+          <p className="text-sm mt-1">
+            Use <b>"Ver como"</b> na administração de Municípios para escolher um
+            município e visualizar os dados de INSS.
+          </p>
+        </div>
+      ) : (
+      <>
       <InsightsPanel dataset="inss" />
 
       <FilterBar id="filter-bar-inss" years={years} value={filters} onChange={setFilters} />
@@ -189,6 +217,8 @@ export default function InssPage() {
       />
 
       <ReleasesPanel dataset="inss" />
+      </>
+      )}
 
     </motion.div>
   );

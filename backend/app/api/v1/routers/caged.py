@@ -1,6 +1,6 @@
 from typing import List
 
-from app.api.deps import get_current_user, get_db
+from app.api.deps import get_db, municipio_scope
 from app.models.caged import (
     CagedMovimentacao, CagedPorCnae, CagedPorEscolaridade, CagedPorFaixaEtaria,
     CagedPorRaca, CagedPorSexo, CagedPorTipoMovimentacao, CagedSalario,
@@ -28,32 +28,30 @@ from sqlalchemy.orm import Session
 router = APIRouter(prefix="/caged", tags=["CAGED"])
 
 
-def _municipio_filter(query, model, current_user):
-    if current_user.role.nome != "ADMIN_GLOBAL":
-        query = query.filter(model.municipio_id == current_user.municipio_id)
-    return query
-
-
 @router.get("/serie", response_model=List[CagedItem])
 def serie_caged(
+    mid: int | None = Depends(municipio_scope),
     db: Session = Depends(get_db),
-    current_user=Depends(get_current_user),
 ):
-    query = _municipio_filter(db.query(CagedMovimentacao), CagedMovimentacao, current_user)
+    if mid is None:
+        return []
+    query = db.query(CagedMovimentacao).filter(CagedMovimentacao.municipio_id == mid)
     return query.order_by(CagedMovimentacao.ano, CagedMovimentacao.mes).all()
 
 
 @router.get("/resumo", response_model=CagedResumo)
 def resumo_caged(
+    mid: int | None = Depends(municipio_scope),
     db: Session = Depends(get_db),
-    current_user=Depends(get_current_user),
 ):
+    if mid is None:
+        return CagedResumo(total_admissoes=0, total_desligamentos=0, saldo_total=0)
+
     query = db.query(
         func.sum(CagedMovimentacao.admissoes).label("total_admissoes"),
         func.sum(CagedMovimentacao.desligamentos).label("total_desligamentos"),
         func.sum(CagedMovimentacao.saldo).label("saldo_total"),
-    )
-    query = _municipio_filter(query, CagedMovimentacao, current_user)
+    ).filter(CagedMovimentacao.municipio_id == mid)
     resultado = query.one_or_none()
 
     if not resultado:
@@ -69,10 +67,12 @@ def resumo_caged(
 @router.get("/por_sexo", response_model=List[CagedSexoItem])
 def por_sexo(
     ano: int = Query(None),
+    mid: int | None = Depends(municipio_scope),
     db: Session = Depends(get_db),
-    current_user=Depends(get_current_user),
 ):
-    query = _municipio_filter(db.query(CagedPorSexo), CagedPorSexo, current_user)
+    if mid is None:
+        return []
+    query = db.query(CagedPorSexo).filter(CagedPorSexo.municipio_id == mid)
     if ano:
         query = query.filter(CagedPorSexo.ano == ano)
     registros = query.order_by(CagedPorSexo.ano, CagedPorSexo.mes, CagedPorSexo.sexo).all()
@@ -92,10 +92,12 @@ def por_sexo(
 @router.get("/por_raca", response_model=List[CagedRacaItem])
 def por_raca(
     ano: int = Query(None),
+    mid: int | None = Depends(municipio_scope),
     db: Session = Depends(get_db),
-    current_user=Depends(get_current_user),
 ):
-    query = _municipio_filter(db.query(CagedPorRaca), CagedPorRaca, current_user)
+    if mid is None:
+        return []
+    query = db.query(CagedPorRaca).filter(CagedPorRaca.municipio_id == mid)
     if ano:
         query = query.filter(CagedPorRaca.ano == ano)
     registros = query.order_by(CagedPorRaca.ano, CagedPorRaca.mes, CagedPorRaca.raca_cor).all()
@@ -115,10 +117,12 @@ def por_raca(
 @router.get("/salario", response_model=List[CagedSalarioItem])
 def salario(
     ano: int = Query(None),
+    mid: int | None = Depends(municipio_scope),
     db: Session = Depends(get_db),
-    current_user=Depends(get_current_user),
 ):
-    query = _municipio_filter(db.query(CagedSalario), CagedSalario, current_user)
+    if mid is None:
+        return []
+    query = db.query(CagedSalario).filter(CagedSalario.municipio_id == mid)
     if ano:
         query = query.filter(CagedSalario.ano == ano)
     registros = query.order_by(CagedSalario.ano, CagedSalario.mes).all()
@@ -136,10 +140,12 @@ def salario(
 @router.get("/por_cnae", response_model=List[CagedCnaeItem])
 def por_cnae(
     ano: int = Query(None),
+    mid: int | None = Depends(municipio_scope),
     db: Session = Depends(get_db),
-    current_user=Depends(get_current_user),
 ):
-    query = _municipio_filter(db.query(CagedPorCnae), CagedPorCnae, current_user)
+    if mid is None:
+        return []
+    query = db.query(CagedPorCnae).filter(CagedPorCnae.municipio_id == mid)
     if ano:
         query = query.filter(CagedPorCnae.ano == ano)
     registros = query.order_by(CagedPorCnae.ano, CagedPorCnae.mes, CagedPorCnae.secao).all()
@@ -160,10 +166,12 @@ def por_cnae(
 @router.get("/por_escolaridade", response_model=List[CagedEscolaridadeItem])
 def por_escolaridade(
     ano: int = Query(None),
+    mid: int | None = Depends(municipio_scope),
     db: Session = Depends(get_db),
-    current_user=Depends(get_current_user),
 ):
-    query = _municipio_filter(db.query(CagedPorEscolaridade), CagedPorEscolaridade, current_user)
+    if mid is None:
+        return []
+    query = db.query(CagedPorEscolaridade).filter(CagedPorEscolaridade.municipio_id == mid)
     if ano:
         query = query.filter(CagedPorEscolaridade.ano == ano)
     registros = query.order_by(CagedPorEscolaridade.ano, CagedPorEscolaridade.mes, CagedPorEscolaridade.grau_instrucao).all()
@@ -183,10 +191,12 @@ def por_escolaridade(
 @router.get("/por_faixa_etaria", response_model=List[CagedFaixaEtariaItem])
 def por_faixa_etaria(
     ano: int = Query(None),
+    mid: int | None = Depends(municipio_scope),
     db: Session = Depends(get_db),
-    current_user=Depends(get_current_user),
 ):
-    query = _municipio_filter(db.query(CagedPorFaixaEtaria), CagedPorFaixaEtaria, current_user)
+    if mid is None:
+        return []
+    query = db.query(CagedPorFaixaEtaria).filter(CagedPorFaixaEtaria.municipio_id == mid)
     if ano:
         query = query.filter(CagedPorFaixaEtaria.ano == ano)
     registros = query.order_by(CagedPorFaixaEtaria.ano, CagedPorFaixaEtaria.mes, CagedPorFaixaEtaria.faixa_etaria).all()
@@ -206,10 +216,12 @@ def por_faixa_etaria(
 @router.get("/por_tipo_movimentacao", response_model=List[CagedTipoMovimentacaoItem])
 def por_tipo_movimentacao(
     ano: int = Query(None),
+    mid: int | None = Depends(municipio_scope),
     db: Session = Depends(get_db),
-    current_user=Depends(get_current_user),
 ):
-    query = _municipio_filter(db.query(CagedPorTipoMovimentacao), CagedPorTipoMovimentacao, current_user)
+    if mid is None:
+        return []
+    query = db.query(CagedPorTipoMovimentacao).filter(CagedPorTipoMovimentacao.municipio_id == mid)
     if ano:
         query = query.filter(CagedPorTipoMovimentacao.ano == ano)
     registros = query.order_by(CagedPorTipoMovimentacao.ano, CagedPorTipoMovimentacao.mes, CagedPorTipoMovimentacao.tipo_movimentacao).all()
@@ -233,11 +245,13 @@ def por_tipo_movimentacao(
 @router.get("/por_tipo_deficiencia", response_model=List[CagedTipoDeficienciaItem])
 def por_tipo_deficiencia(
     ano: int = Query(None),
+    mid: int | None = Depends(municipio_scope),
     db: Session = Depends(get_db),
-    current_user=Depends(get_current_user),
 ):
     """Movimentações de PCD por tipo de deficiência."""
-    query = _municipio_filter(db.query(CagedPorTipoDeficiencia), CagedPorTipoDeficiencia, current_user)
+    if mid is None:
+        return []
+    query = db.query(CagedPorTipoDeficiencia).filter(CagedPorTipoDeficiencia.municipio_id == mid)
     if ano:
         query = query.filter(CagedPorTipoDeficiencia.ano == ano)
     registros = query.order_by(
@@ -255,11 +269,13 @@ def por_tipo_deficiencia(
 @router.get("/por_tamanho_estabelecimento", response_model=List[CagedTamanhoEstabelecimentoItem])
 def por_tamanho_estabelecimento(
     ano: int = Query(None),
+    mid: int | None = Depends(municipio_scope),
     db: Session = Depends(get_db),
-    current_user=Depends(get_current_user),
 ):
     """Movimentações por tamanho do estabelecimento (em janeiro)."""
-    query = _municipio_filter(db.query(CagedPorTamanhoEstabelecimento), CagedPorTamanhoEstabelecimento, current_user)
+    if mid is None:
+        return []
+    query = db.query(CagedPorTamanhoEstabelecimento).filter(CagedPorTamanhoEstabelecimento.municipio_id == mid)
     if ano:
         query = query.filter(CagedPorTamanhoEstabelecimento.ano == ano)
     registros = query.order_by(
@@ -277,11 +293,13 @@ def por_tamanho_estabelecimento(
 @router.get("/por_tipo_empregador", response_model=List[CagedTipoEmpregadorItem])
 def por_tipo_empregador(
     ano: int = Query(None),
+    mid: int | None = Depends(municipio_scope),
     db: Session = Depends(get_db),
-    current_user=Depends(get_current_user),
 ):
     """Movimentações por tipo de empregador (CNPJ, CPF, particular, rural CEI...)."""
-    query = _municipio_filter(db.query(CagedPorTipoEmpregador), CagedPorTipoEmpregador, current_user)
+    if mid is None:
+        return []
+    query = db.query(CagedPorTipoEmpregador).filter(CagedPorTipoEmpregador.municipio_id == mid)
     if ano:
         query = query.filter(CagedPorTipoEmpregador.ano == ano)
     registros = query.order_by(
@@ -299,11 +317,13 @@ def por_tipo_empregador(
 @router.get("/por_tipo_estabelecimento", response_model=List[CagedTipoEstabelecimentoItem])
 def por_tipo_estabelecimento(
     ano: int = Query(None),
+    mid: int | None = Depends(municipio_scope),
     db: Session = Depends(get_db),
-    current_user=Depends(get_current_user),
 ):
     """Movimentações por tipo de estabelecimento (privado, público, doméstico...)."""
-    query = _municipio_filter(db.query(CagedPorTipoEstabelecimento), CagedPorTipoEstabelecimento, current_user)
+    if mid is None:
+        return []
+    query = db.query(CagedPorTipoEstabelecimento).filter(CagedPorTipoEstabelecimento.municipio_id == mid)
     if ano:
         query = query.filter(CagedPorTipoEstabelecimento.ano == ano)
     registros = query.order_by(
@@ -320,11 +340,13 @@ def por_tipo_estabelecimento(
 
 @router.get("/indicadores_contrato", response_model=List[CagedIndicadoresContratoItem])
 def indicadores_contrato(
+    mid: int | None = Depends(municipio_scope),
     db: Session = Depends(get_db),
-    current_user=Depends(get_current_user),
 ):
     """Annual contract-quality counts: parcial, intermitente, aprendiz, PCD, fora-do-prazo."""
-    query = _municipio_filter(db.query(CagedIndicadoresContrato), CagedIndicadoresContrato, current_user)
+    if mid is None:
+        return []
+    query = db.query(CagedIndicadoresContrato).filter(CagedIndicadoresContrato.municipio_id == mid)
     registros = query.order_by(CagedIndicadoresContrato.ano).all()
     return [
         CagedIndicadoresContratoItem(

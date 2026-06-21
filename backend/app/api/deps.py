@@ -2,7 +2,7 @@ from app.core.exceptions import ForbiddenException, UnauthorizedException
 from app.core.security import decode_token
 from app.db.session import SessionLocal
 from app.models.usuario import Usuario
-from fastapi import Depends
+from fastapi import Depends, Query
 from fastapi.security import OAuth2PasswordBearer
 from sqlalchemy.orm import Session
 
@@ -56,3 +56,24 @@ def require_role(required_role: str):
         return current_user
 
     return role_checker
+
+
+def municipio_scope(
+    municipio_id: int | None = Query(default=None),
+    current_user: Usuario = Depends(get_current_user),
+) -> int | None:
+    """Resolve which município a single-município dashboard endpoint should scope to.
+
+    - Non-ADMIN_GLOBAL users are always scoped to their own município; the
+      `municipio_id` query param is ignored (a município user can never read
+      another município's data).
+    - ADMIN_GLOBAL is scoped to the município sent by the front's "view-as"
+      override (`?municipio_id=`); when none is selected this returns None, and
+      the endpoint should return an empty payload so the UI prompts for a
+      selection instead of stacking every município onto the same chart.
+
+    Auth is still enforced because this depends on get_current_user.
+    """
+    if current_user.role.nome != "ADMIN_GLOBAL":
+        return current_user.municipio_id
+    return municipio_id

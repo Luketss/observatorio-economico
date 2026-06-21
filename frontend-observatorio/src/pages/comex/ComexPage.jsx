@@ -11,6 +11,8 @@ import PlanGate from "../../components/PlanGate";
 import { NidPageHeader } from "../../components/nid/Panel";
 import { MultiLineChart, HBarChart } from "../../components/nid/charts";
 import ChartState from "../../components/nid/ChartState.jsx";
+import { useAuth } from "../../context/AuthContext";
+import { useViewAs } from "../../context/ViewAsContext";
 
 
 const fmtUSD = (v) =>
@@ -19,6 +21,13 @@ const fmtUSD = (v) =>
     : "—";
 
 export default function ComexPage() {
+  const { user } = useAuth();
+  const { viewAsId } = useViewAs();
+  // ADMIN_GLOBAL precisa de um município selecionado (view-as) para escopar os
+  // gráficos do dashboard; sem seleção, pedimos para escolher em vez de
+  // sobrepor todos os municípios no mesmo gráfico.
+  const needsMunicipio = user?.role === "ADMIN_GLOBAL" && viewAsId == null;
+
   const [serie, setSerie] = useState([]);
   const [resumo, setResumo] = useState(null);
   const [porProduto, setPorProduto] = useState([]);
@@ -145,6 +154,25 @@ export default function ComexPage() {
         ].filter(Boolean)}
       />
 
+      {needsMunicipio ? (
+        <div
+          className="rounded-2xl p-10 text-center"
+          style={{
+            background: "var(--panel)",
+            border: "1px dashed var(--border-strong)",
+            color: "var(--text-dim)",
+          }}
+        >
+          <p className="text-base font-semibold" style={{ color: "var(--text)" }}>
+            Selecione um município
+          </p>
+          <p className="text-sm mt-1">
+            Use <b>"Ver como"</b> na administração de Municípios para escolher um
+            município e visualizar os dados de Comércio Exterior.
+          </p>
+        </div>
+      ) : (
+      <>
       {anos.length > 0 && (
         <div className="flex items-center gap-2">
           <label className="text-sm text-[var(--text-dim)] font-medium">Ano:</label>
@@ -299,6 +327,8 @@ export default function ComexPage() {
       />
 
       <ReleasesPanel dataset="comex" />
+      </>
+      )}
 
     </motion.div>
   );
