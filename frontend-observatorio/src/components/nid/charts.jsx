@@ -12,10 +12,13 @@ function resolveGlow(glow) {
 }
 
 // ────────── x-axis label thinning ──────────
-// Always show up to 12 labels; beyond that show ~10 evenly spaced + the last.
-function shouldShowXLabel(i, total) {
-  if (total <= 12) return true;
-  const stride = Math.ceil(total / 10);
+// Width-aware: fit roughly one label per 64px of chart width (so narrow/mobile
+// viewports thin out more aggressively and labels don't overlap), always
+// keeping the first and last. Falls back to ~12 labels when width is unknown.
+function shouldShowXLabel(i, total, width) {
+  const maxLabels = width ? Math.max(3, Math.floor(width / 64)) : 12;
+  if (total <= maxLabels) return true;
+  const stride = Math.ceil(total / maxLabels);
   return i % stride === 0 || i === total - 1;
 }
 
@@ -312,7 +315,7 @@ export function AreaLineChart({
         {/* X-axis labels — show every ~10th real label + all forecast labels */}
         {allLabels.map((lbl, i) => {
           const isReal = i < data.length;
-          if (isReal && !(i % Math.ceil(data.length / 10) === 0 || i === data.length - 1)) return null;
+          if (isReal && !shouldShowXLabel(i, data.length, w)) return null;
           return (
             <text key={i} x={sx(i)} y={height - padB + 18}
               className="nid-axis-text" textAnchor="middle"
@@ -615,7 +618,7 @@ export function StackedBarChart({
                   width={barWidth + 4} height={padT + innerH - top + 4}
                   fill="none" stroke="var(--accent-2)" strokeWidth="1.5" rx="3" />
               )}
-              {shouldShowXLabel(i, data.length) && (
+              {shouldShowXLabel(i, data.length, w) && (
                 <text x={sx(i)} y={height - padB + 18} className="nid-axis-text" textAnchor="middle">{d.label}</text>
               )}
             </g>
@@ -861,7 +864,7 @@ export function MultiLineChart({
         {/* X-axis labels */}
         {allLabels.map((lbl, i) => {
           const isReal = i < data.length;
-          if (isReal && !(i % Math.ceil(data.length / 10) === 0 || i === data.length - 1)) return null;
+          if (isReal && !shouldShowXLabel(i, data.length, w)) return null;
           return (
             <text key={i} x={sx(i)} y={height - padB + 18}
               className="nid-axis-text" textAnchor="middle"
@@ -1226,7 +1229,7 @@ function TwinBarBrutoChart({
                 fill={`url(#tup-${id})`} stroke={colorUp} strokeWidth="1" opacity={hover != null && !isH ? 0.4 : 1} />
               <rect x={xDn} y={yDn} width={barW} height={hDn} rx={4}
                 fill={`url(#tdn-${id})`} stroke={colorDown} strokeWidth="1" opacity={hover != null && !isH ? 0.4 : 1} />
-              {shouldShowXLabel(i, data.length) && (
+              {shouldShowXLabel(i, data.length, w) && (
                 <text x={cx} y={height - padB + 18} className="nid-axis-text" textAnchor="middle">{d.label}</text>
               )}
             </g>
@@ -1377,7 +1380,7 @@ function TwinBarSaldoChart({
                 fill={fill}
                 opacity={hover != null && !isH ? 0.35 : 0.9}
               />
-              {shouldShowXLabel(i, data.length) && (
+              {shouldShowXLabel(i, data.length, w) && (
                 <text x={cx} y={height - padB + 18} className="nid-axis-text" textAnchor="middle">
                   {d.label}
                 </text>
