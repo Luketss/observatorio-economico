@@ -16,6 +16,7 @@ from app.schemas.rais import (
     RaisTamanhoEstabelecimentoItem, RaisNaturezaJuridicaItem, RaisTurnoverMensalItem,
 )
 from fastapi import APIRouter, Depends, Query
+from sqlalchemy import func
 from sqlalchemy.orm import Session
 
 router = APIRouter(prefix="/rais", tags=["RAIS"])
@@ -49,15 +50,20 @@ def resumo_rais(
     mid: int | None = Depends(scoped_modulo("rais")),
     db: Session = Depends(get_db),
 ):
-    registros = (
-        db.query(RaisVinculo).filter(RaisVinculo.municipio_id == mid).all()
-        if mid is not None
-        else []
+    if mid is None:
+        return RaisResumo(total_vinculos=0, remuneracao_media=None)
+    row = (
+        db.query(
+            func.coalesce(func.sum(RaisVinculo.total_vinculos), 0),
+            func.avg(RaisVinculo.remuneracao_media),  # AVG ignora NULLs
+        )
+        .filter(RaisVinculo.municipio_id == mid)
+        .one()
     )
-    total = sum(r.total_vinculos for r in registros)
-    rem_lista = [r.remuneracao_media for r in registros if r.remuneracao_media]
-    rem_media = sum(rem_lista) / len(rem_lista) if rem_lista else None
-    return RaisResumo(total_vinculos=total, remuneracao_media=rem_media)
+    return RaisResumo(
+        total_vinculos=int(row[0] or 0),
+        remuneracao_media=float(row[1]) if row[1] is not None else None,
+    )
 
 
 @router.get("/por_sexo", response_model=List[RaisSexoItem])

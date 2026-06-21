@@ -40,12 +40,15 @@ def serie_estban(mid: int | None = Depends(scoped_modulo("estban")), db: Session
 def resumo_estban(mid: int | None = Depends(scoped_modulo("estban")), db: Session = Depends(get_db)):
     if mid is None:
         return EstbanResumo(total_operacoes_credito=0, total_depositos=0, qtd_agencias=0)
-    query = db.query(EstbanMensal).filter(EstbanMensal.municipio_id == mid)
-    registros = query.all()
-    if not registros:
+    latest = (
+        db.query(EstbanMensal)
+        .filter(EstbanMensal.municipio_id == mid)
+        .order_by(EstbanMensal.data_referencia.desc())
+        .first()
+    )
+    if not latest:
         return EstbanResumo(total_operacoes_credito=0, total_depositos=0, qtd_agencias=0)
-    latest = max(registros, key=lambda r: r.data_referencia)
-    total_dep = latest.valor_depositos_vista + latest.valor_poupanca + latest.valor_depositos_prazo
+    total_dep = (latest.valor_depositos_vista or 0) + (latest.valor_poupanca or 0) + (latest.valor_depositos_prazo or 0)
     return EstbanResumo(
         total_operacoes_credito=latest.valor_operacoes_credito,
         total_depositos=total_dep,

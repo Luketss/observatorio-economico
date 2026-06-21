@@ -89,13 +89,22 @@ router = APIRouter(prefix="/empresas", tags=["Empresas"])
 def resumo_empresas(mid: int | None = Depends(scoped_modulo("empresas")), db: Session = Depends(get_db)):
     if mid is None:
         return EmpresaResumo(total_empresas=0, total_ativas=0, total_mei=0, total_simples=0)
-    query = db.query(Empresa).filter(Empresa.municipio_id == mid)
-    registros = query.all()
-    total = len(registros)
-    ativas = sum(1 for r in registros if r.situacao == "02")
-    mei = sum(1 for r in registros if r.opcao_mei)
-    simples = sum(1 for r in registros if r.opcao_simples)
-    return EmpresaResumo(total_empresas=total, total_ativas=ativas, total_mei=mei, total_simples=simples)
+    row = (
+        db.query(
+            func.count(Empresa.id),
+            func.coalesce(func.sum(case((Empresa.situacao == "02", 1), else_=0)), 0),
+            func.coalesce(func.sum(case((Empresa.opcao_mei.is_(True), 1), else_=0)), 0),
+            func.coalesce(func.sum(case((Empresa.opcao_simples.is_(True), 1), else_=0)), 0),
+        )
+        .filter(Empresa.municipio_id == mid)
+        .one()
+    )
+    return EmpresaResumo(
+        total_empresas=row[0] or 0,
+        total_ativas=int(row[1] or 0),
+        total_mei=int(row[2] or 0),
+        total_simples=int(row[3] or 0),
+    )
 
 
 @router.get("/por_porte", response_model=List[EmpresaPorPorteItem])

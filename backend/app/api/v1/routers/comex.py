@@ -4,7 +4,7 @@ from app.api.deps import get_current_user, get_db, scoped_modulo
 from app.models.comex import ComexMensal, ComexPorProduto as ComexProdModel, ComexPorPais as ComexPaisModel
 from app.schemas.comex import ComexSerieItem, ComexResumo, ComexPorProdutoItem, ComexPorPaisItem
 from fastapi import APIRouter, Depends, Query
-from sqlalchemy import func
+from sqlalchemy import case, func
 from sqlalchemy.orm import Session
 
 router = APIRouter(prefix="/comex", tags=["Comex"])
@@ -32,10 +32,16 @@ def serie_comex(mid: int | None = Depends(scoped_modulo("comex")), db: Session =
 def resumo_comex(mid: int | None = Depends(scoped_modulo("comex")), db: Session = Depends(get_db)):
     if mid is None:
         return ComexResumo(total_exportado_usd=0, total_importado_usd=0, balanca_comercial=0)
-    query = db.query(ComexMensal).filter(ComexMensal.municipio_id == mid)
-    registros = query.all()
-    exportado = sum(r.valor_usd for r in registros if r.tipo_operacao == "export")
-    importado = sum(r.valor_usd for r in registros if r.tipo_operacao == "import")
+    row = (
+        db.query(
+            func.coalesce(func.sum(case((ComexMensal.tipo_operacao == "export", ComexMensal.valor_usd), else_=0)), 0),
+            func.coalesce(func.sum(case((ComexMensal.tipo_operacao == "import", ComexMensal.valor_usd), else_=0)), 0),
+        )
+        .filter(ComexMensal.municipio_id == mid)
+        .one()
+    )
+    exportado = row[0] or 0
+    importado = row[1] or 0
     return ComexResumo(
         total_exportado_usd=exportado,
         total_importado_usd=importado,

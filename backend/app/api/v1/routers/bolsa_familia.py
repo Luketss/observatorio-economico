@@ -4,6 +4,7 @@ from app.api.deps import get_current_user, get_db, scoped_modulo
 from app.models.bolsa_familia import BolsaFamiliaResumo as BFModel
 from app.schemas.bolsa_familia import BolsaFamiliaSerieItem, BolsaFamiliaResumo
 from fastapi import APIRouter, Depends
+from sqlalchemy import func
 from sqlalchemy.orm import Session
 
 router = APIRouter(prefix="/bolsa_familia", tags=["Bolsa Família"])
@@ -41,17 +42,28 @@ def resumo_bolsa_familia(
     mid: int | None = Depends(scoped_modulo("bolsa_familia")),
     db: Session = Depends(get_db),
 ):
-    registros = (
-        db.query(BFModel).filter(BFModel.municipio_id == mid).all()
-        if mid is not None
-        else []
+    if mid is None:
+        return BolsaFamiliaResumo(
+            total_beneficiarios=0, valor_total=0, valor_bolsa=0,
+            valor_primeira_infancia=0, beneficiarios_primeira_infancia=0,
+        )
+    row = (
+        db.query(
+            func.coalesce(func.sum(BFModel.total_beneficiarios), 0),
+            func.coalesce(func.sum(BFModel.valor_total), 0),
+            func.coalesce(func.sum(BFModel.valor_bolsa), 0),
+            func.coalesce(func.sum(BFModel.valor_primeira_infancia), 0),
+            func.coalesce(func.sum(BFModel.beneficiarios_primeira_infancia), 0),
+        )
+        .filter(BFModel.municipio_id == mid)
+        .one()
     )
     return BolsaFamiliaResumo(
-        total_beneficiarios=sum(r.total_beneficiarios for r in registros),
-        valor_total=sum(r.valor_total for r in registros),
-        valor_bolsa=sum(r.valor_bolsa for r in registros),
-        valor_primeira_infancia=sum((r.valor_primeira_infancia or 0) for r in registros),
-        beneficiarios_primeira_infancia=sum((r.beneficiarios_primeira_infancia or 0) for r in registros),
+        total_beneficiarios=int(row[0] or 0),
+        valor_total=row[1] or 0,
+        valor_bolsa=row[2] or 0,
+        valor_primeira_infancia=row[3] or 0,
+        beneficiarios_primeira_infancia=int(row[4] or 0),
     )
 
 
