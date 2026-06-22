@@ -455,10 +455,20 @@ export default function RaisPage() {
           ]} />
         </NidPanel>
 
-        <NidPanel title="Motivos de Desligamento" sub={`Top causas · ${anoAtivo || ""}`}>
-          {motivoAno.length > 0 ? (
-            <HBarChart data={motivoAno} color={A2} glow height={260} fmt={fmtNumber} />
-          ) : <EmptyMsg height={260} />}
+        <NidPanel title="Natureza Jurídica" sub={`Composição público / privado / outros · ${anoAtivo || ""}`}>
+          {naturezaAno.length > 0 ? (
+            <DonutChart
+              data={naturezaAno}
+              colors={palette}
+              glow
+              height={210}
+              centerLabel={fmtNumberShort(naturezaAno.reduce((s, d) => s + d.value, 0))}
+              centerSub="VÍNCULOS"
+            />
+          ) : <EmptyMsg height={210} />}
+          <NidLegend items={naturezaAno.map((d, i) => ({
+            name: `${d.name}`, color: palette[i % palette.length],
+          }))} />
         </NidPanel>
       </div>
 
@@ -484,52 +494,6 @@ export default function RaisPage() {
           <NidLegend items={tamanhoAno.map((d, i) => ({
             name: `${d.name}`, color: palette[i % palette.length],
           }))} />
-        </NidPanel>
-      </div>
-
-      {/* Natureza Jurídica + CBO (NEW) */}
-      <div className="nid-grid-1-1">
-        <NidPanel title="Natureza Jurídica" sub={`Composição público / privado / outros · ${anoAtivo || ""}`}>
-          {naturezaAno.length > 0 ? (
-            <DonutChart
-              data={naturezaAno}
-              colors={palette}
-              glow
-              height={210}
-              centerLabel={fmtNumberShort(naturezaAno.reduce((s, d) => s + d.value, 0))}
-              centerSub="VÍNCULOS"
-            />
-          ) : <EmptyMsg height={210} />}
-          <NidLegend items={naturezaAno.map((d, i) => ({
-            name: `${d.name}`, color: palette[i % palette.length],
-          }))} />
-        </NidPanel>
-
-        <NidPanel title="Top 10 Ocupações (CBO 2002)" sub={`Família ocupacional · ${anoAtivo || ""}`}>
-          {cboAno.length > 0 ? (
-            <div className="table-wrap" style={{ background: "transparent", border: "none" }}>
-              <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12.5, color: "var(--text-dim)" }}>
-                <thead>
-                  <tr>
-                    <th style={thStyle}>CBO</th>
-                    <th style={thStyle}>Descrição</th>
-                    <th style={{ ...thStyle, textAlign: "right" }}>Vínculos</th>
-                    <th style={{ ...thStyle, textAlign: "right" }}>Rem. média</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {cboAno.map((c) => (
-                    <tr key={c.cbo_familia} style={{ borderBottom: "1px solid var(--border)" }}>
-                      <td style={tdStyle}><span className="nid-mono" style={{ color: "var(--text)" }}>{c.cbo_familia}</span></td>
-                      <td style={tdStyle}>{c.descricao || <span style={{ color: "var(--text-mute)" }}>—</span>}</td>
-                      <td style={{ ...tdStyle, textAlign: "right", fontFamily: "var(--font-mono)", color: "var(--text)" }}>{fmtBR(c.total_vinculos)}</td>
-                      <td style={{ ...tdStyle, textAlign: "right", fontFamily: "var(--font-mono)" }}>{fmtCurrency(c.remuneracao_media)}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          ) : <EmptyMsg height={240} />}
         </NidPanel>
       </div>
 
@@ -653,6 +617,42 @@ export default function RaisPage() {
           />
         </div>
       )}
+
+      {/* Motivos de Desligamento + Top 10 Ocupações (movidos para o final) */}
+      <div className="nid-grid-1-1">
+        <NidPanel title="Motivos de Desligamento" sub={`Top causas · ${anoAtivo || ""}`}>
+          {motivoAno.length > 0 ? (
+            <HBarChart data={motivoAno} color={A2} glow height={260} fmt={fmtNumber} />
+          ) : <EmptyMsg height={260} />}
+        </NidPanel>
+
+        <NidPanel title="Top 10 Ocupações (CBO 2002)" sub={`Família ocupacional · ${anoAtivo || ""}`}>
+          {cboAno.length > 0 ? (
+            <div className="table-wrap" style={{ background: "transparent", border: "none" }}>
+              <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12.5, color: "var(--text-dim)" }}>
+                <thead>
+                  <tr>
+                    <th style={thStyle}>CBO</th>
+                    <th style={thStyle}>Descrição</th>
+                    <th style={{ ...thStyle, textAlign: "right" }}>Vínculos</th>
+                    <th style={{ ...thStyle, textAlign: "right" }}>Rem. média</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {cboAno.map((c) => (
+                    <tr key={c.cbo_familia} style={{ borderBottom: "1px solid var(--border)" }}>
+                      <td style={tdStyle}><span className="nid-mono" style={{ color: "var(--text)" }}>{c.cbo_familia}</span></td>
+                      <td style={tdStyle}>{c.descricao || <span style={{ color: "var(--text-mute)" }}>—</span>}</td>
+                      <td style={{ ...tdStyle, textAlign: "right", fontFamily: "var(--font-mono)", color: "var(--text)" }}>{fmtBR(c.total_vinculos)}</td>
+                      <td style={{ ...tdStyle, textAlign: "right", fontFamily: "var(--font-mono)" }}>{fmtCurrency(c.remuneracao_media)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          ) : <EmptyMsg height={240} />}
+        </NidPanel>
+      </div>
 
       <div style={{ marginTop: 8 }}>
         <ReleasesPanel dataset="rais" />
