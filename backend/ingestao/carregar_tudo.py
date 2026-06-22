@@ -11,6 +11,13 @@ from pathlib import Path
 
 from tqdm import tqdm
 
+# `dados/` lives at the repo root; this package now lives under backend/ingestao,
+# so resolve it relative to the repo root when not found in the CWD.
+_DADOS_BASE = (
+    Path("dados") if Path("dados").is_dir()
+    else Path(__file__).resolve().parents[2] / "dados"
+)
+
 import ingestao.carregar_arrecadacao as arrecadacao
 import ingestao.carregar_bolsa_familia as bolsa_familia
 import ingestao.carregar_caged as caged
@@ -84,7 +91,7 @@ def main():
 
     for i, city_folder in enumerate(args.cidades):
         city_name = normalizar_city_name(city_folder)
-        cidade_dir = Path("dados") / city_folder
+        cidade_dir = _DADOS_BASE / city_folder
         codigo_ibge = ibge_codes[i] if ibge_codes else None
 
         print(f"\n{'='*60}")
