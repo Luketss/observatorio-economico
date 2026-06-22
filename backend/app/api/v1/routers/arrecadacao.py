@@ -1,9 +1,10 @@
 from typing import List
 
-from app.api.deps import get_db, municipio_scope
+from app.api.deps import get_db, scoped_modulo
 from app.models.arrecadacao import ArrecadacaoMensal
 from app.schemas.arrecadacao import ArrecadacaoItem, ArrecadacaoResumo
 from fastapi import APIRouter, Depends
+from sqlalchemy import func
 from sqlalchemy.orm import Session
 
 router = APIRouter(prefix="/arrecadacao", tags=["Arrecadação"])
@@ -14,7 +15,7 @@ router = APIRouter(prefix="/arrecadacao", tags=["Arrecadação"])
 # ==============================
 @router.get("/serie", response_model=List[ArrecadacaoItem])
 def serie_mensal(
-    mid: int | None = Depends(municipio_scope),
+    mid: int | None = Depends(scoped_modulo("arrecadacao")),
     db: Session = Depends(get_db),
 ):
     if mid is None:
@@ -51,7 +52,7 @@ def serie_mensal(
 # ==============================
 @router.get("/por_tipo")
 def por_tipo(
-    mid: int | None = Depends(municipio_scope),
+    mid: int | None = Depends(scoped_modulo("arrecadacao")),
     db: Session = Depends(get_db),
 ):
     """Returns each period's ICMS, IPVA and IPI as separate labeled rows for stacked charts."""
@@ -77,16 +78,24 @@ def por_tipo(
 # ==============================
 @router.get("/resumo", response_model=ArrecadacaoResumo)
 def resumo_arrecadacao(
-    mid: int | None = Depends(municipio_scope),
+    mid: int | None = Depends(scoped_modulo("arrecadacao")),
     db: Session = Depends(get_db),
 ):
-    registros = (
-        db.query(ArrecadacaoMensal).filter(ArrecadacaoMensal.municipio_id == mid).all()
+    por_ano = (
+        db.query(
+            ArrecadacaoMensal.ano,
+            func.coalesce(func.sum(ArrecadacaoMensal.valor_total), 0).label("total"),
+            func.count(ArrecadacaoMensal.id).label("n"),
+        )
+        .filter(ArrecadacaoMensal.municipio_id == mid)
+        .group_by(ArrecadacaoMensal.ano)
+        .order_by(ArrecadacaoMensal.ano)
+        .all()
         if mid is not None
         else []
     )
 
-    if not registros:
+    if not por_ano:
         return ArrecadacaoResumo(
             total_geral=0,
             total_ultimo_ano=0,
@@ -94,21 +103,15 @@ def resumo_arrecadacao(
             media_mensal=0,
         )
 
-    total_geral = sum(r.valor_total for r in registros)
-
-    anos = sorted(set(r.ano for r in registros))
-
-    ultimo_ano = anos[-1]
-    total_ultimo_ano = sum(r.valor_total for r in registros if r.ano == ultimo_ano)
+    total_geral = sum(r.total for r in por_ano)
+    n_meses = sum(r.n for r in por_ano)
+    total_ultimo_ano = por_ano[-1].total
 
     crescimento = 0
-    if len(anos) > 1:
-        ano_anterior = anos[-2]
-        total_anterior = sum(r.valor_total for r in registros if r.ano == ano_anterior)
-        if total_anterior > 0:
-            crescimento = ((total_ultimo_ano - total_anterior) / total_anterior) * 100
+    if len(por_ano) > 1 and por_ano[-2].total > 0:
+        crescimento = ((total_ultimo_ano - por_ano[-2].total) / por_ano[-2].total) * 100
 
-    media_mensal = total_geral / len(registros)
+    media_mensal = total_geral / n_meses if n_meses else 0
 
     return ArrecadacaoResumo(
         total_geral=total_geral,

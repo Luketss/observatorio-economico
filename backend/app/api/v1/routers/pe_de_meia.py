@@ -1,6 +1,6 @@
 from typing import List
 
-from app.api.deps import get_current_user, get_db, municipio_scope
+from app.api.deps import get_current_user, get_db, scoped_modulo
 from app.models.pe_de_meia import PeDeMeiaResumo as PeDeMeiaResumoModel
 from app.models.pe_de_meia import PeDeMeiaEtapa
 from app.schemas.pe_de_meia import PeDeMeiaResumoItem, PeDeMeiaResumo, PeDeMeiaEtapaItem, PeDeMeiaIncentivo
@@ -13,7 +13,7 @@ router = APIRouter(prefix="/pe_de_meia", tags=["Pé-de-Meia"])
 
 @router.get("/serie", response_model=List[PeDeMeiaResumoItem])
 def serie_pe_de_meia(
-    mid: int | None = Depends(municipio_scope),
+    mid: int | None = Depends(scoped_modulo("pe_de_meia")),
     db: Session = Depends(get_db),
 ):
     if mid is None:
@@ -32,22 +32,25 @@ def serie_pe_de_meia(
 
 @router.get("/resumo", response_model=PeDeMeiaResumo)
 def resumo_pe_de_meia(
-    mid: int | None = Depends(municipio_scope),
+    mid: int | None = Depends(scoped_modulo("pe_de_meia")),
     db: Session = Depends(get_db),
 ):
-    registros = (
-        db.query(PeDeMeiaResumoModel).filter(PeDeMeiaResumoModel.municipio_id == mid).all()
-        if mid is not None
-        else []
+    if mid is None:
+        return PeDeMeiaResumo(total_estudantes=0, valor_total=0)
+    row = (
+        db.query(
+            func.coalesce(func.sum(PeDeMeiaResumoModel.total_estudantes), 0),
+            func.coalesce(func.sum(PeDeMeiaResumoModel.valor_total), 0),
+        )
+        .filter(PeDeMeiaResumoModel.municipio_id == mid)
+        .one()
     )
-    total_estudantes = sum(r.total_estudantes for r in registros)
-    valor_total = sum(r.valor_total for r in registros)
-    return PeDeMeiaResumo(total_estudantes=total_estudantes, valor_total=valor_total)
+    return PeDeMeiaResumo(total_estudantes=int(row[0] or 0), valor_total=row[1] or 0)
 
 
 @router.get("/por_etapa", response_model=List[PeDeMeiaEtapaItem])
 def por_etapa(
-    mid: int | None = Depends(municipio_scope),
+    mid: int | None = Depends(scoped_modulo("pe_de_meia")),
     db: Session = Depends(get_db),
 ):
     if mid is None:
@@ -75,7 +78,7 @@ def por_etapa(
 
 @router.get("/por_incentivo", response_model=List[PeDeMeiaIncentivo])
 def por_incentivo(
-    mid: int | None = Depends(municipio_scope),
+    mid: int | None = Depends(scoped_modulo("pe_de_meia")),
     db: Session = Depends(get_db),
 ):
     if mid is None:

@@ -1,6 +1,6 @@
 from typing import List
 
-from app.api.deps import get_current_user, get_db, municipio_scope
+from app.api.deps import get_current_user, get_db, scoped_modulo
 from app.models.municipio import Municipio
 from app.models.pib import PibAnual
 from app.schemas.pib import PibComparativoItem, PibItem, PibResumo
@@ -15,7 +15,7 @@ router = APIRouter(prefix="/pib", tags=["PIB"])
 # ==============================
 @router.get("/serie", response_model=List[PibItem])
 def serie_pib(
-    mid: int | None = Depends(municipio_scope),
+    mid: int | None = Depends(scoped_modulo("pib")),
     db: Session = Depends(get_db),
 ):
     if mid is None:
@@ -44,7 +44,7 @@ def serie_pib(
 # ==============================
 @router.get("/resumo", response_model=PibResumo)
 def resumo_pib(
-    mid: int | None = Depends(municipio_scope),
+    mid: int | None = Depends(scoped_modulo("pib")),
     db: Session = Depends(get_db),
 ):
     registros = (

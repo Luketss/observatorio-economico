@@ -1,6 +1,6 @@
 from typing import List
 
-from app.api.deps import get_db, municipio_scope
+from app.api.deps import get_db, scoped_modulo
 from app.models.caged import (
     CagedMovimentacao, CagedPorCnae, CagedPorEscolaridade, CagedPorFaixaEtaria,
     CagedPorRaca, CagedPorSexo, CagedPorTipoMovimentacao, CagedSalario,
@@ -30,7 +30,7 @@ router = APIRouter(prefix="/caged", tags=["CAGED"])
 
 @router.get("/serie", response_model=List[CagedItem])
 def serie_caged(
-    mid: int | None = Depends(municipio_scope),
+    mid: int | None = Depends(scoped_modulo("caged")),
     db: Session = Depends(get_db),
 ):
     if mid is None:
@@ -41,7 +41,7 @@ def serie_caged(
 
 @router.get("/resumo", response_model=CagedResumo)
 def resumo_caged(
-    mid: int | None = Depends(municipio_scope),
+    mid: int | None = Depends(scoped_modulo("caged")),
     db: Session = Depends(get_db),
 ):
     if mid is None:
@@ -67,7 +67,7 @@ def resumo_caged(
 @router.get("/por_sexo", response_model=List[CagedSexoItem])
 def por_sexo(
     ano: int = Query(None),
-    mid: int | None = Depends(municipio_scope),
+    mid: int | None = Depends(scoped_modulo("caged")),
     db: Session = Depends(get_db),
 ):
     if mid is None:
@@ -92,7 +92,7 @@ def por_sexo(
 @router.get("/por_raca", response_model=List[CagedRacaItem])
 def por_raca(
     ano: int = Query(None),
-    mid: int | None = Depends(municipio_scope),
+    mid: int | None = Depends(scoped_modulo("caged")),
     db: Session = Depends(get_db),
 ):
     if mid is None:
@@ -117,7 +117,7 @@ def por_raca(
 @router.get("/salario", response_model=List[CagedSalarioItem])
 def salario(
     ano: int = Query(None),
-    mid: int | None = Depends(municipio_scope),
+    mid: int | None = Depends(scoped_modulo("caged")),
     db: Session = Depends(get_db),
 ):
     if mid is None:
@@ -140,7 +140,7 @@ def salario(
 @router.get("/por_cnae", response_model=List[CagedCnaeItem])
 def por_cnae(
     ano: int = Query(None),
-    mid: int | None = Depends(municipio_scope),
+    mid: int | None = Depends(scoped_modulo("caged")),
     db: Session = Depends(get_db),
 ):
     if mid is None:
@@ -166,7 +166,7 @@ def por_cnae(
 @router.get("/por_escolaridade", response_model=List[CagedEscolaridadeItem])
 def por_escolaridade(
     ano: int = Query(None),
-    mid: int | None = Depends(municipio_scope),
+    mid: int | None = Depends(scoped_modulo("caged")),
     db: Session = Depends(get_db),
 ):
     if mid is None:
@@ -191,7 +191,7 @@ def por_escolaridade(
 @router.get("/por_faixa_etaria", response_model=List[CagedFaixaEtariaItem])
 def por_faixa_etaria(
     ano: int = Query(None),
-    mid: int | None = Depends(municipio_scope),
+    mid: int | None = Depends(scoped_modulo("caged")),
     db: Session = Depends(get_db),
 ):
     if mid is None:
@@ -216,7 +216,7 @@ def por_faixa_etaria(
 @router.get("/por_tipo_movimentacao", response_model=List[CagedTipoMovimentacaoItem])
 def por_tipo_movimentacao(
     ano: int = Query(None),
-    mid: int | None = Depends(municipio_scope),
+    mid: int | None = Depends(scoped_modulo("caged")),
     db: Session = Depends(get_db),
 ):
     if mid is None:
@@ -245,7 +245,7 @@ def por_tipo_movimentacao(
 @router.get("/por_tipo_deficiencia", response_model=List[CagedTipoDeficienciaItem])
 def por_tipo_deficiencia(
     ano: int = Query(None),
-    mid: int | None = Depends(municipio_scope),
+    mid: int | None = Depends(scoped_modulo("caged")),
     db: Session = Depends(get_db),
 ):
     """Movimentações de PCD por tipo de deficiência."""
@@ -269,7 +269,7 @@ def por_tipo_deficiencia(
 @router.get("/por_tamanho_estabelecimento", response_model=List[CagedTamanhoEstabelecimentoItem])
 def por_tamanho_estabelecimento(
     ano: int = Query(None),
-    mid: int | None = Depends(municipio_scope),
+    mid: int | None = Depends(scoped_modulo("caged")),
     db: Session = Depends(get_db),
 ):
     """Movimentações por tamanho do estabelecimento (em janeiro)."""
@@ -293,7 +293,7 @@ def por_tamanho_estabelecimento(
 @router.get("/por_tipo_empregador", response_model=List[CagedTipoEmpregadorItem])
 def por_tipo_empregador(
     ano: int = Query(None),
-    mid: int | None = Depends(municipio_scope),
+    mid: int | None = Depends(scoped_modulo("caged")),
     db: Session = Depends(get_db),
 ):
     """Movimentações por tipo de empregador (CNPJ, CPF, particular, rural CEI...)."""
@@ -317,7 +317,7 @@ def por_tipo_empregador(
 @router.get("/por_tipo_estabelecimento", response_model=List[CagedTipoEstabelecimentoItem])
 def por_tipo_estabelecimento(
     ano: int = Query(None),
-    mid: int | None = Depends(municipio_scope),
+    mid: int | None = Depends(scoped_modulo("caged")),
     db: Session = Depends(get_db),
 ):
     """Movimentações por tipo de estabelecimento (privado, público, doméstico...)."""
@@ -340,7 +340,7 @@ def por_tipo_estabelecimento(
 
 @router.get("/indicadores_contrato", response_model=List[CagedIndicadoresContratoItem])
 def indicadores_contrato(
-    mid: int | None = Depends(municipio_scope),
+    mid: int | None = Depends(scoped_modulo("caged")),
     db: Session = Depends(get_db),
 ):
     """Annual contract-quality counts: parcial, intermitente, aprendiz, PCD, fora-do-prazo."""

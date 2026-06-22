@@ -1,9 +1,10 @@
 from typing import List
 
-from app.api.deps import get_current_user, get_db, municipio_scope
+from app.api.deps import get_current_user, get_db, scoped_modulo
 from app.models.inss import InssAnual
 from app.schemas.inss import InssItem, InssResumo
 from fastapi import APIRouter, Depends
+from sqlalchemy import func
 from sqlalchemy.orm import Session
 
 router = APIRouter(prefix="/inss", tags=["INSS"])
@@ -11,7 +12,7 @@ router = APIRouter(prefix="/inss", tags=["INSS"])
 
 @router.get("/serie", response_model=List[InssItem])
 def serie_inss(
-    mid: int | None = Depends(municipio_scope),
+    mid: int | None = Depends(scoped_modulo("inss")),
     db: Session = Depends(get_db),
 ):
     if mid is None:
@@ -35,18 +36,20 @@ def serie_inss(
 
 @router.get("/resumo", response_model=InssResumo)
 def resumo_inss(
-    mid: int | None = Depends(municipio_scope),
+    mid: int | None = Depends(scoped_modulo("inss")),
     db: Session = Depends(get_db),
 ):
-    registros = (
-        db.query(InssAnual).filter(InssAnual.municipio_id == mid).all()
-        if mid is not None
-        else []
+    if mid is None:
+        return InssResumo(total_beneficios=0, valor_total=0)
+    row = (
+        db.query(
+            func.coalesce(func.sum(InssAnual.quantidade_beneficios), 0),
+            func.coalesce(func.sum(InssAnual.valor_anual), 0),
+        )
+        .filter(InssAnual.municipio_id == mid)
+        .one()
     )
-    return InssResumo(
-        total_beneficios=sum(r.quantidade_beneficios for r in registros),
-        valor_total=sum(r.valor_anual for r in registros),
-    )
+    return InssResumo(total_beneficios=int(row[0] or 0), valor_total=row[1] or 0)
 
 
 @router.get("/comparativo")

@@ -1,9 +1,10 @@
 from typing import List
 
-from app.api.deps import get_current_user, get_db, municipio_scope
+from app.api.deps import get_current_user, get_db, scoped_modulo
 from app.models.pix import PixMensal
 from app.schemas.pix import PixMensalItem, PixResumo
 from fastapi import APIRouter, Depends, Query
+from sqlalchemy import func
 from sqlalchemy.orm import Session
 
 router = APIRouter(prefix="/pix", tags=["PIX"])
@@ -11,7 +12,7 @@ router = APIRouter(prefix="/pix", tags=["PIX"])
 
 @router.get("/serie", response_model=List[PixMensalItem])
 def serie_pix(
-    mid: int | None = Depends(municipio_scope),
+    mid: int | None = Depends(scoped_modulo("pix")),
     db: Session = Depends(get_db),
 ):
     if mid is None:
@@ -41,24 +42,24 @@ def serie_pix(
 
 @router.get("/resumo", response_model=PixResumo)
 def resumo_pix(
-    mid: int | None = Depends(municipio_scope),
+    mid: int | None = Depends(scoped_modulo("pix")),
     db: Session = Depends(get_db),
 ):
     if mid is None:
         return PixResumo()
-    query = db.query(PixMensal).filter(PixMensal.municipio_id == mid)
-    registros = query.all()
-    if not registros:
-        return PixResumo()
-    total_transacoes = sum(
-        (r.qt_pagador_pf or 0) + (r.qt_pagador_pj or 0) for r in registros
+    row = (
+        db.query(
+            func.coalesce(func.sum(func.coalesce(PixMensal.qt_pagador_pf, 0) + func.coalesce(PixMensal.qt_pagador_pj, 0)), 0),
+            func.coalesce(func.sum(PixMensal.vl_pagador_pf), 0),
+            func.coalesce(func.sum(PixMensal.vl_pagador_pj), 0),
+        )
+        .filter(PixMensal.municipio_id == mid)
+        .one()
     )
-    volume_pf = sum(r.vl_pagador_pf or 0 for r in registros)
-    volume_pj = sum(r.vl_pagador_pj or 0 for r in registros)
     return PixResumo(
-        total_transacoes=total_transacoes,
-        volume_total_pf=volume_pf,
-        volume_total_pj=volume_pj,
+        total_transacoes=int(row[0] or 0),
+        volume_total_pf=row[1] or 0,
+        volume_total_pj=row[2] or 0,
     )
 
 

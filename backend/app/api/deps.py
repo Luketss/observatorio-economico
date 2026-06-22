@@ -58,6 +58,53 @@ def require_role(required_role: str):
     return role_checker
 
 
+def _plano_modulos(db: Session, current_user: Usuario) -> list[str]:
+    """Module list enabled for the user's município plan (empty if none)."""
+    import json
+
+    from app.models.plano_config import PlanoConfig
+
+    municipio = current_user.municipio
+    plano = municipio.plano if municipio else None
+    if not plano:
+        return []
+    config = db.query(PlanoConfig).filter(PlanoConfig.plano == plano).first()
+    if not config or not config.modulos:
+        return []
+    try:
+        return json.loads(config.modulos)
+    except (ValueError, TypeError):
+        return []
+
+
+def _ensure_modulo(db: Session, current_user: Usuario, modulo: str) -> None:
+    """Raise 403 unless the user may access `modulo`. ADMIN_GLOBAL always passes;
+    everyone else must have it in their plan's module list. Server-side mirror of
+    the frontend nav gating — so blocking a module actually blocks the API too."""
+    if current_user.role.nome == "ADMIN_GLOBAL":
+        return
+    if modulo not in _plano_modulos(db, current_user):
+        raise ForbiddenException(f"Módulo '{modulo}' não habilitado no seu plano.")
+
+
+def scoped_modulo(modulo: str):
+    """Dependency factory: enforce plan access to `modulo` AND resolve the
+    município scope (same as municipio_scope). Use on single-município dashboard
+    endpoints so the dataset is both access-controlled and correctly scoped."""
+
+    def dep(
+        municipio_id: int | None = Query(default=None),
+        current_user: Usuario = Depends(get_current_user),
+        db: Session = Depends(get_db),
+    ) -> int | None:
+        _ensure_modulo(db, current_user, modulo)
+        if current_user.role.nome != "ADMIN_GLOBAL":
+            return current_user.municipio_id
+        return municipio_id
+
+    return dep
+
+
 def municipio_scope(
     municipio_id: int | None = Query(default=None),
     current_user: Usuario = Depends(get_current_user),

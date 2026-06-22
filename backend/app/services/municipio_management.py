@@ -303,6 +303,83 @@ def delete_dataset_for_municipio(
     return summary
 
 
+def run_sanity_checks(db: Session, municipio_id: int) -> list:
+    """Per-município data-sanity checks, surfaced to ADMIN_GLOBAL. Flags the
+    classes of problem we hit in practice: an all-zero key flag (e.g. the MEI
+    parsing bug), an all-zero/empty metric, and single-year time series.
+    Returns a list of {dataset, nivel: 'ok'|'aviso'|'erro', mensagem}."""
+    from sqlalchemy import func as _func
+
+    out: list = []
+
+    def add(dataset, nivel, mensagem):
+        out.append({"dataset": dataset, "nivel": nivel, "mensagem": mensagem})
+
+    # ── Empresas: MEI / Simples flags all-false despite having rows ──────────
+    emp_total = db.query(Empresa).filter(Empresa.municipio_id == municipio_id).count()
+    if emp_total:
+        mei = db.query(Empresa).filter(Empresa.municipio_id == municipio_id, Empresa.opcao_mei.is_(True)).count()
+        simples = db.query(Empresa).filter(Empresa.municipio_id == municipio_id, Empresa.opcao_simples.is_(True)).count()
+        if mei == 0:
+            add("empresas", "aviso", f"MEI zerado: 0 de {emp_total} empresas marcadas como MEI — provável falha de extração/parsing.")
+        if simples == 0:
+            add("empresas", "aviso", f"Optantes do Simples zerados: 0 de {emp_total}.")
+
+    # ── VAF: IPM all zero/null ───────────────────────────────────────────────
+    vaf_total = db.query(VafAnual).filter(VafAnual.municipio_id == municipio_id).count()
+    if vaf_total:
+        ipm_validos = db.query(VafAnual).filter(
+            VafAnual.municipio_id == municipio_id,
+            VafAnual.indice_participacao_municipal.isnot(None),
+            VafAnual.indice_participacao_municipal != 0,
+        ).count()
+        if ipm_validos == 0:
+            add("vaf", "aviso", f"IPM zerado/nulo em todos os {vaf_total} anos.")
+
+    # ── Single-year time series (annual/monthly datasets with only 1 year) ───
+    from app.models.arrecadacao import ArrecadacaoMensal as _Arr
+    from app.models.caged import CagedMovimentacao as _Caged
+    from app.models.rais import RaisVinculo as _Rais
+    from app.models.pib import PibAnual as _Pib
+    for key, model in (("arrecadacao", _Arr), ("caged", _Caged), ("rais", _Rais), ("pib", _Pib)):
+        anos = db.query(_func.count(_func.distinct(model.ano))).filter(model.municipio_id == municipio_id).scalar() or 0
+        if anos == 1:
+            add(key, "aviso", "Apenas 1 ano de dados — séries temporais ficam degeneradas (um ponto).")
+
+    return out
+
+
+def record_ingestao_audit(
+    db: Session,
+    *,
+    municipio_id: int | None,
+    usuario_id: int | None,
+    dataset: str | None,
+    acao: str,
+    num_linhas: int = 0,
+    status: str = "ok",
+    detalhe: str | None = None,
+) -> None:
+    """Append a row to the ingestão audit trail. Best-effort: never let an audit
+    failure break the operation it is recording."""
+    from app.models.ingestao_audit import IngestaoAudit
+
+    try:
+        db.add(IngestaoAudit(
+            municipio_id=municipio_id,
+            usuario_id=usuario_id,
+            dataset=dataset,
+            acao=acao,
+            num_linhas=num_linhas,
+            status=status,
+            detalhe=detalhe,
+        ))
+        db.commit()
+    except Exception:
+        db.rollback()
+        logger.exception("Failed to record ingestao_audit (%s, mun=%s, ds=%s)", acao, municipio_id, dataset)
+
+
 def delete_all_datasets_for_municipio(
     db: Session, municipio_id: int
 ) -> Dict[str, int]:
