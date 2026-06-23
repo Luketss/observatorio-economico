@@ -54,6 +54,7 @@ export default function AcompanhamentoTab() {
 
   const [projetos, setProjetos] = useState([]);
   const [eixos, setEixos] = useState([]);
+  const [imagens, setImagens] = useState([]);
   const [loading, setLoading] = useState(true);
   const [viewMode, setViewMode] = useState("kanban");
   const [filterEixo, setFilterEixo] = useState("");
@@ -74,12 +75,14 @@ export default function AcompanhamentoTab() {
 
   async function load() {
     try {
-      const [projRes, eixosRes] = await Promise.all([
+      const [projRes, eixosRes, imagensRes] = await Promise.all([
         api.get("/projetos"),
         api.get("/projetos/eixos"),
+        api.get("/projetos/imagens").catch(() => ({ data: [] })),
       ]);
       setProjetos(projRes.data || []);
       setEixos(eixosRes.data || []);
+      setImagens(imagensRes.data || []);
     } catch (err) {
       console.error(err);
     } finally {
@@ -207,6 +210,12 @@ export default function AcompanhamentoTab() {
     eixos.map((e, i) => [String(e.id), EIXO_ACCENTS[i % EIXO_ACCENTS.length]])
   );
 
+  // Eixo cover image (preset chosen by admin) → base64
+  const imagemById = Object.fromEntries(imagens.map((i) => [String(i.id), i.imagem]));
+  const eixoImagemMap = Object.fromEntries(
+    eixos.map((e) => [String(e.id), e.imagem_id != null ? imagemById[String(e.imagem_id)] : null])
+  );
+
   // Eixo sub-tabs for filtering
   const eixoTabs = [
     { key: "", label: "Todos", count: projetos.length },
@@ -221,14 +230,19 @@ export default function AcompanhamentoTab() {
     const st = STATUS_CONFIG[projeto.status] || STATUS_CONFIG.nao_iniciado;
     const label = eixoLabel(projeto.eixo_id);
     const accentVar = eixoAccentMap[String(projeto.eixo_id)] || "--accent-1";
+    const coverImg = eixoImagemMap[String(projeto.eixo_id)];
     return (
       <div className="proj-card">
-        {/* Image slot */}
+        {/* Image slot — eixo cover when set, else gradient placeholder */}
         <div
           className="proj-card__img"
-          style={{ "--proj-accent": `var(${accentVar})` }}
+          style={{ "--proj-accent": `var(${accentVar})`, ...(coverImg ? { padding: 0, overflow: "hidden" } : {}) }}
         >
-          PROJETO · IMAGEM
+          {coverImg ? (
+            <img src={coverImg} alt={label || "capa do projeto"} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+          ) : (
+            "PROJETO · IMAGEM"
+          )}
         </div>
 
         {/* Header: eixo tag + actions */}

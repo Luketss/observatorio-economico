@@ -26,6 +26,7 @@ export default function AcervoTab({ onSelectSuccess }) {
 
   const [templates, setTemplates] = useState([]);
   const [eixos, setEixos] = useState([]);
+  const [imagens, setImagens] = useState([]);
   const [acompanhamentos, setAcompanhamentos] = useState([]);
   const [loading, setLoading] = useState(true);
   const [filterEixo, setFilterEixo] = useState("");
@@ -47,12 +48,14 @@ export default function AcervoTab({ onSelectSuccess }) {
 
   async function load() {
     try {
-      const [tmplRes, eixosRes] = await Promise.all([
+      const [tmplRes, eixosRes, imagensRes] = await Promise.all([
         api.get("/projetos/acervo"),
         api.get("/projetos/eixos"),
+        api.get("/projetos/imagens").catch(() => ({ data: [] })),
       ]);
       setTemplates(tmplRes.data || []);
       setEixos(eixosRes.data || []);
+      setImagens(imagensRes.data || []);
       if (!isGlobal) {
         const projRes = await api.get("/projetos");
         setAcompanhamentos(projRes.data || []);
@@ -168,6 +171,11 @@ export default function AcervoTab({ onSelectSuccess }) {
     eixos.map((e, i) => [String(e.id), EIXO_ACCENTS[i % EIXO_ACCENTS.length]])
   );
 
+  const imagemById = Object.fromEntries(imagens.map((i) => [String(i.id), i.imagem]));
+  const eixoImagemMap = Object.fromEntries(
+    eixos.map((e) => [String(e.id), e.imagem_id != null ? imagemById[String(e.imagem_id)] : null])
+  );
+
   if (loading) {
     return (
       <div style={{ display: "flex", justifyContent: "center", padding: "80px 0" }}>
@@ -217,14 +225,19 @@ export default function AcervoTab({ onSelectSuccess }) {
             const alreadyAdded = selectedTemplateIds.has(t.id);
             const label = eixoLabel(t.eixo_id);
             const accentVar = eixoAccentMap[String(t.eixo_id)] || "--accent-1";
+            const coverImg = eixoImagemMap[String(t.eixo_id)];
             return (
               <div key={t.id} className="proj-card">
-                {/* Image slot — gradient placeholder */}
+                {/* Image slot — eixo cover when set, else gradient placeholder */}
                 <div
                   className="proj-card__img"
-                  style={{ "--proj-accent": `var(${accentVar})` }}
+                  style={{ "--proj-accent": `var(${accentVar})`, ...(coverImg ? { padding: 0, overflow: "hidden" } : {}) }}
                 >
-                  PROJETO · IMAGEM
+                  {coverImg ? (
+                    <img src={coverImg} alt={label || "capa do projeto"} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                  ) : (
+                    "PROJETO · IMAGEM"
+                  )}
                 </div>
 
                 {/* Header row: eixo tag + admin actions */}

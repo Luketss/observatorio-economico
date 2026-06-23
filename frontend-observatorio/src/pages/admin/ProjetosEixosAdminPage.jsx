@@ -5,11 +5,14 @@ import api from "../../services/api";
 import { useToast } from "../../context/ToastContext";
 import { useEscapeKey } from "../../hooks/useEscapeKey";
 
-const defaultForm = { nome: "", descricao: "", ordem: 0 };
+const defaultForm = { nome: "", descricao: "", ordem: 0, imagem_id: null };
+const MAX_PRESETS = 6;
 
 export default function ProjetosEixosAdminPage() {
   const { addToast } = useToast();
   const [eixos, setEixos] = useState([]);
+  const [presets, setPresets] = useState([]);
+  const [uploading, setUploading] = useState(false);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [editingId, setEditingId] = useState(null);
@@ -25,12 +28,46 @@ export default function ProjetosEixosAdminPage() {
 
   async function load() {
     try {
-      const res = await api.get("/projetos/eixos");
-      setEixos(res.data || []);
+      const [eixosRes, presetsRes] = await Promise.all([
+        api.get("/projetos/eixos"),
+        api.get("/projetos/imagens"),
+      ]);
+      setEixos(eixosRes.data || []);
+      setPresets(presetsRes.data || []);
     } catch (err) {
       console.error(err);
     } finally {
       setLoading(false);
+    }
+  }
+
+  async function handleUploadPreset(file) {
+    if (!file) return;
+    setUploading(true);
+    try {
+      const dataUrl = await new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result);
+        reader.onerror = reject;
+        reader.readAsDataURL(file);
+      });
+      await api.post("/projetos/imagens", { imagem: dataUrl, titulo: file.name });
+      addToast("Imagem de capa adicionada", "success");
+      await load();
+    } catch (err) {
+      addToast(err?.response?.data?.detail || "Erro ao enviar imagem", "error");
+    } finally {
+      setUploading(false);
+    }
+  }
+
+  async function handleDeletePreset(id) {
+    try {
+      await api.delete(`/projetos/imagens/${id}`);
+      addToast("Imagem removida", "success");
+      await load();
+    } catch (err) {
+      addToast("Erro ao remover imagem", "error");
     }
   }
 
@@ -45,7 +82,7 @@ export default function ProjetosEixosAdminPage() {
 
   function openEdit(e) {
     setEditingId(e.id);
-    setForm({ nome: e.nome, descricao: e.descricao || "", ordem: e.ordem });
+    setForm({ nome: e.nome, descricao: e.descricao || "", ordem: e.ordem, imagem_id: e.imagem_id ?? null });
     setFormError(null);
     setShowForm(true);
   }
@@ -147,6 +184,33 @@ export default function ProjetosEixosAdminPage() {
                 className="px-3 py-2 rounded-lg border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
               />
             </div>
+            <div className="md:col-span-2 flex flex-col gap-1">
+              <label className="text-xs font-medium text-slate-500 uppercase tracking-wider">Imagem de capa</label>
+              {presets.length === 0 ? (
+                <p className="text-xs text-slate-400">Nenhuma imagem cadastrada — adicione na galeria abaixo.</p>
+              ) : (
+                <div className="flex flex-wrap gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setForm((p) => ({ ...p, imagem_id: null }))}
+                    className={`w-20 h-14 rounded-lg border-2 flex items-center justify-center text-xs font-medium ${form.imagem_id == null ? "border-blue-500 text-blue-600" : "border-slate-200 text-slate-400"}`}
+                  >
+                    Nenhuma
+                  </button>
+                  {presets.map((img) => (
+                    <button
+                      key={img.id}
+                      type="button"
+                      onClick={() => setForm((p) => ({ ...p, imagem_id: img.id }))}
+                      className={`w-20 h-14 rounded-lg overflow-hidden border-2 ${String(form.imagem_id) === String(img.id) ? "border-blue-500" : "border-transparent hover:border-slate-300"}`}
+                      title={img.titulo || "capa"}
+                    >
+                      <img src={img.imagem} alt={img.titulo || "capa"} className="w-full h-full object-cover" />
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
             <div className="md:col-span-2 flex items-center gap-3 pt-2">
               {formError && <p className="text-sm text-red-600 flex-1">{formError}</p>}
               <div className="flex gap-3 ml-auto">
@@ -159,6 +223,45 @@ export default function ProjetosEixosAdminPage() {
           </form>
         </div>
       )}
+
+      {/* Cover-image gallery (global presets) */}
+      <div className="bg-white rounded-2xl shadow-sm border border-slate-100 p-6">
+        <div className="mb-4">
+          <h3 className="text-base font-bold text-slate-800">Imagens de Capa</h3>
+          <p className="text-sm text-slate-400">
+            Galeria global (até {MAX_PRESETS}) que os eixos usam como capa dos cards de projeto.
+          </p>
+        </div>
+        <div className="flex flex-wrap gap-3">
+          {presets.map((img) => (
+            <div key={img.id} className="relative w-32 h-20 rounded-xl overflow-hidden border border-slate-200 group">
+              <img src={img.imagem} alt={img.titulo || "capa"} className="w-full h-full object-cover" />
+              <button
+                onClick={() => handleDeletePreset(img.id)}
+                title="Remover imagem"
+                aria-label="Remover imagem"
+                className="absolute top-1 right-1 p-1 rounded-md bg-white/85 text-red-600 opacity-0 group-hover:opacity-100 transition-opacity"
+              >
+                <TrashIcon className="w-4 h-4" />
+              </button>
+            </div>
+          ))}
+          {presets.length < MAX_PRESETS && (
+            <label
+              className={`w-32 h-20 rounded-xl border-2 border-dashed border-slate-300 flex flex-col items-center justify-center gap-1 text-slate-400 text-xs cursor-pointer hover:border-blue-400 hover:text-blue-500 transition-colors ${uploading ? "opacity-50 pointer-events-none" : ""}`}
+            >
+              <PlusIcon className="w-5 h-5" />
+              {uploading ? "Enviando…" : "Adicionar"}
+              <input
+                type="file"
+                accept="image/*"
+                className="hidden"
+                onChange={(e) => { handleUploadPreset(e.target.files?.[0]); e.target.value = ""; }}
+              />
+            </label>
+          )}
+        </div>
+      </div>
 
       <div className="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
         {loading ? (
