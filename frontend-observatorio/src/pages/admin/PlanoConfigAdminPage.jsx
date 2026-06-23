@@ -21,6 +21,7 @@ const MODULOS = [
   { key: "insights_ia", label: "Insights IA" },
   { key: "timeline_mandato", label: "Timeline do Mandato" },
   { key: "projetos", label: "Projetos Municipais" },
+  { key: "impacto", label: "Impacto de Ações" },
   { key: "desenvolvimento_economico.funil", label: "Desenv. Econômico — Funil de Investimentos" },
   { key: "desenvolvimento_economico.retencao", label: "Desenv. Econômico — Retenção & Expansão" },
   { key: "desenvolvimento_economico.captacao", label: "Desenv. Econômico — Captação de Recursos" },

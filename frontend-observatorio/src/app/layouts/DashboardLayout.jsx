@@ -41,6 +41,7 @@ import {
   FunnelIcon,
   BuildingOffice2Icon,
   PencilSquareIcon,
+  BoltIcon,
 } from "@heroicons/react/24/outline";
 
 const NAV_STRUCTURE = [
@@ -91,6 +92,7 @@ const NAV_STRUCTURE = [
     ],
   },
   { type: "link", to: "/app/timeline", label: "Timeline", icon: CalendarDaysIcon, modulo: "timeline_mandato" },
+  { type: "link", to: "/app/impacto", label: "Impacto de Ações", icon: BoltIcon, modulo: "impacto" },
   {
     type: "group", label: "Dados Internos", icon: CircleStackIcon,
     children: [
