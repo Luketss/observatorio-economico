@@ -430,14 +430,14 @@ export default function RaisPage() {
           <NidPanel title="Top Setores (CNAE)" sub={`Composição ${anoAtivo || ""}`}>
             {porCnae.filter((d) => d.ano === anoAtivo).length > 0 ? (
               <DonutChart
-                data={aggregateByYear(porCnae.filter((d) => d.ano === anoAtivo), "descricao_secao").slice(0, 6)}
+                data={aggregateByYear(porCnae.filter((d) => d.ano === anoAtivo), "descricao_secao").slice(0, 6).map((s) => ({ label: s.name, value: s.value }))}
                 colors={palette}
                 glow
                 height={210}
                 centerLabel={fmtNumberShort(metricasAtual?.total_vinculos || 0)}
                 centerSub="VÍNCULOS"
                 onSelect={(s) => {
-                  const sectorName = s.name ?? s.label;
+                  const sectorName = s.label;
                   const serie = Object.entries(
                     porCnae
                       .filter((r) => r.descricao_secao === sectorName)
