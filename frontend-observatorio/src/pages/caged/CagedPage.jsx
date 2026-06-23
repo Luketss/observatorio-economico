@@ -15,6 +15,7 @@ import { comparePanelData } from "../../utils/periodos";
 import ChartState from "../../components/nid/ChartState.jsx";
 import InfoTooltip from "../../components/InfoTooltip";
 import PlanGate from "../../components/PlanGate";
+import DetalheModal from "../../components/nid/DetalheModal";
 import { useAuth } from "../../context/AuthContext";
 import { useViewAs } from "../../context/ViewAsContext";
 
@@ -58,6 +59,7 @@ export default function CagedPage() {
   const [loading, setLoading] = useState(true);
   const [turnoverMode, setTurnoverMode] = useState("saldo");
   const [comparar, setComparar] = useState(false);
+  const [detalhe, setDetalhe] = useState(null);
   const cmp = useMemo(() => comparePanelData(serie, { valueKey: "saldo" }), [serie]);
 
   useEffect(() => {
@@ -531,6 +533,19 @@ export default function CagedPage() {
                 glow
                 height={260}
                 fmt={(v) => `${v > 0 ? "+" : ""}${fmtBR(v)}`}
+                onSelect={(d) => {
+                  const serie = Object.entries(
+                    porCnae
+                      .filter((r) => r.descricao_secao === d.label)
+                      .reduce((acc, r) => {
+                        acc[r.ano] = (acc[r.ano] || 0) + (r.saldo || 0);
+                        return acc;
+                      }, {})
+                  )
+                    .sort(([a], [b]) => Number(a) - Number(b))
+                    .map(([ano, value]) => ({ label: String(ano), value }));
+                  setDetalhe({ titulo: d.label, serie });
+                }}
               />
             ) : <EmptyMsg height={260} />}
           </NidPanel>
@@ -721,6 +736,14 @@ export default function CagedPage() {
       </div>
       </>
       )}
+
+      <DetalheModal
+        open={!!detalhe}
+        onClose={() => setDetalhe(null)}
+        titulo={detalhe?.titulo}
+        serie={detalhe?.serie}
+        fmt={(v) => `${v > 0 ? "+" : ""}${fmtBR(v)}`}
+      />
     </motion.div>
   );
 }
