@@ -58,6 +58,41 @@ describe("comparePanelData", () => {
     const r = comparePanelData([{ ano: 2025, mes: 1, total: 5 }], { valueKey: "total" });
     expect(r.temAnterior).toBe(false);
   });
+
+  it("trims chartData to last populated current-year month (partial year)", () => {
+    // 2025: only Jan=10, Feb=20; 2024: Jan=100, Feb=100, Mar=100 (full+ coverage)
+    const serie = [
+      { ano: 2024, mes: 1, total: 100 },
+      { ano: 2024, mes: 2, total: 100 },
+      { ano: 2024, mes: 3, total: 100 },
+      { ano: 2025, mes: 1, total: 10 },
+      { ano: 2025, mes: 2, total: 20 },
+    ];
+    const r = comparePanelData(serie, { valueKey: "total" });
+    // chartData trimmed to Jan+Feb only
+    expect(r.chartData).toHaveLength(2);
+    // totalAtual = 10+20 = 30
+    expect(r.totalAtual).toBe(30);
+    // totalAnterior = 100+100 = 200 (only the same Jan+Feb span, NOT 300)
+    expect(r.totalAnterior).toBe(200);
+    // no null atual values in chartData (trailing months removed)
+    expect(r.chartData.every((d) => d["2025"] != null)).toBe(true);
+    // deltaPct computed over the trimmed period
+    expect(r.deltaPct).toBeCloseTo(pctChange(30, 200));
+  });
+
+  it("anterior summed over same span as atual (no trailing null contamination)", () => {
+    // current year: Jan only; previous year: 12 full months each = 50
+    const serie = [
+      ...Array.from({ length: 12 }, (_, i) => ({ ano: 2024, mes: i + 1, total: 50 })),
+      { ano: 2025, mes: 1, total: 75 },
+    ];
+    const r = comparePanelData(serie, { valueKey: "total" });
+    expect(r.chartData).toHaveLength(1);
+    expect(r.totalAnterior).toBe(50); // only Jan 2024, NOT 600
+    expect(r.totalAtual).toBe(75);
+    expect(r.deltaPct).toBeCloseTo(50);
+  });
 });
 
 describe("beforeAfter", () => {

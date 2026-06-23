@@ -25,11 +25,16 @@ export function comparePanelData(serie, { valueKey }) {
   const { anoAtual, anoAnterior, meses } = splitByYear(serie, { valueKey });
   const kA = String(anoAtual ?? "atual");
   const kP = String(anoAnterior ?? "anterior");
-  const sum = (k) => meses.reduce((s, m) => s + (m[k] || 0), 0);
+  // Trim to the last month that has actual current-year data to avoid:
+  // 1) a false YoY decline (comparing N months of atual vs 12 months of anterior)
+  // 2) the chart line diving to zero for future months (null coerced to 0)
+  const lastIdx = meses.reduce((best, m, i) => (m.atual != null ? i : best), -1);
+  const trimmed = lastIdx >= 0 ? meses.slice(0, lastIdx + 1) : meses;
+  const sum = (k) => trimmed.reduce((s, m) => s + (m[k] || 0), 0);
   const totalAtual = sum("atual");
   const totalAnterior = sum("anterior");
   return {
-    chartData: meses.map((m) => ({ label: m.label, [kA]: m.atual, [kP]: m.anterior })),
+    chartData: trimmed.map((m) => ({ label: m.label, [kA]: m.atual, [kP]: m.anterior })),
     series: [kA, kP],
     temAnterior: anoAnterior != null,
     totalAtual,
