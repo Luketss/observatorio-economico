@@ -8,8 +8,10 @@ import InfoTooltip from "../../components/InfoTooltip";
 import FilterBar, { describeFilter, clearFilter } from "../../components/FilterBar";
 import KpiCard from "../../components/KpiCard";
 import PlanGate from "../../components/PlanGate";
-import { NidPageHeader } from "../../components/nid/Panel";
+import { NidPageHeader, NidPanel, NidLegend } from "../../components/nid/Panel";
 import { MultiLineChart, StackedBarChart } from "../../components/nid/charts";
+import CompareToggle from "../../components/nid/CompareToggle";
+import { comparePanelData } from "../../utils/periodos";
 import ChartState from "../../components/nid/ChartState.jsx";
 import { useAuth } from "../../context/AuthContext";
 import { useViewAs } from "../../context/ViewAsContext";
@@ -48,6 +50,12 @@ export default function PixPage() {
   const [resumo, setResumo] = useState(null);
   const [loading, setLoading] = useState(true);
   const [filters, setFilters] = useState({ yearFrom: "", yearTo: "", monthFrom: "", monthTo: "" });
+  const [comparar, setComparar] = useState(false);
+  const rawSerieCmp = useMemo(
+    () => rawSerie.map((d) => ({ ...d, _v: (d.vl_pagador_pf || 0) + (d.vl_pagador_pj || 0) })),
+    [rawSerie]
+  );
+  const cmp = useMemo(() => comparePanelData(rawSerieCmp, { valueKey: "_v" }), [rawSerieCmp]);
 
   useEffect(() => {
     Promise.all([api.get("/pix/serie"), api.get("/pix/resumo")])
@@ -147,6 +155,10 @@ export default function PixPage() {
       <>
       <InsightsPanel dataset="pix" />
 
+      <div className="flex items-center justify-end">
+        <CompareToggle active={comparar} onChange={setComparar} disabled={!cmp.temAnterior} />
+      </div>
+
       <FilterBar id="filter-bar-pix" years={years} showMonths value={filters} onChange={setFilters} />
 
       {loading ? (
@@ -165,17 +177,43 @@ export default function PixPage() {
 
       {/* Volume PF vs PJ — Pagamentos */}
       <PlanGate planKey="pix.detalhado">
-      <ChartCard title="Volume de Pagamentos — PF vs PJ" empty={serie.length === 0}>
-        <MultiLineChart
-          data={serie.map((d) => ({ label: d.periodo, "Volume PF": d.vl_pagador_pf || 0, "Volume PJ": d.vl_pagador_pj || 0 }))}
-          series={["Volume PF", "Volume PJ"]}
-          colors={["#3b82f6", "#10b981"]}
-          height={280}
-          legend
-          yFmt={(v) => `R$ ${(v / 1_000_000).toLocaleString("pt-BR", { maximumFractionDigits: 0 })}M`}
-          tipFmt={fmtBRL}
-        />
-      </ChartCard>
+      <NidPanel
+        title="Volume de Pagamentos — PF vs PJ"
+        sub={comparar && cmp.temAnterior
+          ? `${cmp.series[0]} vs ${cmp.series[1]} · ${
+              cmp.deltaPct != null
+                ? `${cmp.deltaPct >= 0 ? "+" : ""}${cmp.deltaPct.toFixed(1)}%`
+                : "—"
+            } no acumulado`
+          : "volume mensal PF + PJ"}
+      >
+        {comparar && cmp.temAnterior ? (
+          <>
+            <NidLegend items={[
+              { name: cmp.series[0], color: "var(--accent-1)" },
+              { name: cmp.series[1], color: "var(--accent-3)" },
+            ]} />
+            <MultiLineChart
+              data={cmp.chartData}
+              series={cmp.series}
+              colors={["var(--accent-1)", "var(--accent-3)"]}
+              height={280}
+              yFmt={(v) => `R$ ${(v / 1_000_000).toLocaleString("pt-BR", { maximumFractionDigits: 0 })}M`}
+              tipFmt={fmtBRL}
+            />
+          </>
+        ) : (
+          <MultiLineChart
+            data={serie.map((d) => ({ label: d.periodo, "Volume PF": d.vl_pagador_pf || 0, "Volume PJ": d.vl_pagador_pj || 0 }))}
+            series={["Volume PF", "Volume PJ"]}
+            colors={["#3b82f6", "#10b981"]}
+            height={280}
+            legend
+            yFmt={(v) => `R$ ${(v / 1_000_000).toLocaleString("pt-BR", { maximumFractionDigits: 0 })}M`}
+            tipFmt={fmtBRL}
+          />
+        )}
+      </NidPanel>
 
       {/* Volume Recebimentos — PF vs PJ */}
       <ChartCard title="Volume de Recebimentos — PF vs PJ" empty={serie.length === 0}>
