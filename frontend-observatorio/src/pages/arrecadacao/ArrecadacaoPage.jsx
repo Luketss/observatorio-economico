@@ -162,7 +162,11 @@ export default function ArrecadacaoPage() {
       <NidPanel
         title="Série Histórica Mensal"
         sub={comparar && cmp.temAnterior
-          ? `${cmp.series[0]} vs ${cmp.series[1]} · ${cmp.deltaPct >= 0 ? "+" : ""}${cmp.deltaPct.toFixed(1)}% no acumulado`
+          ? `${cmp.series[0]} vs ${cmp.series[1]} · ${
+              cmp.deltaPct != null
+                ? `${cmp.deltaPct >= 0 ? "+" : ""}${cmp.deltaPct.toFixed(1)}%`
+                : "—"
+            } no acumulado`
           : "receita total por período"}
       >
         {comparar && cmp.temAnterior ? (
