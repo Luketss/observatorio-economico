@@ -8,8 +8,10 @@ import InfoTooltip from "../../components/InfoTooltip";
 import FilterBar, { describeFilter, clearFilter } from "../../components/FilterBar";
 import KpiCard from "../../components/KpiCard";
 import PlanGate from "../../components/PlanGate";
-import { NidPageHeader } from "../../components/nid/Panel";
+import { NidPageHeader, NidPanel, NidLegend } from "../../components/nid/Panel";
 import { MultiLineChart, StackedBarChart, HBarChart, fmtMoneyShort, fmtMoneyFull } from "../../components/nid/charts";
+import CompareToggle from "../../components/nid/CompareToggle";
+import { comparePanelData } from "../../utils/periodos";
 import ChartState from "../../components/nid/ChartState.jsx";
 import { useAuth } from "../../context/AuthContext";
 import { useViewAs } from "../../context/ViewAsContext";
@@ -37,6 +39,15 @@ export default function EstbanPage() {
   const [porInstituicao, setPorInstituicao] = useState([]);
   const [loading, setLoading] = useState(true);
   const [filters, setFilters] = useState({ yearFrom: "", yearTo: "" });
+  const [comparar, setComparar] = useState(false);
+  const rawSerieCmp = useMemo(
+    () => rawSerie.map((d) => {
+      const dt = new Date(d.data_referencia);
+      return { ...d, ano: dt.getFullYear(), mes: dt.getMonth() + 1 };
+    }),
+    [rawSerie]
+  );
+  const cmp = useMemo(() => comparePanelData(rawSerieCmp, { valueKey: "valor_operacoes_credito" }), [rawSerieCmp]);
 
   useEffect(() => {
     Promise.all([
@@ -151,6 +162,10 @@ export default function EstbanPage() {
       <>
       <InsightsPanel dataset="estban" />
 
+      <div className="flex items-center justify-end">
+        <CompareToggle active={comparar} onChange={setComparar} disabled={!cmp.temAnterior} />
+      </div>
+
       <FilterBar id="filter-bar-estban" years={years} value={filters} onChange={setFilters} />
 
       {loading ? (
@@ -170,27 +185,50 @@ export default function EstbanPage() {
       )}
 
       {/* Evolução das Operações de Crédito */}
-      <div className="bg-[var(--panel)] p-6 rounded-2xl shadow-sm border border-[var(--border)]">
-        <h3 className="text-base font-bold mb-5 text-[var(--text)]">
-          Evolução das Operações de Crédito
-        </h3>
-        <MultiLineChart
-          data={serie.map((d) => ({
-            label: String(d.data_referencia),
-            "Operações de Crédito": d.valor_operacoes_credito || 0,
-            "Poupança": d.valor_poupanca || 0,
-            "Depósitos a Prazo": d.valor_depositos_prazo || 0,
-          }))}
-          series={["Operações de Crédito", "Poupança", "Depósitos a Prazo"]}
-          colors={["#3b82f6", "#10b981", "#f59e0b"]}
-          height={280}
-          legend
-          yFmt={(v) => `R$ ${(v / 1_000_000).toLocaleString("pt-BR", { maximumFractionDigits: 0 })}M`}
-          tipFmt={fmtBRL}
-          loading={loading}
-          emptyMessage="Sem dados disponíveis"
-        />
-      </div>
+      <NidPanel
+        title="Evolução das Operações de Crédito"
+        sub={comparar && cmp.temAnterior
+          ? `${cmp.series[0]} vs ${cmp.series[1]} · ${
+              cmp.deltaPct != null
+                ? `${cmp.deltaPct >= 0 ? "+" : ""}${cmp.deltaPct.toFixed(1)}%`
+                : "—"
+            } no acumulado`
+          : "operações de crédito, poupança e depósitos a prazo"}
+      >
+        {comparar && cmp.temAnterior ? (
+          <>
+            <NidLegend items={[
+              { name: cmp.series[0], color: "var(--accent-1)" },
+              { name: cmp.series[1], color: "var(--accent-3)" },
+            ]} />
+            <MultiLineChart
+              data={cmp.chartData}
+              series={cmp.series}
+              colors={["var(--accent-1)", "var(--accent-3)"]}
+              height={280}
+              yFmt={fmtMoneyShort}
+              tipFmt={fmtMoneyFull}
+            />
+          </>
+        ) : (
+          <MultiLineChart
+            data={serie.map((d) => ({
+              label: String(d.data_referencia),
+              "Operações de Crédito": d.valor_operacoes_credito || 0,
+              "Poupança": d.valor_poupanca || 0,
+              "Depósitos a Prazo": d.valor_depositos_prazo || 0,
+            }))}
+            series={["Operações de Crédito", "Poupança", "Depósitos a Prazo"]}
+            colors={["#3b82f6", "#10b981", "#f59e0b"]}
+            height={280}
+            legend
+            yFmt={(v) => `R$ ${(v / 1_000_000).toLocaleString("pt-BR", { maximumFractionDigits: 0 })}M`}
+            tipFmt={fmtBRL}
+            loading={loading}
+            emptyMessage="Sem dados disponíveis"
+          />
+        )}
+      </NidPanel>
 
       {/* Captação — Depósitos por Tipo */}
       <div className="bg-[var(--panel)] p-6 rounded-2xl shadow-sm border border-[var(--border)]">
