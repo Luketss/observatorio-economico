@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { splitByYear, pctChange, comparePanelData } from "./periodos";
+import { splitByYear, pctChange, comparePanelData, beforeAfter } from "./periodos";
 
 const MES = ["Jan","Fev","Mar","Abr","Mai","Jun","Jul","Ago","Set","Out","Nov","Dez"];
 
@@ -57,5 +57,28 @@ describe("comparePanelData", () => {
   it("flags no previous year", () => {
     const r = comparePanelData([{ ano: 2025, mes: 1, total: 5 }], { valueKey: "total" });
     expect(r.temAnterior).toBe(false);
+  });
+});
+
+describe("beforeAfter", () => {
+  const serie = [
+    { ano: 2024, mes: 10, v: 100 },
+    { ano: 2024, mes: 11, v: 100 },
+    { ano: 2024, mes: 12, v: 100 },
+    { ano: 2025, mes: 1, v: 150 },
+    { ano: 2025, mes: 2, v: 150 },
+  ];
+  it("splits at the marker month and averages each side", () => {
+    const r = beforeAfter(serie, "2025-01-15", { valueKey: "v" });
+    expect(r.antes.media).toBeCloseTo(100);
+    expect(r.antes.n).toBe(3);
+    expect(r.depois.media).toBeCloseTo(150);
+    expect(r.depois.n).toBe(2);
+    expect(r.deltaPct).toBeCloseTo(50);
+  });
+  it("respects the janela window", () => {
+    const r = beforeAfter(serie, "2025-01-15", { valueKey: "v", janela: 1 });
+    expect(r.antes.n).toBe(1);
+    expect(r.depois.n).toBe(1);
   });
 });

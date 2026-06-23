@@ -37,3 +37,21 @@ export function comparePanelData(serie, { valueKey }) {
     deltaPct: pctChange(totalAtual, totalAnterior),
   };
 }
+
+export function beforeAfter(serie, markerDate, { valueKey, anoKey = "ano", mesKey = "mes", janela = 12 }) {
+  const d = markerDate instanceof Date ? markerDate : new Date(markerDate);
+  const markKey = d.getUTCFullYear() * 12 + d.getUTCMonth(); // months since year 0, marker month index
+  const pts = (serie || [])
+    .map((r) => ({ key: r[anoKey] * 12 + (r[mesKey] - 1), v: r[valueKey] ?? 0 }))
+    .sort((a, b) => a.key - b.key);
+  const antesPts = pts.filter((p) => p.key < markKey).slice(-janela);
+  const depoisPts = pts.filter((p) => p.key >= markKey).slice(0, janela);
+  const mean = (arr) => (arr.length ? arr.reduce((s, p) => s + p.v, 0) / arr.length : null);
+  const mAntes = mean(antesPts);
+  const mDepois = mean(depoisPts);
+  return {
+    antes: { media: mAntes, n: antesPts.length },
+    depois: { media: mDepois, n: depoisPts.length },
+    deltaPct: pctChange(mDepois, mAntes),
+  };
+}
