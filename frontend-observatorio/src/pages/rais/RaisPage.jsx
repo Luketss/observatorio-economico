@@ -12,6 +12,7 @@ import {
 } from "../../components/nid/charts";
 import InfoTooltip from "../../components/InfoTooltip";
 import PlanGate from "../../components/PlanGate";
+import DetalheModal from "../../components/nid/DetalheModal";
 import { useAuth } from "../../context/AuthContext";
 import { useViewAs } from "../../context/ViewAsContext";
 
@@ -67,6 +68,7 @@ export default function RaisPage() {
   const [turnover, setTurnover] = useState([]);
 
   const [loading, setLoading] = useState(true);
+  const [detalhe, setDetalhe] = useState(null);
 
   useEffect(() => {
     let alive = true;
@@ -434,6 +436,20 @@ export default function RaisPage() {
                 height={210}
                 centerLabel={fmtNumberShort(metricasAtual?.total_vinculos || 0)}
                 centerSub="VÍNCULOS"
+                onSelect={(s) => {
+                  const sectorName = s.name ?? s.label;
+                  const serie = Object.entries(
+                    porCnae
+                      .filter((r) => r.descricao_secao === sectorName)
+                      .reduce((acc, r) => {
+                        acc[r.ano] = (acc[r.ano] || 0) + (r.total_vinculos || 0);
+                        return acc;
+                      }, {})
+                  )
+                    .sort(([a], [b]) => Number(a) - Number(b))
+                    .map(([ano, value]) => ({ label: String(ano), value }));
+                  setDetalhe({ titulo: sectorName, serie });
+                }}
               />
             ) : (
               <EmptyMsg height={210} />
@@ -659,6 +675,14 @@ export default function RaisPage() {
       </div>
       </>
       )}
+
+      <DetalheModal
+        open={!!detalhe}
+        onClose={() => setDetalhe(null)}
+        titulo={detalhe?.titulo}
+        serie={detalhe?.serie}
+        fmt={fmtNumber}
+      />
     </motion.div>
   );
 }
