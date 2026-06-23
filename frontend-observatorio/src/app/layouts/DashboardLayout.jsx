@@ -8,6 +8,7 @@ import { useTheme, THEMES } from "../../context/ThemeContext";
 import api from "../../services/api";
 import NotificationBell from "../../components/NotificationBell";
 import ViewAsBanner from "../../components/ViewAsBanner";
+import PlanLockedView from "../../components/PlanLockedView";
 import {
   HomeIcon,
   ChartBarIcon,
@@ -26,6 +27,7 @@ import {
   ChevronDownIcon,
   Bars3Icon,
   XMarkIcon,
+  LockClosedIcon,
   ChartBarSquareIcon,
   FolderOpenIcon,
   CalendarDaysIcon,
@@ -39,6 +41,7 @@ import {
   FunnelIcon,
   BuildingOffice2Icon,
   PencilSquareIcon,
+  BoltIcon,
 } from "@heroicons/react/24/outline";
 
 const NAV_STRUCTURE = [
@@ -89,6 +92,7 @@ const NAV_STRUCTURE = [
     ],
   },
   { type: "link", to: "/app/timeline", label: "Timeline", icon: CalendarDaysIcon, modulo: "timeline_mandato" },
+  { type: "link", to: "/app/impacto", label: "Impacto de Ações", icon: BoltIcon, modulo: "impacto" },
   {
     type: "group", label: "Dados Internos", icon: CircleStackIcon,
     children: [
@@ -99,6 +103,12 @@ const NAV_STRUCTURE = [
   },
   { type: "link", to: "/app/releases", label: "Releases", icon: NewspaperIcon, modulo: "releases", hideForAdmin: true },
 ];
+
+// Flat list of every navigable item (links + group children) — used to map the
+// current route to its module so a locked route can show the upsell teaser.
+const NAV_FLAT = NAV_STRUCTURE.flatMap((item) =>
+  item.type === "group" ? item.children : item.type === "link" ? [item] : []
+);
 
 function isChildActive(children, pathname) {
   return children.some(
@@ -227,12 +237,23 @@ export default function DashboardLayout() {
     });
   }, [user, isGlobal]);
 
+  // Plan-gated items are no longer hidden — they stay visible but show a lock
+  // (see isLocked) so the client gets a taste and an upgrade nudge. Only
+  // hideForAdmin still removes an item (Releases for ADMIN_GLOBAL).
   const isVisible = (modulo, hideForAdmin) => {
     if (hideForAdmin && isGlobal) return false;
-    if (isGlobal || modulos === null) return true;
-    if (modulo === null) return true;
-    return modulos.includes(modulo);
+    return true;
   };
+  const isLocked = (modulo) => {
+    if (isGlobal || modulos === null || modulo == null) return false;
+    return !modulos.includes(modulo);
+  };
+
+  // Module of the current route → drives the locked teaser on the content area.
+  const currentNav = NAV_FLAT
+    .filter((n) => n.to && (location.pathname === n.to || location.pathname.startsWith(n.to + "/")))
+    .sort((a, b) => b.to.length - a.to.length)[0];
+  const currentLocked = currentNav ? isLocked(currentNav.modulo) : false;
 
   const toggleGroup = (idx) => {
     setOpenGroups((prev) => {
@@ -281,15 +302,21 @@ export default function DashboardLayout() {
           if (item.type === "link") {
             if (!isVisible(item.modulo, item.hideForAdmin)) return null;
             const Icon = item.icon;
+            const locked = isLocked(item.modulo);
             return (
               <NavLink
                 key={item.to}
                 to={item.to}
                 end={item.end}
                 className={({ isActive }) => `nid-nav-item ${isActive ? "active" : ""}`}
+                style={locked ? { opacity: 0.7 } : undefined}
+                title={locked ? "Recurso bloqueado — disponível em um plano superior" : undefined}
               >
                 <Icon className="w-4 h-4 flex-shrink-0" />
                 <span>{item.label}</span>
+                {locked && (
+                  <LockClosedIcon className="w-3.5 h-3.5 flex-shrink-0" style={{ marginLeft: "auto", color: "var(--text-mute)" }} />
+                )}
               </NavLink>
             );
           }
@@ -322,15 +349,21 @@ export default function DashboardLayout() {
                   <div className="nid-nav-children space-y-0.5">
                     {visibleChildren.map((child) => {
                       const ChildIcon = child.icon;
+                      const childLocked = isLocked(child.modulo);
                       return (
                         <NavLink
                           key={child.to}
                           to={child.to}
                           end={child.end}
                           className={({ isActive }) => `nid-nav-item nid-nav-child ${isActive ? "active" : ""}`}
+                          style={childLocked ? { opacity: 0.7 } : undefined}
+                          title={childLocked ? "Recurso bloqueado — disponível em um plano superior" : undefined}
                         >
                           <ChildIcon className="w-4 h-4 flex-shrink-0" />
-                          {child.label}
+                          <span style={{ flex: 1 }}>{child.label}</span>
+                          {childLocked && (
+                            <LockClosedIcon className="w-3.5 h-3.5 flex-shrink-0" style={{ color: "var(--text-mute)" }} />
+                          )}
                         </NavLink>
                       );
                     })}
@@ -483,7 +516,11 @@ export default function DashboardLayout() {
                 canAccess: (key) => isGlobal || modulos === null || (modulos && modulos.includes(key)),
               }}
             >
-              <Outlet />
+              {currentLocked ? (
+                <PlanLockedView label={currentNav?.label} />
+              ) : (
+                <Outlet />
+              )}
             </PlanContext.Provider>
           </div>
         </main>

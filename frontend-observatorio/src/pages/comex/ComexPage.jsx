@@ -8,8 +8,10 @@ import InfoTooltip from "../../components/InfoTooltip";
 import FilterBar, { describeFilter, clearFilter } from "../../components/FilterBar";
 import KpiCard from "../../components/KpiCard";
 import PlanGate from "../../components/PlanGate";
-import { NidPageHeader } from "../../components/nid/Panel";
+import { NidPageHeader, NidPanel, NidLegend } from "../../components/nid/Panel";
 import { MultiLineChart, HBarChart } from "../../components/nid/charts";
+import CompareToggle from "../../components/nid/CompareToggle";
+import { comparePanelData } from "../../utils/periodos";
 import ChartState from "../../components/nid/ChartState.jsx";
 import { useAuth } from "../../context/AuthContext";
 import { useViewAs } from "../../context/ViewAsContext";
@@ -19,6 +21,26 @@ const fmtUSD = (v) =>
   v != null
     ? `US$ ${Number(v).toLocaleString("pt-BR", { maximumFractionDigits: 0 })}`
     : "—";
+
+// Groups comex serie rows by {ano, mes}, summing export/import USD by tipo_operacao.
+// Returns [{ano, mes, export, import, saldo}] sorted by period.
+// Note: chartSerie has its own filtered variant that also accumulates peso_export/peso_import.
+function groupComexByPeriod(rows) {
+  const map = {};
+  rows.forEach((item) => {
+    const key = `${item.ano}-${item.mes}`;
+    if (!map[key]) map[key] = { ano: item.ano, mes: item.mes, export: 0, import: 0 };
+    const tipo = item.tipo_operacao?.toLowerCase();
+    if (tipo === "exp" || tipo === "export") {
+      map[key].export += item.valor_usd ?? 0;
+    } else if (tipo === "imp" || tipo === "import") {
+      map[key].import += item.valor_usd ?? 0;
+    }
+  });
+  return Object.values(map)
+    .sort((a, b) => a.ano !== b.ano ? a.ano - b.ano : a.mes - b.mes)
+    .map((d) => ({ ...d, saldo: d.export - d.import }));
+}
 
 export default function ComexPage() {
   const { user } = useAuth();
@@ -36,6 +58,12 @@ export default function ComexPage() {
   const [loading, setLoading] = useState(true);
   const [loadingFilters, setLoadingFilters] = useState(false);
   const [filters, setFilters] = useState({ yearFrom: "", yearTo: "", monthFrom: "", monthTo: "" });
+  const [comparar, setComparar] = useState(false);
+  const rawComexSaldo = useMemo(
+    () => groupComexByPeriod(serie).map((d) => ({ ano: d.ano, mes: d.mes, _v: d.saldo })),
+    [serie]
+  );
+  const cmp = useMemo(() => comparePanelData(rawComexSaldo, { valueKey: "_v" }), [rawComexSaldo]);
 
   // Derive available years from serie data
   const anos = useMemo(() => {
@@ -192,6 +220,10 @@ export default function ComexPage() {
 
       <InsightsPanel dataset="comex" />
 
+      <div className="flex items-center justify-end">
+        <CompareToggle active={comparar} onChange={setComparar} disabled={!cmp.temAnterior} />
+      </div>
+
       <FilterBar id="filter-bar-comex" years={anos.slice().sort()} showMonths value={filters} onChange={setFilters} />
 
       {loading ? (
@@ -234,19 +266,42 @@ export default function ComexPage() {
 
       {/* Saldo — Balança Comercial Mensal */}
       {chartSerie.length > 0 && (
-        <div className="bg-[var(--panel)] p-6 rounded-2xl shadow-sm border border-[var(--border)]">
-          <h3 className="text-base font-bold mb-5 text-[var(--text)]">
-            Saldo da Balança Comercial (Mensal)
-          </h3>
-          <MultiLineChart
-            data={chartSerie.map((d) => ({ label: d.periodo, "Saldo": d.saldo }))}
-            series={["Saldo"]}
-            colors={["#8b5cf6"]}
-            height={240}
-            yFmt={(v) => `US$ ${(v / 1_000_000).toLocaleString("pt-BR", { maximumFractionDigits: 1 })}M`}
-            tipFmt={fmtUSD}
-          />
-        </div>
+        <NidPanel
+          title="Saldo da Balança Comercial (Mensal)"
+          sub={comparar && cmp.temAnterior
+            ? `${cmp.series[0]} vs ${cmp.series[1]} · ${
+                cmp.deltaPct != null
+                  ? `${cmp.deltaPct >= 0 ? "+" : ""}${cmp.deltaPct.toFixed(1)}%`
+                  : "—"
+              } no acumulado`
+            : "exportações − importações por mês"}
+        >
+          {comparar && cmp.temAnterior ? (
+            <>
+              <NidLegend items={[
+                { name: cmp.series[0], color: "var(--accent-1)" },
+                { name: cmp.series[1], color: "var(--accent-3)" },
+              ]} />
+              <MultiLineChart
+                data={cmp.chartData}
+                series={cmp.series}
+                colors={["var(--accent-1)", "var(--accent-3)"]}
+                height={240}
+                yFmt={(v) => `US$ ${(v / 1_000_000).toLocaleString("pt-BR", { maximumFractionDigits: 1 })}M`}
+                tipFmt={fmtUSD}
+              />
+            </>
+          ) : (
+            <MultiLineChart
+              data={chartSerie.map((d) => ({ label: d.periodo, "Saldo": d.saldo }))}
+              series={["Saldo"]}
+              colors={["#8b5cf6"]}
+              height={240}
+              yFmt={(v) => `US$ ${(v / 1_000_000).toLocaleString("pt-BR", { maximumFractionDigits: 1 })}M`}
+              tipFmt={fmtUSD}
+            />
+          )}
+        </NidPanel>
       )}
 
       {/* Peso Total por Período (kg) */}

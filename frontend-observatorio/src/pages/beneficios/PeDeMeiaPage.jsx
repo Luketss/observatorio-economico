@@ -6,7 +6,10 @@ import ReleasesPanel from "../../components/ReleasesPanel";
 import InfoTooltip from "../../components/InfoTooltip";
 import FilterBar from "../../components/FilterBar";
 import KpiCard from "../../components/KpiCard";
-import { AreaLineChart, HBarChart, DonutChart } from "../../components/nid/charts";
+import { NidPanel, NidLegend } from "../../components/nid/Panel";
+import { AreaLineChart, MultiLineChart, HBarChart, DonutChart } from "../../components/nid/charts";
+import CompareToggle from "../../components/nid/CompareToggle";
+import { comparePanelData } from "../../utils/periodos";
 import { useAuth } from "../../context/AuthContext";
 import { useViewAs } from "../../context/ViewAsContext";
 
@@ -32,6 +35,8 @@ export default function PeDeMeiaPage() {
   const [porIncentivo, setPorIncentivo] = useState([]);
   const [loading, setLoading] = useState(true);
   const [filters, setFilters] = useState({ yearFrom: "", yearTo: "", monthFrom: "", monthTo: "" });
+  const [comparar, setComparar] = useState(false);
+  const cmp = useMemo(() => comparePanelData(rawSerie, { valueKey: "total_estudantes" }), [rawSerie]);
 
   useEffect(() => {
     Promise.all([
@@ -137,6 +142,10 @@ export default function PeDeMeiaPage() {
       <>
       <InsightsPanel dataset="pe_de_meia" />
 
+      <div className="flex items-center justify-end">
+        <CompareToggle active={comparar} onChange={setComparar} disabled={!cmp.temAnterior} />
+      </div>
+
       <FilterBar years={years} showMonths value={filters} onChange={setFilters} />
 
       {loading ? (
@@ -157,21 +166,44 @@ export default function PeDeMeiaPage() {
       )}
 
       {/* Evolução de Estudantes */}
-      <div className="bg-[var(--panel)] p-6 rounded-2xl shadow-sm border border-[var(--border)]">
-        <h3 className="text-base font-bold mb-5 text-[var(--text)]">
-          Evolução de Estudantes Beneficiados
-        </h3>
-        <AreaLineChart
-          data={serie.map((d) => ({ label: d.periodo, value: d.total_estudantes || 0 }))}
-          height={280}
-          color="var(--accent-5)"
-          label="Estudantes"
-          yFmt={(v) => Number(v).toLocaleString("pt-BR")}
-          tipFmt={(v) => Number(v).toLocaleString("pt-BR")}
-          loading={loading}
-          emptyMessage="Sem dados disponíveis"
-        />
-      </div>
+      <NidPanel
+        title="Evolução de Estudantes Beneficiados"
+        sub={comparar && cmp.temAnterior
+          ? `${cmp.series[0]} vs ${cmp.series[1]} · ${
+              cmp.deltaPct != null
+                ? `${cmp.deltaPct >= 0 ? "+" : ""}${cmp.deltaPct.toFixed(1)}%`
+                : "—"
+            } no acumulado`
+          : "total de estudantes beneficiados por mês"}
+      >
+        {comparar && cmp.temAnterior ? (
+          <>
+            <NidLegend items={[
+              { name: cmp.series[0], color: "var(--accent-1)" },
+              { name: cmp.series[1], color: "var(--accent-3)" },
+            ]} />
+            <MultiLineChart
+              data={cmp.chartData}
+              series={cmp.series}
+              colors={["var(--accent-1)", "var(--accent-3)"]}
+              height={280}
+              yFmt={(v) => Number(v).toLocaleString("pt-BR")}
+              tipFmt={(v) => Number(v).toLocaleString("pt-BR")}
+            />
+          </>
+        ) : (
+          <AreaLineChart
+            data={serie.map((d) => ({ label: d.periodo, value: d.total_estudantes || 0 }))}
+            height={280}
+            color="var(--accent-5)"
+            label="Estudantes"
+            yFmt={(v) => Number(v).toLocaleString("pt-BR")}
+            tipFmt={(v) => Number(v).toLocaleString("pt-BR")}
+            loading={loading}
+            emptyMessage="Sem dados disponíveis"
+          />
+        )}
+      </NidPanel>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Estudantes por Etapa de Ensino */}

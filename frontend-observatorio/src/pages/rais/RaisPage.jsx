@@ -12,6 +12,7 @@ import {
 } from "../../components/nid/charts";
 import InfoTooltip from "../../components/InfoTooltip";
 import PlanGate from "../../components/PlanGate";
+import DetalheModal from "../../components/nid/DetalheModal";
 import { useAuth } from "../../context/AuthContext";
 import { useViewAs } from "../../context/ViewAsContext";
 
@@ -67,6 +68,7 @@ export default function RaisPage() {
   const [turnover, setTurnover] = useState([]);
 
   const [loading, setLoading] = useState(true);
+  const [detalhe, setDetalhe] = useState(null);
 
   useEffect(() => {
     let alive = true;
@@ -428,12 +430,26 @@ export default function RaisPage() {
           <NidPanel title="Top Setores (CNAE)" sub={`Composição ${anoAtivo || ""}`}>
             {porCnae.filter((d) => d.ano === anoAtivo).length > 0 ? (
               <DonutChart
-                data={aggregateByYear(porCnae.filter((d) => d.ano === anoAtivo), "descricao_secao").slice(0, 6)}
+                data={aggregateByYear(porCnae.filter((d) => d.ano === anoAtivo), "descricao_secao").slice(0, 6).map((s) => ({ label: s.name, value: s.value }))}
                 colors={palette}
                 glow
                 height={210}
                 centerLabel={fmtNumberShort(metricasAtual?.total_vinculos || 0)}
                 centerSub="VÍNCULOS"
+                onSelect={(s) => {
+                  const sectorName = s.label;
+                  const serie = Object.entries(
+                    porCnae
+                      .filter((r) => r.descricao_secao === sectorName)
+                      .reduce((acc, r) => {
+                        acc[r.ano] = (acc[r.ano] || 0) + (r.total_vinculos || 0);
+                        return acc;
+                      }, {})
+                  )
+                    .sort(([a], [b]) => Number(a) - Number(b))
+                    .map(([ano, value]) => ({ label: String(ano), value }));
+                  setDetalhe({ titulo: sectorName, serie });
+                }}
               />
             ) : (
               <EmptyMsg height={210} />
@@ -659,6 +675,14 @@ export default function RaisPage() {
       </div>
       </>
       )}
+
+      <DetalheModal
+        open={!!detalhe}
+        onClose={() => setDetalhe(null)}
+        titulo={detalhe?.titulo}
+        serie={detalhe?.serie}
+        fmt={fmtNumber}
+      />
     </motion.div>
   );
 }

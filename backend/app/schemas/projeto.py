@@ -4,6 +4,24 @@ from typing import Optional
 from pydantic import BaseModel
 
 
+# ── Cover-image presets (gallery) ──────────────────────────────────────────────
+
+class ImagemPresetOut(BaseModel):
+    id: int
+    titulo: Optional[str] = None
+    imagem: str
+    ordem: int
+
+    class Config:
+        from_attributes = True
+
+
+class ImagemPresetCreate(BaseModel):
+    titulo: Optional[str] = None
+    imagem: str  # base64 data URL
+    ordem: int = 0
+
+
 # ── Eixos ─────────────────────────────────────────────────────────────────────
 
 class EixoOut(BaseModel):
@@ -11,6 +29,7 @@ class EixoOut(BaseModel):
     nome: str
     descricao: Optional[str] = None
     ordem: int
+    imagem_id: Optional[int] = None
 
     class Config:
         from_attributes = True
@@ -20,12 +39,14 @@ class EixoCreate(BaseModel):
     nome: str
     descricao: Optional[str] = None
     ordem: int = 0
+    imagem_id: Optional[int] = None
 
 
 class EixoUpdate(BaseModel):
     nome: Optional[str] = None
     descricao: Optional[str] = None
     ordem: Optional[int] = None
+    imagem_id: Optional[int] = None
 
 
 # ── Templates (Acervo) ────────────────────────────────────────────────────────

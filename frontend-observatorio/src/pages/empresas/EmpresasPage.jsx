@@ -7,6 +7,7 @@ import InfoTooltip from "../../components/InfoTooltip";
 import KpiCard from "../../components/KpiCard";
 import PlanGate from "../../components/PlanGate";
 import { DonutChart, HBarChart, StackedBarChart, AreaLineChart, fmtMoneyShort, fmtMoneyFull } from "../../components/nid/charts";
+import DetalheModal from "../../components/nid/DetalheModal";
 import { useAuth } from "../../context/AuthContext";
 import { useViewAs } from "../../context/ViewAsContext";
 
@@ -45,6 +46,7 @@ export default function EmpresasPage() {
   const [porCnaeSecao, setPorCnaeSecao] = useState([]);
   const [capitalPorPorte, setCapitalPorPorte] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [detalhe, setDetalhe] = useState(null);
 
   useEffect(() => {
     Promise.all([
@@ -180,6 +182,7 @@ export default function EmpresasPage() {
             height={220}
             loading={loading}
             emptyMessage="Sem dados disponíveis"
+            onSelect={(s) => setDetalhe({ titulo: s.label ?? s.name, valor: s.value })}
           />
         </div>
 
@@ -282,6 +285,13 @@ export default function EmpresasPage() {
       </>
       )}
 
+      <DetalheModal
+        open={!!detalhe}
+        onClose={() => setDetalhe(null)}
+        titulo={detalhe?.titulo}
+        valor={detalhe?.valor}
+        fmt={fmtNum}
+      />
     </motion.div>
   );
 }

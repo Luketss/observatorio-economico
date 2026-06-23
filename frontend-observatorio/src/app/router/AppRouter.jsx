@@ -43,6 +43,7 @@ import ProjetosEixosAdminPage from "../../pages/admin/ProjetosEixosAdminPage";
 import IndicadoresInternosPage from "../../pages/dados-internos/IndicadoresInternosPage";
 import PlanoGovPage from "../../pages/dados-internos/PlanoGovPage";
 import CalendarioPage from "../../pages/dados-internos/CalendarioPage";
+import ImpactoPage from "../../pages/impacto/ImpactoPage";
 
 function ProtectedRoute({ children }) {
   const { user, loading } = useAuth();
@@ -112,6 +113,7 @@ export default function AppRouter() {
           <Route path="dados-internos/indicadores" element={<IndicadoresInternosPage />} />
           <Route path="dados-internos/plano-gov" element={<PlanoGovPage />} />
           <Route path="dados-internos/calendario" element={<CalendarioPage />} />
+          <Route path="impacto" element={<ImpactoPage />} />
         </Route>
 
         {/* ── Admin area ─────────────────────────────────── */}

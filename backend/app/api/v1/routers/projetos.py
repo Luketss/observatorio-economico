@@ -2,12 +2,14 @@ from typing import List, Optional
 
 from app.api.deps import get_current_user, get_db, require_role
 from app.core.exceptions import ForbiddenException, NotFoundException
-from app.models.projeto import Projeto, ProjetoEixo, ProjetoTemplate
+from app.models.projeto import Projeto, ProjetoEixo, ProjetoImagemPreset, ProjetoTemplate
 from app.models.usuario import Usuario
 from app.schemas.projeto import (
     EixoCreate,
     EixoOut,
     EixoUpdate,
+    ImagemPresetCreate,
+    ImagemPresetOut,
     ProjetoCreate,
     ProjetoOut,
     ProjetoTemplateCreate,
@@ -15,10 +17,56 @@ from app.schemas.projeto import (
     ProjetoTemplateUpdate,
     ProjetoUpdate,
 )
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 
 router = APIRouter(prefix="/projetos", tags=["Projetos"])
+
+MAX_IMAGEM_PRESETS = 6
+
+
+# ── Imagens de capa (presets globais, ADMIN_GLOBAL) ─────────────────────────────
+
+@router.get("/imagens", response_model=List[ImagemPresetOut])
+def listar_imagens(db: Session = Depends(get_db), _=Depends(get_current_user)):
+    return db.query(ProjetoImagemPreset).order_by(ProjetoImagemPreset.ordem, ProjetoImagemPreset.id).all()
+
+
+@router.post("/imagens", response_model=ImagemPresetOut)
+def criar_imagem(
+    data: ImagemPresetCreate,
+    db: Session = Depends(get_db),
+    _: Usuario = Depends(require_role("ADMIN_GLOBAL")),
+):
+    total = db.query(ProjetoImagemPreset).count()
+    if total >= MAX_IMAGEM_PRESETS:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Limite de {MAX_IMAGEM_PRESETS} imagens de capa atingido. Remova uma antes de adicionar outra.",
+        )
+    preset = ProjetoImagemPreset(**data.model_dump())
+    db.add(preset)
+    db.commit()
+    db.refresh(preset)
+    return preset
+
+
+@router.delete("/imagens/{imagem_id}")
+def deletar_imagem(
+    imagem_id: int,
+    db: Session = Depends(get_db),
+    _: Usuario = Depends(require_role("ADMIN_GLOBAL")),
+):
+    preset = db.get(ProjetoImagemPreset, imagem_id)
+    if not preset:
+        raise NotFoundException("Imagem not found")
+    # Detach from any eixo using it (FK is SET NULL, but be explicit/portable).
+    db.query(ProjetoEixo).filter(ProjetoEixo.imagem_id == imagem_id).update(
+        {ProjetoEixo.imagem_id: None}, synchronize_session=False
+    )
+    db.delete(preset)
+    db.commit()
+    return {"ok": True}
 
 
 # ── Eixos ─────────────────────────────────────────────────────────────────────

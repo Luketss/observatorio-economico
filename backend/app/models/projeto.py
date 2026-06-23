@@ -5,6 +5,21 @@ from sqlalchemy import Date, DateTime, ForeignKey, Integer, String, Text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 
+class ProjetoImagemPreset(Base):
+    """Global gallery of cover images (managed by ADMIN_GLOBAL) that eixos can
+    pick from. Stored as base64 data URLs, mirroring Municipio.brasao."""
+    __tablename__ = "projeto_imagem_presets"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+    titulo: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    imagem: Mapped[str] = mapped_column(Text, nullable=False)  # base64 data URL
+    ordem: Mapped[int] = mapped_column(Integer, default=0)
+    criado_em: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        default=lambda: datetime.now(timezone.utc),
+    )
+
+
 class ProjetoEixo(Base):
     __tablename__ = "projeto_eixos"
 
@@ -12,6 +27,9 @@ class ProjetoEixo(Base):
     nome: Mapped[str] = mapped_column(String(100), nullable=False)
     descricao: Mapped[str | None] = mapped_column(Text, nullable=True)
     ordem: Mapped[int] = mapped_column(Integer, default=0)
+    imagem_id: Mapped[int | None] = mapped_column(
+        Integer, ForeignKey("projeto_imagem_presets.id", ondelete="SET NULL"), nullable=True
+    )
     criado_em: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         default=lambda: datetime.now(timezone.utc),
@@ -19,6 +37,7 @@ class ProjetoEixo(Base):
 
     projetos = relationship("Projeto", back_populates="eixo", cascade="all, delete-orphan")
     templates = relationship("ProjetoTemplate", back_populates="eixo")
+    imagem = relationship("ProjetoImagemPreset")
 
 
 class ProjetoTemplate(Base):
