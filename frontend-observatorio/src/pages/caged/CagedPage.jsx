@@ -7,9 +7,11 @@ import {
   NidPageHeader, NidPanel, NidLegend, NidInsight, NidKpiHero,
 } from "../../components/nid/Panel";
 import {
-  AreaLineChart, TwinBarChart, DonutChart, HBarChart, StackedBarChart,
+  AreaLineChart, MultiLineChart, TwinBarChart, DonutChart, HBarChart, StackedBarChart,
   fmtNumber, fmtNumberShort,
 } from "../../components/nid/charts";
+import CompareToggle from "../../components/nid/CompareToggle";
+import { comparePanelData } from "../../utils/periodos";
 import ChartState from "../../components/nid/ChartState.jsx";
 import InfoTooltip from "../../components/InfoTooltip";
 import PlanGate from "../../components/PlanGate";
@@ -55,6 +57,8 @@ export default function CagedPage() {
 
   const [loading, setLoading] = useState(true);
   const [turnoverMode, setTurnoverMode] = useState("saldo");
+  const [comparar, setComparar] = useState(false);
+  const cmp = useMemo(() => comparePanelData(serie, { valueKey: "saldo" }), [serie]);
 
   useEffect(() => {
     let alive = true;
@@ -347,16 +351,19 @@ export default function CagedPage() {
       ) : (
       <>
       {years.length > 0 && (
-        <div style={{ display: "flex", gap: 6, marginBottom: 18, flexWrap: "wrap" }}>
-          {years.map((y) => (
-            <button
-              key={y}
-              onClick={() => setAnoFiltro(y)}
-              className={`nid-tab ${y === anoAtivo ? "active" : ""}`}
-            >
-              {y}
-            </button>
-          ))}
+        <div style={{ display: "flex", gap: 6, marginBottom: 18, flexWrap: "wrap", alignItems: "center", justifyContent: "space-between" }}>
+          <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+            {years.map((y) => (
+              <button
+                key={y}
+                onClick={() => setAnoFiltro(y)}
+                className={`nid-tab ${y === anoAtivo ? "active" : ""}`}
+              >
+                {y}
+              </button>
+            ))}
+          </div>
+          <CompareToggle active={comparar} onChange={setComparar} disabled={!cmp.temAnterior} />
         </div>
       )}
 
@@ -442,19 +449,44 @@ export default function CagedPage() {
       <div className="nid-grid-2">
         <NidPanel
           title={usarSaldoMensal ? "Saldo Mensal" : "Saldo Anual"}
-          sub={usarSaldoMensal ? "Empregos formais líquidos por mês" : "Empregos formais líquidos por ano"}
+          sub={comparar && cmp.temAnterior
+            ? `${cmp.series[0]} vs ${cmp.series[1]} · ${
+                cmp.deltaPct != null
+                  ? `${cmp.deltaPct >= 0 ? "+" : ""}${cmp.deltaPct.toFixed(1)}%`
+                  : "—"
+              } no acumulado`
+            : usarSaldoMensal ? "Empregos formais líquidos por mês" : "Empregos formais líquidos por ano"}
         >
-          <AreaLineChart
-            data={saldoSerie}
-            color={A5}
-            glow
-            height={280}
-            label="Saldo"
-            yFmt={fmtNumberShort}
-            tipFmt={fmtNumber}
-            annotations={saldoAnnotations}
-          />
-          <NidLegend items={[{ name: "Saldo (admissões − desligamentos)", color: A5 }]} />
+          {comparar && cmp.temAnterior ? (
+            <>
+              <NidLegend items={[
+                { name: cmp.series[0], color: "var(--accent-1)" },
+                { name: cmp.series[1], color: "var(--accent-3)" },
+              ]} />
+              <MultiLineChart
+                data={cmp.chartData}
+                series={cmp.series}
+                colors={["var(--accent-1)", "var(--accent-3)"]}
+                height={280}
+                yFmt={fmtNumberShort}
+                tipFmt={fmtNumber}
+              />
+            </>
+          ) : (
+            <>
+              <AreaLineChart
+                data={saldoSerie}
+                color={A5}
+                glow
+                height={280}
+                label="Saldo"
+                yFmt={fmtNumberShort}
+                tipFmt={fmtNumber}
+                annotations={saldoAnnotations}
+              />
+              <NidLegend items={[{ name: "Saldo (admissões − desligamentos)", color: A5 }]} />
+            </>
+          )}
         </NidPanel>
 
         <NidPanel
