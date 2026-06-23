@@ -1479,6 +1479,7 @@ export function TwinBarChart({
 // ────────── DonutChartCore (inner implementation) ──────────
 function DonutChartCore({
   data, colors, height = 220, glow = "hover", centerLabel, centerSub, legend = false,
+  onSelect,
 }) {
   const id = useId().replace(/:/g, "");
   const [hoverSlice, setHoverSlice] = useState(null);
@@ -1526,7 +1527,11 @@ function DonutChartCore({
           </filter>
         </defs>
         {slices.map((s, i) => (
-          <g key={i} onMouseEnter={() => setHoverSlice(i)}>
+          <g key={i} onMouseEnter={() => setHoverSlice(i)}
+            onClick={onSelect ? () => onSelect(s) : undefined}
+            style={onSelect ? { cursor: "pointer" } : undefined}
+            role={onSelect ? "button" : undefined}
+          >
             {/* Glow halo: always for glowAlways, or on hover for glowHover */}
             {(glowAlways || (glowHover && hoverSlice === i)) && (
               <path d={s.path} fill={s.color} opacity="0.45" filter={`url(#dglow-${id})`} />
@@ -1552,11 +1557,14 @@ function DonutChartCore({
             <li
               key={i}
               onMouseEnter={() => setHoverSlice(i)}
+              onClick={onSelect ? () => onSelect(s) : undefined}
               style={{
                 display: "flex", alignItems: "center", gap: 10, fontSize: 13,
                 opacity: hoverSlice != null && hoverSlice !== i ? 0.5 : 1,
                 transition: "opacity 120ms ease",
+                cursor: onSelect ? "pointer" : undefined,
               }}
+              role={onSelect ? "button" : undefined}
             >
               <span style={{ width: 11, height: 11, borderRadius: 3, background: s.color, flexShrink: 0 }} />
               <span style={{ flex: 1, color: "var(--text)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
@@ -1577,7 +1585,7 @@ function DonutChartCore({
 }
 
 // ────────── PercentBarChart (100% stacked horizontal bar) ──────────
-function PercentBarChart({ data, baseColor, colors, centerLabel, centerSub }) {
+function PercentBarChart({ data, baseColor, colors, centerLabel, centerSub, onSelect }) {
   const [hoverSeg, setHoverSeg] = useState(null);
   if (!data || data.length === 0) return null;
   const total = data.reduce((s, d) => s + d.value, 0) || 1;
@@ -1623,9 +1631,12 @@ function PercentBarChart({ data, baseColor, colors, centerLabel, centerSub }) {
                 opacity: isHovered ? 1 : isDimmed ? opacity * 0.5 : opacity,
                 outline: isHovered ? "2px solid var(--border-strong)" : "none",
                 outlineOffset: "-2px",
+                cursor: onSelect ? "pointer" : undefined,
               }}
               title={`${nameOf(d)}: ${d.value.toLocaleString("pt-BR")} · ${pct.toFixed(1)}%`}
               onMouseEnter={() => setHoverSeg(i)}
+              onClick={onSelect ? () => onSelect(d) : undefined}
+              role={onSelect ? "button" : undefined}
             >
               {/* Inline label only when segment is wide enough and opaque enough to be readable */}
               {pct > 12 && (useColors || rampOpacity >= 0.4) && (
@@ -1644,9 +1655,14 @@ function PercentBarChart({ data, baseColor, colors, centerLabel, centerSub }) {
           return (
             <li
               key={nameOf(d) || i}
-              style={{ opacity: hoverSeg != null && hoverSeg !== i ? 0.45 : 1 }}
+              style={{
+                opacity: hoverSeg != null && hoverSeg !== i ? 0.45 : 1,
+                cursor: onSelect ? "pointer" : undefined,
+              }}
               onMouseEnter={() => setHoverSeg(i)}
               onMouseLeave={() => setHoverSeg(null)}
+              onClick={onSelect ? () => onSelect(d) : undefined}
+              role={onSelect ? "button" : undefined}
             >
               <span className="sw" style={{ background: segColor(d), opacity }} />
               <span className="label">{nameOf(d)}</span>
@@ -1668,6 +1684,7 @@ export function DonutChart({
   loading,
   emptyMessage,
   emptyAction,
+  onSelect,
 }) {
   if (loading) return <ChartState kind="loading" shape="donut" height={height || 220} />;
   if (!data || data.length === 0) return <EmptyChart h={height || 220} shape="donut" message={emptyMessage} action={emptyAction} />;
@@ -1696,6 +1713,7 @@ export function DonutChart({
         colors={colors}
         centerLabel={centerLabel}
         centerSub={centerSub}
+        onSelect={onSelect}
       />
     )
     : (
@@ -1707,6 +1725,7 @@ export function DonutChart({
         centerLabel={centerLabel}
         centerSub={centerSub}
         legend={legend}
+        onSelect={onSelect}
       />
     );
 }
@@ -1726,6 +1745,7 @@ export function HBarChart({
   loading,
   emptyMessage,
   emptyAction,
+  onSelect,
 }) {
   if (loading) return <ChartState kind="loading" shape="hbar" height={height || 240} />;
   if (!data || data.length === 0) return <EmptyChart h={height || 240} shape="hbar" message={emptyMessage} action={emptyAction} />;
@@ -1741,8 +1761,10 @@ export function HBarChart({
           <div
             className="nid-hbar-row"
             key={d.label ?? i}
-            role="listitem"
+            role={onSelect ? "button" : "listitem"}
             aria-label={`${i + 1 + positionOffset}. ${d.label}: ${fmt(d.value)}`}
+            onClick={onSelect ? () => onSelect(d) : undefined}
+            style={onSelect ? { cursor: "pointer" } : undefined}
           >
             {showPosition && (
               <span className={`pos${isOwn ? " own" : ""}`}>
