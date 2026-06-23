@@ -6,11 +6,13 @@ import ReleasesPanel from "../../components/ReleasesPanel";
 import InfoTooltip from "../../components/InfoTooltip";
 import FilterBar, { describeFilter, clearFilter } from "../../components/FilterBar";
 import KpiCard from "../../components/KpiCard";
-import { NidPanel, NidPageHeader } from "../../components/nid/Panel";
+import { NidPanel, NidPageHeader, NidLegend } from "../../components/nid/Panel";
 import ChartState from "../../components/nid/ChartState.jsx";
 import { useAuth } from "../../context/AuthContext";
 import { useViewAs } from "../../context/ViewAsContext";
-import { AreaLineChart, StackedBarChart, fmtMoneyShort, fmtMoneyFull } from "../../components/nid/charts";
+import { AreaLineChart, MultiLineChart, StackedBarChart, fmtMoneyShort, fmtMoneyFull } from "../../components/nid/charts";
+import CompareToggle from "../../components/nid/CompareToggle";
+import { comparePanelData } from "../../utils/periodos";
 import DataTable from "../../components/nid/DataTable";
 
 const fmtBRL = (v) =>
@@ -28,6 +30,8 @@ export default function ArrecadacaoPage() {
   const [resumo, setResumo] = useState(null);
   const [loading, setLoading] = useState(true);
   const [filters, setFilters] = useState({ yearFrom: "", yearTo: "" });
+  const [comparar, setComparar] = useState(false);
+  const cmp = useMemo(() => comparePanelData(rawSerie, { valueKey: "total" }), [rawSerie]);
 
   useEffect(() => {
     Promise.all([api.get("/arrecadacao/serie"), api.get("/arrecadacao/resumo")])
@@ -133,6 +137,10 @@ export default function ArrecadacaoPage() {
       <>
       <InsightsPanel dataset="arrecadacao" />
 
+      <div className="flex items-center justify-end">
+        <CompareToggle active={comparar} onChange={setComparar} disabled={!cmp.temAnterior} />
+      </div>
+
       <FilterBar id="filter-bar-arrecadacao" years={years} value={filters} onChange={setFilters} />
 
       {loading ? (
@@ -151,16 +159,38 @@ export default function ArrecadacaoPage() {
         </div>
       )}
 
-      <NidPanel title="Série Histórica Mensal" sub="receita total por período">
-        <AreaLineChart
-          data={areaData}
-          height={280}
-          color="var(--accent-3)"
-          label="Total Arrecadado"
-          yFmt={fmtMoneyShort}
-          tipFmt={fmtMoneyFull}
-          forecast={{ steps: 2, method: "linear-6" }}
-        />
+      <NidPanel
+        title="Série Histórica Mensal"
+        sub={comparar && cmp.temAnterior
+          ? `${cmp.series[0]} vs ${cmp.series[1]} · ${cmp.deltaPct >= 0 ? "+" : ""}${cmp.deltaPct.toFixed(1)}% no acumulado`
+          : "receita total por período"}
+      >
+        {comparar && cmp.temAnterior ? (
+          <>
+            <NidLegend items={[
+              { name: cmp.series[0], color: "var(--accent-1)" },
+              { name: cmp.series[1], color: "var(--accent-3)" },
+            ]} />
+            <MultiLineChart
+              data={cmp.chartData}
+              series={cmp.series}
+              colors={["var(--accent-1)", "var(--accent-3)"]}
+              height={280}
+              yFmt={fmtMoneyShort}
+              tipFmt={fmtMoneyFull}
+            />
+          </>
+        ) : (
+          <AreaLineChart
+            data={areaData}
+            height={280}
+            color="var(--accent-3)"
+            label="Total Arrecadado"
+            yFmt={fmtMoneyShort}
+            tipFmt={fmtMoneyFull}
+            forecast={{ steps: 2, method: "linear-6" }}
+          />
+        )}
       </NidPanel>
 
       {/* ICMS / IPVA / IPI Breakdown */}
