@@ -22,6 +22,26 @@ const fmtUSD = (v) =>
     ? `US$ ${Number(v).toLocaleString("pt-BR", { maximumFractionDigits: 0 })}`
     : "—";
 
+// Groups comex serie rows by {ano, mes}, summing export/import USD by tipo_operacao.
+// Returns [{ano, mes, export, import, saldo}] sorted by period.
+// Note: chartSerie has its own filtered variant that also accumulates peso_export/peso_import.
+function groupComexByPeriod(rows) {
+  const map = {};
+  rows.forEach((item) => {
+    const key = `${item.ano}-${item.mes}`;
+    if (!map[key]) map[key] = { ano: item.ano, mes: item.mes, export: 0, import: 0 };
+    const tipo = item.tipo_operacao?.toLowerCase();
+    if (tipo === "exp" || tipo === "export") {
+      map[key].export += item.valor_usd ?? 0;
+    } else if (tipo === "imp" || tipo === "import") {
+      map[key].import += item.valor_usd ?? 0;
+    }
+  });
+  return Object.values(map)
+    .sort((a, b) => a.ano !== b.ano ? a.ano - b.ano : a.mes - b.mes)
+    .map((d) => ({ ...d, saldo: d.export - d.import }));
+}
+
 export default function ComexPage() {
   const { user } = useAuth();
   const { viewAsId } = useViewAs();
@@ -39,20 +59,10 @@ export default function ComexPage() {
   const [loadingFilters, setLoadingFilters] = useState(false);
   const [filters, setFilters] = useState({ yearFrom: "", yearTo: "", monthFrom: "", monthTo: "" });
   const [comparar, setComparar] = useState(false);
-  const rawComexSaldo = useMemo(() => {
-    const map = {};
-    serie.forEach((item) => {
-      const key = `${item.ano}-${item.mes}`;
-      if (!map[key]) map[key] = { ano: item.ano, mes: item.mes, _v: 0 };
-      const tipo = item.tipo_operacao?.toLowerCase();
-      if (tipo === "exp" || tipo === "export") {
-        map[key]._v += item.valor_usd ?? 0;
-      } else if (tipo === "imp" || tipo === "import") {
-        map[key]._v -= item.valor_usd ?? 0;
-      }
-    });
-    return Object.values(map);
-  }, [serie]);
+  const rawComexSaldo = useMemo(
+    () => groupComexByPeriod(serie).map((d) => ({ ano: d.ano, mes: d.mes, _v: d.saldo })),
+    [serie]
+  );
   const cmp = useMemo(() => comparePanelData(rawComexSaldo, { valueKey: "_v" }), [rawComexSaldo]);
 
   // Derive available years from serie data
@@ -255,7 +265,7 @@ export default function ComexPage() {
       </div>
 
       {/* Saldo — Balança Comercial Mensal */}
-      {(chartSerie.length > 0 || (comparar && cmp.temAnterior)) && (
+      {chartSerie.length > 0 && (
         <NidPanel
           title="Saldo da Balança Comercial (Mensal)"
           sub={comparar && cmp.temAnterior
