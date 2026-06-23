@@ -135,6 +135,7 @@ export default function ImpactoPage() {
       setSerie([]);
       return;
     }
+    const ind = INDICADORES.find((i) => i.key === indKey);
     setLoading(true);
     api
       .get(ind.endpoint)
@@ -144,7 +145,7 @@ export default function ImpactoPage() {
       })
       .catch(() => setSerie([]))
       .finally(() => setLoading(false));
-  }, [indKey, needsMunicipio]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [indKey, needsMunicipio]);
 
   // Sorted chart data
   const areaData = useMemo(
@@ -278,7 +279,7 @@ export default function ImpactoPage() {
                 <option value="">— Selecione um marco —</option>
                 {marcos.map((m) => (
                   <option key={m.id} value={String(m.id)}>
-                    {new Date(m.data + "T00:00:00").toLocaleDateString("pt-BR")} · {m.titulo}
+                    {new Date(m.data + "T00:00:00Z").toLocaleDateString("pt-BR")} · {m.titulo}
                   </option>
                 ))}
               </select>
