@@ -20,3 +20,20 @@ export function splitByYear(serie, { valueKey, anoKey = "ano", mesKey = "mes" })
   }));
   return { anoAtual, anoAnterior, meses };
 }
+
+export function comparePanelData(serie, { valueKey }) {
+  const { anoAtual, anoAnterior, meses } = splitByYear(serie, { valueKey });
+  const kA = String(anoAtual ?? "atual");
+  const kP = String(anoAnterior ?? "anterior");
+  const sum = (k) => meses.reduce((s, m) => s + (m[k] || 0), 0);
+  const totalAtual = sum("atual");
+  const totalAnterior = sum("anterior");
+  return {
+    chartData: meses.map((m) => ({ label: m.label, [kA]: m.atual, [kP]: m.anterior })),
+    series: [kA, kP],
+    temAnterior: anoAnterior != null,
+    totalAtual,
+    totalAnterior,
+    deltaPct: pctChange(totalAtual, totalAnterior),
+  };
+}

@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { splitByYear, pctChange } from "./periodos";
+import { splitByYear, pctChange, comparePanelData } from "./periodos";
 
 const MES = ["Jan","Fev","Mar","Abr","Mai","Jun","Jul","Ago","Set","Out","Nov","Dez"];
 
@@ -37,5 +37,25 @@ describe("pctChange", () => {
   it("returns null when base is 0 or null", () => {
     expect(pctChange(10, 0)).toBe(null);
     expect(pctChange(10, null)).toBe(null);
+  });
+});
+
+describe("comparePanelData", () => {
+  const serie = [
+    { ano: 2024, mes: 1, total: 100 },
+    { ano: 2025, mes: 1, total: 150 },
+  ];
+  it("builds two labeled series + delta", () => {
+    const r = comparePanelData(serie, { valueKey: "total" });
+    expect(r.series).toEqual(["2025", "2024"]);
+    expect(r.temAnterior).toBe(true);
+    expect(r.chartData[0]).toEqual({ label: "Jan", "2025": 150, "2024": 100 });
+    expect(r.totalAtual).toBe(150);
+    expect(r.totalAnterior).toBe(100);
+    expect(r.deltaPct).toBeCloseTo(50);
+  });
+  it("flags no previous year", () => {
+    const r = comparePanelData([{ ano: 2025, mes: 1, total: 5 }], { valueKey: "total" });
+    expect(r.temAnterior).toBe(false);
   });
 });
