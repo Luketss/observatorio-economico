@@ -1,0 +1,137 @@
+/* ============================================================
+   NID landing page — scoped styles
+   Ported from Sistemas_Uaizi/index.html. EVERYTHING is scoped
+   under `.nid-landing` so the oklch tokens / custom classes do
+   NOT collide with the app's global theme (body.theme-*).
+   ============================================================ */
+
+@import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&display=swap");
+
+.nid-landing {
+  --radius: 0.75rem;
+  --background: oklch(0.16 0.012 250);
+  --foreground: oklch(0.97 0.005 250);
+  --surface: oklch(0.205 0.014 250);
+  --surface-elevated: oklch(0.245 0.016 250);
+  --card: oklch(0.21 0.014 250);
+  --card-foreground: oklch(0.97 0.005 250);
+  --primary: oklch(0.705 0.18 47);
+  --primary-foreground: oklch(0.16 0.012 250);
+  --secondary: oklch(0.27 0.016 250);
+  --muted: oklch(0.25 0.014 250);
+  --muted-foreground: oklch(0.72 0.015 250);
+  --accent: oklch(0.705 0.18 47);
+  --destructive: oklch(0.62 0.22 27);
+  --border: oklch(1 0 0 / 8%);
+  --input: oklch(1 0 0 / 12%);
+  --ring: oklch(0.705 0.18 47);
+
+  --gradient-hero:
+    radial-gradient(1200px 600px at 80% -10%, color-mix(in oklab, var(--primary) 25%, transparent), transparent 60%),
+    radial-gradient(900px 500px at 0% 10%, color-mix(in oklab, var(--primary) 14%, transparent), transparent 60%),
+    linear-gradient(180deg, oklch(0.13 0.012 250), oklch(0.16 0.012 250));
+  --gradient-orange: linear-gradient(135deg, oklch(0.74 0.19 55), oklch(0.65 0.2 35));
+  --shadow-glow: 0 20px 60px -20px color-mix(in oklab, var(--primary) 50%, transparent);
+  --shadow-card: 0 1px 0 0 oklch(1 0 0 / 6%) inset, 0 30px 60px -30px oklch(0 0 0 / 50%);
+
+  --hero-overlay: 0.55;
+
+  /* base typography applied on the wrapper itself */
+  background-color: var(--background);
+  color: var(--foreground);
+  font-family: "Inter", ui-sans-serif, system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+.nid-landing h1,
+.nid-landing h2,
+.nid-landing h3,
+.nid-landing h4 {
+  font-family: "Space Grotesk", "Inter", system-ui, sans-serif;
+  letter-spacing: -0.02em;
+}
+
+.nid-landing .font-display {
+  font-family: "Space Grotesk", "Inter", ui-sans-serif, system-ui, sans-serif;
+}
+.nid-landing .font-mono {
+  font-family: "JetBrains Mono", ui-monospace, monospace;
+}
+
+.nid-landing .bg-hero { background-image: var(--gradient-hero); }
+.nid-landing .bg-orange-gradient { background-image: var(--gradient-orange); }
+.nid-landing .text-gradient-orange {
+  background-image: var(--gradient-orange);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+.nid-landing .shadow-glow { box-shadow: var(--shadow-glow); }
+.nid-landing .shadow-card { box-shadow: var(--shadow-card); }
+
+.nid-landing .grid-bg {
+  background-image:
+    linear-gradient(to right, oklch(1 0 0 / 4%) 1px, transparent 1px),
+    linear-gradient(to bottom, oklch(1 0 0 / 4%) 1px, transparent 1px);
+  background-size: 56px 56px;
+  mask-image: radial-gradient(ellipse at center, black 40%, transparent 75%);
+  -webkit-mask-image: radial-gradient(ellipse at center, black 40%, transparent 75%);
+}
+
+.nid-landing .glass {
+  background: color-mix(in oklab, var(--surface) 70%, transparent);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+}
+
+/* Subtle reveal-on-scroll */
+.nid-landing [data-reveal] {
+  opacity: 0;
+  transform: translateY(16px);
+  transition: opacity 0.7s ease, transform 0.7s ease;
+}
+.nid-landing [data-reveal].in {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+/* FAQ */
+.nid-landing details > summary { list-style: none; }
+.nid-landing details > summary::-webkit-details-marker { display: none; }
+.nid-landing details[open] .faq-icon { transform: rotate(45deg); }
+.nid-landing .faq-icon { transition: transform 0.25s ease; }
+
+/* Header transition */
+.nid-landing .header-shrink {
+  transition: padding 0.25s ease, background 0.25s ease, border-color 0.25s ease;
+}
+
+/* Custom number ticker */
+.nid-landing .tick {
+  font-variant-numeric: tabular-nums;
+}
+
+/* Hero overlay intensity */
+.nid-landing .hero-overlay {
+  background: linear-gradient(
+    to bottom,
+    color-mix(in oklab, var(--background) calc(var(--hero-overlay) * 60%), transparent),
+    color-mix(in oklab, var(--background) calc(var(--hero-overlay) * 90%), transparent),
+    var(--background)
+  );
+}
+
+/* Pulse dot */
+@keyframes nidSoftPulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.4; }
+}
+.nid-landing .pulse-dot { animation: nidSoftPulse 2s ease-in-out infinite; }
+
+/* Dashboard preview grid */
+.nid-landing .dash-grid {
+  background-image:
+    linear-gradient(to right, oklch(1 0 0 / 5%) 1px, transparent 1px),
+    linear-gradient(to bottom, oklch(1 0 0 / 5%) 1px, transparent 1px);
+  background-size: 40px 40px;
+}
