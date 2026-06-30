@@ -4,6 +4,7 @@ import api from "../../services/api";
 
 const MODULOS = [
   { key: "geral", label: "Dashboard Geral" },
+  { key: "painel_prefeito", label: "Painel do Prefeito — Visão Executiva" },
   { key: "benchmark", label: "Benchmark — Comparativo entre Municípios" },
   { key: "arrecadacao", label: "Arrecadação Municipal" },
   { key: "pib", label: "PIB Municipal" },

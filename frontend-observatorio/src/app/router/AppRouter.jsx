@@ -44,6 +44,7 @@ import IndicadoresInternosPage from "../../pages/dados-internos/IndicadoresInter
 import PlanoGovPage from "../../pages/dados-internos/PlanoGovPage";
 import CalendarioPage from "../../pages/dados-internos/CalendarioPage";
 import ImpactoPage from "../../pages/impacto/ImpactoPage";
+import PainelPrefeitoPage from "../../pages/painel-prefeito/PainelPrefeitoPage";
 
 function ProtectedRoute({ children }) {
   const { user, loading } = useAuth();
@@ -86,6 +87,7 @@ export default function AppRouter() {
           }
         >
           <Route index element={<DashboardGeralPage />} />
+          <Route path="painel-prefeito" element={<PainelPrefeitoPage />} />
           <Route path="arrecadacao" element={<ArrecadacaoPage />} />
           <Route path="pib" element={<PibPage />} />
           <Route path="vaf" element={<VafPage />} />
