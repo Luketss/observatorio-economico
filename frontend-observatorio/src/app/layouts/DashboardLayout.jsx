@@ -46,6 +46,7 @@ import {
 
 const NAV_STRUCTURE = [
   { type: "link", to: "/app", label: "Dashboard", icon: HomeIcon, end: true, modulo: "geral" },
+  { type: "link", to: "/app/painel-prefeito", label: "Painel do Prefeito", icon: BuildingLibraryIcon, modulo: "painel_prefeito" },
   { type: "link", to: "/app/benchmark", label: "Benchmark", icon: ChartBarSquareIcon, modulo: "benchmark" },
   { type: "link", to: "/app/ips", label: "IPS", icon: PresentationChartBarIcon, modulo: "ips" },
   {
