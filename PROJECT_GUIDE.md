@@ -547,17 +547,47 @@ Then update `POSTGRES_PORT=5433` in `.env.local`.
 
 # 13. Adding a New Dataset (Developer Checklist)
 
-1. Create `backend/app/models/dataset.py` — SQLAlchemy model
-2. Register the model import in `backend/alembic/env.py`
-3. Generate migration: `cd backend && alembic revision --autogenerate -m "add dataset table"`
-4. Create `backend/app/schemas/dataset.py` — Pydantic schemas
-5. Create `backend/app/api/v1/routers/dataset.py` — `/serie` and `/resumo` endpoints with RBAC
-6. Register the router in `backend/app/api/v1/__init__.py`
-7. Create `ingestao/carregar_dataset.py` — reads CSVs from `dados/`
-8. Add the loader to `ingestao/carregar_tudo.py`
-9. Create `frontend-observatorio/src/pages/dataset/DatasetPage.jsx`
+1. Create `backend/app/models/<dataset>.py` — SQLAlchemy model (unique constraint per município/período)
+2. Register the model in `backend/app/models/__init__.py` (import + `__all__`)
+3. **Register the tables in the município lifecycle** — `backend/app/services/municipio_management.py`:
+   `DATASET_MODELS`, `DATASET_REGISTRY` (dataset key → models) and `DATASET_LABELS`.
+   Without this, município clone/delete/row-counts break (learned the hard way with FPM).
+4. Create the migration in `backend/alembic/versions/` (hand-written, following the previous one in the chain)
+5. Create `backend/app/schemas/<dataset>.py` — Pydantic schemas (fields must match the service dict keys exactly)
+6. Create `backend/app/api/v1/routers/<dataset>.py` — use `scoped_modulo("<modulo>")` for plan-gated
+   endpoints or `municipio_scope` for free ones (hybrid: free `/resumo` teaser + gated detail)
+7. Register the router in `backend/app/main.py` (import list + `app.include_router`)
+8. Ingestion — one of:
+   - CSV loader in `backend/ingestao/carregar_<dataset>.py`, wired into `carregar_tudo.py`; **or**
+   - automatic source (public API/bulk CSV) — see checklist 13a below
+9. Create `frontend-observatorio/src/pages/<dataset>/<Dataset>Page.jsx` (nid components; FpmPage is the reference)
 10. Register the route in `frontend-observatorio/src/app/router/AppRouter.jsx`
-11. Add the nav item in `frontend-observatorio/src/app/layouts/DashboardLayout.jsx`
+11. Add the nav item (with its `modulo` key) in `frontend-observatorio/src/app/layouts/DashboardLayout.jsx`
+12. Add the module key(s) to `MODULOS` in `frontend-observatorio/src/pages/admin/PlanoConfigAdminPage.jsx`
+    so admins can toggle it per plan
+13. Pure-logic tests in `backend/tests/` (parsers and math only — tests never open DB/network)
+
+# 13a. Adding a New Automatic Source (fonte automática)
+
+Template: `backend/app/services/ingestao_automatica/captacao_siconv.py` / `emendas_portal.py`.
+
+1. Create `backend/app/services/ingestao_automatica/<fonte>.py` with:
+   - **pure parsers** (top of file, no I/O — testable) using the shared helpers in
+     `ingestao_automatica/util.py` (`parse_valor_br`, `indices_colunas` for loud
+     "layout mudou?" header validation, `baixar_zip`, `linhas_zip`)
+   - `executar(db, municipios, anos=None, usuario_id=None, notificar=True) -> ResumoIngestao`
+     downloading into a `tempfile.TemporaryDirectory` and upserting (never duplicating)
+   - `registrar(FonteAutomatica(key=..., label=..., fonte=..., executar=executar))` at the bottom
+2. Import the module in `backend/app/services/ingestao_automatica/__init__.py` (registration is an import side-effect)
+3. The fonte key must match the `DATASET_REGISTRY` key from checklist 13 — the admin UI at
+   `/admin/fontes` picks it up automatically (list, UF filter, audit, DatasetInfo refresh)
+4. Watch the encoding: SICONV CSVs are UTF-8 with BOM (`utf-8-sig`); Portal da Transparência is `latin-1`
+5. Batch your commits (per UF, or per município when partial progress matters) and treat
+   "no rows for a município" as data, not error, when zero is meaningful
+6. Notifications: create them via a service helper with dedup by `(titulo, municipio_id)`
+   (see `gerar_notificacoes_captacao` / `gerar_notificacoes_emendas`), gated by the
+   `notificar` flag the admin controls
+7. Pure-logic tests for the parsers with fixtures copied from the real files' headers
 
 ---
 

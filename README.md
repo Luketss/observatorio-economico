@@ -13,6 +13,7 @@ Multi-tenant economic dashboard SaaS for Brazilian municipalities. Centralizes a
 | Dashboard Geral | KPIs across all datasets | Aggregated |
 | Arrecadação | Monthly tax revenue (ICMS, IPVA, IPI) | Secretaria da Fazenda MG |
 | PIB | Annual GDP per municipality | IBGE |
+| VAF | Annual Fiscal Value Added + IPM (basis for ICMS distribution), with projected ICMS | Secretaria da Fazenda MG |
 | CAGED | Formal employment flows (admissions, dismissals, gender, race, salary, CNAE) | MTE |
 | RAIS | Employment census (total, gender, race, CNAE, avg. wage) | MTE |
 | Bolsa Família | Beneficiaries, total transferred, Primeira Infância | MDS |
@@ -23,11 +24,21 @@ Multi-tenant economic dashboard SaaS for Brazilian municipalities. Centralizes a
 | Empresas | Active companies by size and CNAE sector | Receita Federal |
 | Comparativo | Side-by-side ranking across municipalities | Aggregated |
 | IPS | Social progress index (79 metrics, 3 dimensions, 12 components) | IPS Brasil |
+| FPM | Population-band alert + monthly transfers (coefficient, band-change opportunity/risk) | STN + IBGE |
+| Dinheiro na Mesa | Federal grants (SICONV) vs. peer municipalities | Transferegov/SICONV |
+| Emendas | Parliamentary amendments earmarked to the city (incl. emendas Pix) | Portal da Transparência |
 
 ### Core Features
 
 - **Multi-tenant RBAC** — `ADMIN_GLOBAL` sees all municipalities; `ADMIN_MUNICIPIO` and `VISUALIZADOR` are scoped to their own city
-- **AI Insights** — Claude-powered analysis per dataset, generated on demand and cached in the database
+- **Plan-based module access** — `free`/`pro`/`premium` plans gate features per municipality, enforced **on the backend** (a user can't reach a dataset's API unless their plan includes its module); configured in **Planos & Acessos**
+- **AI Insights** — Claude-powered analysis per dataset (incl. VAF), generated on demand and cached in the database
+- **Admin data management** — per-dataset and whole-ingestion wipe, **CSV re-ingestion via upload** (with `codigo_ibge` validation to block wrong-city loads), per-município **data-sanity diagnostics** (e.g. MEI all-zero, single-year series), and an **ingestion audit trail**
+- **VAF / projected ICMS** — IPM trend plus ICMS repasse projected from realized revenue × IPM ratio
+- **Fontes de Dados Automáticas** — in-app ingestion from public APIs/bulk CSVs (no manual CSV): População IBGE, FPM (STN), Captação Federal (SICONV) and Emendas (Portal da Transparência), triggered from **Admin → Fontes de Dados** with audit trail — see [Fontes de Dados Automáticas](#fontes-de-dados-automáticas-ingestão-in-app)
+- **Alerta de Faixa do FPM** — population vs. the 18 FPM coefficient bands (DL 1.881/81): band-change opportunity/risk with R$/year estimates, card on Painel do Prefeito + `/app/fpm` (free on all plans)
+- **Dinheiro na Mesa & Radar de Emendas** — federal grants captured vs. peer municipalities and parliamentary amendments by author/execution; **hybrid gating**: headline cards free on the Painel do Prefeito, full pages gated by the `captacao_federal`/`emendas` plan modules — see [usage](#dinheiro-na-mesa--radar-de-emendas)
+- **Automatic notifications** — data-driven alerts in the bell (FPM band events, first-load captação diagnostic, new current-year emendas), deduplicated per município
 - **Timeline do Mandato** — Admins register milestones (term starts, public works, policies, events) shown as a scrollable timeline on the dashboard
 - **JWT Authentication** — OAuth2 Password flow with access + refresh tokens
 - **City filter on ingestion** — Choose which municipalities to load in `carregar_tudo.py`; IPS loads separately via `carregar_ips.py`
@@ -195,49 +206,62 @@ PYTHONPATH=backend alembic -c backend/alembic.ini upgrade head
 | `0018` | `projeto_eixos` + `projetos` tables |
 | `0019` | `indicadores_internos` + `plano_gov_acoes` + `eventos_municipio` tables |
 | `0020` (68bbe475...) | Add `ips_municipio` table with unique constraint on (municipio_id, ano) |
+| `0021–0022` | RAIS + CAGED extra aggregate tables |
+| `a06cfa9f…` / `b002efc4…` | Desenvolvimento Econômico tables; CAGED escolaridade/faixa-etária |
+| `0023` | `is_demo` flag on municipalities |
+| `0024` | Per-dataset unique constraints |
+| `0025` | `login_audit` table |
+| `0026` | `fonte` + `data_atualizacao` on `dataset_info` |
+| `0027` | `vaf_anual` table (VAF / IPM) |
+| `0028` | `ingestao_audit` table (data-load audit trail) |
+| `0029` | `imagem`/preset fields on `projetos` |
+| `0030` | `populacao_municipio` + `fpm_mensal` tables (FPM band alert) |
+| `0031` | `captacao_federal_anual` + `emenda_parlamentar` tables (Dinheiro na Mesa / Radar de Emendas) |
 
 ---
 
 ## Data Ingestion
 
-CSV files live in `dados/` (not versioned). Scripts run locally and connect directly to the database.
+CSV files live in `dados/` at the **project root** (not versioned). The loaders
+live in **`backend/ingestao/`** (packaged with the backend so the admin "Reprocessar"
+upload works in production) and connect directly to the database — so they need
+`backend/` on the Python path. `dados/` stays at the root and is resolved
+automatically.
 
 ### Setup
 
 ```powershell
 # From project root, with venv active
 pip install -r backend/requirements.txt
-pip install -r ingestao/requirements.txt
+pip install -r backend/ingestao/requirements.txt
 ```
 
 ### Load data
 
-```bash
-# All municipalities of a state
-python -m ingestao.carregar_tudo --estado MG
+Run from the **project root** with `backend` on `PYTHONPATH`. `--cidades` are the
+folder names under `dados/`; `--ibge` (optional) lists the IBGE codes in the same
+order. Environment is read automatically from `.env.local`.
 
-# Specific cities only
-python -m ingestao.carregar_tudo --estado MG --cidades Divinopolis "Para de Minas" Oliveira
-
-# Another state
-python -m ingestao.carregar_tudo --estado MT --cidades Cuiaba
+```powershell
+# Windows PowerShell
+$env:PYTHONPATH = "backend"
+python -m ingestao.carregar_tudo --estado MG --cidades "Simão Pereira" --ibge 3167509
 ```
 
-Or load a single dataset (each loader also accepts `--estado`):
-
 ```bash
-python -m ingestao.carregar_caged --estado MG
-python -m ingestao.carregar_rais --estado MG
-python -m ingestao.carregar_arrecadacao --estado MG
-# ... etc
+# Linux / Mac / Git Bash — multiple cities
+PYTHONPATH=backend python -m ingestao.carregar_tudo --estado MG --cidades cabo_verde nova_lima --ibge 3105905 3136702
 ```
 
-PIX files must be placed in `dados/PIX/` before running.
+Individual datasets aren't separate CLIs — `carregar_tudo` runs every loader for
+the chosen cities. To re-ingest a **single** dataset with a corrected CSV, use the
+admin UI: **Painel Admin → Datasets → Reprocessar** (uploads the CSV, validates
+`codigo_ibge`, wipes and reloads that dataset, and records an audit entry).
 
 ```bash
 # IPS (Índice de Progresso Social) — separate script, national CSV
-python -m ingestao.carregar_ips --ano 2024 2025
-python -m ingestao.carregar_ips --ano 2024 --estado MG   # filter by state
+PYTHONPATH=backend python -m ingestao.carregar_ips --ano 2024 2025
+PYTHONPATH=backend python -m ingestao.carregar_ips --ano 2024 --estado MG   # filter by state
 ```
 
 ### Load to Railway (remote DB)
@@ -253,6 +277,62 @@ POSTGRES_PASSWORD=your-password
 ```
 
 Then run normally — scripts connect over the internet to Railway's PostgreSQL.
+
+---
+
+## Fontes de Dados Automáticas (ingestão in-app)
+
+Besides the CSV loaders, the backend ingests four datasets directly from public
+sources — no manual CSV. Trigger them from **Admin → Fontes de Dados**
+(`/admin/fontes`, `ADMIN_GLOBAL` only): pick an optional UF filter, choose
+whether to generate notifications, and click **Executar**. Every run records an
+`IngestaoAudit` entry (`acao="auto_ingest"`) and refreshes the dataset's
+"última atualização".
+
+| Fonte (key) | Source | What it loads | Notes |
+|-------------|--------|---------------|-------|
+| `populacao` | IBGE API (agregado 6579) | Annual population estimates per município | Base for FPM bands and peer groups. Fires the FPM band notifications. IBGE didn't publish 2022/2023 estimates |
+| `fpm` | STN / Tesouro Transparente (CSV ~30 MB) | Monthly FPM transfers (gross) | Matched by name+UF (CSV has no IBGE code); default last 3 years |
+| `captacao_federal` | Transferegov/SICONV (4 zipped CSVs, ~230 MB total) | Federal grants per município/year: firmado (`VL_REPASSE_CONV`), desembolsado, via-emenda split, nº of convênios (2019→current) | **Run for a whole UF (or national)** — the peer comparison needs every município of the UF. Takes a few minutes (the proposta file is ~190 MB). A município with no grants simply gets no rows (zero is data, not an error) |
+| `emendas` | Portal da Transparência (zip ~32 MB) | Parliamentary amendments per município: author, type, function, empenhado/liquidado/pago + restos (2019→current) | CSV has a native IBGE-code column. Amendments earmarked "Nacional"/state-wide aren't municipalizable — municipal totals are a floor. Includes emendas Pix (since May/2026) |
+
+Operational tips:
+
+- Run `populacao` **before** `captacao_federal` — peer groups come from the latest population.
+- Re-running is safe: all four upsert (update-or-insert) and never duplicate rows.
+- Notifications are deduplicated per `(title, município)`: FPM band events, the
+  first-load captação diagnostic ("R$ X na mesa" / "acima da média dos pares")
+  and new current-year emendas.
+- If a source changes its CSV layout, the run fails loudly with a
+  *"layout mudou?"* error in the audit trail instead of loading garbage.
+
+### Dinheiro na Mesa & Radar de Emendas
+
+**Dinheiro na Mesa** (`/app/dinheiro-na-mesa`) compares the município's federal
+grant capture against its **peers** — municípios in the same FPM population band
+and the same UF (national band average as secondary reference). The headline uses
+the last complete calendar year; the current year appears in the series marked as
+partial (`*`). The hero also shows how many peers have data, so coverage gaps are
+visible instead of silently deflating the average. Capitals are out of scope
+(FPM-Capitais regime).
+
+**Radar de Emendas** (`/app/emendas`) shows who sends money (and who doesn't):
+ranking by parliamentarian with execution bars (pago total = pago no exercício +
+restos a pagar pagos), breakdown by função (saúde, urbanismo, …), the full
+amendment list with a year filter, and a per-row CTA.
+
+How the pieces connect:
+
+- **Hybrid gating** — the `/resumo` endpoints are free (they power the two teaser
+  cards on the Painel do Prefeito); the full pages require the `captacao_federal`
+  and `emendas` modules in the município's plan (**Admin → Planos & Acessos**),
+  enforced server-side (403 without the module).
+- **CTA → funil de captação** — "Registrar no funil de captação" (page level on
+  Dinheiro na Mesa, per-emenda on the Radar) creates a pre-filled
+  `CaptacaoRecurso` in the *oportunidade* stage of the Desenv. Econômico kanban.
+  Visible only to `ADMIN_MUNICIPIO` with the captação module in the plan.
+- **Empty states** tell the admin exactly which fonte to run when data is missing
+  (`sem_populacao` → População IBGE; `sem_dados` → Captação Federal for the whole UF).
 
 ---
 
@@ -338,6 +418,16 @@ cd backend
 uvicorn app.main:app --reload --port 8000
 ```
 
+### Tests
+
+A local pytest suite (pure logic, no DB) covers the sensitive pieces — MEI/Simples
+parsing, `codigo_ibge` re-ingestion validation, and plan access control:
+
+```bash
+cd backend
+python -m pytest
+```
+
 ## Local Frontend Development
 
 ```bash
@@ -367,10 +457,13 @@ dashboard_prefeituras/
 │   │   ├── db/               # Session, base, repositories
 │   │   ├── models/           # SQLAlchemy models
 │   │   ├── schemas/          # Pydantic v2
-│   │   └── services/         # Auth service, AI insights service, user service
-│   ├── alembic/versions/     # Migration chain 0001 → 0019
+│   │   └── services/         # Auth, AI insights, municipio management, ingestao_automatica/ (fontes in-app)
+│   ├── ingestao/             # CSV → DB loaders (packaged with backend; run via PYTHONPATH=backend)
+│   ├── tests/                # Local pytest suite (parsing, IBGE validation, access control, fontes)
+│   ├── alembic/versions/     # Migration chain 0001 → 0031
 │   ├── docs/                 # Technical documentation
 │   ├── Dockerfile
+│   ├── pytest.ini
 │   └── requirements.txt
 ├── frontend-observatorio/
 │   └── src/
@@ -385,8 +478,7 @@ dashboard_prefeituras/
 │       │   ├── timeline/     # Timeline do Mandato page
 │       │   └── …             # Dataset pages (caged, rais, pib, …)
 │       └── services/         # Axios instance with JWT interceptors
-├── ingestao/                 # CSV → DB scripts (all accept --estado)
-├── dados/                    # Raw CSV files (not committed)
+├── dados/                    # Raw CSV files (not committed) — one folder per city
 ├── docker-compose.yml        # Production-like compose (gunicorn + nginx)
 └── .env                      # Environment variables (never commit secrets)
 ```
@@ -426,7 +518,7 @@ The table below maps each requested chart/view to its implementation status.
 | Média Dias Afastamento por Atividade | RAIS | ✅ Implemented | `rais_metricas_anuais` (requires reingest) |
 | PCD's | RAIS | ✅ Implemented | `rais_metricas_anuais.total_pcd` (requires reingest) |
 | Trabalham em outro Município | RAIS | ✅ Implemented | `rais_metricas_anuais.total_outro_municipio` (requires reingest) |
-| Valor/Qtd Pagador PF e PJ por ano | PIX | ✅ Implemented | `pix_mensal` table — **requer `carregar_pix.py`** |
+| Valor/Qtd Pagador PF e PJ por ano | PIX | ✅ Implemented | `pix_mensal` table — populado via `carregar_tudo` (PIX incluído) |
 | Valor Recebido por PJ por Ano e Mês | PIX | ✅ Implemented | `pix_mensal` table |
 | Dinâmica do Comércio (PIX) | PIX | ✅ Implemented | Nova página com dados PIX |
 | Total Exportados/Importados por Produto | Comex | ✅ Implemented | `comex_por_produto` table |
@@ -451,14 +543,17 @@ The table below maps each requested chart/view to its implementation status.
 
 ### Notes on "requires reingest"
 
-After running `alembic upgrade head` (migration `0010_rais_extra_pix`), re-run:
+After running `alembic upgrade head` (migration `0010_rais_extra_pix`), re-run the
+full loader for the affected cities (it runs every dataset, including the new RAIS
+breakdowns and PIX):
 
 ```bash
-python -m ingestao.carregar_rais   # populates new RAIS breakdown tables
-python -m ingestao.carregar_pix    # loads dados/pix_*.csv files (one per city)
+PYTHONPATH=backend python -m ingestao.carregar_tudo --estado MG --cidades nova_lima --ibge 3136702
 ```
 
-PIX data is currently available only for Nova Lima (`dados/pix_nova_lima.csv`). For other cities, obtain the file from BCB and name it `dados/pix_{cidade_normalizada}.csv`.
+Or, for a single dataset, use **Painel Admin → Datasets → Reprocessar** (CSV upload).
+PIX data is currently available only for Nova Lima (`dados/Nova Lima/pix.csv`). For
+other cities, obtain the file from BCB and place it in the city's `dados/` folder.
 
 ---
 
@@ -476,6 +571,10 @@ Interactive docs at `/docs` (Swagger UI) when the API is running.
 | GET | `/api/v1/caged/por_raca` | CAGED breakdown by race |
 | GET | `/api/v1/caged/salario` | CAGED average salaries |
 | GET | `/api/v1/caged/por_cnae` | CAGED breakdown by CNAE section |
+| GET | `/api/v1/vaf/serie` | VAF / IPM annual series |
+| GET | `/api/v1/vaf/icms_projetado` | ICMS projected from the IPM trend |
+| GET | `/api/v1/fpm/alerta` | FPM band alert (free on all plans) |
+| GET | `/api/v1/fpm/serie` | FPM monthly/annual series + population |
 | GET | `/api/v1/rais/serie` | RAIS annual series |
 | GET | `/api/v1/bolsa_familia/serie` | Bolsa Família monthly series |
 | GET | `/api/v1/estban/por_instituicao` | Bank stats per institution |
@@ -483,6 +582,12 @@ Interactive docs at `/docs` (Swagger UI) when the API is running.
 | GET | `/api/v1/comex/por_pais` | Trade by country |
 | GET | `/api/v1/insights` | Get stored AI insight |
 | POST | `/api/v1/insights/gerar` | Generate AI insight via Claude |
+| GET | `/api/v1/municipios/{id}/datasets-summary` | Per-dataset row counts (admin) |
+| GET | `/api/v1/municipios/{id}/sanidade` | Data-sanity findings (admin) |
+| POST | `/api/v1/municipios/{id}/datasets/{key}/reingest` | Re-ingest a dataset from uploaded CSV (admin) |
+| DELETE | `/api/v1/municipios/{id}/datasets[/{key}]` | Wipe whole ingestion / one dataset (admin) |
+| GET | `/api/v1/ingestao-automatica/fontes` | List automatic sources + last run (admin) |
+| POST | `/api/v1/ingestao-automatica/{key}/executar` | Run an automatic source (admin; body: `estado`, `municipio_id`, `anos`, `notificar`) |
 | GET | `/api/v1/marcos` | List mandate milestones |
 | POST | `/api/v1/marcos` | Create milestone (admin) |
 | PUT | `/api/v1/marcos/{id}` | Update milestone (admin) |
@@ -495,3 +600,8 @@ Interactive docs at `/docs` (Swagger UI) when the API is running.
 | GET | `/api/v1/ips/destaques` | Top 3 best + 3 worst components vs national avg |
 | GET | `/api/v1/ips/sugestoes` | Similar cities by GDP per capita |
 | GET | `/api/v1/comparativo/arrecadacao` | Revenue ranking (ADMIN_GLOBAL) |
+| GET | `/api/v1/captacao-federal/resumo` | Captação headline (free teaser for the Painel card) |
+| GET | `/api/v1/captacao-federal/diagnostico` | Full peer-comparison diagnostic (gated: `captacao_federal` module) |
+| GET | `/api/v1/captacao-federal/serie` | Annual series você vs. peers (gated: `captacao_federal` module) |
+| GET | `/api/v1/emendas/resumo` | Amendments headline (free teaser for the Painel card) |
+| GET | `/api/v1/emendas/radar?ano=` | Amendments radar by author/execution (gated: `emendas` module) |
