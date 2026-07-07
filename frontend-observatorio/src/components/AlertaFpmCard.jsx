@@ -74,7 +74,7 @@ export default function AlertaFpmCard() {
             <p className="text-xs mt-1.5 text-[var(--text-dim)]">
               Estimativa IBGE {alerta.ano_populacao} · {fmtHab(alerta.populacao)} hab. · coeficiente estimado{" "}
               {Number(alerta.coeficiente).toLocaleString("pt-BR", { minimumFractionDigits: 1 })}
-              {alerta.divergencia && " · valores estimados — o coeficiente oficial (TCU) pode diferir (trava legal)"}
+              {alerta.divergencia && " · valores estimados — o repasse real pode diferir do estimado (trava legal ou Reserva do FPM)"}
               {alerta.fpm_12m_parcial && " · FPM anualizado (menos de 12 meses de dados)"}
             </p>
           </div>

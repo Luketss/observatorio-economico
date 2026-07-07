@@ -52,7 +52,7 @@ function HeroAlerta({ a }) {
       </p>
       <p className="text-sm mt-2 text-[var(--text-dim)]">
         Estimativa IBGE {a.ano_populacao}: {fmtHab(a.populacao)} habitantes · coeficiente estimado {fmtCoef(a.coeficiente)}.
-        {a.divergencia && <> <b>Atenção:</b> valores estimados — o coeficiente oficial (TCU) pode diferir por trava legal.</>}
+        {a.divergencia && <> <b>Atenção:</b> valores estimados — o repasse real pode diferir do estimado (trava legal ou Reserva do FPM).</>}
         {a.fpm_12m_parcial && <> FPM anualizado a partir de menos de 12 meses de dados.</>}
         {" "}Valores de repasse brutos (antes de retenções como FUNDEB).
       </p>
