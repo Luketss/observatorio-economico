@@ -225,3 +225,121 @@ def avaliar_evento_faixa(pops_por_ano: dict[int, int], limiar: float = 0.05) -> 
             ),
         }
     return None
+
+
+# ── camada DB (fina; verificada via endpoints) ───────────────────────────────
+from sqlalchemy.orm import Session
+
+
+def _fpm_meses(db: "Session", municipio_id: int) -> list[tuple[int, int, float]]:
+    from app.models.fpm import FpmMensal
+
+    rows = (
+        db.query(FpmMensal.ano, FpmMensal.mes, FpmMensal.valor)
+        .filter(FpmMensal.municipio_id == municipio_id)
+        .order_by(FpmMensal.ano, FpmMensal.mes)
+        .all()
+    )
+    return [(a, m, float(v)) for a, m, v in rows]
+
+
+def _pops(db: "Session", municipio_id: int) -> list:
+    from app.models.populacao import PopulacaoMunicipio
+
+    return (
+        db.query(PopulacaoMunicipio)
+        .filter(PopulacaoMunicipio.municipio_id == municipio_id)
+        .order_by(PopulacaoMunicipio.ano)
+        .all()
+    )
+
+
+def _divergencia_estado(db: "Session", municipio, valor_ponto: float) -> bool | None:
+    """Mediana do valor-por-ponto entre municípios do mesmo estado com dados."""
+    from app.models.municipio import Municipio
+
+    vizinhos = (
+        db.query(Municipio)
+        .filter(Municipio.estado == municipio.estado, Municipio.ativo.is_(True))
+        .all()
+    )
+    valores = []
+    for v in vizinhos:
+        pops = _pops(db, v.id)
+        if not pops:
+            continue
+        total, _ = fpm_12m(_fpm_meses(db, v.id))
+        if not total:
+            continue
+        coef = faixa_para_populacao(pops[-1].populacao).coeficiente
+        valores.append(total / coef)
+    return avaliar_divergencia(valores, valor_ponto)
+
+
+def calcular_alerta(db: "Session", municipio_id: int) -> dict:
+    from app.models.municipio import Municipio
+
+    municipio = db.get(Municipio, municipio_id)
+    vazio = montar_alerta(None, [])
+    if municipio is None:
+        return {**vazio, "motivo": "municipio_nao_encontrado"}
+    if not municipio.codigo_ibge:
+        return {**vazio, "motivo": "sem_codigo_ibge"}
+    if municipio.codigo_ibge in CAPITAIS_IBGE:
+        return montar_alerta(None, [], eh_capital=True)
+
+    pops = _pops(db, municipio_id)
+    if not pops:
+        return {**vazio, "motivo": "sem_populacao"}
+
+    ultimo = pops[-1]
+    alerta = montar_alerta(
+        (ultimo.ano, ultimo.populacao, ultimo.fonte), _fpm_meses(db, municipio_id)
+    )
+    if alerta["valor_por_ponto"]:
+        alerta["divergencia"] = _divergencia_estado(db, municipio, alerta["valor_por_ponto"])
+    return alerta
+
+
+def montar_serie(db: "Session", municipio_id: int) -> dict:
+    meses = _fpm_meses(db, municipio_id)
+    anual: dict[int, dict] = {}
+    for ano, _mes, valor in meses:
+        item = anual.setdefault(ano, {"ano": ano, "valor_total": 0.0, "meses": 0})
+        item["valor_total"] += valor
+        item["meses"] += 1
+    return {
+        "mensal": [{"ano": a, "mes": m, "valor": v} for a, m, v in meses],
+        "anual": [anual[a] for a in sorted(anual)],
+        "populacao": [
+            {"ano": p.ano, "populacao": p.populacao, "fonte": p.fonte}
+            for p in _pops(db, municipio_id)
+        ],
+    }
+
+
+def gerar_notificacoes_fpm(db: "Session", municipio_ids: list[int], usuario_id: int) -> int:
+    """Cria Notificacao por município quando a última estimativa muda a faixa
+    ou entra em zona de oportunidade/risco. Dedup por (titulo, municipio)."""
+    from app.models.notificacao import Notificacao
+
+    criadas = 0
+    for mid in municipio_ids:
+        pops = {p.ano: p.populacao for p in _pops(db, mid)}
+        evento = avaliar_evento_faixa(pops)
+        if not evento:
+            continue
+        ja_existe = any(
+            n.municipio_ids == [mid]
+            for n in db.query(Notificacao).filter(Notificacao.titulo == evento["titulo"]).all()
+        )
+        if ja_existe:
+            continue
+        db.add(Notificacao(
+            titulo=evento["titulo"], mensagem=evento["mensagem"],
+            tipo=evento["tipo"], municipio_ids=[mid], criado_por=usuario_id,
+        ))
+        criadas += 1
+    if criadas:
+        db.commit()
+    return criadas
