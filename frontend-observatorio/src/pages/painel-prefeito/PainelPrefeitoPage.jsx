@@ -8,6 +8,8 @@ import { NidPageHeader } from "../../components/nid/Panel";
 import KpiCard from "../../components/KpiCard";
 import PrioridadesPanel from "../../components/PrioridadesPanel";
 import AlertaFpmCard from "../../components/AlertaFpmCard";
+import DinheiroNaMesaCard from "../../components/DinheiroNaMesaCard";
+import EmendasResumoCard from "../../components/EmendasResumoCard";
 import { fmtMoneyShort, fmtNumberShort } from "../../components/nid/charts";
 import {
   BanknotesIcon,
@@ -367,6 +369,12 @@ export default function PainelPrefeitoPage() {
       {/* Alerta de faixa do FPM */}
       <div className="mb-7">
         <AlertaFpmCard />
+      </div>
+
+      {/* Captação federal + emendas (teasers livres) */}
+      <div className="mb-7 space-y-4">
+        <DinheiroNaMesaCard />
+        <EmendasResumoCard />
       </div>
 
       {/* Panorama — all headline metrics */}
