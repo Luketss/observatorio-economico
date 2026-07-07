@@ -54,6 +54,7 @@ const NAV_STRUCTURE = [
     children: [
       { to: "/app/pib", label: "PIB", icon: ChartBarIcon, modulo: "pib" },
       { to: "/app/vaf", label: "VAF", icon: ChartPieIcon, modulo: "vaf" },
+      { to: "/app/fpm", label: "FPM", icon: BanknotesIcon },
       { to: "/app/arrecadacao", label: "Arrecadação", icon: BanknotesIcon, modulo: "arrecadacao" },
     ],
   },
