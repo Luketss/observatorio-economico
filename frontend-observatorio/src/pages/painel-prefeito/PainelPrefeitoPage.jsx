@@ -7,6 +7,7 @@ import { useViewAs } from "../../context/ViewAsContext";
 import { NidPageHeader } from "../../components/nid/Panel";
 import KpiCard from "../../components/KpiCard";
 import PrioridadesPanel from "../../components/PrioridadesPanel";
+import AlertaFpmCard from "../../components/AlertaFpmCard";
 import { fmtMoneyShort, fmtNumberShort } from "../../components/nid/charts";
 import {
   BanknotesIcon,
@@ -361,6 +362,11 @@ export default function PainelPrefeitoPage() {
       {/* AI priorities */}
       <div className="mt-4 mb-7">
         <PrioridadesPanel />
+      </div>
+
+      {/* Alerta de faixa do FPM */}
+      <div className="mb-7">
+        <AlertaFpmCard />
       </div>
 
       {/* Panorama — all headline metrics */}
