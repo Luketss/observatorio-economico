@@ -14,6 +14,9 @@ export default function DatasetFontesAdminPage() {
   const [rows, setRows] = useState([]);
   const [loading, setLoading] = useState(true);
   const [savingKey, setSavingKey] = useState(null);
+  const [autoFontes, setAutoFontes] = useState([]);
+  const [notificar, setNotificar] = useState(true);
+  const [runningKey, setRunningKey] = useState(null);
 
   useEffect(() => {
     Promise.all([api.get("/municipios/datasets"), api.get("/dataset-info/all")])
@@ -34,6 +37,7 @@ export default function DatasetFontesAdminPage() {
       })
       .catch(() => addToast("Erro ao carregar fontes de dados.", "error"))
       .finally(() => setLoading(false));
+    loadAutoFontes();
   }, []);
 
   const updateField = (key, field, value) => {
@@ -78,6 +82,30 @@ export default function DatasetFontesAdminPage() {
     }
   };
 
+  const loadAutoFontes = () => {
+    api.get("/ingestao-automatica/fontes")
+      .then((r) => setAutoFontes(r.data || []))
+      .catch(() => {});
+  };
+
+  const handleExecutar = async (fonte) => {
+    setRunningKey(fonte.key);
+    try {
+      const { data } = await api.post(`/ingestao-automatica/${fonte.key}/executar`, { notificar });
+      addToast(
+        `${fonte.label}: ${data.municipios_ok} município(s) atualizado(s), ${data.linhas} linha(s)` +
+          (data.notificacoes ? `, ${data.notificacoes} notificação(ões)` : "") +
+          (data.municipios_erro ? ` — ${data.municipios_erro} com erro` : ""),
+        data.municipios_erro ? "warning" : "success"
+      );
+      loadAutoFontes();
+    } catch (err) {
+      addToast(err.response?.data?.detail || "Erro ao executar a fonte automática.", "error");
+    } finally {
+      setRunningKey(null);
+    }
+  };
+
   return (
     <motion.div
       initial={{ opacity: 0, y: 15 }}
@@ -94,6 +122,47 @@ export default function DatasetFontesAdminPage() {
           ingestão. Essas informações aparecem como tooltip nas páginas de dados.
         </p>
       </div>
+
+      {autoFontes.length > 0 && (
+        <div className="bg-[var(--panel)] rounded-2xl border border-[var(--border)] shadow-sm p-5 space-y-4">
+          <div className="flex items-center justify-between gap-4 flex-wrap">
+            <div>
+              <h2 className="text-lg font-bold text-[var(--text)]">Fontes automáticas</h2>
+              <p className="text-sm text-[var(--text-mute)]">
+                Buscam dados direto das APIs públicas — sem CSV. A execução grava auditoria e
+                atualiza a data de atualização do dataset.
+              </p>
+            </div>
+            <label className="flex items-center gap-2 text-sm text-[var(--text-dim)]">
+              <input type="checkbox" checked={notificar} onChange={(e) => setNotificar(e.target.checked)} className="rounded" />
+              Gerar notificações (faixa do FPM)
+            </label>
+          </div>
+          <div className="space-y-2">
+            {autoFontes.map((f) => (
+              <div key={f.key} className="flex items-center justify-between gap-4 rounded-xl border border-[var(--border)] px-4 py-3 flex-wrap">
+                <div className="min-w-0">
+                  <p className="font-semibold text-[var(--text)]">{f.label}</p>
+                  <p className="text-xs text-[var(--text-mute)] truncate">{f.fonte}</p>
+                  <p className="text-xs mt-0.5 text-[var(--text-dim)]">
+                    {f.ultima_execucao
+                      ? `Última execução: ${new Date(f.ultima_execucao.criado_em).toLocaleString("pt-BR")} · ${f.ultima_execucao.status} · ${f.ultima_execucao.num_linhas} linhas`
+                      : "Nunca executada"}
+                  </p>
+                </div>
+                <button
+                  onClick={() => handleExecutar(f)}
+                  disabled={runningKey !== null}
+                  className="px-4 py-2 text-sm rounded-lg bg-teal-600 hover:bg-teal-700 text-white transition-colors disabled:opacity-50"
+                  aria-label={`Atualizar ${f.label} agora`}
+                >
+                  {runningKey === f.key ? "Executando..." : "Atualizar agora"}
+                </button>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       <div className="bg-[var(--panel)] rounded-2xl border border-[var(--border)] shadow-sm overflow-hidden">
         {loading ? (
