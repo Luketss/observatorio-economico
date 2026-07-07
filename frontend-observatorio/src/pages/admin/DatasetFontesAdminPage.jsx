@@ -4,6 +4,12 @@ import { CheckIcon, TrashIcon } from "@heroicons/react/24/outline";
 import api from "../../services/api";
 import { useToast } from "../../context/ToastContext";
 
+const ESTADOS_UF = [
+  "AC", "AL", "AP", "AM", "BA", "CE", "DF", "ES", "GO", "MA", "MT", "MS",
+  "MG", "PA", "PB", "PR", "PE", "PI", "RJ", "RN", "RS", "RO", "RR", "SC",
+  "SP", "SE", "TO",
+];
+
 /**
  * ADMIN_GLOBAL page to manage per-dataset ingestion metadata:
  * the data source ("fonte") and the update/reference date ("data de
@@ -16,6 +22,7 @@ export default function DatasetFontesAdminPage() {
   const [savingKey, setSavingKey] = useState(null);
   const [autoFontes, setAutoFontes] = useState([]);
   const [notificar, setNotificar] = useState(true);
+  const [estadoFiltro, setEstadoFiltro] = useState("");
   const [runningKey, setRunningKey] = useState(null);
 
   useEffect(() => {
@@ -91,7 +98,10 @@ export default function DatasetFontesAdminPage() {
   const handleExecutar = async (fonte) => {
     setRunningKey(fonte.key);
     try {
-      const { data } = await api.post(`/ingestao-automatica/${fonte.key}/executar`, { notificar });
+      const { data } = await api.post(`/ingestao-automatica/${fonte.key}/executar`, {
+        notificar,
+        ...(estadoFiltro ? { estado: estadoFiltro } : {}),
+      });
       addToast(
         `${fonte.label}: ${data.municipios_ok} município(s) atualizado(s), ${data.linhas} linha(s)` +
           (data.notificacoes ? `, ${data.notificacoes} notificação(ões)` : "") +
@@ -132,11 +142,32 @@ export default function DatasetFontesAdminPage() {
                 Buscam dados direto das APIs públicas — sem CSV. A execução grava auditoria e
                 atualiza a data de atualização do dataset.
               </p>
+              {estadoFiltro === "" && (
+                <p className="text-xs mt-1 text-amber-500">
+                  Sem filtro de estado, a execução cobre todos os municípios do Brasil e pode
+                  levar vários minutos.
+                </p>
+              )}
             </div>
-            <label className="flex items-center gap-2 text-sm text-[var(--text-dim)]">
-              <input type="checkbox" checked={notificar} onChange={(e) => setNotificar(e.target.checked)} className="rounded" />
-              Gerar notificações (faixa do FPM)
-            </label>
+            <div className="flex items-center gap-4 flex-wrap">
+              <label className="flex items-center gap-2 text-sm text-[var(--text-dim)]">
+                Estado
+                <select
+                  value={estadoFiltro}
+                  onChange={(e) => setEstadoFiltro(e.target.value)}
+                  className="rounded-lg border border-[var(--border)] bg-[var(--panel-2)] text-[var(--text)] px-3 py-2 text-sm"
+                >
+                  <option value="">Todos os estados</option>
+                  {ESTADOS_UF.map((uf) => (
+                    <option key={uf} value={uf}>{uf}</option>
+                  ))}
+                </select>
+              </label>
+              <label className="flex items-center gap-2 text-sm text-[var(--text-dim)]">
+                <input type="checkbox" checked={notificar} onChange={(e) => setNotificar(e.target.checked)} className="rounded" />
+                Gerar notificações (faixa do FPM)
+              </label>
+            </div>
           </div>
           <div className="space-y-2">
             {autoFontes.map((f) => (

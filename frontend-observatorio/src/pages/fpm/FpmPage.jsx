@@ -180,6 +180,8 @@ export default function FpmPage() {
             {alerta?.motivo === "fpm_capitais" && "Capitais seguem o regime FPM-Capitais, fora das faixas do FPM-Interior."}
             {alerta?.motivo === "sem_codigo_ibge" && "Cadastre o código IBGE do município na administração."}
             {alerta?.motivo === "sem_populacao" && "Execute a fonte automática \"População (IBGE)\" em Administração → Fontes de Dados."}
+            {!["fpm_capitais", "sem_codigo_ibge", "sem_populacao"].includes(alerta?.motivo) &&
+              "Dados indisponíveis para este município."}
           </p>
         </div>
       ) : (
