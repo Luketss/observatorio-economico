@@ -6,6 +6,7 @@ O FPM-Interior é distribuído por 18 faixas populacionais fixas em lei
 protegidos por trava legal (LC 165/2019 e sucessoras) — ver `avaliar_divergencia`.
 Capitais seguem o regime FPM-Capitais e ficam fora do cálculo.
 """
+import statistics
 from dataclasses import dataclass
 
 # (pop_min, pop_max, coeficiente) — DL 1.881/81, FPM-Interior.
@@ -147,3 +148,80 @@ def montar_alerta(
         "ganho_proxima_faixa": ganho, "perda_faixa_anterior": perda,
         "faixas": _lista_faixas(faixa),
     }
+
+
+def avaliar_divergencia(
+    valores_estado: list[float],
+    valor_municipio: float,
+    minimo: int = 5,
+    tolerancia: float = 0.10,
+) -> bool | None:
+    """O valor por ponto de coeficiente deve ser ~igual entre municípios do
+    mesmo estado. Desvio > tolerância da mediana ⇒ o coeficiente oficial
+    provavelmente difere do estimado (trava legal). None = amostra pequena."""
+    if len(valores_estado) < minimo:
+        return None
+    mediana = statistics.median(valores_estado)
+    if mediana <= 0:
+        return None
+    return abs(valor_municipio - mediana) / mediana > tolerancia
+
+
+def _fmt_hab(n: int) -> str:
+    return f"{n:,}".replace(",", ".")
+
+
+def _fmt_coef(c: float) -> str:
+    return f"{c:.1f}".replace(".", ",")
+
+
+def avaliar_evento_faixa(pops_por_ano: dict[int, int], limiar: float = 0.05) -> dict | None:
+    """Evento notificável após nova estimativa de população: mudança de faixa
+    estimada vs ano anterior, ou entrada em zona de oportunidade/risco."""
+    anos = sorted(pops_por_ano)
+    if not anos:
+        return None
+    ano = anos[-1]
+    pop = pops_por_ano[ano]
+    faixa = faixa_para_populacao(pop)
+
+    faixa_ant = zona_ant = None
+    if len(anos) > 1:
+        pop_ant = pops_por_ano[anos[-2]]
+        faixa_ant = faixa_para_populacao(pop_ant)
+        zona_ant = _zona(pop_ant, faixa_ant, limiar)
+
+    if faixa_ant is not None and faixa.coeficiente != faixa_ant.coeficiente:
+        subiu = faixa.coeficiente > faixa_ant.coeficiente
+        return {
+            "tipo": "success" if subiu else "warning",
+            "titulo": f"FPM: coeficiente estimado {'subiu' if subiu else 'caiu'} ({ano})",
+            "mensagem": (
+                f"A estimativa {ano} do IBGE ({_fmt_hab(pop)} hab.) leva o município à "
+                f"faixa de coeficiente {_fmt_coef(faixa.coeficiente)} do FPM "
+                f"(antes {_fmt_coef(faixa_ant.coeficiente)}). Veja a página FPM."
+            ),
+        }
+
+    zona = _zona(pop, faixa, limiar)
+    if zona and zona != zona_ant:
+        if zona == "oportunidade":
+            dist = faixa.pop_max - pop + 1
+            return {
+                "tipo": "success",
+                "titulo": f"FPM: oportunidade de mudança de faixa ({ano})",
+                "mensagem": (
+                    f"Faltam {_fmt_hab(dist)} habitantes para o próximo coeficiente do FPM "
+                    f"(estimativa IBGE {ano}: {_fmt_hab(pop)} hab.). Veja a página FPM."
+                ),
+            }
+        dist = pop - faixa.pop_min + 1
+        return {
+            "tipo": "warning",
+            "titulo": f"FPM: risco de queda de faixa ({ano})",
+            "mensagem": (
+                f"O município está a {_fmt_hab(dist)} habitantes de cair de faixa do FPM "
+                f"(estimativa IBGE {ano}: {_fmt_hab(pop)} hab.). Veja a página FPM."
+            ),
+        }
+    return None

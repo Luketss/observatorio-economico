@@ -5,6 +5,8 @@ import pytest
 from app.services.fpm_service import (
     FAIXAS_FPM,
     Faixa,
+    avaliar_divergencia,
+    avaliar_evento_faixa,
     faixa_para_populacao,
     fpm_12m,
     montar_alerta,
@@ -101,3 +103,49 @@ def test_alerta_capital_nao_se_aplica():
 def test_alerta_sem_populacao():
     a = montar_alerta(None, [])
     assert a["disponivel"] is False and a["motivo"] == "sem_populacao"
+
+
+# ── divergência (trava legal) ────────────────────────────────────────────────
+def test_divergencia_none_com_menos_de_5_municipios():
+    assert avaliar_divergencia([1e6, 1e6, 1e6, 1e6], 1.5e6) is None
+
+
+def test_divergencia_true_quando_desvia_mais_de_10pct_da_mediana():
+    assert avaliar_divergencia([1e6] * 5, 1.5e6) is True
+
+
+def test_divergencia_false_dentro_da_tolerancia():
+    assert avaliar_divergencia([1e6] * 5, 1.05e6) is False
+
+
+# ── evento de faixa (notificações) ───────────────────────────────────────────
+def test_evento_subiu_de_faixa():
+    ev = avaliar_evento_faixa({2024: 10_100, 2025: 10_300})
+    assert ev["tipo"] == "success"
+    assert "0,8" in ev["mensagem"] and "2025" in ev["titulo"]
+
+
+def test_evento_caiu_de_faixa():
+    ev = avaliar_evento_faixa({2024: 10_300, 2025: 10_100})
+    assert ev["tipo"] == "warning"
+
+
+def test_evento_entrou_em_zona_de_oportunidade():
+    # 2024: 1.189 hab. para subir (> 5% de 9.000) | 2025: 389 (≤ 5% de 9.800)
+    ev = avaliar_evento_faixa({2024: 9_000, 2025: 9_800})
+    assert ev["tipo"] == "success"
+    assert "389" in ev["mensagem"]
+
+
+def test_evento_none_quando_ja_estava_na_mesma_zona():
+    assert avaliar_evento_faixa({2024: 9_800, 2025: 9_810}) is None
+
+
+def test_evento_primeiro_ano_em_zona_notifica():
+    ev = avaliar_evento_faixa({2025: 9_800})
+    assert ev is not None and ev["tipo"] == "success"
+
+
+def test_evento_none_sem_dados_ou_estavel():
+    assert avaliar_evento_faixa({}) is None
+    assert avaliar_evento_faixa({2024: 5_000, 2025: 5_050}) is None
