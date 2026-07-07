@@ -3,6 +3,7 @@
 Uma requisição por ano cobre todos os municípios (códigos separados por
 vírgula). Ao final do upsert dispara as notificações de faixa do FPM."""
 import logging
+import re
 from datetime import date
 
 import requests
@@ -16,6 +17,15 @@ IBGE_URL = (
     "periodos/{ano}/variaveis/9324?localidades=N6[{codigos}]"
 )
 _CHUNK = 100  # códigos por requisição
+
+# 7 dígitos iniciando pela região (1-5). Um código inválido no lote (ex.: o
+# placeholder "0000000" do Município Padrão) faz a API de agregados responder
+# 500 para o chunk INTEIRO — por isso validamos antes de requisitar.
+_CODIGO_IBGE_RE = re.compile(r"^[1-5]\d{6}$")
+
+
+def codigo_ibge_valido(codigo) -> bool:
+    return bool(_CODIGO_IBGE_RE.match((codigo or "").strip()))
 
 
 def parse_populacao_ibge(payload) -> dict[str, dict[int, int]]:
@@ -34,14 +44,20 @@ def parse_populacao_ibge(payload) -> dict[str, dict[int, int]]:
     return {k: v for k, v in out.items() if v}
 
 
-def _buscar_ano(ano: int, codigos: list[str]) -> list:
+def _buscar_ano(ano: int, codigos: list[str]) -> tuple[list, list[str]]:
+    """Busca um ano em chunks. Falha de um chunk não derruba os demais —
+    retorna (payload agregado, erros por chunk)."""
     payload: list = []
+    erros: list[str] = []
     for i in range(0, len(codigos), _CHUNK):
         chunk = codigos[i:i + _CHUNK]
-        resp = requests.get(IBGE_URL.format(ano=ano, codigos=",".join(chunk)), timeout=60)
-        resp.raise_for_status()
-        payload.extend(resp.json() or [])
-    return payload
+        try:
+            resp = requests.get(IBGE_URL.format(ano=ano, codigos=",".join(chunk)), timeout=60)
+            resp.raise_for_status()
+            payload.extend(resp.json() or [])
+        except requests.RequestException as exc:
+            erros.append(f"IBGE {ano} (lote {i // _CHUNK + 1}): {exc}")
+    return payload, erros
 
 
 def executar(db, municipios, anos=None, usuario_id=None, notificar=True) -> ResumoIngestao:
@@ -50,11 +66,16 @@ def executar(db, municipios, anos=None, usuario_id=None, notificar=True) -> Resu
     resumo = ResumoIngestao(dataset="populacao")
     com_codigo = []
     for m in municipios:
-        if m.codigo_ibge:
+        if codigo_ibge_valido(m.codigo_ibge):
             com_codigo.append(m)
         else:
             resumo.municipios_erro += 1
-            resumo.erros.append(f"{m.nome}/{m.estado}: sem codigo_ibge cadastrado")
+            motivo = (
+                "sem codigo_ibge cadastrado"
+                if not m.codigo_ibge
+                else f"codigo_ibge inválido ({m.codigo_ibge!r})"
+            )
+            resumo.erros.append(f"{m.nome}/{m.estado}: {motivo}")
     if not com_codigo:
         return resumo
 
@@ -64,17 +85,14 @@ def executar(db, municipios, anos=None, usuario_id=None, notificar=True) -> Resu
 
     por_codigo: dict[str, dict[int, int]] = {}
     for ano in anos:
-        try:
-            payload = _buscar_ano(ano, [m.codigo_ibge for m in com_codigo])
-        except requests.RequestException as exc:
-            resumo.erros.append(f"IBGE {ano}: {exc}")
-            continue
+        payload, erros_ano = _buscar_ano(ano, [m.codigo_ibge.strip() for m in com_codigo])
+        resumo.erros.extend(erros_ano)
         for codigo, serie in parse_populacao_ibge(payload).items():
             por_codigo.setdefault(codigo, {}).update(serie)
 
     atualizados: list[int] = []
     for m in com_codigo:
-        serie = por_codigo.get(m.codigo_ibge)
+        serie = por_codigo.get(m.codigo_ibge.strip())
         if not serie:
             resumo.municipios_erro += 1
             resumo.erros.append(f"{m.nome}/{m.estado}: IBGE não retornou dados")
