@@ -263,23 +263,54 @@ def _pops(db: "Session", municipio_id: int) -> list:
 
 
 def _divergencia_estado(db: "Session", municipio, valor_ponto: float) -> bool | None:
-    """Mediana do valor-por-ponto entre municípios do mesmo estado com dados."""
-    from app.models.municipio import Municipio
+    """Mediana do valor-por-ponto entre municípios do mesmo estado com dados.
 
-    vizinhos = (
-        db.query(Municipio)
-        .filter(Municipio.estado == municipio.estado, Municipio.ativo.is_(True))
+    Batched em no máximo 2 queries (independente do número de municípios do
+    estado), em vez de duas queries por município (`_pops` + `_fpm_meses`)."""
+    from app.models.fpm import FpmMensal
+    from app.models.municipio import Municipio
+    from app.models.populacao import PopulacaoMunicipio
+
+    pop_rows = (
+        db.query(
+            PopulacaoMunicipio.municipio_id,
+            PopulacaoMunicipio.ano,
+            PopulacaoMunicipio.populacao,
+        )
+        .join(Municipio, Municipio.id == PopulacaoMunicipio.municipio_id)
+        .filter(
+            Municipio.estado == municipio.estado,
+            Municipio.ativo.is_(True),
+            Municipio.is_demo.is_(False),
+        )
         .all()
     )
+    if not pop_rows:
+        return avaliar_divergencia([], valor_ponto)
+
+    # Reduz para a população mais recente por município.
+    ultimo_ano: dict[int, int] = {}
+    ultima_pop: dict[int, int] = {}
+    for mid, ano, pop in pop_rows:
+        if mid not in ultimo_ano or ano > ultimo_ano[mid]:
+            ultimo_ano[mid] = ano
+            ultima_pop[mid] = pop
+
+    fpm_rows = (
+        db.query(FpmMensal.municipio_id, FpmMensal.ano, FpmMensal.mes, FpmMensal.valor)
+        .filter(FpmMensal.municipio_id.in_(list(ultima_pop.keys())))
+        .all()
+    )
+    fpm_por_municipio: dict[int, list[tuple[int, int, float]]] = {}
+    for mid, ano, mes, valor in fpm_rows:
+        fpm_por_municipio.setdefault(mid, []).append((ano, mes, float(valor)))
+
     valores = []
-    for v in vizinhos:
-        pops = _pops(db, v.id)
-        if not pops:
-            continue
-        total, _ = fpm_12m(_fpm_meses(db, v.id))
+    for mid, pop in ultima_pop.items():
+        total, _ = fpm_12m(fpm_por_municipio.get(mid, []))
         if not total:
             continue
-        coef = faixa_para_populacao(pops[-1].populacao).coeficiente
+        coef = faixa_para_populacao(pop).coeficiente
         valores.append(total / coef)
     return avaliar_divergencia(valores, valor_ponto)
 
@@ -328,29 +359,34 @@ def montar_serie(db: "Session", municipio_id: int) -> dict:
 
 def gerar_notificacoes_fpm(db: "Session", municipio_ids: list[int], usuario_id: int) -> int:
     """Cria Notificacao por município quando a última estimativa muda a faixa
-    ou entra em zona de oportunidade/risco. Dedup por (titulo, municipio)."""
+    ou entra em zona de oportunidade/risco. Dedup por (titulo, municipio).
+
+    Uma única query de notificações "FPM%" antes do loop, em vez de duas
+    varreduras completas da tabela por município."""
     from app.models.notificacao import Notificacao
+
+    notificacoes_fpm = db.query(Notificacao).filter(Notificacao.titulo.like("FPM%")).all()
+    municipios_com_fpm_notif: set[int] = {
+        n.municipio_ids[0] for n in notificacoes_fpm if n.municipio_ids and len(n.municipio_ids) == 1
+    }
+    titulos_existentes: set[tuple[str, int]] = {
+        (n.titulo, n.municipio_ids[0]) for n in notificacoes_fpm if n.municipio_ids and len(n.municipio_ids) == 1
+    }
 
     criadas = 0
     for mid in municipio_ids:
         pops = {p.ano: p.populacao for p in _pops(db, mid)}
-        primeira_vez = not any(
-            n.municipio_ids == [mid]
-            for n in db.query(Notificacao).filter(Notificacao.titulo.like("FPM%")).all()
-        )
+        primeira_vez = mid not in municipios_com_fpm_notif
         evento = avaliar_evento_faixa(pops, primeira_vez=primeira_vez)
         if not evento:
             continue
-        ja_existe = any(
-            n.municipio_ids == [mid]
-            for n in db.query(Notificacao).filter(Notificacao.titulo == evento["titulo"]).all()
-        )
-        if ja_existe:
+        if (evento["titulo"], mid) in titulos_existentes:
             continue
         db.add(Notificacao(
             titulo=evento["titulo"], mensagem=evento["mensagem"],
             tipo=evento["tipo"], municipio_ids=[mid], criado_por=usuario_id,
         ))
+        titulos_existentes.add((evento["titulo"], mid))
         criadas += 1
     if criadas:
         db.commit()

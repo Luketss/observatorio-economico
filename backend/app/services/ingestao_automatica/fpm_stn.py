@@ -90,7 +90,8 @@ def _url_csv() -> str:
         resp = requests.get(CKAN_PACKAGE_SHOW, timeout=30)
         resp.raise_for_status()
         for recurso in resp.json()["result"]["resources"]:
-            if "FPM" in (recurso.get("name") or "") and "CAPITAIS" not in (recurso.get("name") or "").upper():
+            nome = (recurso.get("name") or "").upper()
+            if "FPM" in nome and "CAPITAIS" not in nome:
                 return recurso["url"]
     except (requests.RequestException, KeyError, ValueError) as exc:
         logger.warning("CKAN indisponível (%s); usando URL fixa do CSV.", exc)

@@ -85,7 +85,7 @@ def executar_fonte(
             db=db, municipios=municipios, anos=body.anos,
             usuario_id=current_user.id, notificar=body.notificar,
         )
-    except requests.RequestException as exc:
+    except (requests.RequestException, ValueError) as exc:
         record_ingestao_audit(
             db, municipio_id=None, usuario_id=current_user.id, dataset=dataset_key,
             acao="auto_ingest", num_linhas=0, status="erro", detalhe=str(exc)[:1000],

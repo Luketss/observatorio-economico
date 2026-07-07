@@ -42,6 +42,7 @@ from app.models.desenvolvimento_economico import (
 )
 from app.models.empresa import Empresa
 from app.models.estban import EstbanMensal, EstbanPorInstituicao
+from app.models.fpm import FpmMensal
 from app.models.insight_ia import InsightIA
 from app.models.inss import InssAnual
 from app.models.ips import IpsMunicipio
@@ -50,6 +51,7 @@ from app.models.municipio import Municipio
 from app.models.pe_de_meia import PeDeMeiaEtapa, PeDeMeiaResumo
 from app.models.pib import PibAnual
 from app.models.pix import PixMensal
+from app.models.populacao import PopulacaoMunicipio
 from app.models.vaf import VafAnual
 from app.models.projeto import Projeto
 from app.models.rais import (
@@ -79,7 +81,7 @@ DATASET_MODELS = [
     ArrecadacaoMensal, PibAnual, VafAnual, BolsaFamiliaResumo, PeDeMeiaResumo, PeDeMeiaEtapa,
     InssAnual, EstbanMensal, EstbanPorInstituicao,
     ComexMensal, ComexPorProduto, ComexPorPais,
-    Empresa, PixMensal, IpsMunicipio,
+    Empresa, PixMensal, IpsMunicipio, PopulacaoMunicipio, FpmMensal,
     # CAGED variants
     CagedMovimentacao, CagedPorSexo, CagedPorRaca, CagedSalario, CagedPorCnae,
     CagedPorEscolaridade, CagedPorFaixaEtaria, CagedPorTipoMovimentacao,
@@ -124,6 +126,8 @@ DATASET_REGISTRY: Dict[str, list] = {
     "empresas":      [Empresa],
     "pix":           [PixMensal],
     "ips":           [IpsMunicipio],
+    "populacao":     [PopulacaoMunicipio],
+    "fpm":           [FpmMensal],
     "caged": [
         CagedMovimentacao, CagedPorSexo, CagedPorRaca, CagedSalario, CagedPorCnae,
         CagedPorEscolaridade, CagedPorFaixaEtaria, CagedPorTipoMovimentacao,
@@ -153,6 +157,8 @@ DATASET_LABELS: Dict[str, str] = {
     "empresas":      "Empresas Ativas no Município",
     "pix":           "PIX — Transações Instantâneas (Banco Central)",
     "ips":           "IPS — Índice de Progresso Social",
+    "populacao":     "População",
+    "fpm":           "FPM",
 }
 
 
