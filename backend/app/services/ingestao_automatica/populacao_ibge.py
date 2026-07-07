@@ -89,6 +89,7 @@ def executar(db, municipios, anos=None, usuario_id=None, notificar=True) -> Resu
             reg = existentes.get(ano)
             if reg:
                 reg.populacao = pop
+                reg.fonte = "Estimativa IBGE"
             else:
                 db.add(PopulacaoMunicipio(
                     municipio_id=m.id, ano=ano, populacao=pop, fonte="Estimativa IBGE",
