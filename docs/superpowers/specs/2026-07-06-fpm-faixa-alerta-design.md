@@ -22,6 +22,7 @@ E o inverso: risco de cair de faixa na próxima estimativa do IBGE. Nenhum dashb
 | Superfície | Página FPM completa no grupo Economia + card no painel |
 | Gating de plano | Tudo livre (sem PlanGate) — é o principal argumento de venda |
 | Abordagem | Módulo dedicado; faixas hardcoded; coeficiente **estimado** pela população, com guarda de divergência |
+| Ingestão | **Pipeline in-app** (sem CSV): fundação genérica de fontes automáticas + população/FPM como as 2 primeiras. Fundação do "Demo Express" (IDEAS.md A1) |
 
 ## Domínio: como o FPM funciona (o mínimo necessário)
 
@@ -67,12 +68,26 @@ E o inverso: risco de cair de faixa na próxima estimativa do IBGE. Nenhum dashb
 
 Migrations na chain atual (após `0027_vaf_anual`).
 
-**Loaders CLI** em `backend/ingestao/` (padrão `--estado` dos loaders existentes):
+### Pipeline de ingestão automática in-app (sem CSV)
 
-- `carregar_populacao.py` — API de agregados do IBGE (agregado 6579 — Estimativas de População) por `municipio.codigo_ibge`; upsert por (município, ano); município sem `codigo_ibge` → warning e skip. Ao final, dispara a geração de notificações (Seção 2).
-- `carregar_fpm.py` — repasses mensais de FPM por município via API do Tesouro Transparente (Tesouro Nacional); fallback para CSV público da STN se a API se provar instável (decidir na implementação); filtra pelos códigos IBGE dos municípios cadastrados; upsert.
+Fundação genérica para datasets alimentados por API pública — população e FPM são as duas primeiras fontes; os datasets CSV existentes migram no futuro, um a um (Demo Express).
 
-**DatasetInfo**: entradas "populacao" e "fpm" (fonte + data de atualização), editáveis em `/admin/fontes`, exibidas via `InfoTooltip` na página FPM.
+**Pacote novo `app/services/ingestao_automatica/`:**
+
+- `base.py` — registro `FONTES_AUTOMATICAS: dict[dataset_key → FonteAutomatica]`; cada fonte declara `label` e `fetch_and_upsert(db, municipios, anos) → ResumoIngestao`. Dataclass + funções (sem framework): dataset novo = um arquivo + uma entrada no registro.
+- `populacao_ibge.py` — API de agregados do IBGE (agregado 6579 — Estimativas de População); **uma requisição cobre todos os municípios** (filtra pelos `codigo_ibge` cadastrados); upsert em `populacao_municipio`; município sem `codigo_ibge` → warning e skip. Ao final do upsert, gera as notificações de faixa (Seção 2).
+- `fpm_stn.py` — repasses mensais de FPM por município/ano via API do Tesouro Transparente (Tesouro Nacional); fallback para CSV público da STN se a API se provar instável (decidir na implementação); parâmetro `anos` controla o backfill (default: ano corrente + anterior); upsert em `fpm_mensal`.
+
+**Endpoints (novo `routers/ingestao_automatica.py`, ADMIN_GLOBAL):**
+
+- `GET /ingestao-automatica/fontes` — fontes disponíveis + última execução (via `IngestaoAudit`).
+- `POST /ingestao-automatica/{dataset_key}/executar` — body opcional `{estado, municipio_id, anos, notificar}`; execução **síncrona** na v1 (volumes atuais: segundos); grava `IngestaoAudit` com nova `acao: "auto_ingest"`; atualiza `DatasetInfo.data_atualizacao`; retorna resumo (municípios ok/erro, linhas, detalhe por falha).
+
+**Admin UI:** estende a página existente `/admin/fontes` (DatasetFontesAdminPage) — datasets com fonte automática ganham botão "Atualizar agora" (com checkbox "gerar notificações", default ligado) + status da última execução; resultado em toast + resumo.
+
+Sem scripts CLI para estes dois datasets — os serviços ficam importáveis se um wrapper CLI for necessário um dia. Os 11 loaders CSV existentes não são tocados.
+
+**DatasetInfo**: entradas "populacao" e "fpm" (fonte + data de atualização), editáveis em `/admin/fontes`, exibidas via `InfoTooltip` na página FPM; `data_atualizacao` é atualizada automaticamente pela execução da fonte.
 
 ## Seção 2 — Backend: cálculo, endpoints e notificações
 
@@ -97,12 +112,12 @@ Resolve o município pelo usuário logado / viewAs, mesmo padrão dos routers de
 
 ### Notificações no sino
 
-Ao final do `carregar_populacao.py`, para cada município atualizado, recalcular o alerta e criar `Notificacao` (`municipio_ids=[id]`) quando:
+Ao final da execução da fonte automática de população, para cada município atualizado, recalcular o alerta e criar `Notificacao` (`municipio_ids=[id]`) quando:
 
 1. a faixa estimada **mudou** em relação ao ano anterior, ou
 2. o município **entrou** em zona de `oportunidade` ou `risco`.
 
-`tipo`: `success` (oportunidade/subiu) ou `warning` (risco/caiu). Como `Notificacao.criado_por` é FK obrigatória, o loader usa o primeiro usuário ADMIN_GLOBAL; flag `--sem-notificacao` desativa. Não há job agendado: a ingestão anual da estimativa do IBGE é o gatilho natural.
+`tipo`: `success` (oportunidade/subiu) ou `warning` (risco/caiu). `criado_por` = o ADMIN_GLOBAL autenticado que disparou a execução; o body do `/executar` aceita `notificar: false` para desativar (checkbox na UI, default ligado). Não há job agendado: a ingestão anual da estimativa do IBGE é o gatilho natural.
 
 ## Seção 3 — Frontend
 
@@ -142,13 +157,14 @@ Sem PlanGate em nenhuma superfície.
 | Capital | Constante com os 27 códigos IBGE das capitais → "não se aplica — regime FPM-Capitais" |
 | Teto (4,0) | Sem próxima faixa; monitora apenas risco de queda |
 | Ano-base | Card exibe o ano da estimativa; mudança de coeficiente vale para a fixação seguinte do TCU |
-| Falha da API IBGE/STN no loader | Erro por município logado sem abortar o lote; resumo final com contagens |
+| Falha da API IBGE/STN na execução | Erro por município registrado sem abortar o lote; resumo com contagens no retorno e em `IngestaoAudit.detalhe` |
+| API externa fora do ar | `/executar` retorna erro claro com a causa; `IngestaoAudit` registra `status: "erro"`; nada é gravado parcialmente sem registro |
 
 ### Testes (pytest, `backend/tests`)
 
 - **`fpm_service`**: fronteiras exatas de faixa (10.188 → 0,6 vs 10.189 → 0,8), teto, distâncias, `valor_por_ponto` e deltas, thresholds de status (5%), guarda de divergência (mediana estadual, mínimo 5 municípios), janela móvel de 12 meses com meses faltando.
 - **Router**: `/fpm/alerta` e `/fpm/serie` com fixtures — município com/sem dados, capital, sem `codigo_ibge`.
-- **Loaders**: parsing/upsert com dados mockados (sem rede nos testes).
+- **Ingestão automática**: serviços `populacao_ibge`/`fpm_stn` com HTTP mockado (respostas reais das APIs gravadas como fixtures; sem rede nos testes); `POST /executar` — permissão (só ADMIN_GLOBAL), gravação de `IngestaoAudit`, atualização de `DatasetInfo.data_atualizacao`, geração de notificações com `notificar: true/false`.
 
 ## Fora de escopo (v1)
 
@@ -156,3 +172,5 @@ Sem PlanGate em nenhuma superfície.
 - Reserva do FPM (coeficientes 3,8/4,0) e FPM-Capitais.
 - Projeção populacional futura ("no ritmo atual, muda de faixa em N anos") — extensão natural da linha do tempo.
 - Integração com Benchmark/Comparativo.
+- Migração dos 11 datasets CSV existentes para fontes automáticas (Demo Express completo) — a fundação criada aqui é o caminho; migram um a um em entregas futuras.
+- Execução em background com polling de status — v1 é síncrona; revisitar se alguma fonte ficar lenta.
