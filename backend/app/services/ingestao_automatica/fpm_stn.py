@@ -16,6 +16,7 @@ from datetime import date
 import requests
 
 from app.services.ingestao_automatica.base import FonteAutomatica, ResumoIngestao, registrar
+from app.services.ingestao_automatica.util import parse_valor_br as _parse_valor
 
 logger = logging.getLogger(__name__)
 
@@ -28,16 +29,6 @@ FPM_CSV_URL_FALLBACK = (
     "3b5a779d-78f5-4602-a6b7-23ece6d60f27/resource/"
     "d69ff32a-6681-4114-81f0-233bb6b17f58/download/fpm-por-municipio.csv"
 )
-
-
-def _parse_valor(s) -> float | None:
-    s = (s or "").strip()
-    if not s or set(s) <= {"-"}:
-        return None
-    try:
-        return float(s.replace(".", "").replace(",", "."))
-    except ValueError:
-        return None
 
 
 def _norm_nome(s) -> str:
