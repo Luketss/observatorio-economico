@@ -16,7 +16,7 @@
 - Python roda pelo venv do repo: `..\venv\Scripts\python.exe` a partir de `backend/` (Windows).
 - Testes: **pure logic only** — a suíte existente (`backend/tests`) nunca abre conexão de DB nem rede (ver `tests/conftest.py`). Toda lógica testável fica em funções puras; camada DB é fina e verificada manualmente na Task 12.
 - Comando de teste: `cd backend` e `..\venv\Scripts\python.exe -m pytest tests/<arquivo> -v`.
-- Migrations: chain continua de `0027_vaf_anual` → `0028_fpm_populacao`.
+- Migrations: chain continua de `0029_projeto_imagem_presets` → `0030_fpm_populacao` (0028 e 0029 já existem no repo).
 - Modelos: estilo SQLAlchemy 2.0 `Mapped/mapped_column`, FK para `municipios.id`, unique constraints nomeadas `uq_<tabela>_...` (padrão dos modelos existentes).
 - FPM é **livre em todos os planos**: endpoints usam `municipio_scope` (NUNCA `scoped_modulo`); itens de nav SEM chave `modulo`.
 - Todo texto de UI em pt-BR.
@@ -28,13 +28,13 @@
 
 ---
 
-### Task 1: Modelos `PopulacaoMunicipio` + `FpmMensal` e migration 0028
+### Task 1: Modelos `PopulacaoMunicipio` + `FpmMensal` e migration 0030
 
 **Files:**
 - Create: `backend/app/models/populacao.py`
 - Create: `backend/app/models/fpm.py`
 - Modify: `backend/app/models/__init__.py` (adicionar imports + `__all__`)
-- Create: `backend/alembic/versions/0028_fpm_populacao.py`
+- Create: `backend/alembic/versions/0030_fpm_populacao.py`
 
 **Interfaces:**
 - Consumes: `app.db.base.Base`, tabela `municipios` existente.
@@ -122,7 +122,7 @@ E em `__all__` (no fim da lista):
 
 - [ ] **Step 4: Criar a migration**
 
-`backend/alembic/versions/0028_fpm_populacao.py`:
+`backend/alembic/versions/0030_fpm_populacao.py`:
 
 ```python
 """add populacao_municipio and fpm_mensal tables
@@ -130,8 +130,8 @@ E em `__all__` (no fim da lista):
 População estimada anual (IBGE, agregado 6579) e repasses mensais brutos do
 FPM (STN). Bases do Alerta de Faixa do FPM.
 
-Revision ID: 0028_fpm_populacao
-Revises: 0027_vaf_anual
+Revision ID: 0030_fpm_populacao
+Revises: 0029_projeto_imagem_presets
 Create Date: 2026-07-06
 """
 
@@ -139,8 +139,8 @@ import sqlalchemy as sa
 from alembic import op
 
 
-revision = "0028_fpm_populacao"
-down_revision = "0027_vaf_anual"
+revision = "0030_fpm_populacao"
+down_revision = "0029_projeto_imagem_presets"
 branch_labels = None
 depends_on = None
 
@@ -195,13 +195,13 @@ def downgrade():
 Se o Postgres local não estiver rodando: `docker-compose up -d` na raiz do repo.
 
 Run: `cd backend && ..\venv\Scripts\python.exe -m alembic upgrade head`
-Expected: `Running upgrade 0027_vaf_anual -> 0028_fpm_populacao`
+Expected: `Running upgrade 0029_projeto_imagem_presets -> 0030_fpm_populacao`
 
 - [ ] **Step 6: Commit**
 
 ```bash
-git add backend/app/models/populacao.py backend/app/models/fpm.py backend/app/models/__init__.py backend/alembic/versions/0028_fpm_populacao.py
-git commit -m "feat(fpm): modelos populacao_municipio e fpm_mensal + migration 0028"
+git add backend/app/models/populacao.py backend/app/models/fpm.py backend/app/models/__init__.py backend/alembic/versions/0030_fpm_populacao.py
+git commit -m "feat(fpm): modelos populacao_municipio e fpm_mensal + migration 0030"
 ```
 
 ---
