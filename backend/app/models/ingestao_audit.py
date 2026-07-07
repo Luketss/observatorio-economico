@@ -19,7 +19,7 @@ class IngestaoAudit(Base):
         Integer, ForeignKey("usuarios.id"), nullable=True, index=True
     )
     dataset: Mapped[str | None] = mapped_column(String(50), nullable=True, index=True)
-    # 'reingest' | 'delete_dataset' | 'delete_ingestao'
+    # 'reingest' | 'delete_dataset' | 'delete_ingestao' | 'auto_ingest'
     acao: Mapped[str] = mapped_column(String(30), nullable=False)
     num_linhas: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     # 'ok' | 'erro' | 'aviso'
