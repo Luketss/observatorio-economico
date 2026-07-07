@@ -82,3 +82,55 @@ def test_parse_fpm_csv_ignora_preambulo_antes_do_header():
     com_preambulo = "MINISTÉRIO DA FAZENDA;;\n;;\n" + CSV_STN
     out = parse_fpm_csv(com_preambulo, {("acrelandia", "AC"): 7})
     assert out == {7: [(2025, 1, 50880.73), (2026, 1, 60000.0)]}
+
+
+# ── validação de codigo_ibge e resiliência por chunk (IBGE) ──────────────────
+# Bug real (2026-07-07): "Município Padrão" com codigo_ibge "0000000" fazia a
+# API de agregados responder 500 para o chunk inteiro, zerando a ingestão.
+from app.services.ingestao_automatica.populacao_ibge import codigo_ibge_valido
+
+
+def test_codigo_ibge_valido():
+    assert codigo_ibge_valido("3122306")
+    assert codigo_ibge_valido(" 3122306 ")      # tolera espaços acidentais
+    assert not codigo_ibge_valido("0000000")    # placeholder (Município Padrão)
+    assert not codigo_ibge_valido("")
+    assert not codigo_ibge_valido(None)
+    assert not codigo_ibge_valido("312230")     # 6 dígitos
+    assert not codigo_ibge_valido("31223066")   # 8 dígitos
+    assert not codigo_ibge_valido("abc1234")
+
+
+def test_buscar_ano_isola_falha_de_chunk(monkeypatch):
+    import app.services.ingestao_automatica.populacao_ibge as mod
+
+    class FakeResp:
+        def __init__(self, fail):
+            self._fail = fail
+
+        def raise_for_status(self):
+            if self._fail:
+                raise mod.requests.HTTPError("500 Server Error")
+
+        def json(self):
+            return [{"resultados": [{"series": [
+                {"localidade": {"id": "3122306"}, "serie": {"2024": "242328"}}]}]}]
+
+    monkeypatch.setattr(mod.requests, "get", lambda url, timeout: FakeResp(fail="0000000" in url))
+    monkeypatch.setattr(mod, "_CHUNK", 1)
+    payload, erros = mod._buscar_ano(2024, ["3122306", "0000000"])
+    assert payload, "chunk bom deve sobreviver à falha do chunk ruim"
+    assert len(erros) == 1 and "2024" in erros[0]
+
+
+# ── grafias históricas da STN (s/z, th, hífen) ───────────────────────────────
+# Casos reais de MG que não casavam: Brasópolis, Dona Eusébia, São Thomé das
+# Letras, Passa-Vinte (grafias do CSV) vs grafia IBGE do banco.
+def test_norm_nome_casa_grafias_stn():
+    assert _norm_nome("Brazópolis") == _norm_nome("Brasópolis")
+    assert _norm_nome("Dona Euzébia") == _norm_nome("Dona Eusébia")
+    assert _norm_nome("São Tomé das Letras") == _norm_nome("São Thomé das Letras")
+    assert _norm_nome("Passa Vinte") == _norm_nome("Passa-Vinte")
+    # nomes distintos continuam distintos
+    assert _norm_nome("Passa Tempo") != _norm_nome("Passa Quatro")
+    assert _norm_nome("Divinópolis") != _norm_nome("Divinésia")

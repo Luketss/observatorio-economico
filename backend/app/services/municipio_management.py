@@ -40,6 +40,8 @@ from app.models.desenvolvimento_economico import (
     Premiacao,
     VisitaRetencao,
 )
+from app.models.captacao_federal import CaptacaoFederalAnual
+from app.models.emenda import EmendaParlamentar
 from app.models.empresa import Empresa
 from app.models.estban import EstbanMensal, EstbanPorInstituicao
 from app.models.fpm import FpmMensal
@@ -82,6 +84,7 @@ DATASET_MODELS = [
     InssAnual, EstbanMensal, EstbanPorInstituicao,
     ComexMensal, ComexPorProduto, ComexPorPais,
     Empresa, PixMensal, IpsMunicipio, PopulacaoMunicipio, FpmMensal,
+    CaptacaoFederalAnual, EmendaParlamentar,
     # CAGED variants
     CagedMovimentacao, CagedPorSexo, CagedPorRaca, CagedSalario, CagedPorCnae,
     CagedPorEscolaridade, CagedPorFaixaEtaria, CagedPorTipoMovimentacao,
@@ -128,6 +131,8 @@ DATASET_REGISTRY: Dict[str, list] = {
     "ips":           [IpsMunicipio],
     "populacao":     [PopulacaoMunicipio],
     "fpm":           [FpmMensal],
+    "captacao_federal": [CaptacaoFederalAnual],
+    "emendas":          [EmendaParlamentar],
     "caged": [
         CagedMovimentacao, CagedPorSexo, CagedPorRaca, CagedSalario, CagedPorCnae,
         CagedPorEscolaridade, CagedPorFaixaEtaria, CagedPorTipoMovimentacao,
@@ -159,6 +164,8 @@ DATASET_LABELS: Dict[str, str] = {
     "ips":           "IPS — Índice de Progresso Social",
     "populacao":     "População",
     "fpm":           "FPM",
+    "captacao_federal": "Captação Federal (SICONV)",
+    "emendas":          "Emendas Parlamentares",
 }
 
 

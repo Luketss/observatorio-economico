@@ -46,6 +46,8 @@ from app.models.desenvolvimento_economico import (
 )
 from app.models.populacao import PopulacaoMunicipio
 from app.models.fpm import FpmMensal
+from app.models.captacao_federal import CaptacaoFederalAnual
+from app.models.emenda import EmendaParlamentar
 
 __all__ = [
     "Usuario",
@@ -93,4 +95,6 @@ __all__ = [
     "Premiacao",
     "PopulacaoMunicipio",
     "FpmMensal",
+    "CaptacaoFederalAnual",
+    "EmendaParlamentar",
 ]
