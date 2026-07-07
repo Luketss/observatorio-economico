@@ -10,6 +10,7 @@ import PibPage from "../../pages/pib/PibPage";
 import VafPage from "../../pages/vaf/VafPage";
 import FpmPage from "../../pages/fpm/FpmPage";
 import DinheiroNaMesaPage from "../../pages/dinheiro-na-mesa/DinheiroNaMesaPage";
+import EmendasPage from "../../pages/emendas/EmendasPage";
 import CagedPage from "../../pages/caged/CagedPage";
 import RaisPage from "../../pages/rais/RaisPage";
 import BenchmarkPage from "../../pages/comparativo/ComparativoPage";
@@ -95,6 +96,7 @@ export default function AppRouter() {
           <Route path="vaf" element={<VafPage />} />
           <Route path="fpm" element={<FpmPage />} />
           <Route path="dinheiro-na-mesa" element={<DinheiroNaMesaPage />} />
+          <Route path="emendas" element={<EmendasPage />} />
           <Route path="caged" element={<CagedPage />} />
           <Route path="rais" element={<RaisPage />} />
           <Route path="benchmark" element={<BenchmarkPage />} />

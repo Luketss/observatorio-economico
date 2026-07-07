@@ -56,6 +56,7 @@ const NAV_STRUCTURE = [
       { to: "/app/vaf", label: "VAF", icon: ChartPieIcon, modulo: "vaf" },
       { to: "/app/fpm", label: "FPM", icon: BanknotesIcon },
       { to: "/app/dinheiro-na-mesa", label: "Dinheiro na Mesa", icon: BanknotesIcon, modulo: "captacao_federal" },
+      { to: "/app/emendas", label: "Emendas", icon: BuildingLibraryIcon, modulo: "emendas" },
       { to: "/app/arrecadacao", label: "Arrecadação", icon: BanknotesIcon, modulo: "arrecadacao" },
     ],
   },
