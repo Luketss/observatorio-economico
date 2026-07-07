@@ -28,15 +28,18 @@ O diagnóstico alimenta o funil do módulo Captação de Recursos existente (Des
 ## 3. Fontes de dados (pesquisa 2026-07-07)
 
 ### SICONV / Transferegov — convênios (feature 1)
-- Repositório: `http://repositorio.dados.gov.br/seges/detru/` — CSVs nacionais, atualização diária, **sem auth**.
-- Arquivos usados: `siconv_convenio.csv.zip` (~16 MB), `siconv_proposta.csv.zip` (~190 MB, só para o mapa `ID_PROPOSTA → COD_MUNIC_IBGE`), `siconv_emenda.csv.zip` (~7 MB, separa convênio via emenda), `siconv_desembolso.csv.zip`.
-- Chave: `COD_MUNIC_IBGE` (7 dígitos) em `siconv_proposta`; joins por `ID_PROPOSTA`. Zero fuzzy matching.
+- Repositório: `http://repositorio.dados.gov.br/seges/detru/` — CSVs nacionais, atualização diária, **sem auth**, UTF-8 com BOM, `;`.
+- Arquivos usados: `siconv_convenio.csv.zip` (~16 MB), `siconv_proposta.csv.zip` (~190 MB, só para o mapa `ID_PROPOSTA → COD_MUNIC_IBGE`), `siconv_emenda.csv.zip` (~7 MB, separa convênio via emenda), `siconv_desembolso.csv.zip` (~15 MB, desembolso por ano).
+- Chave: `COD_MUNIC_IBGE` (7 dígitos) em `siconv_proposta`; joins por `ID_PROPOSTA` (convênio/emenda) e `NR_CONVENIO` (desembolso). Zero fuzzy matching.
+- **Colunas verificadas (2026-07-07):** convênio tem `ANO` (ano de assinatura), `IND_ASSINADO`, `VL_REPASSE_CONV` (parcela federal, a métrica de captação), `VL_GLOBAL_CONV`; proposta tem `NATUREZA_JURIDICA` — filtramos "Administração Pública Municipal" (captação da prefeitura, não de ONGs/estado no território); emenda tem `NOME_PARLAMENTAR` e `VALOR_REPASSE_EMENDA`; desembolso tem `ANO_DESEMBOLSO` e `VL_DESEMBOLSADO`.
+- **Métrica firmado = soma de `VL_REPASSE_CONV`** dos convênios assinados no ano (dinheiro federal captado, sem contrapartida local). Desembolsado anual vem de `siconv_desembolso` por `ANO_DESEMBOLSO`.
 - Cobertura desde 2008; carregamos 2019+.
 
 ### Portal da Transparência — emendas (feature 2)
-- Bulk CSV: `https://portaldatransparencia.gov.br/download-de-dados/emendas-parlamentares` — todas as emendas, **sem auth**. Desde mai/2026 inclui execução das emendas Pix (transferências especiais).
-- Campos: código/número/ano da emenda, autor, tipo, função, localidade do gasto, valores empenhado/liquidado/pago.
-- Localidade é string `"NOME - UF"` (ou "Nacional"/UF/múltiplo) → matching por nome normalizado + UF, reusando `_norm_nome` do FPM (extraído como helper compartilhado).
+- Bulk CSV: `https://portaldatransparencia.gov.br/download-de-dados/emendas-parlamentares/UNICO` (zip ~32 MB, `EmendasParlamentares.csv` latin-1, `;`, campos entre aspas) — todas as emendas, **sem auth**. Desde mai/2026 inclui execução das emendas Pix (transferências especiais).
+- **Verificado empiricamente (2026-07-07):** o CSV traz a coluna `"Código Município IBGE"` nativa — **não é necessário fuzzy matching por nome+UF** (a suposição original de usar `_norm_nome` caiu; o helper não precisa ser extraído do FPM). Também traz código/nome do autor, tipo de emenda, número, função, e valores Empenhado/Liquidado/Pago/Restos a Pagar (inscritos, cancelados, pagos).
+- Granularidade: uma linha por emenda×ação orçamentária×localidade → agregamos por (município, código da emenda).
+- Linhas não municipalizáveis (localidade "Nacional"/UF/múltiplo) não têm código IBGE de município → ficam fora (limitação já aceita).
 - A **API** `/api-de-dados/emendas` NÃO filtra por município e exige chave gov.br — não usada na v1.
 - SIGA Brasil: sem API/bulk — descartado.
 
@@ -68,7 +71,8 @@ Carregada para **todos os municípios ativos** (como `populacao_municipio`) — 
 | `funcao` | str | área (saúde, educação, …) |
 | `valor_empenhado` | float | execução |
 | `valor_liquidado` | float | execução |
-| `valor_pago` | float | execução |
+| `valor_pago` | float | execução (pagamentos do exercício) |
+| `valor_resto_pago` | float | restos a pagar pagos — `pago_total = valor_pago + valor_resto_pago` é calculado no service |
 
 Carregada para os municípios selecionados na ingestão (filtro UF/município do admin, padrão FPM).
 
@@ -87,8 +91,8 @@ Ambas em `backend/app/services/ingestao_automatica/`, contrato `FonteAutomatica(
 5. Notificação (se `notificar`): na primeira carga do município, *"Diagnóstico de captação disponível: você captou R$ X abaixo/acima da média dos pares"* — tipo `warning` se abaixo, `success` se acima.
 
 ### Fonte `emendas` (`emendas_portal.py`)
-1. Baixa o CSV de emendas do Portal (zip, sem auth), filtra anos 2019+.
-2. Matching `"NOME - UF"` → município via helper `_norm_nome` compartilhado; linhas "Nacional"/só-UF/multi-município são descartadas (contadas no resumo de erros como aviso, não erro).
+1. Baixa o zip de emendas do Portal (`/download-de-dados/emendas-parlamentares/UNICO`, sem auth), filtra anos 2019+.
+2. Match direto pela coluna `"Código Município IBGE"` → município; linhas sem código municipal (localidade "Nacional"/UF) ficam de fora. Agrega linhas por (município, código da emenda) somando os valores de execução.
 3. Upsert em `emenda_parlamentar`; commit por município.
 4. Notificação (se `notificar`): novas emendas do ano corrente → *"R$ X em novas emendas destinadas a [cidade] (Dep. Fulano + N)"*, tipo `info`/`success`. Dedup por `(titulo, municipio_id)`.
 
@@ -142,9 +146,8 @@ Componentes `nid` (KpiCard, NidPanel, AreaLineChart), molde `FpmPage.jsx`.
 
 ## 8. Testes (regra do projeto: pure-logic, sem DB/rede)
 
-- Parsers: linha SICONV (valores BR, datas/ano de assinatura), linha do CSV de emendas, extração `"NOME - UF"` (acentos, hífens, "Nacional", só-UF, homônimos entre UFs).
-- Matemática: agregação por ano, média de pares, ranking, dinheiro na mesa, % execução (clamp 0–100, divisor zero).
-- `_norm_nome` extraído como helper compartilhado sem quebrar os testes existentes do FPM.
+- Parsers: linhas SICONV (valores BR, ano de assinatura, filtro de natureza jurídica, filtro `IND_ASSINADO`), linhas do CSV de emendas (agregação por emenda×município, linhas sem código IBGE municipal descartadas), validação de header ("layout mudou?").
+- Matemática: agregação por ano, média de pares (excluindo o próprio município), ranking, dinheiro na mesa, % execução (clamp 0–100, divisor zero).
 
 ## 9. Riscos e limitações aceitas (v1)
 
