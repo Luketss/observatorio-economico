@@ -12,7 +12,7 @@ _CAMPOS_VAZIOS = {
     "ano_referencia": None, "voce_firmado": None, "via_emenda": None,
     "desembolsado": None, "qtd_convenios": None, "media_pares": None,
     "media_nacional": None, "dinheiro_na_mesa": None, "acima_da_media": None,
-    "posicao": None, "total_grupo": None, "serie": [],
+    "posicao": None, "total_grupo": None, "pares_com_dados": None, "serie": [],
     "uf": None, "faixa_pop_min": None, "faixa_pop_max": None, "coeficiente": None,
 }
 
@@ -73,6 +73,7 @@ def montar_diagnostico(municipio_id: int, pares: set, nacional: set,
         "acima_da_media": bool(delta is not None and delta <= 0),
         "posicao": posicao_no_grupo(voce_ref, pares_ref),
         "total_grupo": len(pares) + 1,
+        "pares_com_dados": sum(1 for m in pares if capt.get(m)),
         "serie": serie,
     }
 

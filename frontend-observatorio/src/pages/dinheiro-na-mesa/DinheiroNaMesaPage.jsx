@@ -36,7 +36,7 @@ function HeroDiagnostico({ d }) {
       <p className="text-sm mt-2 text-[var(--text-dim)]">
         Pares = municípios da mesma faixa populacional do FPM na {d.uf}
         {d.faixa_pop_min != null && <> ({fmtHab(d.faixa_pop_min)}–{d.faixa_pop_max != null ? fmtHab(d.faixa_pop_max) : "∞"} hab.)</>}
-        {" "}· grupo de {d.total_grupo} municípios · convênios e transferências da União (SICONV), repasse federal firmado no ano.
+        {" "}· grupo de {d.total_grupo} municípios{d.pares_com_dados != null && d.pares_com_dados < d.total_grupo - 1 ? ` (${d.pares_com_dados} pares com dados)` : ""} · convênios e transferências da União (SICONV), repasse federal firmado no ano.
         {d.media_nacional != null && <> Média nacional da faixa: {fmtMi(d.media_nacional)}.</>}
       </p>
     </div>

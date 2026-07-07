@@ -81,3 +81,15 @@ def test_codigo_sem_informacao_gera_chave_sintetica():
 def test_header_invalido_falha_audivel():
     with pytest.raises(ValueError, match="layout mudou"):
         parse_emendas_csv(io.StringIO('"FOO";"BAR"\n"1";"2"\n'), IBGE_PARA_MID)
+
+
+def test_codigo_sintetico_truncado_em_60_chars():
+    texto = _csv(
+        _linha("Sem informação", 2025, "Emenda de Bancada",
+               "COMISSAO DE CIENCIA, TECNOLOGIA, COMUNICACAO E INFORMATICA", "10",
+               "3126109", "FORMIGA", "Saúde", "5,00", "0,00", "0,00", "0,00"),
+    )
+    out = parse_emendas_csv(texto, IBGE_PARA_MID)
+    (key,) = out[42].keys()
+    assert key.startswith("SI-2025-COMISSAO")
+    assert len(key) <= 60

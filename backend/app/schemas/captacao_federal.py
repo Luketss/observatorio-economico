@@ -31,6 +31,7 @@ class CaptacaoDiagnostico(CaptacaoResumo):
     qtd_convenios: int | None = None
     media_nacional: float | None = None
     posicao: int | None = None
+    pares_com_dados: int | None = None
     uf: str | None = None
     faixa_pop_min: int | None = None
     faixa_pop_max: int | None = None

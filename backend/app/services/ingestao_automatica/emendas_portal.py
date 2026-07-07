@@ -52,7 +52,7 @@ def parse_emendas_csv(linhas, ibge_para_mid: dict[str, int],
         numero = row[idx["Número da emenda"]].strip()
         codigo = row[idx["Código da Emenda"]].strip()
         if not codigo or codigo.lower() == "sem informação":
-            codigo = f"SI-{ano}-{autor}-{numero}"
+            codigo = f"SI-{ano}-{autor}-{numero}"[:60]
 
         reg = out.setdefault(mid, {}).get(codigo)
         if reg is None:

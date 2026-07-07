@@ -33,6 +33,7 @@ def test_diagnostico_basico_abaixo_dos_pares():
     assert d["acima_da_media"] is False
     assert d["posicao"] == 3
     assert d["total_grupo"] == 3                    # 2 pares + você
+    assert d["pares_com_dados"] == 2
 
 
 def test_diagnostico_acima_dos_pares_zera_dinheiro_na_mesa():
@@ -49,6 +50,7 @@ def test_par_sem_linha_conta_como_zero():
     capt = {1: CAPT[1], 2: CAPT[2]}
     d = montar_diagnostico(1, pares={2, 3}, nacional={2, 3}, capt=capt, ano_corrente=2025)
     assert d["media_pares"] == 2_500_000.0
+    assert d["pares_com_dados"] == 1
 
 
 def test_serie_cobre_janela_e_marca_parcial():
