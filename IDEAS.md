@@ -233,6 +233,90 @@ Quando um indicador supera um milestone, o sistema gera automaticamente um certi
 
 ---
 
+## 🎯 Máquina de Vendas — Momento "Uau" na Demo
+
+Brainstorm de 2026-07-06 focado em **aquisição**: o gargalo de venda é impressionar na demo (plateias mistas — prefeito, secretários, assessores). Ideias organizadas pela mecânica de fechamento. Priorizadas: Demo Express (A1), Alerta FPM (B1), Raio-X pré-demo (A2) e Modo Rivalidade (C1).
+
+### A. "Isso é a SUA cidade" — personalização instantânea
+
+#### Demo Express — ingestão automática por código IBGE 🔥 (grande aposta)
+Pipeline que baixa e ingere automaticamente os principais datasets de qualquer município a partir do código IBGE — sem CSV manual.
+- CAGED, RAIS, Bolsa Família, PIB, Comex, Empresas etc. são fontes públicas federais indexadas por código IBGE
+- **Venda**: "me fala o nome da sua cidade" → minutos depois a demo roda com os dados reais dela
+- **Operação**: onboarding de cliente cai de dias para minutos; atualização mensal vira botão/cron
+- Começar por 2-3 datasets de maior impacto (CAGED + Bolsa Família + Empresas), expandir depois
+- É a feature que destrava escala: cada venda hoje custa horas de preparo de CSV
+
+#### Raio-X pré-demo — a isca de reunião (dias)
+Um clique do ADMIN_GLOBAL gera PDF de 1 página: "Raio-X Econômico de [Cidade]" com os 5 fatos mais provocativos encontrados pela IA.
+- Ex.: "perdeu 340 empregos no setor X enquanto vizinhos ganharam"; "arrecadação per capita 23% abaixo dos pares"
+- Enviado **antes** da reunião — o prefeito chega curioso e a demo vira a resposta às perguntas que o PDF plantou
+- Reusa `insights_service.py` + geração de PDF (WeasyPrint/reportlab)
+
+#### Tema white-label instantâneo (dias)
+Aplicar a identidade visual da prefeitura na UI automaticamente — a demo abre "vestida" com a cara deles.
+- Extrair cores dominantes do brasão (campo já existe, migration 0007) ou 2 cores configuráveis no admin
+- CSS variables no tema Tailwind; wow sutil mas eficaz: parece que o produto já é da prefeitura
+
+#### Trial pós-demo com expiração (semanas)
+Ao fim da reunião: "vou deixar liberado por 7 dias para vocês explorarem".
+- Conta com flag `is_demo` (já existe) + marca d'água + expiração automática
+- E-mail no meio do trial: "seu município teve X novidades esta semana"
+- O fechamento continua acontecendo depois da sala
+
+### B. "Você está perdendo dinheiro" — ROI que se paga na hora
+
+#### Alerta de faixa do FPM 🔥 (melhor custo-benefício) — ✅ ENTREGUE (jul/2026, PR #40)
+O FPM é pago por faixas populacionais — cruzar população (IBGE) com as faixas de coeficiente.
+- "Sua cidade está a 812 habitantes de mudar de coeficiente — vale ~R$ 2,3M/ano a mais"
+- Alerta inverso: risco de cair de faixa na próxima estimativa do IBGE
+- Nenhum dashboard mostra isso; todo prefeito de cidade pequena entende em 5 segundos
+- Justifica o contrato sozinho — argumento de venda de uma frase com cifrão
+
+#### Dinheiro na mesa — captação vs. pares (semanas/meses) — ✅ ENTREGUE (jul/2026, feat/captacao-emendas)
+Quanto o município captou em convênios, emendas e transferências voluntárias vs. municípios do mesmo porte.
+- Fonte: Portal da Transparência / Transferegov
+- "Municípios pares captaram em média R$ 4,2M; você captou R$ 1,1M"
+- Conecta direto com o módulo Captação de Recursos existente — o diagnóstico vira o funil de entrada dele
+
+#### Radar de emendas parlamentares (semanas) — ✅ ENTREGUE (jul/2026, feat/captacao-emendas)
+Emendas destinadas ao município: quem enviou, valor, status de execução.
+- Fonte pública: Transferegov / SIGA Brasil
+- Politicamente valioso — o prefeito quer saber quais deputados estão (ou não) mandando recurso
+
+### C. "Vença a comparação" — rivalidade regional
+
+#### Modo Rivalidade na demo (dias)
+Preset "sua cidade vs. [rival]" com 6 KPIs lado a lado, verde/vermelho por indicador, 1 clique.
+- Todo prefeito tem um rival regional; rivalidade é emocional e fecha venda que planilha não fecha
+- É o Comparativo existente reembalado como arma de demo — falta só o enquadramento/UX
+
+#### Replay do Mandato — time-travel animado (semanas)
+Slider temporal que **anima** todos os KPIs do início do mandato até hoje.
+- Números subindo, gráficos crescendo, marcos pipocando na linha do tempo (Framer Motion já no stack)
+- Diferente do Relatório de Mandato (estático): isso é teatro para demo e para o prefeito reviver a própria gestão
+- Encerramento de demo memorável
+
+#### Retrato do Censo 2022 (semanas)
+Novo dataset IBGE: pirâmide etária, domicílios, crescimento populacional.
+- Visualmente rico (pirâmide etária animada), contextualiza todos os outros datasets
+- Alimenta o Alerta de faixa do FPM (população oficial + estimativas)
+
+### D. "Defesa da gestão" — o ângulo político-emocional
+
+#### Sala de Resposta (war room) (semanas)
+A oposição diz "o desemprego explodiu" → o prefeito cola a crítica no sistema → IA busca os dados reais e gera resposta fundamentada com números citáveis e gráfico anexável.
+- Nenhum concorrente tem; para o prefeito é **munição**, vale mais que relatório
+- Complementa o gerador de documentos do backlog, com gatilho emocional muito mais forte
+- Reusa infra de contexto de `insights_service.py` (cruza datasets relevantes à crítica)
+
+#### Gerador de discurso com números reais (dias, extensão do war room)
+"Vou falar na câmara sobre emprego" → discurso pré-escrito com os dados verdadeiros do município encaixados.
+- Economiza horas da assessoria; cria dependência saudável do produto
+- Mesmo padrão de prompt do gerador de documentos já planejado
+
+---
+
 ## Notas Técnicas
 
 - Stack atual: FastAPI + SQLAlchemy 2.0 + PostgreSQL + React JSX + Tailwind + Recharts
@@ -245,3 +329,34 @@ Quando um indicador supera um milestone, o sistema gera automaticamente um certi
   - `WeasyPrint` ou `reportlab` — geração de PDF no backend
   - `APScheduler` — jobs agendados no backend (relatório mensal)
   - `fastapi-mail` — envio de emails transacionais
+
+
+Norte: fechar o ciclo "diagnóstico → decisão → ação → resultado"
+Hoje os módulos (dados, Indicadores Internos, Projetos, Desenv. Econômico, Releases) são ilhas. A maior alavanca é conectá-los num ciclo de gestão:
+
+Da evidência à ação: um insight ("emprego caindo no setor X") vira, com 1 clique, uma meta (Indicador Interno) → um projeto (Projetos) → acompanhamento → e o sistema mede se o indicador reagiu. Isso transforma o produto de "informativo" em "operacional".
+Recomendador de projetos/editais: dado o diagnóstico do município, sugerir projetos e editais de captação relevantes (liga Desenvolvimento Econômico aos dados). "Seu IPM caiu; municípios pares investiram em Y; há edital Z aberto."
+
+🤖 Copiloto de gestão (IA conversacional, além dos insights estáticos)
+Pergunte aos dados: chat que responde "como está a arrecadação vs ano passado?", compara municípios, explica um gráfico — sobre TODOS os dados do município.
+Gerador de documentos: ofícios, justificativas de captação, relatórios de gestão, prestação de contas — pré-preenchidos com os dados. Economiza horas das secretarias e cria dependência saudável do produto.
+Simulador "e se?": "se atrairmos uma indústria de porte X do setor Y, qual o impacto estimado em emprego, arrecadação e IPM?" — usa as relações entre datasets.
+
+🔮 Inteligência preditiva e de risco
+Módulo de Projeções: além do ICMS, projetar arrecadação total, emprego e PIB com bandas de confiança (já temos forecast nos gráficos — virar um módulo de verdade).
+Índice de Saúde Fiscal / Early-warning: score sintético + alertas de tendência (dependência de transferências, queda sustentada de arrecadação, sangria de empresas).
+Detecção de oportunidades/vazios: "CNAEs presentes nos pares e ausentes aqui" = oportunidades de atração; "setores em ascensão".
+
+🗺️ Inteligência comparativa e geoespacial
+Municípios-pares ("gêmeos"): agrupar por porte/perfil/região e mostrar "você está no percentil X entre seus pares" — muito mais útil que ranking estadual cru.
+Camada de mapa: coroplético por região/estado e fluxos (Comex origem-destino; migração de emprego entre municípios via o campo outro_municipio do CAGED). Mapa muda a percepção de valor.
+Granularidade intra-municipal (por bairro/setor censitário) onde a fonte permitir — diferencial enorme para gestão local.
+
+📡 Alcance, transparência e distribuição
+Portal público / transparência white-label: páginas read-only embarcáveis no site da prefeitura (LGPD-safe). Atende exigência legal e vira canal de aquisição.
+Boletins automáticos (e-mail/WhatsApp) recorrentes ao prefeitao/secretários + releases distribuídos à imprensa local automaticamente (expande o módulo Releases).
+PWA/mobile para o gestor consultar no celular; API/embeds para portais e jornais.
+
+🌎 Expansão de domínio (novos datasets que destravam features)
+Visão 360°: saúde (SIOPS), educação (SIOPE/IDEB), segurança (SINESP), finanças (SICONFI/Tesouro), transferências (FPM) — sai do "econômico" para "gestão municipal completa".
+Licitações/contratos/despesas → eficiência do gasto, um tema quente politicamente.
