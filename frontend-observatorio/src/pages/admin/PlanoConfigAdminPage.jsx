@@ -9,6 +9,7 @@ const MODULOS = [
   { key: "arrecadacao", label: "Arrecadação Municipal" },
   { key: "pib", label: "PIB Municipal" },
   { key: "vaf", label: "VAF — Valor Adicionado Fiscal (IPM)" },
+  { key: "captacao_federal", label: "Dinheiro na Mesa — Captação vs. Pares" },
   { key: "caged", label: "CAGED — Empregos Formais" },
   { key: "rais", label: "RAIS — Vínculos Empregatícios" },
   { key: "bolsa_familia", label: "Bolsa Família" },
