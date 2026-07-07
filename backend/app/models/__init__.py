@@ -44,6 +44,8 @@ from app.models.desenvolvimento_economico import (
     EscritaProjeto,
     Premiacao,
 )
+from app.models.populacao import PopulacaoMunicipio
+from app.models.fpm import FpmMensal
 
 __all__ = [
     "Usuario",
@@ -89,4 +91,6 @@ __all__ = [
     "CaptacaoRecurso",
     "EscritaProjeto",
     "Premiacao",
+    "PopulacaoMunicipio",
+    "FpmMensal",
 ]
