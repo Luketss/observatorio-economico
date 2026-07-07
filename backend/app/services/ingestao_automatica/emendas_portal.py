@@ -52,6 +52,10 @@ def parse_emendas_csv(linhas, ibge_para_mid: dict[str, int],
         numero = row[idx["Número da emenda"]].strip()
         codigo = row[idx["Código da Emenda"]].strip()
         if not codigo or codigo.lower() == "sem informação":
+            # Truncar pode fundir duas emendas sem código do mesmo autor/ano
+            # quando o nome (comissão) estoura os 60 chars — aceito: os valores
+            # somam corretamente, perde-se só a granularidade por emenda; mudar
+            # o formato da chave duplicaria linhas já armazenadas no re-ingest.
             codigo = f"SI-{ano}-{autor}-{numero}"[:60]
 
         reg = out.setdefault(mid, {}).get(codigo)
