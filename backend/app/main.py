@@ -21,6 +21,7 @@ import app.api.v1.routers.empresas as empresas
 import app.api.v1.routers.fpm as fpm
 import app.api.v1.routers.ingestao_automatica as ingestao_automatica
 import app.api.v1.routers.captacao_federal as captacao_federal
+import app.api.v1.routers.emendas as emendas
 import app.api.v1.routers.estban as estban
 import app.api.v1.routers.inss as inss
 import app.api.v1.routers.municipios as municipios
@@ -90,6 +91,7 @@ app.include_router(vaf.router, prefix=API_PREFIX)
 app.include_router(fpm.router, prefix=API_PREFIX)
 app.include_router(ingestao_automatica.router, prefix=API_PREFIX)
 app.include_router(captacao_federal.router, prefix=API_PREFIX)
+app.include_router(emendas.router, prefix=API_PREFIX)
 app.include_router(caged.router, prefix=API_PREFIX)
 app.include_router(rais.router, prefix=API_PREFIX)
 app.include_router(pix.router, prefix=API_PREFIX)
