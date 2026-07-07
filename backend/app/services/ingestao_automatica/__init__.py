@@ -8,3 +8,4 @@ from app.services.ingestao_automatica.base import (  # noqa: F401
 )
 from app.services.ingestao_automatica import populacao_ibge  # noqa: F401
 from app.services.ingestao_automatica import fpm_stn  # noqa: F401
+from app.services.ingestao_automatica import captacao_siconv  # noqa: F401

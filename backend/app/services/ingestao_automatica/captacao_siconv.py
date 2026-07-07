@@ -8,9 +8,13 @@ prefeitura, não de ONGs/estado no território). Métrica: VL_REPASSE_CONV dos
 convênios assinados (IND_ASSINADO=SIM) no ano da coluna ANO."""
 import csv
 import logging
+import os
+import tempfile
 from dataclasses import dataclass, field
+from datetime import date
 
-from app.services.ingestao_automatica.util import indices_colunas, parse_valor_br
+from app.services.ingestao_automatica.base import FonteAutomatica, ResumoIngestao, registrar
+from app.services.ingestao_automatica.util import indices_colunas, parse_valor_br, baixar_zip, linhas_zip
 
 logger = logging.getLogger(__name__)
 
@@ -140,3 +144,91 @@ def montar_registros(convenios: ConveniosParse,
             "valor_desembolsado": round(desembolsos.get((mid, ano), 0.0), 2),
         })
     return registros
+
+
+def executar(db, municipios, anos=None, usuario_id=None, notificar=True) -> ResumoIngestao:
+    """Baixa os 4 CSVs nacionais do SICONV, agrega por município/ano e faz
+    upsert em CaptacaoFederalAnual com commit em lote por UF. Município sem
+    convênio na janela simplesmente não ganha linha (captação zero é dado,
+    não erro). IMPORTANTE (operação): o diagnóstico de pares compara a UF
+    inteira — executar sempre por UF completa ou nacional."""
+    from app.models.captacao_federal import CaptacaoFederalAnual
+    from app.services.ingestao_automatica.populacao_ibge import codigo_ibge_valido
+
+    resumo = ResumoIngestao(dataset="captacao_federal")
+    alvo: dict[str, int] = {}
+    uf_por_mid: dict[int, str] = {}
+    for m in municipios:
+        if codigo_ibge_valido(m.codigo_ibge):
+            alvo[m.codigo_ibge.strip()] = m.id
+            uf_por_mid[m.id] = m.estado
+        else:
+            resumo.municipios_erro += 1
+            resumo.erros.append(f"{m.nome}/{m.estado}: codigo_ibge ausente/inválido")
+    if not alvo:
+        return resumo
+
+    if not anos:
+        anos = range(ANO_INICIO_PADRAO, date.today().year + 1)
+    anos = set(anos)
+
+    with tempfile.TemporaryDirectory(prefix="siconv_") as pasta:
+        def _abrir(arquivo):
+            caminho = baixar_zip(BASE_URL + arquivo, os.path.join(pasta, arquivo))
+            return linhas_zip(caminho)
+
+        with _abrir("siconv_proposta.csv.zip") as linhas:
+            proposta_para_mid = parse_proposta_csv(linhas, alvo)
+        with _abrir("siconv_convenio.csv.zip") as linhas:
+            convenios = parse_convenio_csv(linhas, proposta_para_mid, anos)
+        with _abrir("siconv_emenda.csv.zip") as linhas:
+            via_emenda = parse_emenda_csv(linhas, convenios.ano_por_proposta)
+        with _abrir("siconv_desembolso.csv.zip") as linhas:
+            desembolsos = parse_desembolso_csv(linhas, convenios.mid_por_convenio, anos)
+
+    registros = montar_registros(convenios, via_emenda, desembolsos)
+    por_mid: dict[int, list[dict]] = {}
+    for reg in registros:
+        por_mid.setdefault(reg["municipio_id"], []).append(reg)
+
+    mids_por_uf: dict[str, list[int]] = {}
+    for mid in por_mid:
+        mids_por_uf.setdefault(uf_por_mid[mid], []).append(mid)
+
+    for uf in sorted(mids_por_uf):
+        mids = mids_por_uf[uf]
+        existentes = {
+            (r.municipio_id, r.ano): r
+            for r in db.query(CaptacaoFederalAnual)
+            .filter(CaptacaoFederalAnual.municipio_id.in_(mids))
+            .all()
+        }
+        for mid in mids:
+            for reg in por_mid[mid]:
+                atual = existentes.get((mid, reg["ano"]))
+                if atual:
+                    atual.valor_firmado = reg["valor_firmado"]
+                    atual.valor_desembolsado = reg["valor_desembolsado"]
+                    atual.valor_via_emenda = reg["valor_via_emenda"]
+                    atual.qtd_convenios = reg["qtd_convenios"]
+                else:
+                    db.add(CaptacaoFederalAnual(**reg))
+                resumo.linhas += 1
+        db.commit()
+
+    # todos os alvos válidos foram processados; sem linha = captação zero
+    resumo.municipios_ok = len(uf_por_mid)
+
+    if notificar and usuario_id:
+        from app.services.captacao_federal_service import gerar_notificacoes_captacao
+
+        resumo.notificacoes = gerar_notificacoes_captacao(db, list(uf_por_mid), usuario_id)
+    return resumo
+
+
+registrar(FonteAutomatica(
+    key="captacao_federal",
+    label="Captação Federal — convênios (SICONV)",
+    fonte="Transferegov/SICONV — Transferências discricionárias e legais (repasse federal firmado)",
+    executar=executar,
+))
