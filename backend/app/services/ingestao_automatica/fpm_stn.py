@@ -10,6 +10,7 @@ import csv
 import io
 import logging
 import unicodedata
+from datetime import date
 
 import requests
 
@@ -104,11 +105,15 @@ def executar(db, municipios, anos=None, usuario_id=None, notificar=True) -> Resu
     if not alvo:
         return resumo
 
+    if not anos:
+        ano_atual = date.today().year
+        anos = {ano_atual - 2, ano_atual - 1, ano_atual}
+
     resp = requests.get(_url_csv(), timeout=300)
     resp.raise_for_status()
     texto = resp.content.decode("latin-1")
 
-    por_municipio = parse_fpm_csv(texto, alvo, set(anos) if anos else None)
+    por_municipio = parse_fpm_csv(texto, alvo, set(anos))
 
     for m in municipios:
         linhas = por_municipio.get(m.id)
@@ -128,7 +133,7 @@ def executar(db, municipios, anos=None, usuario_id=None, notificar=True) -> Resu
                 db.add(FpmMensal(municipio_id=m.id, ano=ano, mes=mes, valor=valor))
             resumo.linhas += 1
         resumo.municipios_ok += 1
-    db.commit()
+        db.commit()
     return resumo
 
 

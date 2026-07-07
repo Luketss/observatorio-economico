@@ -175,9 +175,17 @@ def _fmt_coef(c: float) -> str:
     return f"{c:.1f}".replace(".", ",")
 
 
-def avaliar_evento_faixa(pops_por_ano: dict[int, int], limiar: float = 0.05) -> dict | None:
+def avaliar_evento_faixa(
+    pops_por_ano: dict[int, int], limiar: float = 0.05, *, primeira_vez: bool = False
+) -> dict | None:
     """Evento notificável após nova estimativa de população: mudança de faixa
-    estimada vs ano anterior, ou entrada em zona de oportunidade/risco."""
+    estimada vs ano anterior, ou entrada em zona de oportunidade/risco.
+
+    `primeira_vez=True` (primeira carga de população do município): a zona
+    atual notifica mesmo que o ano anterior já estivesse na mesma zona — caso
+    contrário, quando vários anos chegam de uma vez (carga inicial), a
+    supressão por `zona == zona_ant` esconderia uma zona de risco/oportunidade
+    já vigente. Mudança de faixa continua tendo prioridade, inalterada."""
     anos = sorted(pops_por_ano)
     if not anos:
         return None
@@ -204,7 +212,7 @@ def avaliar_evento_faixa(pops_por_ano: dict[int, int], limiar: float = 0.05) -> 
         }
 
     zona = _zona(pop, faixa, limiar)
-    if zona and zona != zona_ant:
+    if zona and (primeira_vez or zona != zona_ant):
         if zona == "oportunidade":
             dist = faixa.pop_max - pop + 1
             return {
@@ -326,7 +334,11 @@ def gerar_notificacoes_fpm(db: "Session", municipio_ids: list[int], usuario_id: 
     criadas = 0
     for mid in municipio_ids:
         pops = {p.ano: p.populacao for p in _pops(db, mid)}
-        evento = avaliar_evento_faixa(pops)
+        primeira_vez = not any(
+            n.municipio_ids == [mid]
+            for n in db.query(Notificacao).filter(Notificacao.titulo.like("FPM%")).all()
+        )
+        evento = avaliar_evento_faixa(pops, primeira_vez=primeira_vez)
         if not evento:
             continue
         ja_existe = any(

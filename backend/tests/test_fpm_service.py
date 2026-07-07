@@ -149,3 +149,22 @@ def test_evento_primeiro_ano_em_zona_notifica():
 def test_evento_none_sem_dados_ou_estavel():
     assert avaliar_evento_faixa({}) is None
     assert avaliar_evento_faixa({2024: 5_000, 2025: 5_050}) is None
+
+
+def test_evento_primeira_vez_notifica_zona_mesmo_ja_estando_na_zona():
+    # Formiga: 2024 e 2025 ambos em zona de oportunidade — sem primeira_vez, None
+    pops = {2024: 70_668, 2025: 70_897}
+    assert avaliar_evento_faixa(pops) is None
+    ev = avaliar_evento_faixa(pops, primeira_vez=True)
+    assert ev is not None and ev["tipo"] == "success"
+    assert "420" in ev["mensagem"]
+
+
+def test_evento_primeira_vez_nao_duplica_mudanca_de_faixa():
+    # mudança de faixa continua tendo prioridade e formato inalterado
+    ev = avaliar_evento_faixa({2024: 10_100, 2025: 10_300}, primeira_vez=True)
+    assert "coeficiente estimado subiu" in ev["titulo"]
+
+
+def test_evento_primeira_vez_estavel_continua_none():
+    assert avaliar_evento_faixa({2024: 5_000, 2025: 5_050}, primeira_vez=True) is None
