@@ -14,6 +14,7 @@ from datetime import datetime, timedelta, timezone
 from dataclasses import asdict
 
 from fastapi import HTTPException
+from sqlalchemy import text
 
 from app.services.ingestao_automatica.base import FONTES_AUTOMATICAS
 
@@ -97,6 +98,8 @@ def iniciar_job(db, dataset_key: str, filtros: dict, usuario_id: int):
     if not resolver_municipios(db, filtros):
         raise HTTPException(status_code=404, detail="Nenhum município ativo para o filtro informado.")
 
+    # serializa criação de jobs entre workers/requests (lock liberado no commit/rollback)
+    db.execute(text("SELECT pg_advisory_xact_lock(hashtext('ingestao_job_iniciar'))"))
     ativos = db.query(IngestaoJob).filter(IngestaoJob.status.in_(STATUS_ATIVOS)).all()
     for ativo in ativos:
         if job_orfao(ativo):
@@ -108,11 +111,10 @@ def iniciar_job(db, dataset_key: str, filtros: dict, usuario_id: int):
                 status_code=409,
                 detail=f"Já existe uma execução em andamento ({ativo.dataset}, job {ativo.id}). Aguarde terminar.",
             )
-    db.commit()
 
     job = IngestaoJob(dataset=dataset_key, status="pendente", filtros=filtros, usuario_id=usuario_id)
     db.add(job)
-    db.commit()
+    db.commit()   # único commit: persiste aborto de órfãos + job novo e libera o lock
     db.refresh(job)
 
     threading.Thread(
@@ -128,8 +130,12 @@ def _executar_job(job_id: int) -> None:
 
     db = SessionLocal()       # sessão da fonte (commits por município)
     db_job = SessionLocal()   # sessão exclusiva da linha do job (heartbeat)
+    job = None
     try:
         job = db_job.get(IngestaoJob, job_id)
+        if job is None:
+            logger.error("Job %s não encontrado ao iniciar a thread", job_id)
+            return
         fonte = FONTES_AUTOMATICAS[job.dataset]
         filtros = job.filtros or {}
         municipios = resolver_municipios(db, filtros)
@@ -183,19 +189,20 @@ def _executar_job(job_id: int) -> None:
         db_job.commit()
     except Exception as exc:  # noqa: BLE001 — thread não pode morrer sem registrar
         logger.exception("Job %s falhou", job_id)
-        try:
-            db.rollback()
-            record_ingestao_audit(
-                db, municipio_id=None, usuario_id=job.usuario_id, dataset=job.dataset,
-                acao="auto_ingest", num_linhas=0, status="erro", detalhe=str(exc)[:1000],
-            )
-            job.status = "erro"
-            job.erro = str(exc)[:1000]
-            job.finalizado_em = _agora()
-            job.atualizado_em = _agora()
-            db_job.commit()
-        except Exception:
-            logger.exception("Falha ao registrar erro do job %s", job_id)
+        if job is not None:
+            try:
+                db.rollback()
+                record_ingestao_audit(
+                    db, municipio_id=None, usuario_id=job.usuario_id, dataset=job.dataset,
+                    acao="auto_ingest", num_linhas=0, status="erro", detalhe=str(exc)[:1000],
+                )
+                job.status = "erro"
+                job.erro = str(exc)[:1000]
+                job.finalizado_em = _agora()
+                job.atualizado_em = _agora()
+                db_job.commit()
+            except Exception:
+                logger.exception("Falha ao registrar erro do job %s", job_id)
     finally:
         db.close()
         db_job.close()
