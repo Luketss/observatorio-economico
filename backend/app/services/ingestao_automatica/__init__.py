@@ -10,3 +10,4 @@ from app.services.ingestao_automatica import populacao_ibge  # noqa: F401
 from app.services.ingestao_automatica import fpm_stn  # noqa: F401
 from app.services.ingestao_automatica import captacao_siconv  # noqa: F401
 from app.services.ingestao_automatica import emendas_portal  # noqa: F401
+from app.services.ingestao_automatica import pib_ibge  # noqa: F401
