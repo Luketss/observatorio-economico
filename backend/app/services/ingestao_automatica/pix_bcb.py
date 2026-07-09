@@ -36,10 +36,26 @@ CAMPOS = {
 INICIO_SERIE = (2020, 11)  # primeiras estatísticas municipais do PIX
 
 
-def parse_pix_olinda(valores, ibge_para_mid: dict[str, int]) -> dict[int, dict]:
-    """Lista `value` de UMA competência → {mid: {coluna_model: valor}}."""
+def _anomes_confere(item, anomes: int) -> bool:
+    """AnoMes do item bate com a competência pedida? Ausente/não-numérico
+    conta como mismatch (a API envia Edm.Int32; normalizamos os dois lados)."""
+    try:
+        return int(item.get("AnoMes")) == anomes
+    except (TypeError, ValueError):
+        return False
+
+
+def parse_pix_olinda(valores, ibge_para_mid: dict[str, int], anomes: int | None = None) -> dict[int, dict]:
+    """Lista `value` de UMA competência → {mid: {coluna_model: valor}}.
+
+    Com `anomes`, descarta itens cujo AnoMes não bate — guarda client-side
+    contra regressão do $filter do OData (o Step 1 provou que o parâmetro
+    DataBase da API não filtra; se o $filter falhar um dia, sem esta guarda
+    gravaríamos valores do mês errado sob a chave certa)."""
     out: dict[int, dict] = {}
     for item in valores or []:
+        if anomes is not None and not _anomes_confere(item, int(anomes)):
+            continue
         mid = ibge_para_mid.get(str(item.get("Municipio_Ibge") or "").strip())
         if mid is None:
             continue
@@ -47,10 +63,22 @@ def parse_pix_olinda(valores, ibge_para_mid: dict[str, int]) -> dict[int, dict]:
     return out
 
 
+_MAX_PAGINAS = 20
+
+
 def _buscar_competencia(anomes: str) -> list:
     url = OLINDA_URL.format(anomes=anomes)
     valores: list = []
+    paginas = 0
     while url:
+        if paginas >= _MAX_PAGINAS:
+            # ValueError audível de propósito (não capturado pelo executar):
+            # nextLink em loop é comportamento anômalo da API e deve derrubar
+            # o job, consistente com o padrão das outras fontes.
+            raise ValueError(
+                f"PIX {anomes}: paginação não terminou em {_MAX_PAGINAS} páginas — nextLink em loop?"
+            )
+        paginas += 1
         resp = requests.get(url, timeout=120)
         resp.raise_for_status()
         corpo = resp.json()
@@ -85,7 +113,11 @@ def executar(db, municipios, anos=None, usuario_id=None, notificar=True, progres
         except requests.RequestException as exc:
             resumo.erros.append(f"PIX {anomes}: {exc}")
             continue
-        por_mid = parse_pix_olinda(valores, alvo)
+        anomes_int = int(anomes)
+        descartados = sum(1 for item in valores if not _anomes_confere(item, anomes_int))
+        if descartados:
+            resumo.erros.append(f"PIX {anomes}: {descartados} linha(s) fora da competência descartada(s)")
+        por_mid = parse_pix_olinda(valores, alvo, anomes=anomes_int)
         existentes = {
             r.municipio_id: r
             for r in db.query(PixMensal)
