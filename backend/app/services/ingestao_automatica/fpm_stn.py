@@ -9,14 +9,12 @@ Valores são o repasse BRUTO (antes de retenções como FUNDEB)."""
 import csv
 import io
 import logging
-import re
-import unicodedata
 from datetime import date
 
 import requests
 
 from app.services.ingestao_automatica.base import FonteAutomatica, ResumoIngestao, registrar
-from app.services.ingestao_automatica.util import parse_valor_br as _parse_valor
+from app.services.ingestao_automatica.util import parse_valor_br as _parse_valor, norm_nome_municipio
 
 logger = logging.getLogger(__name__)
 
@@ -32,16 +30,8 @@ FPM_CSV_URL_FALLBACK = (
 
 
 def _norm_nome(s) -> str:
-    """Normaliza para casar a grafia IBGE do banco com a grafia histórica do
-    CSV da STN: acentos, caixa, hífens/apóstrofos ('Passa-Vinte'), 'th'
-    ('São Thomé das Letras') e s/z ('Brasópolis', 'Dona Eusébia'). As dobras
-    são aplicadas nos DOIS lados do match, então grafias equivalentes do mesmo
-    município convergem sem colapsar nomes realmente distintos."""
-    s = unicodedata.normalize("NFD", s or "")
-    s = "".join(c for c in s if unicodedata.category(c) != "Mn")
-    s = s.lower().replace("-", " ").replace("'", " ").replace("’", " ")
-    s = re.sub(r"\s+", " ", s).strip()
-    return s.replace("th", "t").replace("z", "s")
+    """Delegado para util.norm_nome_municipio (compartilhado entre fontes)."""
+    return norm_nome_municipio(s)
 
 
 def parse_fpm_csv(

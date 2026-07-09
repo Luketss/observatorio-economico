@@ -1,7 +1,10 @@
 """Helpers compartilhados das fontes automáticas (CSV bulk)."""
 import contextlib
 import io
+import re
+import unicodedata
 import zipfile
+from datetime import date
 
 import requests
 
@@ -47,3 +50,36 @@ def linhas_zip(caminho: str, encoding: str = "utf-8-sig"):
         nome = zf.namelist()[0]
         with zf.open(nome) as bruto:
             yield io.TextIOWrapper(bruto, encoding=encoding, newline="")
+
+
+def norm_nome_municipio(s) -> str:
+    """Normaliza nome de município para match entre a grafia IBGE do banco e
+    grafias históricas de CSVs federais (acentos, caixa, hífens, 'th', s/z).
+    Aplicar nos DOIS lados do match. (Movido de fpm_stn._norm_nome.)"""
+    s = unicodedata.normalize("NFD", s or "")
+    s = "".join(c for c in s if unicodedata.category(c) != "Mn")
+    s = s.lower().replace("-", " ").replace("'", " ").replace("'", " ")
+    s = re.sub(r"\s+", " ", s).strip()
+    return s.replace("th", "t").replace("z", "s")
+
+
+def competencias_janela(anos=None, inicio=(2022, 1), meses_default=12, hoje=None):
+    """Competências (ano, mes) de fontes mensais. Com `anos`, todos os meses
+    desses anos; sem, as últimas `meses_default`. Sempre clampado entre
+    `inicio` e o mês ANTERIOR a `hoje` (o mês corrente nunca está publicado)."""
+    hoje = hoje or date.today()
+    fim_ano, fim_mes = (hoje.year, hoje.month - 1) if hoje.month > 1 else (hoje.year - 1, 12)
+
+    def _le(a, b):  # (ano, mes) <= (ano, mes)
+        return a[0] < b[0] or (a[0] == b[0] and a[1] <= b[1])
+
+    if anos:
+        candidatas = [(a, m) for a in sorted(set(anos)) for m in range(1, 13)]
+    else:
+        candidatas = []
+        a, m = fim_ano, fim_mes
+        for _ in range(meses_default):
+            candidatas.append((a, m))
+            a, m = (a, m - 1) if m > 1 else (a - 1, 12)
+        candidatas.reverse()
+    return [c for c in candidatas if _le(inicio, c) and _le(c, (fim_ano, fim_mes))]
