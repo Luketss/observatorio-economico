@@ -58,7 +58,7 @@ def norm_nome_municipio(s) -> str:
     Aplicar nos DOIS lados do match. (Movido de fpm_stn._norm_nome.)"""
     s = unicodedata.normalize("NFD", s or "")
     s = "".join(c for c in s if unicodedata.category(c) != "Mn")
-    s = s.lower().replace("-", " ").replace("'", " ").replace("'", " ")
+    s = s.lower().replace("-", " ").replace("'", " ").replace("’", " ")
     s = re.sub(r"\s+", " ", s).strip()
     return s.replace("th", "t").replace("z", "s")
 
