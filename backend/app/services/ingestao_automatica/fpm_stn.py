@@ -97,7 +97,7 @@ def _url_csv() -> str:
     return FPM_CSV_URL_FALLBACK
 
 
-def executar(db, municipios, anos=None, usuario_id=None, notificar=True) -> ResumoIngestao:
+def executar(db, municipios, anos=None, usuario_id=None, notificar=True, progresso=None) -> ResumoIngestao:
     from app.models.fpm import FpmMensal
 
     resumo = ResumoIngestao(dataset="fpm")
@@ -109,13 +109,17 @@ def executar(db, municipios, anos=None, usuario_id=None, notificar=True) -> Resu
         ano_atual = date.today().year
         anos = {ano_atual - 2, ano_atual - 1, ano_atual}
 
+    if progresso:
+        progresso(0, len(municipios), "baixando CSV da STN (~30 MB)")
     resp = requests.get(_url_csv(), timeout=300)
     resp.raise_for_status()
     texto = resp.content.decode("latin-1")
 
     por_municipio = parse_fpm_csv(texto, alvo, set(anos))
 
-    for m in municipios:
+    for i, m in enumerate(municipios, start=1):
+        if progresso:
+            progresso(i, len(municipios), "processando municípios")
         linhas = por_municipio.get(m.id)
         if not linhas:
             resumo.municipios_erro += 1

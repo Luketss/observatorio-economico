@@ -17,7 +17,7 @@ class FonteAutomatica:
     key: str          # dataset key (ex.: "populacao")
     label: str        # nome exibido no admin
     fonte: str        # texto default para DatasetInfo.fonte
-    executar: Callable  # (db, municipios, anos=None, usuario_id=None, notificar=True) -> ResumoIngestao
+    executar: Callable  # (db, municipios, anos=None, usuario_id=None, notificar=True, progresso=None) -> ResumoIngestao
 
 
 FONTES_AUTOMATICAS: dict[str, FonteAutomatica] = {}
