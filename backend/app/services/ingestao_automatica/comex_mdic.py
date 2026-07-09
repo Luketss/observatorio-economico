@@ -5,7 +5,9 @@ CO_MUN = código IBGE de 7 dígitos. Semântica REPLACE por (município, ano):
 as 3 tabelas comex são agregados — upsert deixaria produtos/países que
 saíram da pauta como lixo. `produto` recebe "SH4 — descrição" (via NCM_SH.csv)
 e `pais` o nome em português (via PAIS.csv); anos legados não reprocessados
-mantêm o formato antigo (código puro), sem duplicar dentro do mesmo ano."""
+mantêm o formato antigo (código puro), sem duplicar dentro do mesmo ano.
+Um ano só entra na janela de replace se EXP e IMP baixaram com sucesso;
+ano com falha de download é pulado inteiro, preservando dados existentes."""
 import csv
 import io
 import logging
@@ -110,6 +112,7 @@ def executar(db, municipios, anos=None, usuario_id=None, notificar=True, progres
     mensal: dict = {}
     por_produto: dict = {}
     por_pais: dict = {}
+    anos_com_falha: set[int] = set()
     for ano in anos:
         for sigla, tipo in TIPOS:
             if progresso:
@@ -119,6 +122,7 @@ def executar(db, municipios, anos=None, usuario_id=None, notificar=True, progres
                 resp.raise_for_status()
             except requests.RequestException as exc:
                 resumo.erros.append(f"Comex {sigla} {ano}: {exc}")
+                anos_com_falha.add(ano)
                 continue
             parsed = parse_comex_mun(
                 io.StringIO(resp.content.decode("latin-1")), alvo, tipo
@@ -127,26 +131,39 @@ def executar(db, municipios, anos=None, usuario_id=None, notificar=True, progres
             por_produto.update(parsed["por_produto"])
             por_pais.update(parsed["por_pais"])
 
+    # Regra tudo-ou-nada por ano: só entra na janela de replace o ano cujos
+    # DOIS arquivos (EXP e IMP) baixaram. Ano meio-baixado não pode nem deletar
+    # (perderia o lado que falhou) nem inserir (colidiria com as linhas legadas
+    # preservadas, via unique constraint).
+    anos_completos = [a for a in anos if a not in anos_com_falha]
+    for ano in sorted(anos_com_falha):
+        resumo.erros.append(
+            f"Comex {ano}: ano pulado por falha de download — dados existentes preservados"
+        )
+    if not anos_completos:
+        return resumo
+    anos_completos_set = set(anos_completos)
+
     todos_mids = sorted(set(alvo.values()))
     for i, mid in enumerate(todos_mids, start=1):
         if progresso:
             progresso(i, len(todos_mids), "gravando municípios")
-        # REPLACE por (município, anos processados)
+        # REPLACE por (município, anos com download completo)
         for model in (ComexMensal, ComexPorProduto, ComexPorPais):
-            db.query(model).filter(model.municipio_id == mid, model.ano.in_(anos)).delete(
+            db.query(model).filter(model.municipio_id == mid, model.ano.in_(anos_completos)).delete(
                 synchronize_session=False
             )
         for (m_id, ano, mes, tipo), tot in mensal.items():
-            if m_id == mid:
+            if m_id == mid and ano in anos_completos_set:
                 db.add(ComexMensal(municipio_id=mid, ano=ano, mes=mes, tipo_operacao=tipo, **tot))
                 resumo.linhas += 1
         for (m_id, ano, tipo, sh4), tot in por_produto.items():
-            if m_id == mid:
+            if m_id == mid and ano in anos_completos_set:
                 rotulo = f"{sh4} — {nome_sh4.get(sh4, '')}".strip(" —")[:300]
                 db.add(ComexPorProduto(municipio_id=mid, ano=ano, tipo_operacao=tipo, produto=rotulo, **tot))
                 resumo.linhas += 1
         for (m_id, ano, tipo, pais), tot in por_pais.items():
-            if m_id == mid:
+            if m_id == mid and ano in anos_completos_set:
                 db.add(ComexPorPais(municipio_id=mid, ano=ano, tipo_operacao=tipo,
                                     pais=nome_pais.get(pais, pais)[:150], **tot))
                 resumo.linhas += 1
