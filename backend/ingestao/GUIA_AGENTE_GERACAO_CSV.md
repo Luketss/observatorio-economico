@@ -3,6 +3,11 @@
 
 Este documento descreve tudo que um agente precisa saber para revisar, corrigir ou regenerar os CSVs consumidos pelos scripts de ingestão. Cobre: estrutura esperada de cada CSV, transformações que o script aplica, tabelas de destino no banco, e armadilhas conhecidas.
 
+> **Fontes automáticas (2026-07):** pib, pix, estban, comex, bolsa_familia e
+> pe_de_meia agora têm fonte automática in-app (`app/services/ingestao_automatica/`)
+> executada em background pela página /admin/fontes. Os CSVs manuais descritos
+> abaixo continuam funcionando como fallback via reingest.
+
 ---
 
 ## 1. Visão Geral do Pipeline
@@ -88,6 +93,8 @@ Chave única: `(municipio_id, ano, mes)` — registros duplicados são ignorados
 ---
 
 ## 4. Bolsa Família
+
+> Este dataset tem fonte automática in-app — o CSV manual abaixo é fallback.
 
 ### Arquivo
 ```
@@ -324,6 +331,8 @@ O script usa uma tabela `CNAE_DIVISAO_SECAO` que mapeia divisões (01–99) para
 
 ## 7. PIB
 
+> Este dataset tem fonte automática in-app — o CSV manual abaixo é fallback.
+
 ### Arquivo
 ```
 dados/PIB_Cidades_Completo/pib_{Cidade_CamelCase}.csv
@@ -338,11 +347,16 @@ dados/PIB_Cidades_Completo/pib_{Cidade_CamelCase}.csv
 | `Cidade` | string | Nome do município | Normalizado internamente |
 | `Codigo_IBGE` | string | `"3136702"` | Ignorado pelo script (não gravado no banco) |
 | `Tipo_Dado` | string | `"REAL"` ou `"PROJETADO"` | Gravado como `tipo_dado` |
-| `PIB_Total` | float | em R$ mil | |
-| `VA_Agropecuaria` | float | em R$ mil | Pode ser vazio → null |
-| `VA_Governo` | float | em R$ mil | Pode ser vazio → null |
-| `VA_Industria` | float | em R$ mil | Pode ser vazio → null |
-| `VA_Servicos` | float | em R$ mil | Pode ser vazio → null |
+| `PIB_Total` | float | em R$ (reais) | |
+| `VA_Agropecuaria` | float | em R$ (reais) | Pode ser vazio → null |
+| `VA_Governo` | float | em R$ (reais) | Pode ser vazio → null |
+| `VA_Industria` | float | em R$ (reais) | Pode ser vazio → null |
+| `VA_Servicos` | float | em R$ (reais) | Pode ser vazio → null |
+
+> A API do IBGE publica em R$ mil; a fonte automática converte ×1000. O banco
+> (`pib_anual`) e o frontend armazenam/esperam R$ cheios — verificado contra o
+> IBGE: DB Divinópolis/MG 2021 = 8.328.420.000. Ao gerar o CSV manual, gere os
+> valores já em R$ cheios (não em milhares).
 
 ### Tabela de destino: `pib_anual`
 Chave de dedup: `(municipio_id, ano)`.
@@ -354,6 +368,8 @@ Chave de dedup: `(municipio_id, ano)`.
 ---
 
 ## 8. Comércio Exterior (Comex)
+
+> Este dataset tem fonte automática in-app — o CSV manual abaixo é fallback.
 
 ### Arquivo
 ```
@@ -389,6 +405,8 @@ dados/Comex_Cidades_Completo/comex_{Cidade_CamelCase_Com_Underscores}.csv
 ---
 
 ## 9. Estban (Bancos)
+
+> Este dataset tem fonte automática in-app — o CSV manual abaixo é fallback.
 
 ### Arquivo
 ```
@@ -458,6 +476,8 @@ Chave de dedup: `(municipio_id, ano, categoria)`.
 
 ## 11. Pé-de-Meia
 
+> Este dataset tem fonte automática in-app — o CSV manual abaixo é fallback.
+
 ### Arquivo
 ```
 dados/Pe_De_Meia_Cidades_Completo/Pe_Meia_{CIDADE_MAIUSCULA_UNDERSCORE}.csv
@@ -489,6 +509,8 @@ dados/Pe_De_Meia_Cidades_Completo/Pe_Meia_{CIDADE_MAIUSCULA_UNDERSCORE}.csv
 ---
 
 ## 12. PIX
+
+> Este dataset tem fonte automática in-app — o CSV manual abaixo é fallback.
 
 ### Arquivo
 ```

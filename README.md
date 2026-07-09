@@ -12,16 +12,17 @@ Multi-tenant economic dashboard SaaS for Brazilian municipalities. Centralizes a
 |------|---------|--------|
 | Dashboard Geral | KPIs across all datasets | Aggregated |
 | Arrecadação | Monthly tax revenue (ICMS, IPVA, IPI) | Secretaria da Fazenda MG |
-| PIB | Annual GDP per municipality | IBGE |
+| PIB | Annual GDP per municipality | IBGE — automática |
 | VAF | Annual Fiscal Value Added + IPM (basis for ICMS distribution), with projected ICMS | Secretaria da Fazenda MG |
 | CAGED | Formal employment flows (admissions, dismissals, gender, race, salary, CNAE) | MTE |
 | RAIS | Employment census (total, gender, race, CNAE, avg. wage) | MTE |
-| Bolsa Família | Beneficiaries, total transferred, Primeira Infância | MDS |
-| Pé-de-Meia | Students benefited, school stage breakdown | MEC |
+| Bolsa Família | Beneficiaries, total transferred, Primeira Infância | Portal da Transparência — automática |
+| Pé-de-Meia | Students benefited, school stage breakdown | Portal da Transparência — automática |
 | INSS | Social security benefits by category | INSS |
-| Bancos (Estban) | Bank deposits, credit operations, savings per institution | BACEN |
-| Comércio Exterior | Exports/imports by product and country | MDIC |
+| Bancos (Estban) | Bank deposits, credit operations, savings per institution | BACEN — automática |
+| Comércio Exterior | Exports/imports by product and country | MDIC — automática |
 | Empresas | Active companies by size and CNAE sector | Receita Federal |
+| PIX | Transactions per município (payer/receiver, PF/PJ, monthly) | BCB — automática |
 | Comparativo | Side-by-side ranking across municipalities | Aggregated |
 | IPS | Social progress index (79 metrics, 3 dimensions, 12 components) | IPS Brasil |
 | FPM | Population-band alert + monthly transfers (coefficient, band-change opportunity/risk) | STN + IBGE |
@@ -35,7 +36,7 @@ Multi-tenant economic dashboard SaaS for Brazilian municipalities. Centralizes a
 - **AI Insights** — Claude-powered analysis per dataset (incl. VAF), generated on demand and cached in the database
 - **Admin data management** — per-dataset and whole-ingestion wipe, **CSV re-ingestion via upload** (with `codigo_ibge` validation to block wrong-city loads), per-município **data-sanity diagnostics** (e.g. MEI all-zero, single-year series), and an **ingestion audit trail**
 - **VAF / projected ICMS** — IPM trend plus ICMS repasse projected from realized revenue × IPM ratio
-- **Fontes de Dados Automáticas** — in-app ingestion from public APIs/bulk CSVs (no manual CSV): População IBGE, FPM (STN), Captação Federal (SICONV) and Emendas (Portal da Transparência), triggered from **Admin → Fontes de Dados** with audit trail — see [Fontes de Dados Automáticas](#fontes-de-dados-automáticas-ingestão-in-app)
+- **Fontes de Dados Automáticas** — in-app ingestion from public APIs/bulk CSVs (no manual CSV): População IBGE, FPM (STN), Captação Federal (SICONV), Emendas (Portal da Transparência), PIB (IBGE), PIX (BCB), Estban (BCB), Comex (MDIC), Bolsa Família and Pé-de-Meia (Portal da Transparência), triggered from **Admin → Fontes de Dados**, run as a **background job** (`POST .../{key}/executar` → 202 `{job_id}`, polled via `GET .../jobs/{id}`) with audit trail — see [Fontes de Dados Automáticas](#fontes-de-dados-automáticas-ingestão-in-app)
 - **Alerta de Faixa do FPM** — population vs. the 18 FPM coefficient bands (DL 1.881/81): band-change opportunity/risk with R$/year estimates, card on Painel do Prefeito + `/app/fpm` (free on all plans)
 - **Dinheiro na Mesa & Radar de Emendas** — federal grants captured vs. peer municipalities and parliamentary amendments by author/execution; **hybrid gating**: headline cards free on the Painel do Prefeito, full pages gated by the `captacao_federal`/`emendas` plan modules — see [usage](#dinheiro-na-mesa--radar-de-emendas)
 - **Automatic notifications** — data-driven alerts in the bell (FPM band events, first-load captação diagnostic, new current-year emendas), deduplicated per município
@@ -217,6 +218,7 @@ PYTHONPATH=backend alembic -c backend/alembic.ini upgrade head
 | `0029` | `imagem`/preset fields on `projetos` |
 | `0030` | `populacao_municipio` + `fpm_mensal` tables (FPM band alert) |
 | `0031` | `captacao_federal_anual` + `emenda_parlamentar` tables (Dinheiro na Mesa / Radar de Emendas) |
+| `0032` | `ingestao_job` table (background jobs for Fontes de Dados Automáticas: status, progresso/heartbeat, resumo/erro) |
 
 ---
 
@@ -282,12 +284,12 @@ Then run normally — scripts connect over the internet to Railway's PostgreSQL.
 
 ## Fontes de Dados Automáticas (ingestão in-app)
 
-Besides the CSV loaders, the backend ingests four datasets directly from public
+Besides the CSV loaders, the backend ingests ten datasets directly from public
 sources — no manual CSV. Trigger them from **Admin → Fontes de Dados**
-(`/admin/fontes`, `ADMIN_GLOBAL` only): pick an optional UF filter, choose
-whether to generate notifications, and click **Executar**. Every run records an
-`IngestaoAudit` entry (`acao="auto_ingest"`) and refreshes the dataset's
-"última atualização".
+(`/admin/fontes`, `ADMIN_GLOBAL` only): pick an optional UF filter (or specific
+municípios), choose whether to generate notifications, and click **Executar**.
+Every run records an `IngestaoAudit` entry (`acao="auto_ingest"`) and refreshes
+the dataset's "última atualização".
 
 | Fonte (key) | Source | What it loads | Notes |
 |-------------|--------|---------------|-------|
@@ -295,16 +297,43 @@ whether to generate notifications, and click **Executar**. Every run records an
 | `fpm` | STN / Tesouro Transparente (CSV ~30 MB) | Monthly FPM transfers (gross) | Matched by name+UF (CSV has no IBGE code); default last 3 years |
 | `captacao_federal` | Transferegov/SICONV (4 zipped CSVs, ~230 MB total) | Federal grants per município/year: firmado (`VL_REPASSE_CONV`), desembolsado, via-emenda split, nº of convênios (2019→current) | **Run for a whole UF (or national)** — the peer comparison needs every município of the UF. Takes a few minutes (the proposta file is ~190 MB). A município with no grants simply gets no rows (zero is data, not an error) |
 | `emendas` | Portal da Transparência (zip ~32 MB) | Parliamentary amendments per município: author, type, function, empenhado/liquidado/pago + restos (2019→current) | CSV has a native IBGE-code column. Amendments earmarked "Nacional"/state-wide aren't municipalizable — municipal totals are a floor. Includes emendas Pix (since May/2026) |
+| `pib` | IBGE — PIB dos Municípios (agregado 5938) | Annual GDP per município: total + VA (agropecuária, indústria, serviços, governo) | API returns "Mil Reais"; the loader converts ×1000 and stores full reais (matching the legacy `pib_anual` table). Only writes `tipo_dado="REAL"` — legacy `PROJETADO` rows are untouched. Default window: last 6 published periods |
+| `pix` | BCB — Estatísticas do PIX por município (Olinda) | Monthly PIX transaction aggregates (payer/receiver, PF/PJ) | One request per competência (national payload, filtered client-side by `AnoMes` — the OData `$filter=AnoMes eq …` is what actually filters; the `DataBase` function parameter does not). Series starts 2020-11 |
+| `estban` | BCB — ESTBAN por agência | Monthly bank deposits/credit per município and per institution | Source is the **new** BCB channel (`bcb.gov.br/content/estatisticas/estatistica_bancaria_estban`, listing via `.../api/servico/sitebcb/Documentos/byListGuid`) — the legacy `www4.bcb.gov.br/fis/cosif/...` path was decommissioned. Values are full reais, no unit conversion. Published with a ~60–90 day lag |
+| `comex` | MDIC — Comex Stat (CSVs `EXP/IMP_{ano}_MUN.csv`) | Exports/imports per município by month, product (SH4) and country | **Replace-by-year** semantics (not upsert): an aggregate dataset needs stale products/countries removed. A year is only replaced if both EXP and IMP downloaded successfully |
+| `bolsa_familia` | Portal da Transparência (ZIPs mensais nacionais) | Monthly beneficiaries, total transferred, Primeira Infância | National file per competência (hundreds of MB); parsed streaming, matched by name+UF. Default window: last 12 months |
+| `pe_de_meia` | Portal da Transparência (ZIPs mensais nacionais) | Monthly students benefited, breakdown by school stage/incentive type | Same shape as Bolsa Família; series starts 2024-01 |
 
 Operational tips:
 
 - Run `populacao` **before** `captacao_federal` — peer groups come from the latest population.
-- Re-running is safe: all four upsert (update-or-insert) and never duplicate rows.
+- Re-running is safe: all ten sources upsert (update-or-insert) or replace-by-period and never duplicate rows.
 - Notifications are deduplicated per `(title, município)`: FPM band events, the
   first-load captação diagnostic ("R$ X na mesa" / "acima da média dos pares")
   and new current-year emendas.
-- If a source changes its CSV layout, the run fails loudly with a
+- If a source changes its CSV/API layout, the run fails loudly with a
   *"layout mudou?"* error in the audit trail instead of loading garbage.
+
+### Fluxo em background (jobs)
+
+`POST /ingestao-automatica/{key}/executar` doesn't run the source inline — it
+creates an `ingestao_job` row and starts a daemon thread, returning **202**
+immediately with `{"job_id": ...}`. The frontend polls
+`GET /ingestao-automatica/jobs/{id}` (status, `progresso_atual`/`progresso_total`,
+`etapa`, and — once finished — `resumo`/`erro`) until the status leaves
+`pendente`/`executando`. A refresh mid-run just resumes polling; progress isn't lost.
+
+- **Trava global** — only one job may be `pendente`/`executando` at a time (the
+  Railway container shares memory with the API; two heavy sources in parallel
+  risk OOM). A second `executar` call while one is active gets **409**.
+- **Heartbeat / abortado** — the job row's `atualizado_em` is written periodically
+  (roughly every 25 municípios or on a step change) as a heartbeat. If the API
+  process restarts mid-job, the next `iniciar_job` call finds the stale
+  `executando`/`pendente` row (no heartbeat for 10+ minutes) and marks it
+  `abortado` before starting the new one — so a crashed deploy never leaves the
+  lock stuck forever.
+- Job `status` values: `pendente` → `executando` → `concluido` | `erro` |
+  `abortado`.
 
 ### Dinheiro na Mesa & Radar de Emendas
 
@@ -552,8 +581,9 @@ PYTHONPATH=backend python -m ingestao.carregar_tudo --estado MG --cidades nova_l
 ```
 
 Or, for a single dataset, use **Painel Admin → Datasets → Reprocessar** (CSV upload).
-PIX data is currently available only for Nova Lima (`dados/Nova Lima/pix.csv`). For
-other cities, obtain the file from BCB and place it in the city's `dados/` folder.
+PIX (like PIB, Estban, Comex, Bolsa Família and Pé-de-Meia) also has an
+**automatic source** now — see [Fontes de Dados Automáticas](#fontes-de-dados-automáticas-ingestão-in-app) —
+so the manual CSV path below is a fallback only.
 
 ---
 
@@ -586,8 +616,10 @@ Interactive docs at `/docs` (Swagger UI) when the API is running.
 | GET | `/api/v1/municipios/{id}/sanidade` | Data-sanity findings (admin) |
 | POST | `/api/v1/municipios/{id}/datasets/{key}/reingest` | Re-ingest a dataset from uploaded CSV (admin) |
 | DELETE | `/api/v1/municipios/{id}/datasets[/{key}]` | Wipe whole ingestion / one dataset (admin) |
-| GET | `/api/v1/ingestao-automatica/fontes` | List automatic sources + last run (admin) |
-| POST | `/api/v1/ingestao-automatica/{key}/executar` | Run an automatic source (admin; body: `estado`, `municipio_id`, `anos`, `notificar`) |
+| GET | `/api/v1/ingestao-automatica/fontes` | List automatic sources + last run + active job (admin) |
+| POST | `/api/v1/ingestao-automatica/{key}/executar` | Start an automatic source as a background job (admin; body: `estado`, `municipio_ids`, `anos`, `notificar`) → 202 `{job_id}`; 409 if another job is active |
+| GET | `/api/v1/ingestao-automatica/jobs/{id}` | Poll job status/progress/resumo (admin) |
+| GET | `/api/v1/ingestao-automatica/jobs` | List recent jobs, optionally filtered by `dataset` (admin) |
 | GET | `/api/v1/marcos` | List mandate milestones |
 | POST | `/api/v1/marcos` | Create milestone (admin) |
 | PUT | `/api/v1/marcos/{id}` | Update milestone (admin) |
