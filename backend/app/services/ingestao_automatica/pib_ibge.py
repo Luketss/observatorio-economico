@@ -1,9 +1,10 @@
 """Fonte automática: PIB dos Municípios (IBGE, agregado 5938).
 
-Valores em R$ MIL (unidade da API e do model pib_anual — GUIA §PIB). Grava
-apenas tipo_dado="REAL"; linhas PROJETADO legadas ficam intocadas. O IBGE
-publica com defasagem de ~2 anos; sem `anos`, usa os últimos 6 disponíveis
-(períodos "-6")."""
+A API retorna valores em "Mil Reais"; convertemos (×1000) e armazenamos em
+R$ (reais cheios) — a unidade real da tabela pib_anual legada e a esperada
+pelo frontend. Grava apenas tipo_dado="REAL"; linhas PROJETADO legadas ficam
+intocadas. O IBGE publica com defasagem de ~2 anos; sem `anos`, usa os
+últimos 6 disponíveis (períodos "-6")."""
 import logging
 
 import requests
@@ -12,7 +13,7 @@ from app.services.ingestao_automatica.base import FonteAutomatica, ResumoIngesta
 
 logger = logging.getLogger(__name__)
 
-# id da variável na API → coluna do model PibAnual (unidade: Mil Reais)
+# id da variável na API → coluna do model PibAnual (API em Mil Reais; gravado em R$)
 VARIAVEIS = {
     "37": "pib_total",
     "513": "va_agropecuaria",
@@ -29,7 +30,8 @@ _CHUNK = 50  # códigos por requisição (URL menor que a do agregado 6579: 5 va
 
 def parse_pib_ibge(payload) -> dict[str, dict[int, dict]]:
     """Payload da API → {codigo_ibge: {ano: {coluna: valor_float}}}.
-    Valores não numéricos ('...', '-') são ignorados."""
+    Converte Mil Reais (unidade da API) para R$ cheios (×1000 — unidade do
+    banco legado). Valores não numéricos ('...', '-') são ignorados."""
     out: dict[str, dict[int, dict]] = {}
     for variavel in payload or []:
         coluna = VARIAVEIS.get(str(variavel.get("id")))
@@ -40,7 +42,7 @@ def parse_pib_ibge(payload) -> dict[str, dict[int, dict]]:
                 codigo = str((serie.get("localidade") or {}).get("id") or "")
                 for ano_str, valor in (serie.get("serie") or {}).items():
                     try:
-                        out.setdefault(codigo, {}).setdefault(int(ano_str), {})[coluna] = float(valor)
+                        out.setdefault(codigo, {}).setdefault(int(ano_str), {})[coluna] = float(valor) * 1000.0
                     except (TypeError, ValueError):
                         continue
     return {k: {a: v for a, v in anos.items() if v} for k, anos in out.items() if anos}
@@ -111,6 +113,6 @@ def executar(db, municipios, anos=None, usuario_id=None, notificar=True, progres
 registrar(FonteAutomatica(
     key="pib",
     label="PIB Municipal (IBGE)",
-    fonte="IBGE — Produto Interno Bruto dos Municípios (agregado 5938, R$ mil)",
+    fonte="IBGE — Produto Interno Bruto dos Municípios (agregado 5938; armazenado em R$)",
     executar=executar,
 ))

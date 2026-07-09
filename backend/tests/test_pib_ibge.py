@@ -1,5 +1,6 @@
 """Parser puro do PIB (IBGE agregado 5938) — sem rede, sem DB.
-Fixture no formato real da API de agregados (2026-07)."""
+Fixture no formato real da API de agregados (2026-07). A API publica em
+"Mil Reais"; o parser converte para R$ cheios (×1000), unidade do banco."""
 from app.services.ingestao_automatica.pib_ibge import parse_pib_ibge
 
 PAYLOAD = [
@@ -20,10 +21,11 @@ PAYLOAD = [
 
 def test_parse_pib_agrupa_por_codigo_ano_e_coluna():
     out = parse_pib_ibge(PAYLOAD)
-    assert out["3122306"][2020]["pib_total"] == 9000000.0
-    assert out["3122306"][2020]["va_agropecuaria"] == 100000.0
-    assert out["3122306"][2020]["va_governo"] == 800000.0
-    assert out["3122306"][2021] == {"pib_total": 10500000.0}  # "..." ignorado
+    # API em Mil Reais → parser devolve R$ cheios (×1000)
+    assert out["3122306"][2020]["pib_total"] == 9000000000.0
+    assert out["3122306"][2020]["va_agropecuaria"] == 100000000.0
+    assert out["3122306"][2020]["va_governo"] == 800000000.0
+    assert out["3122306"][2021] == {"pib_total": 10500000000.0}  # "..." ignorado
 
 
 def test_parse_pib_payload_vazio():
