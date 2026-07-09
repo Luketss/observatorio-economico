@@ -4,6 +4,7 @@ from app.models.ingestao_job import IngestaoJob
 from app.services.ingestao_automatica import FONTES_AUTOMATICAS
 from app.services.ingestao_automatica.runner import (
     STATUS_ATIVOS,
+    _agora,
     iniciar_job,
     job_orfao,
     job_para_dict,
@@ -22,11 +23,23 @@ class ExecutarIn(BaseModel):
     notificar: bool = True
 
 
+def _abortar_orfao(db: Session, job: IngestaoJob) -> None:
+    """Sweep lento (na leitura): um job ativo sem heartbeat recente vira
+    'abortado' aqui mesmo, sem esperar a próxima tentativa de criação — assim
+    um job morto por deploy/restart se autocura no próximo polling."""
+    job.status = "abortado"
+    job.erro = "Sem heartbeat — processo reiniciado durante a execução."
+    job.finalizado_em = _agora()
+    db.commit()
+
+
 def _job_ativo(db: Session) -> IngestaoJob | None:
-    """Job pendente/executando com heartbeat vivo (órfão não conta)."""
+    """Job pendente/executando com heartbeat vivo (órfãos são varridos aqui)."""
     for job in db.query(IngestaoJob).filter(IngestaoJob.status.in_(STATUS_ATIVOS)).all():
-        if not job_orfao(job):
-            return job
+        if job_orfao(job):
+            _abortar_orfao(db, job)
+            continue
+        return job
     return None
 
 
@@ -91,6 +104,8 @@ def obter_job(
     job = db.get(IngestaoJob, job_id)
     if job is None:
         raise HTTPException(status_code=404, detail="Job não encontrado.")
+    if job.status in STATUS_ATIVOS and job_orfao(job):
+        _abortar_orfao(db, job)
     return job_para_dict(job)
 
 

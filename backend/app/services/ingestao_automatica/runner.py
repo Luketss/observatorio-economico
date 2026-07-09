@@ -62,6 +62,8 @@ def job_para_dict(job) -> dict:
 
 
 def resolver_municipios(db, filtros: dict):
+    """municipio_ids tem precedência sobre estado — seleção explícita nunca é
+    reduzida silenciosamente pela UF."""
     from app.models.municipio import Municipio
 
     query = db.query(Municipio).filter(Municipio.ativo.is_(True))
@@ -69,7 +71,7 @@ def resolver_municipios(db, filtros: dict):
     estado = (filtros or {}).get("estado")
     if municipio_ids:
         query = query.filter(Municipio.id.in_(municipio_ids))
-    if estado:
+    elif estado:
         query = query.filter(Municipio.estado == estado.upper())
     return query.all()
 
@@ -123,6 +125,28 @@ def iniciar_job(db, dataset_key: str, filtros: dict, usuario_id: int):
     return job
 
 
+def _ticker_heartbeat(job_id: int, parar_ticker: threading.Event) -> None:
+    """Thread secundária: mantém atualizado_em vivo durante trechos longos sem
+    callback de progresso (ex.: download >10min de um ZIP grande) — sem isso o
+    job LIVE pareceria órfão e uma segunda requisição o abortaria, criando uma
+    execução duplicada. Sessão própria (nunca compartilha db_job com a thread
+    principal — sessões do SQLAlchemy não são thread-safe)."""
+    from app.db.session import SessionLocal
+    from app.models.ingestao_job import IngestaoJob
+
+    while not parar_ticker.wait(60):
+        db_t = SessionLocal()
+        try:
+            db_t.query(IngestaoJob).filter(IngestaoJob.id == job_id).update(
+                {"atualizado_em": _agora()}, synchronize_session=False
+            )
+            db_t.commit()
+        except Exception:  # noqa: BLE001 — uma falha de tick não pode matar o loop
+            logger.exception("Falha ao atualizar heartbeat (ticker) do job %s", job_id)
+        finally:
+            db_t.close()
+
+
 def _executar_job(job_id: int) -> None:
     from app.db.session import SessionLocal
     from app.models.ingestao_job import IngestaoJob
@@ -131,6 +155,8 @@ def _executar_job(job_id: int) -> None:
     db = SessionLocal()       # sessão da fonte (commits por município)
     db_job = SessionLocal()   # sessão exclusiva da linha do job (heartbeat)
     job = None
+    parar_ticker = threading.Event()
+    ticker = None
     try:
         job = db_job.get(IngestaoJob, job_id)
         if job is None:
@@ -145,6 +171,12 @@ def _executar_job(job_id: int) -> None:
         job.atualizado_em = _agora()
         job.progresso_total = len(municipios)
         db_job.commit()
+
+        ticker = threading.Thread(
+            target=_ticker_heartbeat, args=(job_id, parar_ticker), daemon=True,
+            name=f"ingestao-job-{job_id}-ticker",
+        )
+        ticker.start()
 
         ultimo_escrito = {"atual": -_PASSO_HEARTBEAT, "etapa": None}
 
@@ -181,12 +213,19 @@ def _executar_job(job_id: int) -> None:
         )
         _atualizar_dataset_info(db, job.dataset, fonte.label, fonte.fonte)
 
-        job.status = "concluido"
-        job.resumo = asdict(resumo)
-        job.progresso_atual = job.progresso_total or job.progresso_atual
-        job.finalizado_em = _agora()
-        job.atualizado_em = _agora()
-        db_job.commit()
+        db_job.refresh(job)
+        if job.status == "executando":
+            job.status = "concluido"
+            job.resumo = asdict(resumo)
+            job.progresso_atual = job.progresso_total or job.progresso_atual
+            job.finalizado_em = _agora()
+            job.atualizado_em = _agora()
+            db_job.commit()
+        else:
+            logger.warning(
+                "Job %s foi marcado %s externamente; resultado descartado do status",
+                job_id, job.status,
+            )
     except Exception as exc:  # noqa: BLE001 — thread não pode morrer sem registrar
         logger.exception("Job %s falhou", job_id)
         if job is not None:
@@ -196,13 +235,23 @@ def _executar_job(job_id: int) -> None:
                     db, municipio_id=None, usuario_id=job.usuario_id, dataset=job.dataset,
                     acao="auto_ingest", num_linhas=0, status="erro", detalhe=str(exc)[:1000],
                 )
-                job.status = "erro"
-                job.erro = str(exc)[:1000]
-                job.finalizado_em = _agora()
-                job.atualizado_em = _agora()
-                db_job.commit()
+                db_job.refresh(job)
+                if job.status == "executando":
+                    job.status = "erro"
+                    job.erro = str(exc)[:1000]
+                    job.finalizado_em = _agora()
+                    job.atualizado_em = _agora()
+                    db_job.commit()
+                else:
+                    logger.warning(
+                        "Job %s foi marcado %s externamente; resultado descartado do status",
+                        job_id, job.status,
+                    )
             except Exception:
                 logger.exception("Falha ao registrar erro do job %s", job_id)
     finally:
+        parar_ticker.set()
+        if ticker is not None:
+            ticker.join(timeout=5)
         db.close()
         db_job.close()

@@ -6,10 +6,8 @@ MB; o parse é streaming e só acumula agregados dos municípios-alvo. Sem
 código IBGE no arquivo — match (nome normalizado, UF). Regra da primeira
 infância portada de coleta.py: só no Novo Bolsa Família (>= 2023-03).
 Upsert por (município, competência); reexecução é idempotente."""
-import logging
 import os
 import tempfile
-from datetime import date
 
 import requests
 
@@ -22,8 +20,6 @@ from app.services.ingestao_automatica.util import (
     norm_nome_municipio,
     parse_valor_br,
 )
-
-logger = logging.getLogger(__name__)
 
 URL_AUXILIO_BRASIL = "https://portaldatransparencia.gov.br/download-de-dados/auxilio-brasil/{anomes}"
 URL_NOVO_BOLSA = "https://portaldatransparencia.gov.br/download-de-dados/novo-bolsa-familia/{anomes}"

@@ -115,10 +115,13 @@ export default function DatasetFontesAdminPage() {
 
   const handleExecutar = async (fonte) => {
     try {
+      // municipio_ids tem precedência sobre estado: se há municípios
+      // selecionados, o filtro de UF é ignorado (não reduz a seleção explícita).
       const body = {
         notificar,
-        ...(estadoFiltro ? { estado: estadoFiltro } : {}),
-        ...(municipiosSel.length ? { municipio_ids: municipiosSel.map((m) => m.id) } : {}),
+        ...(municipiosSel.length
+          ? { municipio_ids: municipiosSel.map((m) => m.id) }
+          : (estadoFiltro ? { estado: estadoFiltro } : {})),
       };
       const anos = anosText.split(",").map((s) => parseInt(s.trim(), 10)).filter((n) => !isNaN(n));
       if (anos.length) body.anos = anos;
