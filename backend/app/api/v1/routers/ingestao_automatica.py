@@ -1,15 +1,14 @@
-import zipfile
-from dataclasses import asdict
-from datetime import datetime
-
-import requests
 from app.api.deps import get_db, require_role
-from app.models.dataset_info import DatasetInfo
 from app.models.ingestao_audit import IngestaoAudit
-from app.models.municipio import Municipio
+from app.models.ingestao_job import IngestaoJob
 from app.services.ingestao_automatica import FONTES_AUTOMATICAS
-from app.services.municipio_management import record_ingestao_audit
-from fastapi import APIRouter, Depends, HTTPException
+from app.services.ingestao_automatica.runner import (
+    STATUS_ATIVOS,
+    iniciar_job,
+    job_orfao,
+    job_para_dict,
+)
+from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
@@ -18,9 +17,17 @@ router = APIRouter(prefix="/ingestao-automatica", tags=["Ingestão Automática"]
 
 class ExecutarIn(BaseModel):
     estado: str | None = None
-    municipio_id: int | None = None
+    municipio_ids: list[int] | None = None
     anos: list[int] | None = None
     notificar: bool = True
+
+
+def _job_ativo(db: Session) -> IngestaoJob | None:
+    """Job pendente/executando com heartbeat vivo (órfão não conta)."""
+    for job in db.query(IngestaoJob).filter(IngestaoJob.status.in_(STATUS_ATIVOS)).all():
+        if not job_orfao(job):
+            return job
+    return None
 
 
 @router.get("/fontes")
@@ -28,80 +35,74 @@ def listar_fontes(
     db: Session = Depends(get_db),
     current_user=Depends(require_role("ADMIN_GLOBAL")),
 ):
-    out = []
+    ativo = _job_ativo(db)
+    fontes = []
     for key, fonte in FONTES_AUTOMATICAS.items():
-        ultimo = (
+        ultimo_audit = (
             db.query(IngestaoAudit)
             .filter(IngestaoAudit.acao == "auto_ingest", IngestaoAudit.dataset == key)
             .order_by(IngestaoAudit.criado_em.desc())
             .first()
         )
-        out.append({
+        ultimo_job = (
+            db.query(IngestaoJob)
+            .filter(IngestaoJob.dataset == key)
+            .order_by(IngestaoJob.criado_em.desc())
+            .first()
+        )
+        fontes.append({
             "key": key,
             "label": fonte.label,
             "fonte": fonte.fonte,
-            "ultima_execucao": None if ultimo is None else {
-                "criado_em": ultimo.criado_em,
-                "status": ultimo.status,
-                "num_linhas": ultimo.num_linhas,
-                "detalhe": ultimo.detalhe,
+            "ultima_execucao": None if ultimo_audit is None else {
+                "criado_em": ultimo_audit.criado_em,
+                "status": ultimo_audit.status,
+                "num_linhas": ultimo_audit.num_linhas,
+                "detalhe": ultimo_audit.detalhe,
             },
+            "ultimo_job": None if ultimo_job is None else job_para_dict(ultimo_job),
         })
-    return out
+    return {"fontes": fontes, "job_ativo": None if ativo is None else job_para_dict(ativo)}
 
 
-def _atualizar_dataset_info(db: Session, key: str, fonte_label: str, fonte_texto: str) -> None:
-    info = db.query(DatasetInfo).filter(DatasetInfo.dataset == key).first()
-    if info is None:
-        info = DatasetInfo(dataset=key, titulo=fonte_label, conteudo="")
-        db.add(info)
-    if not info.fonte:
-        info.fonte = fonte_texto
-    info.data_atualizacao = datetime.now().strftime("%d/%m/%Y")
-    db.commit()
-
-
-@router.post("/{dataset_key}/executar")
+@router.post("/{dataset_key}/executar", status_code=202)
 def executar_fonte(
     dataset_key: str,
     body: ExecutarIn,
     db: Session = Depends(get_db),
     current_user=Depends(require_role("ADMIN_GLOBAL")),
 ):
-    fonte = FONTES_AUTOMATICAS.get(dataset_key)
-    if fonte is None:
-        raise HTTPException(status_code=404, detail=f"Fonte automática '{dataset_key}' não existe.")
+    filtros = {
+        "estado": body.estado.upper() if body.estado else None,
+        "municipio_ids": body.municipio_ids,
+        "anos": body.anos,
+        "notificar": body.notificar,
+    }
+    job = iniciar_job(db, dataset_key, filtros, current_user.id)
+    return {"job_id": job.id}
 
-    query = db.query(Municipio).filter(Municipio.ativo.is_(True))
-    if body.municipio_id is not None:
-        query = query.filter(Municipio.id == body.municipio_id)
-    if body.estado:
-        query = query.filter(Municipio.estado == body.estado.upper())
-    municipios = query.all()
-    if not municipios:
-        raise HTTPException(status_code=404, detail="Nenhum município ativo para o filtro informado.")
 
-    try:
-        resumo = fonte.executar(
-            db=db, municipios=municipios, anos=body.anos,
-            usuario_id=current_user.id, notificar=body.notificar,
-        )
-    except (requests.RequestException, ValueError, zipfile.BadZipFile) as exc:
-        record_ingestao_audit(
-            db, municipio_id=None, usuario_id=current_user.id, dataset=dataset_key,
-            acao="auto_ingest", num_linhas=0, status="erro", detalhe=str(exc)[:1000],
-        )
-        raise HTTPException(status_code=502, detail=f"Falha ao acessar a fonte externa: {exc}")
+@router.get("/jobs/{job_id}")
+def obter_job(
+    job_id: int,
+    db: Session = Depends(get_db),
+    current_user=Depends(require_role("ADMIN_GLOBAL")),
+):
+    job = db.get(IngestaoJob, job_id)
+    if job is None:
+        raise HTTPException(status_code=404, detail="Job não encontrado.")
+    return job_para_dict(job)
 
-    record_ingestao_audit(
-        db,
-        municipio_id=municipios[0].id if len(municipios) == 1 else None,
-        usuario_id=current_user.id,
-        dataset=dataset_key,
-        acao="auto_ingest",
-        num_linhas=resumo.linhas,
-        status="ok" if not resumo.erros else "aviso",
-        detalhe="; ".join(resumo.erros[:20]) or None,
-    )
-    _atualizar_dataset_info(db, dataset_key, fonte.label, fonte.fonte)
-    return asdict(resumo)
+
+@router.get("/jobs")
+def listar_jobs(
+    dataset: str | None = None,
+    limit: int = Query(20, ge=1, le=100),
+    db: Session = Depends(get_db),
+    current_user=Depends(require_role("ADMIN_GLOBAL")),
+):
+    query = db.query(IngestaoJob)
+    if dataset:
+        query = query.filter(IngestaoJob.dataset == dataset)
+    jobs = query.order_by(IngestaoJob.criado_em.desc()).limit(limit).all()
+    return [job_para_dict(j) for j in jobs]
