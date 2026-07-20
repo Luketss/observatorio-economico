@@ -34,13 +34,24 @@ const labelDataset = (key) => (key === DATASET_TODAS ? "Todas as fontes" : key);
 function resumoTodas(resumo) {
   const fontes = resumo?.fontes || [];
   const comErro = fontes.filter((f) => f.status === "erro");
+  const comAviso = fontes.filter((f) => f.status === "aviso");
   return {
     fontes,
-    ok: fontes.length - comErro.length,
+    ok: fontes.length - comErro.length - comAviso.length,
+    aviso: comAviso.length,
     erro: comErro.length,
     keysErro: comErro.map((f) => f.key),
     linhas: fontes.reduce((s, f) => s + (f.linhas || 0), 0),
   };
+}
+
+/** "N ok, M com aviso, K com erro (keys)" — segmentos zerados são omitidos. */
+function textoResumoTodas({ ok, aviso, erro, keysErro }) {
+  const partes = [];
+  if (ok) partes.push(`${ok} ok`);
+  if (aviso) partes.push(`${aviso} com aviso`);
+  if (erro) partes.push(`${erro} com erro (${keysErro.slice(0, 3).join(", ")})`);
+  return partes.join(", ") || "0 fontes";
 }
 
 /**
@@ -110,11 +121,10 @@ export default function DatasetFontesAdminPage() {
         if (!JOB_ATIVO.includes(data.status)) {
           clearInterval(pollRef.current);
           if (data.status === "concluido" && data.dataset === DATASET_TODAS) {
-            const { ok, erro, keysErro } = resumoTodas(data.resumo);
+            const agg = resumoTodas(data.resumo);
             addToast(
-              `Todas as fontes: ${ok} ok` +
-                (erro ? `, ${erro} com erro (${keysErro.slice(0, 3).join(", ")})` : ""),
-              erro ? "warning" : "success"
+              `Todas as fontes: ${textoResumoTodas(agg)}`,
+              agg.erro || agg.aviso ? "warning" : "success"
             );
           } else if (data.status === "concluido") {
             const r = data.resumo || {};
@@ -441,10 +451,7 @@ export default function DatasetFontesAdminPage() {
                       </td>
                       <td className="py-2 text-[var(--text-dim)]">
                         {j.dataset === DATASET_TODAS && j.resumo?.fontes
-                          ? `${resumoTodas(j.resumo).ok} ok, ${resumoTodas(j.resumo).erro} com erro` +
-                            (resumoTodas(j.resumo).erro
-                              ? ` (${resumoTodas(j.resumo).keysErro.slice(0, 3).join(", ")})`
-                              : "")
+                          ? textoResumoTodas(resumoTodas(j.resumo))
                           : j.erro
                             ? j.erro.slice(0, 120)
                             : (j.resumo?.erros || []).slice(0, 2).join("; ").slice(0, 120) || "—"}
