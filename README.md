@@ -332,8 +332,6 @@ immediately with `{"job_id": ...}`. The frontend polls
   `executando`/`pendente` row (no heartbeat for 10+ minutes) and marks it
   `abortado` before starting the new one — so a crashed deploy never leaves the
   lock stuck forever.
-- Job `status` values: `pendente` → `executando` → `concluido` | `erro` |
-  `abortado`.
 - **Meta-job "todas"** — `POST /ingestao-automatica/todas/executar` runs the ten
   sources sequentially inside a single job (order: `populacao` first,
   `captacao_federal`/`emendas` last). A failing source is recorded in its own
@@ -341,6 +339,8 @@ immediately with `{"job_id": ...}`. The frontend polls
   source fails. The final `resumo` becomes
   `{"fontes": [{key, status: ok|aviso|erro, linhas, ...}]}`, and per-source
   audits keep each card's "última execução" accurate.
+- Job `status` values: `pendente` → `executando` → `concluido` | `erro` |
+  `abortado`.
 
 ### Dinheiro na Mesa & Radar de Emendas
 
