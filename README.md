@@ -334,6 +334,13 @@ immediately with `{"job_id": ...}`. The frontend polls
   lock stuck forever.
 - Job `status` values: `pendente` → `executando` → `concluido` | `erro` |
   `abortado`.
+- **Meta-job "todas"** — `POST /ingestao-automatica/todas/executar` runs the ten
+  sources sequentially inside a single job (order: `populacao` first,
+  `captacao_federal`/`emendas` last). A failing source is recorded in its own
+  audit row and the sequence continues — the job only ends `erro` if every
+  source fails. The final `resumo` becomes
+  `{"fontes": [{key, status: ok|aviso|erro, linhas, ...}]}`, and per-source
+  audits keep each card's "última execução" accurate.
 
 ### Dinheiro na Mesa & Radar de Emendas
 
@@ -617,7 +624,7 @@ Interactive docs at `/docs` (Swagger UI) when the API is running.
 | POST | `/api/v1/municipios/{id}/datasets/{key}/reingest` | Re-ingest a dataset from uploaded CSV (admin) |
 | DELETE | `/api/v1/municipios/{id}/datasets[/{key}]` | Wipe whole ingestion / one dataset (admin) |
 | GET | `/api/v1/ingestao-automatica/fontes` | List automatic sources + last run + active job (admin) |
-| POST | `/api/v1/ingestao-automatica/{key}/executar` | Start an automatic source as a background job (admin; body: `estado`, `municipio_ids`, `anos`, `notificar`) → 202 `{job_id}`; 409 if another job is active |
+| POST | `/api/v1/ingestao-automatica/{key}/executar` | Start an automatic source as a background job (admin; body: `estado`, `municipio_ids`, `anos`, `notificar`) → 202 `{job_id}`; 409 if another job is active; `key="todas"` chains all ten sources sequentially in one job (captação expands to the full UF(s) of the selected municípios) |
 | GET | `/api/v1/ingestao-automatica/jobs/{id}` | Poll job status/progress/resumo (admin) |
 | GET | `/api/v1/ingestao-automatica/jobs` | List recent jobs, optionally filtered by `dataset` (admin) |
 | GET | `/api/v1/marcos` | List mandate milestones |

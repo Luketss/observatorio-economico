@@ -248,6 +248,7 @@ Pipeline que baixa e ingere automaticamente os principais datasets de qualquer m
 - Execução em **background job** (tabela `ingestao_job` + runner com heartbeat, trava global, polling com barra de progresso, histórico, retomada pós-refresh) — por município, múltiplos municípios (chips), UF ou Brasil inteiro
 - Fontes automáticas: população (IBGE), FPM (STN), captação federal (SICONV), emendas (Portal da Transparência), **PIB (IBGE 5938), PIX (Bacen/Olinda), Comex (MDIC), ESTBAN (Bacen), Bolsa Família e Pé-de-Meia (Portal)**
 - CSV manual continua como fallback (reingest por upload)
+- **Execução one-click de todas as fontes** (jul/2026): meta-job `dataset="todas"` encadeia as 10 fontes na ordem certa (população primeiro; captação/emendas por último), com isolamento de falha por fonte e captação expandida para a UF dos municípios selecionados
 
 **O que falta para o Demo Express completo**:
 - Fontes pesadas (microdados GB): **CAGED, RAIS, Empresas/CNPJ** — exigem worker separado no Railway (a tabela de jobs já suporta; mover o executor)
