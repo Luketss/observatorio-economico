@@ -26,6 +26,23 @@ function duracao(job) {
   return s < 60 ? `${s}s` : `${Math.floor(s / 60)}min${s % 60 ? ` ${s % 60}s` : ""}`;
 }
 
+const DATASET_TODAS = "todas";
+
+const labelDataset = (key) => (key === DATASET_TODAS ? "Todas as fontes" : key);
+
+/** Agrega o resumo do meta-job ({fontes: [...]}) para toast e histórico. */
+function resumoTodas(resumo) {
+  const fontes = resumo?.fontes || [];
+  const comErro = fontes.filter((f) => f.status === "erro");
+  return {
+    fontes,
+    ok: fontes.length - comErro.length,
+    erro: comErro.length,
+    keysErro: comErro.map((f) => f.key),
+    linhas: fontes.reduce((s, f) => s + (f.linhas || 0), 0),
+  };
+}
+
 /**
  * ADMIN_GLOBAL page: metadados de fonte por dataset + esteira de fontes
  * automáticas com execução em background (job + polling de progresso).
@@ -92,8 +109,15 @@ export default function DatasetFontesAdminPage() {
         setJob(data);
         if (!JOB_ATIVO.includes(data.status)) {
           clearInterval(pollRef.current);
-          const r = data.resumo || {};
-          if (data.status === "concluido") {
+          if (data.status === "concluido" && data.dataset === DATASET_TODAS) {
+            const { ok, erro, keysErro } = resumoTodas(data.resumo);
+            addToast(
+              `Todas as fontes: ${ok} ok` +
+                (erro ? `, ${erro} com erro (${keysErro.slice(0, 3).join(", ")})` : ""),
+              erro ? "warning" : "success"
+            );
+          } else if (data.status === "concluido") {
+            const r = data.resumo || {};
             addToast(
               `${data.dataset}: ${r.municipios_ok ?? 0} município(s), ${r.linhas ?? 0} linha(s)` +
                 (r.notificacoes ? `, ${r.notificacoes} notificação(ões)` : "") +
@@ -101,7 +125,10 @@ export default function DatasetFontesAdminPage() {
               r.municipios_erro ? "warning" : "success"
             );
           } else {
-            addToast(`${data.dataset}: ${labelStatus(data.status)} — ${data.erro || "sem detalhe"}`, "error");
+            addToast(
+              `${labelDataset(data.dataset)}: ${labelStatus(data.status)} — ${data.erro || "sem detalhe"}`,
+              "error"
+            );
           }
           setJob(null);
           loadAutoFontes();
@@ -131,6 +158,16 @@ export default function DatasetFontesAdminPage() {
     } catch (err) {
       addToast(err.response?.data?.detail || "Erro ao iniciar a execução.", "error");
     }
+  };
+
+  const handleExecutarTodas = async () => {
+    if (
+      !municipiosSel.length && !estadoFiltro &&
+      !confirm("Sem filtro, todas as fontes rodarão para o Brasil inteiro — pode levar horas. Continuar?")
+    ) {
+      return;
+    }
+    await handleExecutar({ key: DATASET_TODAS, label: "Todas as fontes" });
   };
 
   const addMunicipio = (idStr) => {
@@ -198,17 +235,33 @@ export default function DatasetFontesAdminPage() {
       {autoFontes.length > 0 && (
         <div className="bg-[var(--panel)] rounded-2xl border border-[var(--border)] shadow-sm p-5 space-y-4">
           <div className="space-y-3">
-            <div>
-              <h2 className="text-lg font-bold text-[var(--text)]">Fontes automáticas</h2>
-              <p className="text-sm text-[var(--text-mute)]">
-                Buscam dados direto das APIs públicas — sem CSV. A execução roda em segundo
-                plano; acompanhe o progresso aqui e no histórico abaixo.
-              </p>
-              {estadoFiltro === "" && municipiosSel.length === 0 && (
-                <p className="text-xs mt-1 text-amber-500">
-                  Sem filtro, a execução cobre todos os municípios do Brasil e pode levar muito tempo.
+            <div className="flex items-start justify-between gap-4 flex-wrap">
+              <div>
+                <h2 className="text-lg font-bold text-[var(--text)]">Fontes automáticas</h2>
+                <p className="text-sm text-[var(--text-mute)]">
+                  Buscam dados direto das APIs públicas — sem CSV. A execução roda em segundo
+                  plano; acompanhe o progresso aqui e no histórico abaixo.
                 </p>
-              )}
+                {estadoFiltro === "" && municipiosSel.length === 0 && (
+                  <p className="text-xs mt-1 text-amber-500">
+                    Sem filtro, a execução cobre todos os municípios do Brasil e pode levar muito tempo.
+                  </p>
+                )}
+              </div>
+              <div className="space-y-1 max-w-[260px]">
+                <button
+                  onClick={handleExecutarTodas}
+                  disabled={jobAtivo}
+                  className="px-4 py-2 text-sm rounded-lg bg-teal-600 hover:bg-teal-700 text-white transition-colors disabled:opacity-50"
+                  aria-label="Rodar todas as fontes agora"
+                >
+                  {jobAtivo && job.dataset === DATASET_TODAS ? "Executando…" : "Rodar todas as fontes"}
+                </button>
+                <p className="text-xs text-[var(--text-dim)]">
+                  A captação federal roda para a UF inteira dos municípios selecionados
+                  (comparação de pares).
+                </p>
+              </div>
             </div>
             <div className="flex items-center gap-4 flex-wrap">
               <label className="flex items-center gap-2 text-sm text-[var(--text-dim)]">
@@ -267,6 +320,30 @@ export default function DatasetFontesAdminPage() {
               </div>
             )}
           </div>
+
+          {jobAtivo && job.dataset === DATASET_TODAS && (
+            <div className="rounded-xl border border-teal-600/40 px-4 py-3 space-y-1">
+              <p className="font-semibold text-[var(--text)]">Todas as fontes</p>
+              <div className="flex justify-between text-xs text-[var(--text-dim)]">
+                <span>{job.etapa || labelStatus(job.status)}</span>
+                <span>
+                  {job.progresso_total
+                    ? `${job.progresso_atual}/${job.progresso_total} municípios`
+                    : "iniciando…"}
+                </span>
+              </div>
+              <div className="h-1.5 rounded-full bg-[var(--panel-2)] overflow-hidden">
+                <div
+                  className="h-full bg-teal-600 transition-all"
+                  style={{
+                    width: job.progresso_total
+                      ? `${Math.min(100, (100 * job.progresso_atual) / job.progresso_total)}%`
+                      : "5%",
+                  }}
+                />
+              </div>
+            </div>
+          )}
 
           <div className="space-y-2">
             {autoFontes.map((f) => {
@@ -343,7 +420,7 @@ export default function DatasetFontesAdminPage() {
                 <tbody>
                   {historico.map((j) => (
                     <tr key={j.id} className="border-b border-[var(--border)] last:border-0 align-top">
-                      <td className="py-2 pr-3 font-medium text-[var(--text)]">{j.dataset}</td>
+                      <td className="py-2 pr-3 font-medium text-[var(--text)]">{labelDataset(j.dataset)}</td>
                       <td className="py-2 pr-3 text-[var(--text-dim)]">
                         {new Date(j.criado_em).toLocaleString("pt-BR")}
                       </td>
@@ -357,11 +434,20 @@ export default function DatasetFontesAdminPage() {
                         </span>
                       </td>
                       <td className="py-2 pr-3 text-[var(--text-dim)]">{duracao(j)}</td>
-                      <td className="py-2 pr-3 text-[var(--text-dim)]">{j.resumo?.linhas ?? "—"}</td>
+                      <td className="py-2 pr-3 text-[var(--text-dim)]">
+                        {j.dataset === DATASET_TODAS
+                          ? (j.resumo?.fontes ? resumoTodas(j.resumo).linhas : "—")
+                          : (j.resumo?.linhas ?? "—")}
+                      </td>
                       <td className="py-2 text-[var(--text-dim)]">
-                        {j.erro
-                          ? j.erro.slice(0, 120)
-                          : (j.resumo?.erros || []).slice(0, 2).join("; ").slice(0, 120) || "—"}
+                        {j.dataset === DATASET_TODAS && j.resumo?.fontes
+                          ? `${resumoTodas(j.resumo).ok} ok, ${resumoTodas(j.resumo).erro} com erro` +
+                            (resumoTodas(j.resumo).erro
+                              ? ` (${resumoTodas(j.resumo).keysErro.slice(0, 3).join(", ")})`
+                              : "")
+                          : j.erro
+                            ? j.erro.slice(0, 120)
+                            : (j.resumo?.erros || []).slice(0, 2).join("; ").slice(0, 120) || "—"}
                       </td>
                     </tr>
                   ))}
