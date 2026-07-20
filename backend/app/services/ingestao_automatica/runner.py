@@ -16,7 +16,19 @@ from dataclasses import asdict
 from fastapi import HTTPException
 from sqlalchemy import text
 
-from app.services.ingestao_automatica.base import FONTES_AUTOMATICAS
+from app.services.ingestao_automatica.base import (
+    DATASET_TODAS,
+    FONTES_AUTOMATICAS,
+    ORDEM_EXECUCAO_TODAS,
+)
+from app.services.ingestao_automatica.todas import (
+    item_resumo_erro,
+    item_resumo_ok,
+    mensagem_erro_todas,
+    precisa_expandir_captacao,
+    prefixo_etapa,
+    status_final_todas,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -90,11 +102,89 @@ def _atualizar_dataset_info(db, key: str, fonte_label: str, fonte_texto: str) ->
     db.commit()
 
 
+def _municipios_da_fonte(db, fonte_key: str, filtros: dict):
+    """Municípios que a fonte recebe dentro do meta-job: a captação federal
+    expande municípios avulsos para as UFs inteiras da seleção (pares do
+    diagnóstico — pode ser mais de uma UF); as demais usam o filtro original."""
+    from app.models.municipio import Municipio
+
+    if not precisa_expandir_captacao(fonte_key, filtros):
+        return resolver_municipios(db, filtros)
+    ufs = [
+        uf
+        for (uf,) in db.query(Municipio.estado)
+        .filter(Municipio.id.in_(filtros["municipio_ids"]))
+        .distinct()
+    ]
+    return (
+        db.query(Municipio)
+        .filter(Municipio.ativo.is_(True), Municipio.estado.in_(ufs))
+        .all()
+    )
+
+
+def _executar_sequencia_todas(db, filtros: dict, usuario_id, progresso) -> list[dict]:
+    """Executa as fontes na ordem, isolando falhas: exceção em uma fonte vira
+    item 'erro' no resumo agregado e a sequência continua. Audit e DatasetInfo
+    são gravados por fonte, exatamente como numa execução individual — o
+    'última execução' de cada card e a trilha por dataset continuam corretos."""
+    from app.services.municipio_management import record_ingestao_audit
+
+    itens = []
+    total_fontes = len(ORDEM_EXECUCAO_TODAS)
+    for i, key in enumerate(ORDEM_EXECUCAO_TODAS, start=1):
+        fonte = FONTES_AUTOMATICAS[key]
+
+        # default no argumento congela o par (i, label) desta iteração — sem
+        # ele, todas as closures veriam a última fonte do loop
+        def cb(atual, total=None, etapa=None, _i=i, _label=fonte.label):
+            progresso(atual, total, prefixo_etapa(_i, total_fontes, _label, etapa))
+
+        try:
+            municipios = _municipios_da_fonte(db, key, filtros)
+            cb(0, len(municipios))  # zera a barra e anuncia a fonte corrente
+            resumo = fonte.executar(
+                db=db,
+                municipios=municipios,
+                anos=filtros.get("anos"),
+                usuario_id=usuario_id,
+                notificar=filtros.get("notificar", True),
+                progresso=cb,
+            )
+            record_ingestao_audit(
+                db,
+                municipio_id=municipios[0].id if len(municipios) == 1 else None,
+                usuario_id=usuario_id,
+                dataset=key,
+                acao="auto_ingest",
+                num_linhas=resumo.linhas,
+                status="ok" if not resumo.erros else "aviso",
+                detalhe="; ".join(resumo.erros[:20]) or None,
+            )
+            _atualizar_dataset_info(db, key, fonte.label, fonte.fonte)
+            itens.append(item_resumo_ok(key, resumo))
+        except Exception as exc:  # noqa: BLE001 — uma fonte não derruba a sequência
+            logger.exception("Meta-job: fonte %s falhou", key)
+            db.rollback()
+            record_ingestao_audit(
+                db,
+                municipio_id=None,
+                usuario_id=usuario_id,
+                dataset=key,
+                acao="auto_ingest",
+                num_linhas=0,
+                status="erro",
+                detalhe=str(exc)[:1000],
+            )
+            itens.append(item_resumo_erro(key, exc))
+    return itens
+
+
 def iniciar_job(db, dataset_key: str, filtros: dict, usuario_id: int):
     from app.models.ingestao_job import IngestaoJob
 
     fonte = FONTES_AUTOMATICAS.get(dataset_key)
-    if fonte is None:
+    if fonte is None and dataset_key != DATASET_TODAS:
         raise HTTPException(status_code=404, detail=f"Fonte automática '{dataset_key}' não existe.")
 
     if not resolver_municipios(db, filtros):
@@ -162,7 +252,7 @@ def _executar_job(job_id: int) -> None:
         if job is None:
             logger.error("Job %s não encontrado ao iniciar a thread", job_id)
             return
-        fonte = FONTES_AUTOMATICAS[job.dataset]
+        fonte = FONTES_AUTOMATICAS.get(job.dataset)  # None quando dataset == DATASET_TODAS
         filtros = job.filtros or {}
         municipios = resolver_municipios(db, filtros)
 
@@ -195,28 +285,37 @@ def _executar_job(job_id: int) -> None:
             ultimo_escrito["atual"] = atual
             ultimo_escrito["etapa"] = etapa
 
-        resumo = fonte.executar(
-            db=db, municipios=municipios, anos=filtros.get("anos"),
-            usuario_id=job.usuario_id, notificar=filtros.get("notificar", True),
-            progresso=progresso,
-        )
-
-        record_ingestao_audit(
-            db,
-            municipio_id=municipios[0].id if len(municipios) == 1 else None,
-            usuario_id=job.usuario_id,
-            dataset=job.dataset,
-            acao="auto_ingest",
-            num_linhas=resumo.linhas,
-            status="ok" if not resumo.erros else "aviso",
-            detalhe="; ".join(resumo.erros[:20]) or None,
-        )
-        _atualizar_dataset_info(db, job.dataset, fonte.label, fonte.fonte)
+        if job.dataset == DATASET_TODAS:
+            itens = _executar_sequencia_todas(db, filtros, job.usuario_id, progresso)
+            resumo_json = {"fontes": itens}
+            status_final = status_final_todas(itens)
+            erro_final = mensagem_erro_todas(itens) if status_final == "erro" else None
+        else:
+            resumo = fonte.executar(
+                db=db, municipios=municipios, anos=filtros.get("anos"),
+                usuario_id=job.usuario_id, notificar=filtros.get("notificar", True),
+                progresso=progresso,
+            )
+            record_ingestao_audit(
+                db,
+                municipio_id=municipios[0].id if len(municipios) == 1 else None,
+                usuario_id=job.usuario_id,
+                dataset=job.dataset,
+                acao="auto_ingest",
+                num_linhas=resumo.linhas,
+                status="ok" if not resumo.erros else "aviso",
+                detalhe="; ".join(resumo.erros[:20]) or None,
+            )
+            _atualizar_dataset_info(db, job.dataset, fonte.label, fonte.fonte)
+            resumo_json = asdict(resumo)
+            status_final = "concluido"
+            erro_final = None
 
         db_job.refresh(job)
         if job.status == "executando":
-            job.status = "concluido"
-            job.resumo = asdict(resumo)
+            job.status = status_final
+            job.resumo = resumo_json
+            job.erro = erro_final
             job.progresso_atual = job.progresso_total or job.progresso_atual
             job.finalizado_em = _agora()
             job.atualizado_em = _agora()
