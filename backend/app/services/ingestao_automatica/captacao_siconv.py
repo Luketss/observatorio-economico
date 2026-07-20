@@ -146,7 +146,7 @@ def montar_registros(convenios: ConveniosParse,
     return registros
 
 
-def executar(db, municipios, anos=None, usuario_id=None, notificar=True) -> ResumoIngestao:
+def executar(db, municipios, anos=None, usuario_id=None, notificar=True, progresso=None) -> ResumoIngestao:
     """Baixa os 4 CSVs nacionais do SICONV, agrega por município/ano e faz
     upsert em CaptacaoFederalAnual com commit em lote por UF. Município sem
     convênio na janela simplesmente não ganha linha (captação zero é dado,
@@ -177,12 +177,20 @@ def executar(db, municipios, anos=None, usuario_id=None, notificar=True) -> Resu
             caminho = baixar_zip(BASE_URL + arquivo, os.path.join(pasta, arquivo))
             return linhas_zip(caminho)
 
+        if progresso:
+            progresso(0, len(municipios), "baixando proposta (190 MB)")
         with _abrir("siconv_proposta.csv.zip") as linhas:
             proposta_para_mid = parse_proposta_csv(linhas, alvo)
+        if progresso:
+            progresso(0, len(municipios), "baixando convênios")
         with _abrir("siconv_convenio.csv.zip") as linhas:
             convenios = parse_convenio_csv(linhas, proposta_para_mid, anos)
+        if progresso:
+            progresso(0, len(municipios), "baixando emendas")
         with _abrir("siconv_emenda.csv.zip") as linhas:
             via_emenda = parse_emenda_csv(linhas, convenios.ano_por_proposta)
+        if progresso:
+            progresso(0, len(municipios), "baixando desembolsos")
         with _abrir("siconv_desembolso.csv.zip") as linhas:
             desembolsos = parse_desembolso_csv(linhas, convenios.mid_por_convenio, anos)
 
@@ -195,6 +203,7 @@ def executar(db, municipios, anos=None, usuario_id=None, notificar=True) -> Resu
     for mid in por_mid:
         mids_por_uf.setdefault(uf_por_mid[mid], []).append(mid)
 
+    processados = 0
     for uf in sorted(mids_por_uf):
         mids = mids_por_uf[uf]
         existentes = {
@@ -215,6 +224,9 @@ def executar(db, municipios, anos=None, usuario_id=None, notificar=True) -> Resu
                     db.add(CaptacaoFederalAnual(**reg))
                 resumo.linhas += 1
         db.commit()
+        processados += len(mids)
+        if progresso:
+            progresso(processados, len(uf_por_mid), f"gravando UF {uf}")
 
     # todos os alvos válidos foram processados; sem linha = captação zero
     resumo.municipios_ok = len(uf_por_mid)

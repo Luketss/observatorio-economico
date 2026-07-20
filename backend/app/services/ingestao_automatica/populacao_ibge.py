@@ -60,7 +60,7 @@ def _buscar_ano(ano: int, codigos: list[str]) -> tuple[list, list[str]]:
     return payload, erros
 
 
-def executar(db, municipios, anos=None, usuario_id=None, notificar=True) -> ResumoIngestao:
+def executar(db, municipios, anos=None, usuario_id=None, notificar=True, progresso=None) -> ResumoIngestao:
     from app.models.populacao import PopulacaoMunicipio
 
     resumo = ResumoIngestao(dataset="populacao")
@@ -85,13 +85,17 @@ def executar(db, municipios, anos=None, usuario_id=None, notificar=True) -> Resu
 
     por_codigo: dict[str, dict[int, int]] = {}
     for ano in anos:
+        if progresso:
+            progresso(0, len(com_codigo), f"consultando IBGE {ano}")
         payload, erros_ano = _buscar_ano(ano, [m.codigo_ibge.strip() for m in com_codigo])
         resumo.erros.extend(erros_ano)
         for codigo, serie in parse_populacao_ibge(payload).items():
             por_codigo.setdefault(codigo, {}).update(serie)
 
     atualizados: list[int] = []
-    for m in com_codigo:
+    for i, m in enumerate(com_codigo, start=1):
+        if progresso:
+            progresso(i, len(com_codigo), "processando municípios")
         serie = por_codigo.get(m.codigo_ibge.strip())
         if not serie:
             resumo.municipios_erro += 1

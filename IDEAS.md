@@ -239,13 +239,24 @@ Brainstorm de 2026-07-06 focado em **aquisição**: o gargalo de venda é impres
 
 ### A. "Isso é a SUA cidade" — personalização instantânea
 
-#### Demo Express — ingestão automática por código IBGE 🔥 (grande aposta)
+#### Demo Express — ingestão automática por código IBGE 🔥 (grande aposta) — ✅ NÚCLEO ENTREGUE (jul/2026, pipeline de background)
 Pipeline que baixa e ingere automaticamente os principais datasets de qualquer município a partir do código IBGE — sem CSV manual.
-- CAGED, RAIS, Bolsa Família, PIB, Comex, Empresas etc. são fontes públicas federais indexadas por código IBGE
 - **Venda**: "me fala o nome da sua cidade" → minutos depois a demo roda com os dados reais dela
 - **Operação**: onboarding de cliente cai de dias para minutos; atualização mensal vira botão/cron
-- Começar por 2-3 datasets de maior impacto (CAGED + Bolsa Família + Empresas), expandir depois
-- É a feature que destrava escala: cada venda hoje custa horas de preparo de CSV
+
+**O que já existe (jul/2026)** — infra completa + 10 fontes automáticas em `/admin/fontes`:
+- Execução em **background job** (tabela `ingestao_job` + runner com heartbeat, trava global, polling com barra de progresso, histórico, retomada pós-refresh) — por município, múltiplos municípios (chips), UF ou Brasil inteiro
+- Fontes automáticas: população (IBGE), FPM (STN), captação federal (SICONV), emendas (Portal da Transparência), **PIB (IBGE 5938), PIX (Bacen/Olinda), Comex (MDIC), ESTBAN (Bacen), Bolsa Família e Pé-de-Meia (Portal)**
+- CSV manual continua como fallback (reingest por upload)
+- **Execução one-click de todas as fontes** (jul/2026): meta-job `dataset="todas"` encadeia as 10 fontes na ordem certa (população primeiro; captação/emendas por último), com isolamento de falha por fonte e captação expandida para a UF dos municípios selecionados
+
+**O que falta para o Demo Express completo**:
+- Fontes pesadas (microdados GB): **CAGED, RAIS, Empresas/CNPJ** — exigem worker separado no Railway (a tabela de jobs já suporta; mover o executor)
+- Fontes estaduais: **arrecadação e VAF** (portais SEF por UF, sem API padronizada)
+- **IPS** (xlsx anual) e **INSS** (fonte a confirmar)
+- **Agendamento/cron** (atualização mensal automática por fonte) e **cancelamento** de job em andamento
+- Novos domínios: saúde (SIOPS), educação (SIOPE/IDEB) etc. — ver "Expansão de domínio"
+- Follow-ups operacionais: re-rodar bolsa_familia 2023–2025 (legado ~10× inflado, upsert corrige); TLS chain incompleta do Comex Stat (usar `truststore` se der erro em prod); teste de integração do ticker/heartbeat antes dos datasets GB
 
 #### Raio-X pré-demo — a isca de reunião (dias)
 Um clique do ADMIN_GLOBAL gera PDF de 1 página: "Raio-X Econômico de [Cidade]" com os 5 fatos mais provocativos encontrados pela IA.
@@ -322,7 +333,7 @@ A oposição diz "o desemprego explodiu" → o prefeito cola a crítica no siste
 - Stack atual: FastAPI + SQLAlchemy 2.0 + PostgreSQL + React JSX + Tailwind + Recharts
 - Multi-tenant: RBAC com roles ADMIN_GLOBAL / ADMIN_MUNICIPIO / VISUALIZADOR
 - Deploy: Railway (backend + frontend + PostgreSQL)
-- Ingestion: scripts Python locais, conectam direto na Railway DB
+- Ingestion: esteira in-app de fontes automáticas com background jobs (`/admin/fontes`, 10 fontes em jul/2026); scripts Python locais (`backend/ingestao/`) e upload de CSV permanecem como fallback
 - Novas bibliotecas sugeridas:
   - `html2canvas` — captura de gráficos como imagem (frontend)
   - `react-simple-maps` — mapa do Brasil SVG (frontend)

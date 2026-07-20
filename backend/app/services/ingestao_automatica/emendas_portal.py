@@ -92,7 +92,7 @@ def parse_emendas_csv(linhas, ibge_para_mid: dict[str, int],
     return out
 
 
-def executar(db, municipios, anos=None, usuario_id=None, notificar=True) -> ResumoIngestao:
+def executar(db, municipios, anos=None, usuario_id=None, notificar=True, progresso=None) -> ResumoIngestao:
     """Baixa o zip nacional de emendas, agrega por (município, emenda) e faz
     upsert em EmendaParlamentar com commit por município. Município sem emenda
     municipalizada não ganha linha (zero é dado, não erro)."""
@@ -114,6 +114,9 @@ def executar(db, municipios, anos=None, usuario_id=None, notificar=True) -> Resu
         anos = range(ANO_INICIO_PADRAO, date.today().year + 1)
     anos = set(anos)
 
+    if progresso:
+        progresso(0, len(alvo), "baixando zip de emendas (~32 MB)")
+
     with tempfile.TemporaryDirectory(prefix="emendas_") as pasta:
         caminho = baixar_zip(URL_EMENDAS, os.path.join(pasta, "emendas.zip"))
         with linhas_zip(caminho, encoding="latin-1") as linhas:
@@ -121,7 +124,8 @@ def executar(db, municipios, anos=None, usuario_id=None, notificar=True) -> Resu
 
     ano_corrente = date.today().year
     novidades: dict[int, list] = {}
-    for mid in sorted(set(alvo.values())):
+    total = len(set(alvo.values()))
+    for i, mid in enumerate(sorted(set(alvo.values())), start=1):
         regs = por_municipio.get(mid)
         if not regs:
             continue
@@ -150,6 +154,8 @@ def executar(db, municipios, anos=None, usuario_id=None, notificar=True) -> Resu
             resumo.linhas += 1
         resumo.municipios_ok += 1
         db.commit()
+        if progresso:
+            progresso(i, total, "processando municípios")
 
     if notificar and usuario_id and novidades:
         from app.services.emendas_service import gerar_notificacoes_emendas

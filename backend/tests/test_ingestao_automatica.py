@@ -134,3 +134,40 @@ def test_norm_nome_casa_grafias_stn():
     # nomes distintos continuam distintos
     assert _norm_nome("Passa Tempo") != _norm_nome("Passa Quatro")
     assert _norm_nome("Divinópolis") != _norm_nome("Divinésia")
+
+
+# ── util: competências das fontes mensais ────────────────────────────────────
+from datetime import date
+
+from app.services.ingestao_automatica.util import competencias_janela, norm_nome_municipio
+
+
+def test_competencias_default_ultimos_12_meses():
+    out = competencias_janela(hoje=date(2026, 7, 9))
+    assert len(out) == 12
+    assert out[0] == (2025, 7)
+    assert out[-1] == (2026, 6)  # mês anterior ao corrente
+
+
+def test_competencias_por_anos_clampa_inicio_e_fim():
+    out = competencias_janela(anos=[2021, 2022], inicio=(2022, 1), hoje=date(2026, 7, 9))
+    assert out[0] == (2022, 1)          # 2021 clampado para o início da série
+    assert out[-1] == (2022, 12)
+    out2 = competencias_janela(anos=[2026], inicio=(2022, 1), hoje=date(2026, 7, 9))
+    assert out2[-1] == (2026, 6)        # nunca inclui o mês corrente/futuro
+
+
+def test_competencias_em_janeiro_rola_para_dezembro_anterior():
+    out = competencias_janela(hoje=date(2026, 1, 15))
+    assert out[-1] == (2025, 12)   # mês anterior a janeiro = dezembro do ano anterior
+    assert len(out) == 12
+    assert out[0] == (2025, 1)
+
+
+def test_norm_nome_municipio_compartilhado():
+    assert norm_nome_municipio("Divinópolis") == "divinopolis"
+    assert norm_nome_municipio("São Thomé das Letras") == norm_nome_municipio("São Tomé das Letras")
+
+
+def test_norm_nome_municipio_apostrofo_tipografico():
+    assert norm_nome_municipio("Sant’Ana do Riacho") == norm_nome_municipio("Sant'Ana do Riacho")
