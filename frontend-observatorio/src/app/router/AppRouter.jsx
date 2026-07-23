@@ -1,5 +1,6 @@
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext";
+import { hasPermissao, temPermissaoAdmin } from "../../hooks/usePermissao";
 import DashboardLayout from "../layouts/DashboardLayout";
 import AdminLayout from "../layouts/AdminLayout";
 import LandingPage from "../../pages/landing/LandingPage";
@@ -21,6 +22,7 @@ import MandatoAdminPage from "../../pages/admin/MandatoAdminPage";
 import InsightsAdminPage from "../../pages/admin/InsightsAdminPage";
 import ReleasesAdminPage from "../../pages/admin/ReleasesAdminPage";
 import MunicipiosAdminPage from "../../pages/admin/MunicipiosAdminPage";
+import RolesAdminPage from "../../pages/admin/RolesAdminPage";
 import CustomCardsAdminPage from "../../pages/admin/CustomCardsAdminPage";
 import PlanoConfigAdminPage from "../../pages/admin/PlanoConfigAdminPage";
 import ExplorerPage from "../../pages/admin/ExplorerPage";
@@ -64,12 +66,31 @@ function AdminRoute({ children }) {
   return children;
 }
 
-function AdminMunicipioRoute({ children }) {
+function AdminAreaRoute({ children }) {
   const { user, loading } = useAuth();
   if (loading) return null;
   if (!user) return <Navigate to="/login" />;
-  if (user.role === "VISUALIZADOR") return <Navigate to="/app" />;
+  if (!temPermissaoAdmin(user)) return <Navigate to="/app" />;
   return children;
+}
+
+function PermissaoRoute({ area, children }) {
+  const { user, loading } = useAuth();
+  if (loading) return null;
+  if (!user) return <Navigate to="/login" />;
+  const ok =
+    user.role === "ADMIN_GLOBAL" ||
+    ["criar", "editar", "excluir"].some((v) => hasPermissao(user, area, v));
+  if (!ok) return <Navigate to="/app" />;
+  return children;
+}
+
+function AdminIndexRedirect() {
+  const { user } = useAuth();
+  if (user?.role === "ADMIN_GLOBAL") return <Navigate to="/admin/municipios" replace />;
+  if (["criar", "editar", "excluir"].some((v) => hasPermissao(user, "mandato", v)))
+    return <Navigate to="/admin/mandato" replace />;
+  return <Navigate to="/admin/usuarios" replace />;
 }
 
 export default function AppRouter() {
@@ -128,15 +149,19 @@ export default function AppRouter() {
         <Route
           path="/admin"
           element={
-            <AdminMunicipioRoute>
+            <AdminAreaRoute>
               <AdminLayout />
-            </AdminMunicipioRoute>
+            </AdminAreaRoute>
           }
         >
-          <Route index element={<Navigate to="/admin/municipios" replace />} />
+          <Route index element={<AdminIndexRedirect />} />
           <Route
             path="municipios"
             element={<AdminRoute><MunicipiosAdminPage /></AdminRoute>}
+          />
+          <Route
+            path="roles"
+            element={<AdminRoute><RolesAdminPage /></AdminRoute>}
           />
           <Route
             path="insights"
@@ -154,10 +179,13 @@ export default function AppRouter() {
             path="planos"
             element={<AdminRoute><PlanoConfigAdminPage /></AdminRoute>}
           />
-          <Route path="mandato" element={<MandatoAdminPage />} />
+          <Route
+            path="mandato"
+            element={<PermissaoRoute area="mandato"><MandatoAdminPage /></PermissaoRoute>}
+          />
           <Route
             path="usuarios"
-            element={<AdminRoute><UsuariosAdminPage /></AdminRoute>}
+            element={<PermissaoRoute area="usuarios"><UsuariosAdminPage /></PermissaoRoute>}
           />
           <Route
             path="login-audit"

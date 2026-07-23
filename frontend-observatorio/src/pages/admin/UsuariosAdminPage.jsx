@@ -17,19 +17,15 @@ import {
   EyeSlashIcon,
 } from "@heroicons/react/24/outline";
 
-const ROLES = [
-  { id: 1, nome: "ADMIN_GLOBAL" },
-  { id: 2, nome: "ADMIN_MUNICIPIO" },
-  { id: 3, nome: "VISUALIZADOR" },
-];
-
-const defaultForm = { nome: "", email: "", senha: "", municipio_id: "", role_id: 3 };
+const defaultForm = { nome: "", email: "", senha: "", municipio_id: "", role_id: "" };
 
 export default function UsuariosAdminPage() {
   const { user: currentUser } = useAuth();
+  const isGlobal = currentUser?.role === "ADMIN_GLOBAL";
   const { addToast } = useToast();
   const [usuarios, setUsuarios] = useState([]);
   const [municipios, setMunicipios] = useState([]);
+  const [roles, setRoles] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [editingId, setEditingId] = useState(null);
@@ -53,10 +49,16 @@ export default function UsuariosAdminPage() {
   }
 
   useEffect(() => {
-    Promise.all([loadUsuarios(), api.get("/municipios")])
-      .then(([, munRes]) => setMunicipios(munRes.data || []))
+    const reqs = [loadUsuarios(), api.get("/municipios")];
+    if (isGlobal) reqs.push(api.get("/roles"));
+    Promise.all(reqs)
+      .then(([, munRes, rolesRes]) => {
+        setMunicipios(munRes.data || []);
+        if (rolesRes) setRoles(rolesRes.data || []);
+      })
       .catch((err) => console.error("Erro ao carregar usuários:", err))
       .finally(() => setLoading(false));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // Join município name into each row so search can match it, and feed to the hook.
@@ -85,7 +87,10 @@ export default function UsuariosAdminPage() {
 
   function openCreate() {
     setEditingId(null);
-    setForm(defaultForm);
+    setForm({
+      ...defaultForm,
+      role_id: roles.find((r) => r.nome === "VISUALIZADOR")?.id ?? "",
+    });
     setEstadoFiltro("");
     setFormError(null);
     setShowPassword(false);
@@ -101,7 +106,7 @@ export default function UsuariosAdminPage() {
       email: u.email,
       senha: "",
       municipio_id: u.municipio_id ?? "",
-      role_id: ROLES.find((r) => r.nome === u.role)?.id ?? 3,
+      role_id: roles.find((r) => r.nome === u.role)?.id ?? "",
     });
     setFormError(null);
     setShowPassword(false);
@@ -122,9 +127,14 @@ export default function UsuariosAdminPage() {
     const payload = {
       nome: form.nome,
       email: form.email,
-      municipio_id: form.municipio_id ? Number(form.municipio_id) : null,
-      role_id: Number(form.role_id),
     };
+    // Delegados (não-global) não escolhem role/município: o backend fixa
+    // VISUALIZADOR + município do ator. Omitir os campos — nunca enviar ""
+    // (Optional[int] rejeita string vazia).
+    if (isGlobal) {
+      payload.municipio_id = form.municipio_id ? Number(form.municipio_id) : null;
+      payload.role_id = Number(form.role_id);
+    }
     try {
       if (editingId) {
         if (form.senha) payload.senha = form.senha;
@@ -167,6 +177,9 @@ export default function UsuariosAdminPage() {
   const municipiosFiltrados = estadoFiltro
     ? municipios.filter((m) => m.estado === estadoFiltro)
     : municipios;
+  const rolesDisponiveis = roles.filter(
+    (r) => r.municipio_id == null || String(r.municipio_id) === String(form.municipio_id)
+  );
 
   return (
     <motion.div
@@ -292,7 +305,7 @@ export default function UsuariosAdminPage() {
                 </div>
               </div>
 
-              {estados.length > 1 && (
+              {isGlobal && estados.length > 1 && (
                 <div className="flex flex-col gap-1">
                   <label htmlFor="u-estado" className="text-xs font-medium text-slate-500 uppercase tracking-wider">Estado</label>
                   <select
@@ -307,29 +320,33 @@ export default function UsuariosAdminPage() {
                 </div>
               )}
 
-              <div className="flex flex-col gap-1">
-                <label htmlFor="u-municipio" className="text-xs font-medium text-slate-500 uppercase tracking-wider">Município</label>
-                <MunicipioPicker
-                  municipios={municipiosFiltrados}
-                  value={form.municipio_id}
-                  onChange={(id) => setForm((prev) => ({ ...prev, municipio_id: id }))}
-                />
-              </div>
+              {isGlobal && (
+                <div className="flex flex-col gap-1">
+                  <label htmlFor="u-municipio" className="text-xs font-medium text-slate-500 uppercase tracking-wider">Município</label>
+                  <MunicipioPicker
+                    municipios={municipiosFiltrados}
+                    value={form.municipio_id}
+                    onChange={(id) => setForm((prev) => ({ ...prev, municipio_id: id }))}
+                  />
+                </div>
+              )}
 
-              <div className="flex flex-col gap-1">
-                <label htmlFor="u-perfil" className="text-xs font-medium text-slate-500 uppercase tracking-wider">
-                  Perfil <span className="text-red-500" aria-hidden="true">*</span>
-                </label>
-                <select
-                  id="u-perfil"
-                  name="role_id"
-                  value={form.role_id}
-                  onChange={handleChange}
-                  className="px-3 py-2 rounded-lg border border-[var(--border)] text-sm focus:outline-none focus:ring-2 focus:ring-blue-500  "
-                >
-                  {ROLES.map((r) => <option key={r.id} value={r.id}>{r.nome}</option>)}
-                </select>
-              </div>
+              {isGlobal && (
+                <div className="flex flex-col gap-1">
+                  <label htmlFor="u-perfil" className="text-xs font-medium text-slate-500 uppercase tracking-wider">
+                    Perfil <span className="text-red-500" aria-hidden="true">*</span>
+                  </label>
+                  <select
+                    id="u-perfil"
+                    name="role_id"
+                    value={form.role_id}
+                    onChange={handleChange}
+                    className="px-3 py-2 rounded-lg border border-[var(--border)] text-sm focus:outline-none focus:ring-2 focus:ring-blue-500  "
+                  >
+                    {rolesDisponiveis.map((r) => <option key={r.id} value={r.id}>{r.nome}</option>)}
+                  </select>
+                </div>
+              )}
 
               <div className="md:col-span-2 flex items-center gap-3 pt-2">
                 {formError && <p className="text-sm text-red-600 flex-1" role="alert">{formError}</p>}
@@ -407,7 +424,7 @@ export default function UsuariosAdminPage() {
                           />
                         </td>
                         <td className="px-3 py-3 md:px-6">
-                          {currentUser?.id !== u.id && (
+                          {currentUser?.id !== u.id && (isGlobal || u.role !== "ADMIN_GLOBAL") && (
                             <div className="flex items-center gap-1 justify-end">
                               <button
                                 type="button"

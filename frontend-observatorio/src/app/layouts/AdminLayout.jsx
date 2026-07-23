@@ -3,6 +3,7 @@ import { ToastProvider } from "../../context/ToastContext";
 import { NavLink, Outlet, useNavigate, useLocation } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext";
 import { useTheme, THEMES } from "../../context/ThemeContext";
+import { hasPermissao } from "../../hooks/usePermissao";
 import {
   SparklesIcon,
   FlagIcon,
@@ -23,11 +24,13 @@ import {
   TrashIcon,
   FingerPrintIcon,
   DocumentTextIcon,
+  KeyIcon,
 } from "@heroicons/react/24/outline";
 
 // ── Route → display name map ──────────────────────────────────────────────────
 const ROUTE_LABELS = {
   "/admin/municipios":    "Municípios",
+  "/admin/roles":         "Roles e Permissões",
   "/admin/insights":      "Insights IA",
   "/admin/releases":      "Releases",
   "/admin/cards":         "Cards Customizados",
@@ -124,6 +127,7 @@ const GESTAO_ITEMS = [
   { to: "/admin/cards",          label: "Cards Customizados",icon: Squares2X2Icon },
   { to: "/admin/planos",         label: "Planos & Acesso",   icon: ShieldCheckIcon },
   { to: "/admin/usuarios",       label: "Usuários",          icon: UsersIcon },
+  { to: "/admin/roles",          label: "Roles",             icon: KeyIcon },
   { to: "/admin/login-audit",    label: "Logins / Auditoria",icon: FingerPrintIcon },
 ];
 
@@ -260,10 +264,17 @@ export default function AdminLayout() {
           </>
         )}
 
-        {/* Non-global: just mandato */}
+        {/* Non-global: mandato e/ou usuários, por permissão do delegado */}
         {!isGlobal && (
           <div className="space-y-0.5">
-            {renderNavItems([{ to: "/admin/mandato", label: "Timeline do Mandato", icon: FlagIcon }])}
+            {renderNavItems([
+              ...(["criar", "editar", "excluir"].some((v) => hasPermissao(user, "mandato", v))
+                ? [{ to: "/admin/mandato", label: "Timeline do Mandato", icon: FlagIcon }]
+                : []),
+              ...(["criar", "editar", "excluir"].some((v) => hasPermissao(user, "usuarios", v))
+                ? [{ to: "/admin/usuarios", label: "Usuários", icon: UsersIcon }]
+                : []),
+            ])}
           </div>
         )}
       </nav>
