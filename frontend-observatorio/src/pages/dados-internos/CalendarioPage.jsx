@@ -13,9 +13,9 @@ import {
   ArrowTopRightOnSquareIcon,
 } from "@heroicons/react/24/outline";
 import api from "../../services/api";
-import { useAuth } from "../../context/AuthContext";
 import { useToast } from "../../context/ToastContext";
 import { useEscapeKey } from "../../hooks/useEscapeKey";
+import { usePermissao } from "../../hooks/usePermissao";
 import { useCalendarEvents } from "../../hooks/useCalendarEvents";
 import NidTabBar from "../../components/nid/NidTabBar";
 
@@ -112,9 +112,10 @@ function SourceBadge({ source }) {
 // ─────────────────────────────────────────────────────────────────────────────
 
 export default function CalendarioPage() {
-  const { user } = useAuth();
   const { addToast } = useToast();
-  const canEdit = user?.role === "ADMIN_GLOBAL" || user?.role === "ADMIN_MUNICIPIO";
+  const canCriar = usePermissao("dados_internos", "criar");
+  const canEditar = usePermissao("dados_internos", "editar");
+  const canExcluir = usePermissao("dados_internos", "excluir");
 
   const today = new Date();
   const [ano, setAno] = useState(today.getFullYear());
@@ -599,7 +600,7 @@ export default function CalendarioPage() {
                       {selectedDay} de {MESES[mes - 1]}
                     </h3>
                     <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-                      {canEdit && (
+                      {canCriar && (
                         <button
                           onClick={() => openCreate(selectedDay)}
                           style={{
@@ -686,20 +687,24 @@ export default function CalendarioPage() {
                                   {ev.title}
                                 </p>
                               </div>
-                              {canEdit && isDados && (
+                              {isDados && (canEditar || canExcluir) && (
                                 <div style={{ display: "flex", gap: "4px", flexShrink: 0 }}>
-                                  <button
-                                    onClick={() => openEditDados(ev)}
-                                    style={{ background: "none", border: "none", cursor: "pointer", color: "var(--text-mute)", display: "flex", alignItems: "center" }}
-                                  >
-                                    <PencilIcon style={{ width: "11px", height: "11px" }} />
-                                  </button>
-                                  <button
-                                    onClick={() => setDeleteConfirmId(rawId)}
-                                    style={{ background: "none", border: "none", cursor: "pointer", color: "var(--text-mute)", display: "flex", alignItems: "center" }}
-                                  >
-                                    <TrashIcon style={{ width: "11px", height: "11px" }} />
-                                  </button>
+                                  {canEditar && (
+                                    <button
+                                      onClick={() => openEditDados(ev)}
+                                      style={{ background: "none", border: "none", cursor: "pointer", color: "var(--text-mute)", display: "flex", alignItems: "center" }}
+                                    >
+                                      <PencilIcon style={{ width: "11px", height: "11px" }} />
+                                    </button>
+                                  )}
+                                  {canExcluir && (
+                                    <button
+                                      onClick={() => setDeleteConfirmId(rawId)}
+                                      style={{ background: "none", border: "none", cursor: "pointer", color: "var(--text-mute)", display: "flex", alignItems: "center" }}
+                                    >
+                                      <TrashIcon style={{ width: "11px", height: "11px" }} />
+                                    </button>
+                                  )}
                                 </div>
                               )}
                             </div>

@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import api from "../../services/api";
+import { usePermissao } from "../../hooks/usePermissao";
 import {
   PlusIcon,
   PencilIcon,
@@ -30,6 +31,11 @@ function fmtDate(d) {
 }
 
 export default function MandatoAdminPage() {
+  // ADMIN_GLOBAL cria aqui passando municipio_id explícito — sem exclusão.
+  const canCriar = usePermissao("mandato", "criar");
+  const canEditar = usePermissao("mandato", "editar");
+  const canExcluir = usePermissao("mandato", "excluir");
+
   const [marcos, setMarcos] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
@@ -114,13 +120,15 @@ export default function MandatoAdminPage() {
             Gerencie marcos, obras e eventos do mandato.
           </p>
         </div>
-        <button
-          onClick={openCreate}
-          className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium px-4 py-2.5 rounded-xl transition-colors shadow-sm"
-        >
-          <PlusIcon className="w-4 h-4" />
-          Novo Marco
-        </button>
+        {canCriar && (
+          <button
+            onClick={openCreate}
+            className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium px-4 py-2.5 rounded-xl transition-colors shadow-sm"
+          >
+            <PlusIcon className="w-4 h-4" />
+            Novo Marco
+          </button>
+        )}
       </div>
 
       {/* Form modal */}
@@ -246,9 +254,11 @@ export default function MandatoAdminPage() {
           <div className="flex flex-col items-center justify-center py-16 text-center">
             <FlagIcon className="w-12 h-12 text-[var(--text-mute)] mb-3" />
             <p className="text-[var(--text-dim)] font-medium">Nenhum marco cadastrado</p>
-            <p className="text-sm text-[var(--text-mute)] mt-1">
-              Clique em "Novo Marco" para começar.
-            </p>
+            {canCriar && (
+              <p className="text-sm text-[var(--text-mute)] mt-1">
+                Clique em "Novo Marco" para começar.
+              </p>
+            )}
           </div>
         ) : (
           <table className="w-full text-sm">
@@ -258,7 +268,7 @@ export default function MandatoAdminPage() {
                 <th className="px-3 py-3 md:px-6">Tipo</th>
                 <th className="px-3 py-3 md:px-6">Título</th>
                 <th className="px-3 py-3 md:px-6">Descrição</th>
-                <th className="px-3 py-3 md:px-6 text-right">Ações</th>
+                {(canEditar || canExcluir) && <th className="px-3 py-3 md:px-6 text-right">Ações</th>}
               </tr>
             </thead>
             <tbody className="divide-y divide-[var(--border)]">
@@ -276,24 +286,30 @@ export default function MandatoAdminPage() {
                   <td className="px-3 py-4 md:px-6 text-[var(--text-mute)] max-w-xs truncate">
                     {marco.descricao || "—"}
                   </td>
-                  <td className="px-3 py-4 md:px-6 text-right">
-                    <div className="flex items-center justify-end gap-2">
-                      <button
-                        onClick={() => openEdit(marco)}
-                        className="p-1.5 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
-                        title="Editar"
-                      >
-                        <PencilIcon className="w-4 h-4" />
-                      </button>
-                      <button
-                        onClick={() => handleDelete(marco.id)}
-                        className="p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
-                        title="Excluir"
-                      >
-                        <TrashIcon className="w-4 h-4" />
-                      </button>
-                    </div>
-                  </td>
+                  {(canEditar || canExcluir) && (
+                    <td className="px-3 py-4 md:px-6 text-right">
+                      <div className="flex items-center justify-end gap-2">
+                        {canEditar && (
+                          <button
+                            onClick={() => openEdit(marco)}
+                            className="p-1.5 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                            title="Editar"
+                          >
+                            <PencilIcon className="w-4 h-4" />
+                          </button>
+                        )}
+                        {canExcluir && (
+                          <button
+                            onClick={() => handleDelete(marco.id)}
+                            className="p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                            title="Excluir"
+                          >
+                            <TrashIcon className="w-4 h-4" />
+                          </button>
+                        )}
+                      </div>
+                    </td>
+                  )}
                 </tr>
               ))}
             </tbody>

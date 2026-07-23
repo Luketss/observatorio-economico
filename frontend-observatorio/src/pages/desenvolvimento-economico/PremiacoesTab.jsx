@@ -14,6 +14,7 @@ import api from "../../services/api";
 import { useAuth } from "../../context/AuthContext";
 import { useToast } from "../../context/ToastContext";
 import { useEscapeKey } from "../../hooks/useEscapeKey";
+import { usePermissao } from "../../hooks/usePermissao";
 
 const STATUS_CONFIG = {
   oportunidade:   { label: "Oportunidade",    color: "bg-[var(--panel-2)] text-[var(--text-dim)]" },
@@ -51,7 +52,10 @@ export default function PremiacoesTab() {
   const { user } = useAuth();
   const { addToast } = useToast();
   const isGlobal = user?.role === "ADMIN_GLOBAL";
-  const canEdit = user?.role === "ADMIN_MUNICIPIO";
+  // ADMIN_GLOBAL não cria aqui: o registro nasce no município do usuário.
+  const canCriar = usePermissao("premiacoes", "criar") && !isGlobal;
+  const canEditar = usePermissao("premiacoes", "editar");
+  const canExcluir = usePermissao("premiacoes", "excluir");
 
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -211,7 +215,7 @@ export default function PremiacoesTab() {
 
       {/* Toolbar */}
       <div className="flex justify-end">
-        {canEdit && (
+        {canCriar && (
           <button
             onClick={openCreate}
             className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2.5 rounded-xl text-sm font-medium transition-colors cursor-pointer"
@@ -226,7 +230,7 @@ export default function PremiacoesTab() {
       {items.length === 0 ? (
         <div className="text-center py-16 text-slate-400">
           <p className="text-sm">Nenhuma premiação cadastrada ainda.</p>
-          {canEdit && <p className="text-xs mt-1">Clique em "Nova Premiação" para começar.</p>}
+          {canCriar && <p className="text-xs mt-1">Clique em "Nova Premiação" para começar.</p>}
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
@@ -245,14 +249,18 @@ export default function PremiacoesTab() {
                     <h4 className="font-semibold text-[var(--text)] text-sm leading-snug">{item.titulo}</h4>
                     {item.entidade && <p className="text-xs text-slate-400 mt-0.5">{item.entidade}</p>}
                   </div>
-                  {canEdit && (
+                  {(canEditar || canExcluir) && (
                     <div className="flex gap-1 shrink-0">
-                      <button onClick={() => openEdit(item)} className="p-1.5 rounded-lg text-slate-400 hover:text-blue-600 hover:bg-[var(--panel-2)] transition-colors cursor-pointer">
-                        <PencilIcon className="w-3.5 h-3.5" />
-                      </button>
-                      <button onClick={() => setDeleteConfirmId(item.id)} className="p-1.5 rounded-lg text-slate-400 hover:text-red-500 hover:bg-[var(--panel-2)] transition-colors cursor-pointer">
-                        <TrashIcon className="w-3.5 h-3.5" />
-                      </button>
+                      {canEditar && (
+                        <button onClick={() => openEdit(item)} className="p-1.5 rounded-lg text-slate-400 hover:text-blue-600 hover:bg-[var(--panel-2)] transition-colors cursor-pointer">
+                          <PencilIcon className="w-3.5 h-3.5" />
+                        </button>
+                      )}
+                      {canExcluir && (
+                        <button onClick={() => setDeleteConfirmId(item.id)} className="p-1.5 rounded-lg text-slate-400 hover:text-red-500 hover:bg-[var(--panel-2)] transition-colors cursor-pointer">
+                          <TrashIcon className="w-3.5 h-3.5" />
+                        </button>
+                      )}
                     </div>
                   )}
                 </div>
@@ -272,7 +280,7 @@ export default function PremiacoesTab() {
                   )}
                 </div>
 
-                {canEdit && (
+                {canEditar && (
                   <div className="pt-1.5 border-t border-[var(--border)]">
                     <select
                       value={item.status}

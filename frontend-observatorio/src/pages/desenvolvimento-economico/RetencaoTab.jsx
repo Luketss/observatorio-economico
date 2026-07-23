@@ -15,6 +15,7 @@ import api from "../../services/api";
 import { useAuth } from "../../context/AuthContext";
 import { useToast } from "../../context/ToastContext";
 import { useEscapeKey } from "../../hooks/useEscapeKey";
+import { usePermissao } from "../../hooks/usePermissao";
 
 const RISCO_CONFIG = {
   baixo:  { label: "Risco baixo",  color: "bg-[var(--panel-2)] text-green-400" },
@@ -54,7 +55,10 @@ export default function RetencaoTab() {
   const { user } = useAuth();
   const { addToast } = useToast();
   const isGlobal = user?.role === "ADMIN_GLOBAL";
-  const canEdit = user?.role === "ADMIN_MUNICIPIO";
+  // ADMIN_GLOBAL não cria aqui: o registro nasce no município do usuário.
+  const canCriar = usePermissao("retencao", "criar") && !isGlobal;
+  const canEditar = usePermissao("retencao", "editar");
+  const canExcluir = usePermissao("retencao", "excluir");
 
   const [empresas, setEmpresas] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -272,7 +276,7 @@ export default function RetencaoTab() {
 
       {/* Toolbar */}
       <div className="flex justify-end">
-        {canEdit && (
+        {canCriar && (
           <button
             onClick={openCreate}
             className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2.5 rounded-xl text-sm font-medium transition-colors cursor-pointer"
@@ -287,7 +291,7 @@ export default function RetencaoTab() {
       {empresas.length === 0 ? (
         <div className="text-center py-16 text-slate-400">
           <p className="text-sm">Nenhuma empresa monitorada ainda.</p>
-          {canEdit && <p className="text-xs mt-1">Clique em "Nova Empresa" para começar.</p>}
+          {canCriar && <p className="text-xs mt-1">Clique em "Nova Empresa" para começar.</p>}
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
@@ -305,14 +309,18 @@ export default function RetencaoTab() {
                       <h4 className="font-semibold text-[var(--text)] text-sm leading-snug">{empresa.nome}</h4>
                       {empresa.setor && <p className="text-xs text-slate-400 mt-0.5">{empresa.setor}</p>}
                     </div>
-                    {canEdit && (
+                    {(canEditar || canExcluir) && (
                       <div className="flex gap-1 shrink-0">
-                        <button onClick={() => openEdit(empresa)} className="p-1.5 rounded-lg text-slate-400 hover:text-blue-600 hover:bg-[var(--panel-2)] transition-colors cursor-pointer">
-                          <PencilIcon className="w-3.5 h-3.5" />
-                        </button>
-                        <button onClick={() => setDeleteConfirmId(empresa.id)} className="p-1.5 rounded-lg text-slate-400 hover:text-red-500 hover:bg-[var(--panel-2)] transition-colors cursor-pointer">
-                          <TrashIcon className="w-3.5 h-3.5" />
-                        </button>
+                        {canEditar && (
+                          <button onClick={() => openEdit(empresa)} className="p-1.5 rounded-lg text-slate-400 hover:text-blue-600 hover:bg-[var(--panel-2)] transition-colors cursor-pointer">
+                            <PencilIcon className="w-3.5 h-3.5" />
+                          </button>
+                        )}
+                        {canExcluir && (
+                          <button onClick={() => setDeleteConfirmId(empresa.id)} className="p-1.5 rounded-lg text-slate-400 hover:text-red-500 hover:bg-[var(--panel-2)] transition-colors cursor-pointer">
+                            <TrashIcon className="w-3.5 h-3.5" />
+                          </button>
+                        )}
                       </div>
                     )}
                   </div>
@@ -361,7 +369,7 @@ export default function RetencaoTab() {
                                   <div className="flex-1 pb-2 space-y-1">
                                     <div className="flex items-center justify-between gap-2">
                                       <p className="text-xs font-medium text-[var(--text-dim)]">{fmtDate(v.data_visita)}</p>
-                                      {canEdit && (
+                                      {canEditar && (
                                         <button
                                           onClick={() => handleDeleteVisita(v, empresa.id)}
                                           disabled={deletingVisitaId === v.id}
@@ -387,8 +395,8 @@ export default function RetencaoTab() {
                           </div>
                         )}
 
-                        {/* Add visit form */}
-                        {canEdit && (
+                        {/* Add visit form (backend: visitas exigem retencao/editar) */}
+                        {canEditar && (
                           <div className="border-t border-[var(--border)] pt-3 space-y-2">
                             <p className="text-xs font-semibold text-[var(--text-dim)] uppercase tracking-wider">Registrar nova visita</p>
                             <input

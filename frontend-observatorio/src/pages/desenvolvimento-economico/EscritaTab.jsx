@@ -12,6 +12,7 @@ import api from "../../services/api";
 import { useAuth } from "../../context/AuthContext";
 import { useToast } from "../../context/ToastContext";
 import { useEscapeKey } from "../../hooks/useEscapeKey";
+import { usePermissao } from "../../hooks/usePermissao";
 
 const ESTAGIOS = ["ideia", "elaboracao", "submissao", "resultado"];
 const ESTAGIO_CONFIG = {
@@ -47,7 +48,10 @@ export default function EscritaTab() {
   const { user } = useAuth();
   const { addToast } = useToast();
   const isGlobal = user?.role === "ADMIN_GLOBAL";
-  const canEdit = user?.role === "ADMIN_MUNICIPIO";
+  // ADMIN_GLOBAL não cria aqui: o registro nasce no município do usuário.
+  const canCriar = usePermissao("escrita", "criar") && !isGlobal;
+  const canEditar = usePermissao("escrita", "editar");
+  const canExcluir = usePermissao("escrita", "excluir");
 
   const [items, setItems] = useState([]);
   const [captacoes, setCaptacoes] = useState([]);
@@ -219,7 +223,7 @@ export default function EscritaTab() {
 
       {/* Toolbar */}
       <div className="flex justify-end">
-        {canEdit && (
+        {canCriar && (
           <button
             onClick={openCreate}
             className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2.5 rounded-xl text-sm font-medium transition-colors cursor-pointer"
@@ -234,7 +238,7 @@ export default function EscritaTab() {
       {items.length === 0 ? (
         <div className="text-center py-16 text-slate-400">
           <p className="text-sm">Nenhum projeto de escrita cadastrado ainda.</p>
-          {canEdit && <p className="text-xs mt-1">Clique em "Novo Projeto" para começar.</p>}
+          {canCriar && <p className="text-xs mt-1">Clique em "Novo Projeto" para começar.</p>}
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6">
@@ -263,14 +267,18 @@ export default function EscritaTab() {
                             )}
                             <h4 className="font-medium text-[var(--text)] text-sm leading-snug">{item.titulo}</h4>
                           </div>
-                          {canEdit && (
+                          {(canEditar || canExcluir) && (
                             <div className="flex gap-1 shrink-0">
-                              <button onClick={() => openEdit(item)} className="p-1.5 rounded-lg text-slate-400 hover:text-blue-600 hover:bg-[var(--panel-2)] transition-colors cursor-pointer">
-                                <PencilIcon className="w-3.5 h-3.5" />
-                              </button>
-                              <button onClick={() => setDeleteConfirmId(item.id)} className="p-1.5 rounded-lg text-slate-400 hover:text-red-500 hover:bg-[var(--panel-2)] transition-colors cursor-pointer">
-                                <TrashIcon className="w-3.5 h-3.5" />
-                              </button>
+                              {canEditar && (
+                                <button onClick={() => openEdit(item)} className="p-1.5 rounded-lg text-slate-400 hover:text-blue-600 hover:bg-[var(--panel-2)] transition-colors cursor-pointer">
+                                  <PencilIcon className="w-3.5 h-3.5" />
+                                </button>
+                              )}
+                              {canExcluir && (
+                                <button onClick={() => setDeleteConfirmId(item.id)} className="p-1.5 rounded-lg text-slate-400 hover:text-red-500 hover:bg-[var(--panel-2)] transition-colors cursor-pointer">
+                                  <TrashIcon className="w-3.5 h-3.5" />
+                                </button>
+                              )}
                             </div>
                           )}
                         </div>
@@ -281,7 +289,7 @@ export default function EscritaTab() {
                           {item.responsavel && <span>{item.responsavel}</span>}
                           {item.valor_pleiteado && <span className="font-semibold text-[var(--text-dim)]">{fmtMoeda(item.valor_pleiteado)}</span>}
                         </div>
-                        {canEdit && (
+                        {canEditar && (
                           <div className="pt-1.5 border-t border-[var(--border)]">
                             <select
                               value={item.estagio}

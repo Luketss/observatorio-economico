@@ -5,11 +5,13 @@ import api from "../services/api";
 import { useAuth } from "../context/AuthContext";
 import { usePlan } from "../context/PlanContext";
 import { useToast } from "../context/ToastContext";
+import { hasPermissao } from "../hooks/usePermissao";
 
 /** CTA "diagnóstico → ação": cria um CaptacaoRecurso pré-preenchido no estágio
  * "oportunidade" e navega ao kanban de Captação (Desenv. Econômico). Só aparece
- * para quem pode escrever no módulo (ADMIN_MUNICIPIO) e o tem no plano — o
- * backend já bloqueia VISUALIZADOR/ADMIN_GLOBAL de qualquer forma. */
+ * para quem pode criar no módulo e o tem no plano — ADMIN_GLOBAL fica de fora
+ * porque o registro nasce no município do usuário; o backend já bloqueia
+ * VISUALIZADOR/ADMIN_GLOBAL de qualquer forma. */
 export default function CriarOportunidadeCaptacao({ payload, label = "Registrar no funil de captação", compact = false }) {
   const { user } = useAuth();
   const { canAccess } = usePlan();
@@ -17,7 +19,7 @@ export default function CriarOportunidadeCaptacao({ payload, label = "Registrar 
   const navigate = useNavigate();
   const [saving, setSaving] = useState(false);
 
-  if (user?.role !== "ADMIN_MUNICIPIO" || !canAccess("desenvolvimento_economico.captacao")) return null;
+  if (!hasPermissao(user, "captacao", "criar") || user?.role === "ADMIN_GLOBAL" || !canAccess("desenvolvimento_economico.captacao")) return null;
 
   const criar = async () => {
     setSaving(true);

@@ -16,6 +16,7 @@ import api from "../../services/api";
 import { useAuth } from "../../context/AuthContext";
 import { useToast } from "../../context/ToastContext";
 import { useEscapeKey } from "../../hooks/useEscapeKey";
+import { usePermissao } from "../../hooks/usePermissao";
 import NidTabBar from "../../components/nid/NidTabBar";
 import StatusPill from "../../components/nid/StatusPill";
 
@@ -50,7 +51,10 @@ export default function AcompanhamentoTab() {
   const { user } = useAuth();
   const { addToast } = useToast();
   const isGlobal = user?.role === "ADMIN_GLOBAL";
-  const canEdit = user?.role === "ADMIN_MUNICIPIO" || user?.role === "ADMIN_GLOBAL";
+  // ADMIN_GLOBAL não cria aqui: o projeto nasce no município do usuário.
+  const canCriar = usePermissao("projetos", "criar") && !isGlobal;
+  const canEditar = usePermissao("projetos", "editar");
+  const canExcluir = usePermissao("projetos", "excluir");
 
   const [projetos, setProjetos] = useState([]);
   const [eixos, setEixos] = useState([]);
@@ -268,14 +272,18 @@ export default function AcompanhamentoTab() {
               {projeto.titulo}
             </h3>
           </div>
-          {canEdit && (
+          {(canEditar || canExcluir) && (
             <div style={{ display: "flex", gap: 4, flexShrink: 0 }}>
-              <button onClick={() => openEdit(projeto)} aria-label="Editar" className="proj-card__icon-btn">
-                <PencilIcon className="w-3.5 h-3.5" />
-              </button>
-              <button onClick={() => setDeleteConfirmId(projeto.id)} aria-label="Excluir" className="proj-card__icon-btn proj-card__icon-btn--danger">
-                <TrashIcon className="w-3.5 h-3.5" />
-              </button>
+              {canEditar && (
+                <button onClick={() => openEdit(projeto)} aria-label="Editar" className="proj-card__icon-btn">
+                  <PencilIcon className="w-3.5 h-3.5" />
+                </button>
+              )}
+              {canExcluir && (
+                <button onClick={() => setDeleteConfirmId(projeto.id)} aria-label="Excluir" className="proj-card__icon-btn proj-card__icon-btn--danger">
+                  <TrashIcon className="w-3.5 h-3.5" />
+                </button>
+              )}
             </div>
           )}
         </div>
@@ -302,7 +310,7 @@ export default function AcompanhamentoTab() {
         {/* Footer: StatusPill + optional status change dropdown */}
         <div className="proj-card__footer" style={{ flexDirection: "column", gap: 8 }}>
           <StatusPill kind={st.kind} dot label={st.label} />
-          {canEdit && (
+          {canEditar && (
             <select
               value={projeto.status}
               onChange={(e) => handleStatusChange(projeto.id, e.target.value)}
@@ -367,7 +375,7 @@ export default function AcompanhamentoTab() {
             </button>
           </div>
         </div>
-        {canEdit && (
+        {canCriar && (
           <button onClick={openCreate} className="proj-add-btn">
             <PlusIcon className="w-4 h-4" />
             Novo Projeto
@@ -422,7 +430,7 @@ export default function AcompanhamentoTab() {
                 <th style={{ padding: "10px 20px" }}>Status</th>
                 <th style={{ padding: "10px 20px" }}>Responsável</th>
                 <th style={{ padding: "10px 20px" }}>Prazo</th>
-                {canEdit && <th style={{ padding: "10px 20px" }} />}
+                {(canEditar || canExcluir) && <th style={{ padding: "10px 20px" }} />}
               </tr>
             </thead>
             <tbody>
@@ -449,15 +457,19 @@ export default function AcompanhamentoTab() {
                       </td>
                       <td style={{ padding: "10px 20px", color: "var(--text-dim)" }}>{p.responsavel || "—"}</td>
                       <td style={{ padding: "10px 20px", color: "var(--text-mute)", fontSize: 11 }}>{fmtDate(p.data_prazo) || "—"}</td>
-                      {canEdit && (
+                      {(canEditar || canExcluir) && (
                         <td style={{ padding: "10px 20px" }}>
                           <div style={{ display: "flex", alignItems: "center", gap: 8, justifyContent: "flex-end" }}>
-                            <button onClick={() => openEdit(p)} aria-label="Editar" className="proj-card__icon-btn">
-                              <PencilIcon className="w-4 h-4" />
-                            </button>
-                            <button onClick={() => setDeleteConfirmId(p.id)} aria-label="Excluir" className="proj-card__icon-btn proj-card__icon-btn--danger">
-                              <TrashIcon className="w-4 h-4" />
-                            </button>
+                            {canEditar && (
+                              <button onClick={() => openEdit(p)} aria-label="Editar" className="proj-card__icon-btn">
+                                <PencilIcon className="w-4 h-4" />
+                              </button>
+                            )}
+                            {canExcluir && (
+                              <button onClick={() => setDeleteConfirmId(p.id)} aria-label="Excluir" className="proj-card__icon-btn proj-card__icon-btn--danger">
+                                <TrashIcon className="w-4 h-4" />
+                              </button>
+                            )}
                           </div>
                         </td>
                       )}

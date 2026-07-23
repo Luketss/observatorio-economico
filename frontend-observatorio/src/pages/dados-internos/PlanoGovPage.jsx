@@ -10,9 +10,9 @@ import {
   ViewColumnsIcon,
 } from "@heroicons/react/24/outline";
 import api from "../../services/api";
-import { useAuth } from "../../context/AuthContext";
 import { useToast } from "../../context/ToastContext";
 import { useEscapeKey } from "../../hooks/useEscapeKey";
+import { usePermissao } from "../../hooks/usePermissao";
 
 const STATUS_CONFIG = {
   nao_iniciado: { label: "Não iniciado", color: "bg-[var(--panel-2)] text-[var(--text-dim)]", dot: "bg-slate-400" },
@@ -31,9 +31,10 @@ function fmtDate(d) {
 }
 
 export default function PlanoGovPage() {
-  const { user } = useAuth();
   const { addToast } = useToast();
-  const canEdit = user?.role === "ADMIN_GLOBAL" || user?.role === "ADMIN_MUNICIPIO";
+  const canCriar = usePermissao("dados_internos", "criar");
+  const canEditar = usePermissao("dados_internos", "editar");
+  const canExcluir = usePermissao("dados_internos", "excluir");
 
   const [acoes, setAcoes] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -168,17 +169,17 @@ export default function PlanoGovPage() {
           >
             {acao.titulo}
           </h4>
-          {canEdit && (
+          {(canEditar || canExcluir) && (
             <div className="flex gap-1 shrink-0">
-              <button onClick={() => openEdit(acao)} aria-label="Editar ação" className="p-1.5 rounded-lg text-slate-400 hover:text-blue-600 hover:bg-[var(--panel-2)] transition-colors cursor-pointer"><PencilIcon className="w-3.5 h-3.5" /></button>
-              <button onClick={() => setDeleteConfirmId(acao.id)} aria-label="Excluir ação" className="p-1.5 rounded-lg text-slate-400 hover:text-red-500 hover:bg-[var(--panel-2)] transition-colors cursor-pointer"><TrashIcon className="w-3.5 h-3.5" /></button>
+              {canEditar && <button onClick={() => openEdit(acao)} aria-label="Editar ação" className="p-1.5 rounded-lg text-slate-400 hover:text-blue-600 hover:bg-[var(--panel-2)] transition-colors cursor-pointer"><PencilIcon className="w-3.5 h-3.5" /></button>}
+              {canExcluir && <button onClick={() => setDeleteConfirmId(acao.id)} aria-label="Excluir ação" className="p-1.5 rounded-lg text-slate-400 hover:text-red-500 hover:bg-[var(--panel-2)] transition-colors cursor-pointer"><TrashIcon className="w-3.5 h-3.5" /></button>}
             </div>
           )}
         </div>
         <p className="text-xs text-slate-400">{acao.departamento}</p>
         {acao.data_prazo && <p className="text-xs text-slate-400">Prazo: {fmtDate(acao.data_prazo)}</p>}
         {acao.responsavel && <p className="text-xs text-slate-500">Resp.: {acao.responsavel}</p>}
-        {canEdit && (
+        {canEditar && (
           <div className="pt-1 border-t border-[var(--border)]">
             <select
               value={acao.status}
@@ -211,7 +212,7 @@ export default function PlanoGovPage() {
         <div className="flex items-center gap-2">
           <button onClick={() => setViewMode("kanban")} aria-label="Visualização Kanban" aria-pressed={viewMode === "kanban"} className={`p-2 rounded-lg transition-colors cursor-pointer ${viewMode === "kanban" ? "bg-blue-100 text-blue-600" : "text-slate-400 hover:bg-[var(--panel-2)]"}`}><ViewColumnsIcon className="w-5 h-5" aria-hidden="true" /></button>
           <button onClick={() => setViewMode("table")} aria-label="Visualização em tabela" aria-pressed={viewMode === "table"} className={`p-2 rounded-lg transition-colors cursor-pointer ${viewMode === "table" ? "bg-blue-100 text-blue-600" : "text-slate-400 hover:bg-[var(--panel-2)]"}`}><TableCellsIcon className="w-5 h-5" aria-hidden="true" /></button>
-          {canEdit && (
+          {canCriar && (
             <button onClick={openCreate} className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2.5 rounded-xl text-sm font-medium transition-colors ml-2">
               <PlusIcon className="w-4 h-4" /> Nova Ação
             </button>
@@ -279,7 +280,7 @@ export default function PlanoGovPage() {
                 <th className="px-6 py-3">Status</th>
                 <th className="px-6 py-3">Prazo</th>
                 <th className="px-6 py-3">Responsável</th>
-                {canEdit && <th className="px-6 py-3" />}
+                {(canEditar || canExcluir) && <th className="px-6 py-3" />}
               </tr>
             </thead>
             <tbody className="divide-y divide-[var(--border)]">
@@ -295,11 +296,11 @@ export default function PlanoGovPage() {
                       <td className="px-6 py-3"><span className={`px-2.5 py-1 rounded-full text-xs font-medium ${st.color}`}>{st.label}</span></td>
                       <td className="px-6 py-3 text-slate-400 text-xs">{fmtDate(a.data_prazo) || "—"}</td>
                       <td className="px-6 py-3 text-slate-400 text-xs">{a.responsavel || "—"}</td>
-                      {canEdit && (
+                      {(canEditar || canExcluir) && (
                         <td className="px-6 py-3">
                           <div className="flex items-center gap-2 justify-end">
-                            <button onClick={() => openEdit(a)} className="p-1.5 rounded-lg text-slate-400 hover:text-blue-600 hover:bg-blue-50 transition-colors"><PencilIcon className="w-4 h-4" /></button>
-                            <button onClick={() => setDeleteConfirmId(a.id)} className="p-1.5 rounded-lg text-slate-400 hover:text-red-600 hover:bg-red-50 transition-colors"><TrashIcon className="w-4 h-4" /></button>
+                            {canEditar && <button onClick={() => openEdit(a)} className="p-1.5 rounded-lg text-slate-400 hover:text-blue-600 hover:bg-blue-50 transition-colors"><PencilIcon className="w-4 h-4" /></button>}
+                            {canExcluir && <button onClick={() => setDeleteConfirmId(a.id)} className="p-1.5 rounded-lg text-slate-400 hover:text-red-600 hover:bg-red-50 transition-colors"><TrashIcon className="w-4 h-4" /></button>}
                           </div>
                         </td>
                       )}

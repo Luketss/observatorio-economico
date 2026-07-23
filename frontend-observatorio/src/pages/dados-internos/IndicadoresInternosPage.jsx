@@ -9,9 +9,9 @@ import {
   ChevronRightIcon,
 } from "@heroicons/react/24/outline";
 import api from "../../services/api";
-import { useAuth } from "../../context/AuthContext";
 import { useToast } from "../../context/ToastContext";
 import { useEscapeKey } from "../../hooks/useEscapeKey";
+import { usePermissao } from "../../hooks/usePermissao";
 import { Sparkline } from "../../components/nid/charts";
 
 const defaultForm = {
@@ -68,7 +68,7 @@ function buildSpark(allForMetric) {
 }
 
 /* ─── Compact KPI Cell ─────────────────────────────────────────────────── */
-function IndCell({ ind, delta, spark, canEdit, onEdit, onDelete }) {
+function IndCell({ ind, delta, spark, canEditar, canExcluir, onEdit, onDelete }) {
   const arrow = delta
     ? delta.direction === "up" ? "▲" : delta.direction === "down" ? "▼" : "—"
     : null;
@@ -104,21 +104,25 @@ function IndCell({ ind, delta, spark, canEdit, onEdit, onDelete }) {
         </div>
       )}
 
-      {canEdit && (
+      {(canEditar || canExcluir) && (
         <div className="ind-cell__actions">
-          <button
-            onClick={() => onEdit(ind)}
-            title={`Editar ${ind.nome_metrica}`}
-          >
-            <PencilIcon style={{ width: 12, height: 12 }} />
-          </button>
-          <button
-            className="del"
-            onClick={() => onDelete(ind.id)}
-            title={`Excluir ${ind.nome_metrica}`}
-          >
-            <TrashIcon style={{ width: 12, height: 12 }} />
-          </button>
+          {canEditar && (
+            <button
+              onClick={() => onEdit(ind)}
+              title={`Editar ${ind.nome_metrica}`}
+            >
+              <PencilIcon style={{ width: 12, height: 12 }} />
+            </button>
+          )}
+          {canExcluir && (
+            <button
+              className="del"
+              onClick={() => onDelete(ind.id)}
+              title={`Excluir ${ind.nome_metrica}`}
+            >
+              <TrashIcon style={{ width: 12, height: 12 }} />
+            </button>
+          )}
         </div>
       )}
     </div>
@@ -137,9 +141,10 @@ function AddCell({ onClick }) {
 
 /* ─── Main page ────────────────────────────────────────────────────────── */
 export default function IndicadoresInternosPage() {
-  const { user } = useAuth();
   const { addToast } = useToast();
-  const canEdit = user?.role === "ADMIN_GLOBAL" || user?.role === "ADMIN_MUNICIPIO";
+  const canCriar = usePermissao("dados_internos", "criar");
+  const canEditar = usePermissao("dados_internos", "editar");
+  const canExcluir = usePermissao("dados_internos", "excluir");
 
   const [indicadores, setIndicadores] = useState([]);
   const [areasExistentes, setAreasExistentes] = useState([]);
@@ -304,7 +309,7 @@ export default function IndicadoresInternosPage() {
             </p>
           </div>
         </div>
-        {canEdit && (
+        {canCriar && (
           <button
             onClick={openCreate}
             style={{
@@ -340,7 +345,7 @@ export default function IndicadoresInternosPage() {
         <div style={{ textAlign: "center", padding: "64px 20px", color: "var(--text-dim)" }}>
           <ChartPieIcon style={{ width: 40, height: 40, margin: "0 auto 12px", opacity: 0.4 }} />
           <p style={{ font: "400 13px/1 var(--font-display)" }}>Nenhum indicador cadastrado ainda.</p>
-          {canEdit && (
+          {canCriar && (
             <button
               onClick={openCreate}
               style={{
@@ -395,7 +400,8 @@ export default function IndicadoresInternosPage() {
                                 ind={ind}
                                 delta={delta}
                                 spark={spark}
-                                canEdit={canEdit}
+                                canEditar={canEditar}
+                                canExcluir={canExcluir}
                                 onEdit={openEdit}
                                 onDelete={(id) => setDeleteConfirmId(id)}
                               />
@@ -403,7 +409,7 @@ export default function IndicadoresInternosPage() {
                           })}
 
                           {/* "+ Adicionar" cell — admin only */}
-                          {canEdit && <AddCell onClick={openCreate} />}
+                          {canCriar && <AddCell onClick={openCreate} />}
                         </div>
                       </motion.div>
                     )}
