@@ -2,7 +2,7 @@ from typing import List, Optional
 
 from app.api.deps import get_current_user, get_db, require_permissao, require_role
 from app.core.exceptions import ForbiddenException, NotFoundException
-from app.models.projeto import Projeto, ProjetoEixo, ProjetoImagemPreset, ProjetoTemplate
+from app.models.projeto import Projeto, ProjetoEixo, ProjetoImagemPreset, ProjetoTarefa, ProjetoTemplate
 from app.models.usuario import Usuario
 from app.schemas.projeto import (
     EixoCreate,
@@ -16,9 +16,12 @@ from app.schemas.projeto import (
     ProjetoTemplateOut,
     ProjetoTemplateUpdate,
     ProjetoUpdate,
+    TarefaCreate,
+    TarefaOut,
+    TarefaUpdate,
 )
 from fastapi import APIRouter, Depends, HTTPException, Query
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, selectinload
 
 router = APIRouter(prefix="/projetos", tags=["Projetos"])
 
@@ -215,7 +218,7 @@ def listar_projetos(
     db: Session = Depends(get_db),
     current_user: Usuario = Depends(get_current_user),
 ):
-    query = db.query(Projeto)
+    query = db.query(Projeto).options(selectinload(Projeto.tarefas))
     if current_user.role.nome != "ADMIN_GLOBAL":
         query = query.filter(Projeto.municipio_id == current_user.municipio_id)
     if eixo_id:
@@ -273,5 +276,67 @@ def deletar_projeto(
     if current_user.role.nome != "ADMIN_GLOBAL" and projeto.municipio_id != current_user.municipio_id:
         raise ForbiddenException("Insufficient permissions")
     db.delete(projeto)
+    db.commit()
+    return {"ok": True}
+
+
+# ── Tarefas (checklist do projeto) ────────────────────────────────────────────
+
+def _get_projeto_do_usuario(db: Session, projeto_id: int, current_user: Usuario) -> Projeto:
+    """Projeto existente e do município do usuário (global passa)."""
+    projeto = db.get(Projeto, projeto_id)
+    if not projeto:
+        raise NotFoundException("Projeto not found")
+    if current_user.role.nome != "ADMIN_GLOBAL" and projeto.municipio_id != current_user.municipio_id:
+        raise ForbiddenException("Insufficient permissions")
+    return projeto
+
+
+@router.post("/{projeto_id}/tarefas", response_model=TarefaOut)
+def criar_tarefa(
+    projeto_id: int,
+    data: TarefaCreate,
+    db: Session = Depends(get_db),
+    current_user: Usuario = Depends(require_permissao("projetos", "editar")),
+):
+    projeto = _get_projeto_do_usuario(db, projeto_id, current_user)
+    tarefa = ProjetoTarefa(projeto_id=projeto.id, **data.model_dump())
+    db.add(tarefa)
+    db.commit()
+    db.refresh(tarefa)
+    return tarefa
+
+
+@router.put("/{projeto_id}/tarefas/{tarefa_id}", response_model=TarefaOut)
+def atualizar_tarefa(
+    projeto_id: int,
+    tarefa_id: int,
+    data: TarefaUpdate,
+    db: Session = Depends(get_db),
+    current_user: Usuario = Depends(require_permissao("projetos", "editar")),
+):
+    projeto = _get_projeto_do_usuario(db, projeto_id, current_user)
+    tarefa = db.get(ProjetoTarefa, tarefa_id)
+    if not tarefa or tarefa.projeto_id != projeto.id:
+        raise NotFoundException("Tarefa not found")
+    for field, value in data.model_dump(exclude_unset=True).items():
+        setattr(tarefa, field, value)
+    db.commit()
+    db.refresh(tarefa)
+    return tarefa
+
+
+@router.delete("/{projeto_id}/tarefas/{tarefa_id}")
+def deletar_tarefa(
+    projeto_id: int,
+    tarefa_id: int,
+    db: Session = Depends(get_db),
+    current_user: Usuario = Depends(require_permissao("projetos", "editar")),
+):
+    projeto = _get_projeto_do_usuario(db, projeto_id, current_user)
+    tarefa = db.get(ProjetoTarefa, tarefa_id)
+    if not tarefa or tarefa.projeto_id != projeto.id:
+        raise NotFoundException("Tarefa not found")
+    db.delete(tarefa)
     db.commit()
     return {"ok": True}
