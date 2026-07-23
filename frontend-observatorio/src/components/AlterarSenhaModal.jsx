@@ -13,7 +13,7 @@ export default function AlterarSenhaModal({ open, onClose }) {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState(null);
 
-  useEscapeKey(onClose, open);
+  useEscapeKey(handleClose, open);
 
   function reset() {
     setSenhaAtual("");
