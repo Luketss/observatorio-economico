@@ -252,8 +252,19 @@ def delete_municipio_cascade(db: Session, municipio_id: int) -> Dict[str, int]:
         r.id for r in db.query(Role.id).filter(Role.municipio_id == municipio_id).all()
     ]
     if roles_municipio_ids:
-        visualizador = db.query(Role).filter(Role.nome == "VISUALIZADOR").first()
-        if visualizador:
+        tem_usuarios_para_remanejar = (
+            db.query(Usuario.id)
+            .filter(Usuario.role_id.in_(roles_municipio_ids))
+            .first()
+            is not None
+        )
+        if tem_usuarios_para_remanejar:
+            visualizador = db.query(Role).filter(Role.nome == "VISUALIZADOR").first()
+            if not visualizador:
+                raise HTTPException(
+                    status_code=500,
+                    detail="Role VISUALIZADOR não configurada — impossível remanejar usuários de roles municipais.",
+                )
             realocados = (
                 db.query(Usuario)
                 .filter(Usuario.role_id.in_(roles_municipio_ids))

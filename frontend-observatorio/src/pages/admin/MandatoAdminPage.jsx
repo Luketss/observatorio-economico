@@ -31,7 +31,7 @@ function fmtDate(d) {
 }
 
 export default function MandatoAdminPage() {
-  // ADMIN_GLOBAL cria aqui passando municipio_id explícito — sem exclusão.
+  // Sem !isGlobal por decisão do plano; na prática o backend responde 400 para global no criar (form não envia municipio_id e o view-as só cobre GETs).
   const canCriar = usePermissao("mandato", "criar");
   const canEditar = usePermissao("mandato", "editar");
   const canExcluir = usePermissao("mandato", "excluir");

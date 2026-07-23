@@ -90,6 +90,7 @@ export default function AlterarSenhaModal({ open, onClose }) {
             <input
               type="password"
               placeholder="Senha atual"
+              aria-label="Senha atual"
               value={senhaAtual}
               onChange={(e) => setSenhaAtual(e.target.value)}
               required
@@ -99,6 +100,7 @@ export default function AlterarSenhaModal({ open, onClose }) {
             <input
               type="password"
               placeholder="Nova senha (mín. 6 caracteres)"
+              aria-label="Nova senha"
               value={novaSenha}
               onChange={(e) => setNovaSenha(e.target.value)}
               required
@@ -108,6 +110,7 @@ export default function AlterarSenhaModal({ open, onClose }) {
             <input
               type="password"
               placeholder="Confirmar nova senha"
+              aria-label="Confirmar nova senha"
               value={confirmar}
               onChange={(e) => setConfirmar(e.target.value)}
               required

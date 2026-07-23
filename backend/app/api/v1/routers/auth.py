@@ -65,7 +65,10 @@ def get_me(
 
 
 @router.post("/alterar-senha")
+@limiter.limit("5/minute")
+@limiter.limit("20/hour")
 def alterar_senha(
+    request: Request,
     payload: AlterarSenhaPayload,
     db: Session = Depends(get_db),
     current_user=Depends(get_current_user),

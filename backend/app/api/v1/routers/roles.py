@@ -98,6 +98,24 @@ def atualizar_role(
             raise ConflictException("Já existe uma role com esse nome.")
     if "municipio_id" in payload:
         _exigir_municipio_valido(db, payload["municipio_id"])
+    if (
+        "municipio_id" in payload
+        and payload["municipio_id"] != role.municipio_id
+        and payload["municipio_id"] is not None
+    ):
+        fora = (
+            db.query(func.count(Usuario.id))
+            .filter(
+                Usuario.role_id == role.id,
+                (Usuario.municipio_id.is_(None))
+                | (Usuario.municipio_id != payload["municipio_id"]),
+            )
+            .scalar()
+        )
+        if fora:
+            raise ConflictException(
+                f"{fora} usuário(s) com esta role não pertencem ao município de destino. Reatribua antes de alterar o escopo."
+            )
     for field, value in payload.items():
         setattr(role, field, value)
     db.commit()
