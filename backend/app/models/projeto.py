@@ -1,7 +1,7 @@
 from datetime import date, datetime, timezone
 
 from app.db.base import Base
-from sqlalchemy import Date, DateTime, ForeignKey, Integer, String, Text
+from sqlalchemy import Boolean, Date, DateTime, ForeignKey, Integer, String, Text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 
@@ -96,3 +96,28 @@ class Projeto(Base):
     eixo = relationship("ProjetoEixo", back_populates="projetos")
     municipio = relationship("Municipio")
     template = relationship("ProjetoTemplate")
+    tarefas = relationship(
+        "ProjetoTarefa",
+        back_populates="projeto",
+        cascade="all, delete-orphan",
+        order_by="ProjetoTarefa.id",
+    )
+
+
+class ProjetoTarefa(Base):
+    """Item do checklist de um projeto em acompanhamento (título + prazo + feito)."""
+    __tablename__ = "projeto_tarefa"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+    projeto_id: Mapped[int] = mapped_column(
+        Integer, ForeignKey("projetos.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    titulo: Mapped[str] = mapped_column(String(255), nullable=False)
+    prazo: Mapped[date | None] = mapped_column(Date, nullable=True)
+    concluida: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    criado_em: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        default=lambda: datetime.now(timezone.utc),
+    )
+
+    projeto = relationship("Projeto", back_populates="tarefas")

@@ -1,7 +1,7 @@
 from datetime import date, datetime
 from typing import Optional
 
-from pydantic import BaseModel
+from pydantic import BaseModel, field_validator
 
 
 # ── Cover-image presets (gallery) ──────────────────────────────────────────────
@@ -78,6 +78,47 @@ class ProjetoTemplateUpdate(BaseModel):
     conteudo: Optional[str] = None
 
 
+# ── Tarefas (checklist do projeto) ────────────────────────────────────────────
+
+class TarefaOut(BaseModel):
+    id: int
+    titulo: str
+    prazo: Optional[date] = None
+    concluida: bool
+
+    class Config:
+        from_attributes = True
+
+
+class TarefaCreate(BaseModel):
+    titulo: str
+    prazo: Optional[date] = None
+
+    @field_validator("titulo")
+    @classmethod
+    def titulo_nao_vazio(cls, v: str) -> str:
+        v = v.strip()
+        if not v:
+            raise ValueError("titulo é obrigatório")
+        return v
+
+
+class TarefaUpdate(BaseModel):
+    titulo: Optional[str] = None
+    prazo: Optional[date] = None
+    concluida: Optional[bool] = None
+
+    @field_validator("titulo")
+    @classmethod
+    def titulo_nao_vazio(cls, v):
+        if v is None:
+            return v
+        v = v.strip()
+        if not v:
+            raise ValueError("titulo é obrigatório")
+        return v
+
+
 # ── Projetos (Acompanhamento) ─────────────────────────────────────────────────
 
 class ProjetoOut(BaseModel):
@@ -93,6 +134,7 @@ class ProjetoOut(BaseModel):
     departamento: Optional[str] = None
     responsavel: Optional[str] = None
     conteudo: Optional[str] = None
+    tarefas: list[TarefaOut] = []
     criado_em: datetime
     atualizado_em: datetime
 
