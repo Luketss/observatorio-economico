@@ -2,8 +2,10 @@
 Município management — clone all data between municípios, and cascade-delete a
 município across the 48 dependent tables.
 
-No FK constraints have `ondelete="CASCADE"` in this schema, so both operations
-explicitly walk a registry of model classes.
+Nenhuma FK tem `ondelete="CASCADE"` neste registro de tabelas de dados/negócio,
+então ambas as operações percorrem explicitamente uma lista de model classes.
+(Exceção: `roles.municipio_id` tem `ondelete="CASCADE"` — ver o realoque de
+usuários em `delete_municipio_cascade` antes do delete do município.)
 """
 import logging
 from typing import Dict
@@ -56,6 +58,7 @@ from app.models.pix import PixMensal
 from app.models.populacao import PopulacaoMunicipio
 from app.models.vaf import VafAnual
 from app.models.projeto import Projeto
+from app.models.role import Role
 from app.models.rais import (
     RaisMetricasAnuais,
     RaisPorCbo,
@@ -236,6 +239,30 @@ def delete_municipio_cascade(db: Session, municipio_id: int) -> Dict[str, int]:
         raise HTTPException(status_code=404, detail="Município não encontrado.")
 
     summary: Dict[str, int] = {}
+
+    # roles.municipio_id tem ondelete="CASCADE": ao apagar o município abaixo,
+    # o Postgres vai cascatear o delete de qualquer role municipal deste
+    # município. usuarios.role_id NÃO tem ondelete — se algum usuário ainda
+    # apontar para uma dessas roles (mesmo um usuário já "detached" abaixo,
+    # que só perde o municipio_id, não o role_id), o delete do município falha
+    # com violação de FK. Realoca esses usuários para VISUALIZADOR (global,
+    # somente-leitura) antes do delete para que a role municipal já não tenha
+    # ninguém apontando para ela quando o cascade do Postgres rodar.
+    roles_municipio_ids = [
+        r.id for r in db.query(Role.id).filter(Role.municipio_id == municipio_id).all()
+    ]
+    if roles_municipio_ids:
+        visualizador = db.query(Role).filter(Role.nome == "VISUALIZADOR").first()
+        if visualizador:
+            realocados = (
+                db.query(Usuario)
+                .filter(Usuario.role_id.in_(roles_municipio_ids))
+                .update(
+                    {Usuario.role_id: visualizador.id}, synchronize_session=False
+                )
+            )
+            if realocados:
+                summary["Usuario (role realocada p/ VISUALIZADOR)"] = realocados
 
     # Detach any users still tied to this município so we don't trip the FK.
     detached = (
