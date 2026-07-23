@@ -5,10 +5,12 @@ import { PlanContext } from "../../context/PlanContext";
 import { ToastProvider } from "../../context/ToastContext";
 import { useAuth } from "../../context/AuthContext";
 import { useTheme, THEMES } from "../../context/ThemeContext";
+import { temPermissaoAdmin } from "../../hooks/usePermissao";
 import api from "../../services/api";
 import NotificationBell from "../../components/NotificationBell";
 import ViewAsBanner from "../../components/ViewAsBanner";
 import PlanLockedView from "../../components/PlanLockedView";
+import AlterarSenhaModal from "../../components/AlterarSenhaModal";
 import {
   HomeIcon,
   ChartBarIcon,
@@ -16,6 +18,7 @@ import {
   BriefcaseIcon,
   BuildingLibraryIcon,
   PowerIcon,
+  KeyIcon,
   HeartIcon,
   AcademicCapIcon,
   ShieldCheckIcon,
@@ -200,6 +203,7 @@ export default function DashboardLayout() {
   const [brasao, setBrasao] = useState(null);
   const [modulos, setModulos] = useState(null);
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [senhaOpen, setSenhaOpen] = useState(false);
 
   const isGlobal = user?.role === "ADMIN_GLOBAL";
   const isLight = themeId === "light";
@@ -379,7 +383,7 @@ export default function DashboardLayout() {
           return null;
         })}
 
-        {(user?.role === "ADMIN_GLOBAL" || user?.role === "ADMIN_MUNICIPIO") && (
+        {temPermissaoAdmin(user) && (
           <div className="pt-3 mt-3" style={{ borderTop: "1px solid var(--border)" }}>
             <p className="nid-nav-section">Admin</p>
             <NavLink
@@ -457,6 +461,18 @@ export default function DashboardLayout() {
                 <ThemePicker />
               </div>
               <button
+                onClick={() => setSenhaOpen(true)}
+                className="flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg text-xs cursor-pointer"
+                style={{
+                  background: "var(--panel-2)",
+                  border: "1px solid var(--border)",
+                  color: "var(--text-dim)",
+                }}
+                title="Alterar senha"
+              >
+                <KeyIcon className="w-4 h-4" />
+              </button>
+              <button
                 onClick={logout}
                 className="flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg text-xs cursor-pointer"
                 style={{
@@ -529,6 +545,7 @@ export default function DashboardLayout() {
           </div>
         </main>
       </div>
+      <AlterarSenhaModal open={senhaOpen} onClose={() => setSenhaOpen(false)} />
     </ToastProvider>
   );
 }
