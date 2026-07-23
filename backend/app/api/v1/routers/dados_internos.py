@@ -20,12 +20,12 @@ from sqlalchemy.orm import Session
 
 router = APIRouter(prefix="/dados_internos", tags=["Dados Internos"])
 
-ROLES_WRITE = ("ADMIN_GLOBAL", "ADMIN_MUNICIPIO")
 
+def _assert_write(user: Usuario, verbo: str):
+    from app.core.permissions import tem_permissao
 
-def _assert_write(user: Usuario):
-    if user.role.nome not in ROLES_WRITE:
-        raise ForbiddenException("Insufficient permissions")
+    if not tem_permissao(user.role, "dados_internos", verbo):
+        raise ForbiddenException(f"Sem permissão para {verbo} em dados_internos")
 
 
 def _assert_own(user: Usuario, municipio_id: int):
@@ -59,7 +59,7 @@ def criar_indicador(
     db: Session = Depends(get_db),
     current_user: Usuario = Depends(get_current_user),
 ):
-    _assert_write(current_user)
+    _assert_write(current_user, "criar")
     indicador = IndicadorInterno(
         **data.model_dump(),
         municipio_id=current_user.municipio_id,
@@ -77,7 +77,7 @@ def atualizar_indicador(
     db: Session = Depends(get_db),
     current_user: Usuario = Depends(get_current_user),
 ):
-    _assert_write(current_user)
+    _assert_write(current_user, "editar")
     obj = db.get(IndicadorInterno, indicador_id)
     if not obj:
         raise NotFoundException("Indicador not found")
@@ -95,7 +95,7 @@ def deletar_indicador(
     db: Session = Depends(get_db),
     current_user: Usuario = Depends(get_current_user),
 ):
-    _assert_write(current_user)
+    _assert_write(current_user, "excluir")
     obj = db.get(IndicadorInterno, indicador_id)
     if not obj:
         raise NotFoundException("Indicador not found")
@@ -128,7 +128,7 @@ def criar_acao(
     db: Session = Depends(get_db),
     current_user: Usuario = Depends(get_current_user),
 ):
-    _assert_write(current_user)
+    _assert_write(current_user, "criar")
     acao = PlanoGovAcao(
         **data.model_dump(),
         municipio_id=current_user.municipio_id,
@@ -146,7 +146,7 @@ def atualizar_acao(
     db: Session = Depends(get_db),
     current_user: Usuario = Depends(get_current_user),
 ):
-    _assert_write(current_user)
+    _assert_write(current_user, "editar")
     obj = db.get(PlanoGovAcao, acao_id)
     if not obj:
         raise NotFoundException("Ação not found")
@@ -164,7 +164,7 @@ def deletar_acao(
     db: Session = Depends(get_db),
     current_user: Usuario = Depends(get_current_user),
 ):
-    _assert_write(current_user)
+    _assert_write(current_user, "excluir")
     obj = db.get(PlanoGovAcao, acao_id)
     if not obj:
         raise NotFoundException("Ação not found")
@@ -199,7 +199,7 @@ def criar_evento(
     db: Session = Depends(get_db),
     current_user: Usuario = Depends(get_current_user),
 ):
-    _assert_write(current_user)
+    _assert_write(current_user, "criar")
     evento = EventoMunicipio(
         **data.model_dump(),
         municipio_id=current_user.municipio_id,
@@ -218,7 +218,7 @@ def atualizar_evento(
     db: Session = Depends(get_db),
     current_user: Usuario = Depends(get_current_user),
 ):
-    _assert_write(current_user)
+    _assert_write(current_user, "editar")
     obj = db.get(EventoMunicipio, evento_id)
     if not obj:
         raise NotFoundException("Evento not found")
@@ -236,7 +236,7 @@ def deletar_evento(
     db: Session = Depends(get_db),
     current_user: Usuario = Depends(get_current_user),
 ):
-    _assert_write(current_user)
+    _assert_write(current_user, "excluir")
     obj = db.get(EventoMunicipio, evento_id)
     if not obj:
         raise NotFoundException("Evento not found")

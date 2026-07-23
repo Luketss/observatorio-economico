@@ -58,6 +58,19 @@ def require_role(required_role: str):
     return role_checker
 
 
+def require_permissao(area: str, verbo: str):
+    """Dependency factory: exige permissão (area, verbo) da role do usuário.
+    ADMIN_GLOBAL tem bypass total (ver app.core.permissions.tem_permissao)."""
+    from app.core.permissions import tem_permissao
+
+    def checker(current_user: Usuario = Depends(get_current_user)) -> Usuario:
+        if not tem_permissao(current_user.role, area, verbo):
+            raise ForbiddenException(f"Sem permissão para {verbo} em {area}")
+        return current_user
+
+    return checker
+
+
 def _plano_modulos(db: Session, current_user: Usuario) -> list[str]:
     """Module list enabled for the user's município plan (empty if none)."""
     import json

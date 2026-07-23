@@ -1,6 +1,6 @@
 from typing import List, Optional
 
-from app.api.deps import get_current_user, get_db, require_role
+from app.api.deps import get_current_user, get_db, require_permissao, require_role
 from app.core.exceptions import ForbiddenException, NotFoundException
 from app.models.projeto import Projeto, ProjetoEixo, ProjetoImagemPreset, ProjetoTemplate
 from app.models.usuario import Usuario
@@ -182,9 +182,9 @@ def deletar_template(
 def selecionar_template(
     template_id: int,
     db: Session = Depends(get_db),
-    current_user: Usuario = Depends(get_current_user),
+    current_user: Usuario = Depends(require_permissao("projetos", "criar")),
 ):
-    if current_user.role.nome == "ADMIN_GLOBAL":
+    if current_user.municipio_id is None:
         raise ForbiddenException("ADMIN_GLOBAL não possui município associado")
     tmpl = db.get(ProjetoTemplate, template_id)
     if not tmpl:
@@ -227,11 +227,9 @@ def listar_projetos(
 def criar_projeto(
     data: ProjetoCreate,
     db: Session = Depends(get_db),
-    current_user: Usuario = Depends(get_current_user),
+    current_user: Usuario = Depends(require_permissao("projetos", "criar")),
 ):
-    if current_user.role.nome == "VISUALIZADOR":
-        raise ForbiddenException("Insufficient permissions")
-    if current_user.role.nome == "ADMIN_GLOBAL":
+    if current_user.municipio_id is None:
         raise ForbiddenException("ADMIN_GLOBAL não possui município associado")
     projeto = Projeto(
         **data.model_dump(),
@@ -249,13 +247,11 @@ def atualizar_projeto(
     projeto_id: int,
     data: ProjetoUpdate,
     db: Session = Depends(get_db),
-    current_user: Usuario = Depends(get_current_user),
+    current_user: Usuario = Depends(require_permissao("projetos", "editar")),
 ):
     projeto = db.get(Projeto, projeto_id)
     if not projeto:
         raise NotFoundException("Projeto not found")
-    if current_user.role.nome == "VISUALIZADOR":
-        raise ForbiddenException("Insufficient permissions")
     if current_user.role.nome != "ADMIN_GLOBAL" and projeto.municipio_id != current_user.municipio_id:
         raise ForbiddenException("Insufficient permissions")
     for field, value in data.model_dump(exclude_unset=True).items():
@@ -269,13 +265,11 @@ def atualizar_projeto(
 def deletar_projeto(
     projeto_id: int,
     db: Session = Depends(get_db),
-    current_user: Usuario = Depends(get_current_user),
+    current_user: Usuario = Depends(require_permissao("projetos", "excluir")),
 ):
     projeto = db.get(Projeto, projeto_id)
     if not projeto:
         raise NotFoundException("Projeto not found")
-    if current_user.role.nome == "VISUALIZADOR":
-        raise ForbiddenException("Insufficient permissions")
     if current_user.role.nome != "ADMIN_GLOBAL" and projeto.municipio_id != current_user.municipio_id:
         raise ForbiddenException("Insufficient permissions")
     db.delete(projeto)

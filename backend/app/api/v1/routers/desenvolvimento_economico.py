@@ -4,7 +4,7 @@ from typing import List
 from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session, selectinload
 
-from app.api.deps import get_current_user, get_db
+from app.api.deps import get_current_user, get_db, require_permissao
 from app.core.exceptions import ForbiddenException, NotFoundException
 from app.models.desenvolvimento_economico import (
     CaptacaoRecurso,
@@ -42,11 +42,9 @@ router = APIRouter(prefix="/desenvolvimento-economico", tags=["Desenvolvimento E
 ESTAGIOS_FUNIL = ["lead", "contato", "negociacao", "implantacao"]
 
 
-def _check_pode_escrever(current_user: Usuario) -> None:
-    role = current_user.role.nome
-    if role == "VISUALIZADOR":
-        raise ForbiddenException("Acesso negado")
-    if role == "ADMIN_GLOBAL":
+def _exigir_municipio(current_user: Usuario) -> None:
+    """Criação usa o município do usuário — ADMIN_GLOBAL não tem um."""
+    if current_user.municipio_id is None:
         raise ForbiddenException("ADMIN_GLOBAL não possui município associado")
 
 
@@ -94,9 +92,9 @@ def listar_funil(
 def criar_funil(
     data: InvestimentoFunilCreate,
     db: Session = Depends(get_db),
-    current_user: Usuario = Depends(get_current_user),
+    current_user: Usuario = Depends(require_permissao("funil", "criar")),
 ):
-    _check_pode_escrever(current_user)
+    _exigir_municipio(current_user)
     item = InvestimentoFunil(
         **data.model_dump(),
         municipio_id=_municipio_id(current_user),
@@ -113,9 +111,8 @@ def atualizar_funil(
     item_id: int,
     data: InvestimentoFunilUpdate,
     db: Session = Depends(get_db),
-    current_user: Usuario = Depends(get_current_user),
+    current_user: Usuario = Depends(require_permissao("funil", "editar")),
 ):
-    _check_pode_escrever(current_user)
     item = db.get(InvestimentoFunil, item_id)
     if not item:
         raise NotFoundException("Lead não encontrado")
@@ -132,9 +129,8 @@ def atualizar_funil(
 def deletar_funil(
     item_id: int,
     db: Session = Depends(get_db),
-    current_user: Usuario = Depends(get_current_user),
+    current_user: Usuario = Depends(require_permissao("funil", "excluir")),
 ):
-    _check_pode_escrever(current_user)
     item = db.get(InvestimentoFunil, item_id)
     if not item:
         raise NotFoundException("Lead não encontrado")
@@ -180,9 +176,9 @@ def detalhe_retencao(
 def criar_retencao(
     data: EmpresaRetencaoCreate,
     db: Session = Depends(get_db),
-    current_user: Usuario = Depends(get_current_user),
+    current_user: Usuario = Depends(require_permissao("retencao", "criar")),
 ):
-    _check_pode_escrever(current_user)
+    _exigir_municipio(current_user)
     empresa = EmpresaRetencao(
         **data.model_dump(),
         municipio_id=_municipio_id(current_user),
@@ -199,9 +195,8 @@ def atualizar_retencao(
     empresa_id: int,
     data: EmpresaRetencaoUpdate,
     db: Session = Depends(get_db),
-    current_user: Usuario = Depends(get_current_user),
+    current_user: Usuario = Depends(require_permissao("retencao", "editar")),
 ):
-    _check_pode_escrever(current_user)
     empresa = db.get(EmpresaRetencao, empresa_id)
     if not empresa:
         raise NotFoundException("Empresa não encontrada")
@@ -218,9 +213,8 @@ def atualizar_retencao(
 def deletar_retencao(
     empresa_id: int,
     db: Session = Depends(get_db),
-    current_user: Usuario = Depends(get_current_user),
+    current_user: Usuario = Depends(require_permissao("retencao", "excluir")),
 ):
-    _check_pode_escrever(current_user)
     empresa = db.get(EmpresaRetencao, empresa_id)
     if not empresa:
         raise NotFoundException("Empresa não encontrada")
@@ -236,9 +230,8 @@ def adicionar_visita(
     empresa_id: int,
     data: VisitaRetencaoCreate,
     db: Session = Depends(get_db),
-    current_user: Usuario = Depends(get_current_user),
+    current_user: Usuario = Depends(require_permissao("retencao", "editar")),
 ):
-    _check_pode_escrever(current_user)
     empresa = db.get(EmpresaRetencao, empresa_id)
     if not empresa:
         raise NotFoundException("Empresa não encontrada")
@@ -259,9 +252,8 @@ def adicionar_visita(
 def deletar_visita(
     visita_id: int,
     db: Session = Depends(get_db),
-    current_user: Usuario = Depends(get_current_user),
+    current_user: Usuario = Depends(require_permissao("retencao", "editar")),
 ):
-    _check_pode_escrever(current_user)
     visita = db.get(VisitaRetencao, visita_id)
     if not visita:
         raise NotFoundException("Visita não encontrada")
@@ -287,9 +279,9 @@ def listar_captacao(
 def criar_captacao(
     data: CaptacaoRecursoCreate,
     db: Session = Depends(get_db),
-    current_user: Usuario = Depends(get_current_user),
+    current_user: Usuario = Depends(require_permissao("captacao", "criar")),
 ):
-    _check_pode_escrever(current_user)
+    _exigir_municipio(current_user)
     item = CaptacaoRecurso(
         **data.model_dump(),
         municipio_id=_municipio_id(current_user),
@@ -306,9 +298,8 @@ def atualizar_captacao(
     item_id: int,
     data: CaptacaoRecursoUpdate,
     db: Session = Depends(get_db),
-    current_user: Usuario = Depends(get_current_user),
+    current_user: Usuario = Depends(require_permissao("captacao", "editar")),
 ):
-    _check_pode_escrever(current_user)
     item = db.get(CaptacaoRecurso, item_id)
     if not item:
         raise NotFoundException("Oportunidade não encontrada")
@@ -325,9 +316,8 @@ def atualizar_captacao(
 def deletar_captacao(
     item_id: int,
     db: Session = Depends(get_db),
-    current_user: Usuario = Depends(get_current_user),
+    current_user: Usuario = Depends(require_permissao("captacao", "excluir")),
 ):
-    _check_pode_escrever(current_user)
     item = db.get(CaptacaoRecurso, item_id)
     if not item:
         raise NotFoundException("Oportunidade não encontrada")
@@ -353,9 +343,9 @@ def listar_escrita(
 def criar_escrita(
     data: EscritaProjetoCreate,
     db: Session = Depends(get_db),
-    current_user: Usuario = Depends(get_current_user),
+    current_user: Usuario = Depends(require_permissao("escrita", "criar")),
 ):
-    _check_pode_escrever(current_user)
+    _exigir_municipio(current_user)
     item = EscritaProjeto(
         **data.model_dump(),
         municipio_id=_municipio_id(current_user),
@@ -372,9 +362,8 @@ def atualizar_escrita(
     item_id: int,
     data: EscritaProjetoUpdate,
     db: Session = Depends(get_db),
-    current_user: Usuario = Depends(get_current_user),
+    current_user: Usuario = Depends(require_permissao("escrita", "editar")),
 ):
-    _check_pode_escrever(current_user)
     item = db.get(EscritaProjeto, item_id)
     if not item:
         raise NotFoundException("Projeto não encontrado")
@@ -391,9 +380,8 @@ def atualizar_escrita(
 def deletar_escrita(
     item_id: int,
     db: Session = Depends(get_db),
-    current_user: Usuario = Depends(get_current_user),
+    current_user: Usuario = Depends(require_permissao("escrita", "excluir")),
 ):
-    _check_pode_escrever(current_user)
     item = db.get(EscritaProjeto, item_id)
     if not item:
         raise NotFoundException("Projeto não encontrado")
@@ -419,9 +407,9 @@ def listar_premiacoes(
 def criar_premiacao(
     data: PremiacaoCreate,
     db: Session = Depends(get_db),
-    current_user: Usuario = Depends(get_current_user),
+    current_user: Usuario = Depends(require_permissao("premiacoes", "criar")),
 ):
-    _check_pode_escrever(current_user)
+    _exigir_municipio(current_user)
     item = Premiacao(
         **data.model_dump(),
         municipio_id=_municipio_id(current_user),
@@ -438,9 +426,8 @@ def atualizar_premiacao(
     item_id: int,
     data: PremiacaoUpdate,
     db: Session = Depends(get_db),
-    current_user: Usuario = Depends(get_current_user),
+    current_user: Usuario = Depends(require_permissao("premiacoes", "editar")),
 ):
-    _check_pode_escrever(current_user)
     item = db.get(Premiacao, item_id)
     if not item:
         raise NotFoundException("Premiação não encontrada")
@@ -457,9 +444,8 @@ def atualizar_premiacao(
 def deletar_premiacao(
     item_id: int,
     db: Session = Depends(get_db),
-    current_user: Usuario = Depends(get_current_user),
+    current_user: Usuario = Depends(require_permissao("premiacoes", "excluir")),
 ):
-    _check_pode_escrever(current_user)
     item = db.get(Premiacao, item_id)
     if not item:
         raise NotFoundException("Premiação não encontrada")

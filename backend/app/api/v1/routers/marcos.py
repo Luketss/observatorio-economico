@@ -1,7 +1,7 @@
 from datetime import date
 from typing import List
 
-from app.api.deps import get_current_user, get_db
+from app.api.deps import get_current_user, get_db, require_permissao
 from app.models.marco import Marco
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
@@ -68,11 +68,8 @@ def listar_marcos(
 def criar_marco(
     body: MarcoCreate,
     db: Session = Depends(get_db),
-    current_user=Depends(get_current_user),
+    current_user=Depends(require_permissao("mandato", "criar")),
 ):
-    if current_user.role.nome == "VISUALIZADOR":
-        raise HTTPException(status_code=403, detail="Sem permissão para criar marcos.")
-
     if body.tipo not in TIPOS_VALIDOS:
         raise HTTPException(status_code=400, detail=f"Tipo inválido. Use: {TIPOS_VALIDOS}")
 
@@ -96,11 +93,8 @@ def atualizar_marco(
     marco_id: int,
     body: MarcoUpdate,
     db: Session = Depends(get_db),
-    current_user=Depends(get_current_user),
+    current_user=Depends(require_permissao("mandato", "editar")),
 ):
-    if current_user.role.nome == "VISUALIZADOR":
-        raise HTTPException(status_code=403, detail="Sem permissão para editar marcos.")
-
     marco = db.get(Marco, marco_id)
     if not marco:
         raise HTTPException(status_code=404, detail="Marco não encontrado.")
@@ -125,11 +119,8 @@ def atualizar_marco(
 def deletar_marco(
     marco_id: int,
     db: Session = Depends(get_db),
-    current_user=Depends(get_current_user),
+    current_user=Depends(require_permissao("mandato", "excluir")),
 ):
-    if current_user.role.nome == "VISUALIZADOR":
-        raise HTTPException(status_code=403, detail="Sem permissão para excluir marcos.")
-
     marco = db.get(Marco, marco_id)
     if not marco:
         raise HTTPException(status_code=404, detail="Marco não encontrado.")
