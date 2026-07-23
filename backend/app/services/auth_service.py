@@ -1,11 +1,12 @@
 from datetime import datetime, timezone
 
-from app.core.exceptions import UnauthorizedException
+from app.core.exceptions import AppException, UnauthorizedException
 from app.core.security import (
     DUMMY_PASSWORD_HASH,
     create_access_token,
     create_refresh_token,
     decode_token,
+    hash_password,
     verify_password,
 )
 from app.db.repositories.usuario_repository import UsuarioRepository
@@ -125,3 +126,14 @@ class AuthService:
             "access_token": new_access_token,
             "token_type": "bearer",
         }
+
+    def alterar_senha(self, user, senha_atual: str, nova_senha: str) -> None:
+        if not verify_password(senha_atual, user.senha_hash):
+            raise AppException(
+                code="INVALID_PASSWORD",
+                message="Senha atual incorreta.",
+                status_code=400,
+            )
+        user.senha_hash = hash_password(nova_senha)
+        self.session.add(user)
+        self.session.commit()

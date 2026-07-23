@@ -1,7 +1,8 @@
 from app.api.deps import get_current_user, get_db
 from app.api.response import SuccessResponse
+from app.core.permissions import permissoes_efetivas
 from app.core.rate_limit import limiter
-from app.schemas.auth import AuthenticatedUser
+from app.schemas.auth import AlterarSenhaPayload, AuthenticatedUser
 from app.services.auth_service import AuthService
 from fastapi import APIRouter, Body, Depends, Request
 from fastapi.security import OAuth2PasswordRequestForm
@@ -58,5 +59,17 @@ def get_me(
             estado=current_user.municipio.estado if current_user.municipio else None,
             role=current_user.role.nome,
             ativo=current_user.ativo,
+            permissoes=permissoes_efetivas(current_user.role),
         )
     )
+
+
+@router.post("/alterar-senha")
+def alterar_senha(
+    payload: AlterarSenhaPayload,
+    db: Session = Depends(get_db),
+    current_user=Depends(get_current_user),
+):
+    service = AuthService(db)
+    service.alterar_senha(current_user, payload.senha_atual, payload.nova_senha)
+    return {"ok": True}

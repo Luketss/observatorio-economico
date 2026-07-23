@@ -1,4 +1,4 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 
 class AuthenticatedUser(BaseModel):
@@ -9,6 +9,12 @@ class AuthenticatedUser(BaseModel):
     estado: str | None = None
     role: str
     ativo: bool
+    permissoes: dict = {}
 
     class Config:
         from_attributes = True
+
+
+class AlterarSenhaPayload(BaseModel):
+    senha_atual: str
+    nova_senha: str = Field(min_length=6)
