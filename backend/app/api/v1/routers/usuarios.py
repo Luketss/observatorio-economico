@@ -30,12 +30,15 @@ def erros_payload_delegado(
     ator_id: int,
     alvo_municipio_id: int | None,
     alvo_role_nome: str,
+    alvo_email: str,
 ) -> list[str]:
     """Regras anti-escalação do delegado (pura, testável sem DB).
 
     payload: campos presentes no update (model_dump(exclude_unset=True)).
     alvo_role_nome: nome da role atual do alvo — usado para impedir que um
     delegado tome conta de um ADMIN_MUNICIPIO alterando sua senha/e-mail.
+    alvo_email: e-mail atual do alvo — usado para permitir que um delegado
+    renomei um ADMIN_MUNICIPIO quando o e-mail permanece inalterado.
     """
     erros = []
     if "role_id" in payload and payload["role_id"] != alvo_role_id:
@@ -47,7 +50,7 @@ def erros_payload_delegado(
         erros.append("Delegado não pode mover usuário de município.")
     if payload.get("ativo") is False and alvo_id == ator_id:
         erros.append("Você não pode desativar a si mesmo.")
-    if alvo_role_nome == "ADMIN_MUNICIPIO" and ("senha" in payload or "email" in payload):
+    if alvo_role_nome == "ADMIN_MUNICIPIO" and ("senha" in payload or ("email" in payload and payload["email"] != alvo_email)):
         erros.append(
             "Delegado não pode alterar senha ou e-mail de um administrador do município."
         )
@@ -164,6 +167,7 @@ def atualizar_usuario(
             ator_id=current_user.id,
             alvo_municipio_id=alvo.municipio_id,
             alvo_role_nome=alvo.role.nome,
+            alvo_email=alvo.email,
         )
         if erros:
             raise ForbiddenException(" ".join(erros))
