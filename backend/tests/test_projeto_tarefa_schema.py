@@ -49,3 +49,22 @@ def test_out_from_attributes():
 
     out = TarefaOut.model_validate(Fake())
     assert out.concluida is False
+
+
+def test_update_null_explicito_rejeitado():
+    with pytest.raises(ValueError):
+        TarefaUpdate(titulo=None)
+    with pytest.raises(ValueError):
+        TarefaUpdate(concluida=None)
+
+
+def test_update_prazo_null_continua_ok():
+    u = TarefaUpdate(prazo=None)
+    assert u.model_dump(exclude_unset=True) == {"prazo": None}
+
+
+def test_titulo_max_length():
+    with pytest.raises(ValueError):
+        TarefaCreate(titulo="x" * 256)
+    with pytest.raises(ValueError):
+        TarefaUpdate(titulo="x" * 256)

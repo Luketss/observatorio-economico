@@ -1,7 +1,7 @@
 from datetime import date, datetime
 from typing import Optional
 
-from pydantic import BaseModel, field_validator
+from pydantic import BaseModel, Field, field_validator
 
 
 # ── Cover-image presets (gallery) ──────────────────────────────────────────────
@@ -91,7 +91,7 @@ class TarefaOut(BaseModel):
 
 
 class TarefaCreate(BaseModel):
-    titulo: str
+    titulo: str = Field(max_length=255)
     prazo: Optional[date] = None
 
     @field_validator("titulo")
@@ -104,15 +104,20 @@ class TarefaCreate(BaseModel):
 
 
 class TarefaUpdate(BaseModel):
-    titulo: Optional[str] = None
+    titulo: Optional[str] = Field(default=None, max_length=255)
     prazo: Optional[date] = None
     concluida: Optional[bool] = None
+
+    @field_validator("titulo", "concluida", mode="before")
+    @classmethod
+    def rejeita_null_explicito(cls, v):
+        if v is None:
+            raise ValueError("não pode ser null")
+        return v
 
     @field_validator("titulo")
     @classmethod
     def titulo_nao_vazio(cls, v):
-        if v is None:
-            return v
         v = v.strip()
         if not v:
             raise ValueError("titulo é obrigatório")
