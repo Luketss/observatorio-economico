@@ -19,6 +19,8 @@ import { useEscapeKey } from "../../hooks/useEscapeKey";
 import { usePermissao } from "../../hooks/usePermissao";
 import NidTabBar from "../../components/nid/NidTabBar";
 import StatusPill from "../../components/nid/StatusPill";
+import ChecklistProjeto from "./ChecklistProjeto";
+import { diasAtraso, progresso } from "../../utils/projetoStatus";
 
 // Map backend status → StatusPill kind + display label
 const STATUS_CONFIG = {
@@ -106,6 +108,7 @@ export default function AcompanhamentoTab() {
     nao_iniciado: projetos.filter((p) => p.status === "nao_iniciado").length,
     em_andamento: projetos.filter((p) => p.status === "em_andamento").length,
     concluido: projetos.filter((p) => p.status === "concluido").length,
+    atrasados: projetos.filter((p) => diasAtraso(p) !== null).length,
   }), [projetos]);
 
   function eixoLabel(eixo_id) {
@@ -180,6 +183,11 @@ export default function AcompanhamentoTab() {
     }
   }
 
+  function handleTarefasChange(projetoId, tarefas) {
+    setProjetos((prev) => prev.map((p) => (p.id === projetoId ? { ...p, tarefas } : p)));
+    setViewingProjeto((prev) => (prev && prev.id === projetoId ? { ...prev, tarefas } : prev));
+  }
+
   async function handleDelete(id) {
     try {
       await api.delete(`/projetos/${id}`);
@@ -235,6 +243,8 @@ export default function AcompanhamentoTab() {
     const label = eixoLabel(projeto.eixo_id);
     const accentVar = eixoAccentMap[String(projeto.eixo_id)] || "--accent-1";
     const coverImg = eixoImagemMap[String(projeto.eixo_id)];
+    const atraso = diasAtraso(projeto);
+    const prog = progresso(projeto.tarefas);
     return (
       <div className="proj-card">
         {/* Image slot — eixo cover when set, else gradient placeholder */}
@@ -301,11 +311,23 @@ export default function AcompanhamentoTab() {
             </span>
           )}
           {projeto.data_prazo && (
-            <span style={{ display: "flex", alignItems: "center", gap: 4 }}>
+            <span style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
               <CalendarDaysIcon style={{ width: 12, height: 12 }} /> Prazo: {fmtDate(projeto.data_prazo)}
+              {atraso !== null && <StatusPill kind="err" dot label={`Atrasado há ${atraso}d`} />}
             </span>
           )}
         </div>
+
+        {prog && (
+          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+            <div style={{ flex: 1, height: 4, borderRadius: 999, background: "var(--panel-2)", overflow: "hidden" }}>
+              <div style={{ width: `${prog.pct}%`, height: "100%", borderRadius: 999, background: "var(--accent-1)" }} />
+            </div>
+            <span style={{ fontSize: 10, fontFamily: "var(--font-mono)", color: "var(--text-mute)", flexShrink: 0 }}>
+              {prog.feitas}/{prog.total}
+            </span>
+          </div>
+        )}
 
         {/* Footer: StatusPill + optional status change dropdown */}
         <div className="proj-card__footer" style={{ flexDirection: "column", gap: 8 }}>
@@ -330,12 +352,13 @@ export default function AcompanhamentoTab() {
   return (
     <div className="space-y-6">
       {/* KPI row */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
         {[
           { label: "Total", value: kpis.total, accent: "var(--text)" },
           { label: "Não iniciados", value: kpis.nao_iniciado, accent: "var(--text-dim)" },
           { label: "Em andamento", value: kpis.em_andamento, accent: "var(--accent-4)" },
           { label: "Concluídos", value: kpis.concluido, accent: "var(--accent-5)" },
+          { label: "Atrasados", value: kpis.atrasados, accent: "var(--accent-2)" },
         ].map((k) => (
           <div key={k.label} className="nid-kpi">
             <p className="nid-kpi-label">{k.label}</p>
@@ -456,7 +479,10 @@ export default function AcompanhamentoTab() {
                         <StatusPill kind={st.kind} dot label={st.label} />
                       </td>
                       <td style={{ padding: "10px 20px", color: "var(--text-dim)" }}>{p.responsavel || "—"}</td>
-                      <td style={{ padding: "10px 20px", color: "var(--text-mute)", fontSize: 11 }}>{fmtDate(p.data_prazo) || "—"}</td>
+                      <td style={{ padding: "10px 20px", color: diasAtraso(p) !== null ? "var(--accent-2)" : "var(--text-mute)", fontSize: 11 }}>
+                        {fmtDate(p.data_prazo) || "—"}
+                        {diasAtraso(p) !== null && " · atrasado"}
+                      </td>
                       {(canEditar || canExcluir) && (
                         <td style={{ padding: "10px 20px" }}>
                           <div style={{ display: "flex", alignItems: "center", gap: 8, justifyContent: "flex-end" }}>
@@ -498,36 +524,75 @@ export default function AcompanhamentoTab() {
               exit={{ scale: 0.95 }}
               transition={{ type: "spring", stiffness: 300, damping: 30 }}
               className="nid-modal"
-              style={{ maxWidth: 520 }}
+              style={{ maxWidth: 680 }}
             >
-              <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 12 }}>
-                <div>
-                  {(() => {
-                    const st = STATUS_CONFIG[viewingProjeto.status] || STATUS_CONFIG.nao_iniciado;
-                    return <StatusPill kind={st.kind} dot label={st.label} />;
-                  })()}
-                  <h2 style={{ fontSize: 17, fontWeight: 700, color: "var(--text)", margin: "8px 0 0" }}>{viewingProjeto.titulo}</h2>
-                </div>
-                <button onClick={() => setViewingProjeto(null)} className="nid-modal__close">
-                  <XMarkIcon className="w-5 h-5" />
-                </button>
-              </div>
+              {(() => {
+                const st = STATUS_CONFIG[viewingProjeto.status] || STATUS_CONFIG.nao_iniciado;
+                const atraso = diasAtraso(viewingProjeto);
+                const prog = progresso(viewingProjeto.tarefas);
+                return (
+                  <>
+                    {/* Cabeçalho: pills + título + progresso */}
+                    <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 12 }}>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+                          <StatusPill kind={st.kind} dot label={st.label} />
+                          {atraso !== null && <StatusPill kind="err" dot label={`⚠ Atrasado há ${atraso}d`} />}
+                        </div>
+                        <h2 style={{ fontSize: 17, fontWeight: 700, color: "var(--text)", margin: "8px 0 0" }}>{viewingProjeto.titulo}</h2>
+                        {prog && (
+                          <div style={{ display: "flex", alignItems: "center", gap: 10, marginTop: 10 }}>
+                            <div style={{ flex: 1, height: 6, borderRadius: 999, background: "var(--panel-2)", overflow: "hidden" }}>
+                              <div style={{ width: `${prog.pct}%`, height: "100%", borderRadius: 999, background: "var(--accent-1)" }} />
+                            </div>
+                            <span style={{ fontSize: 11, fontFamily: "var(--font-mono)", color: "var(--text-dim)", flexShrink: 0 }}>
+                              {prog.feitas}/{prog.total} tarefas · {prog.pct}%
+                            </span>
+                          </div>
+                        )}
+                      </div>
+                      <button onClick={() => setViewingProjeto(null)} className="nid-modal__close">
+                        <XMarkIcon className="w-5 h-5" />
+                      </button>
+                    </div>
 
-              {viewingProjeto.descricao && (
-                <p style={{ fontSize: 13, color: "var(--text-dim)", lineHeight: 1.6 }}>{viewingProjeto.descricao}</p>
-              )}
-              {viewingProjeto.conteudo && (
-                <div style={{ fontSize: 13, color: "var(--text-dim)", whiteSpace: "pre-line", borderTop: "1px solid var(--border)", paddingTop: 16, lineHeight: 1.6 }}>
-                  {viewingProjeto.conteudo}
-                </div>
-              )}
-              <div style={{ display: "flex", flexWrap: "wrap", gap: "10px 20px", borderTop: "1px solid var(--border)", paddingTop: 12, fontSize: 11, color: "var(--text-dim)", fontFamily: "var(--font-mono)" }}>
-                {eixoLabel(viewingProjeto.eixo_id) && <span><span style={{ fontWeight: 600 }}>Eixo:</span> {eixoLabel(viewingProjeto.eixo_id)}</span>}
-                {viewingProjeto.departamento && <span><span style={{ fontWeight: 600 }}>Departamento:</span> {viewingProjeto.departamento}</span>}
-                {viewingProjeto.responsavel && <span><span style={{ fontWeight: 600 }}>Responsável:</span> {viewingProjeto.responsavel}</span>}
-                {viewingProjeto.data_inicio && <span><span style={{ fontWeight: 600 }}>Início:</span> {fmtDate(viewingProjeto.data_inicio)}</span>}
-                {viewingProjeto.data_prazo && <span><span style={{ fontWeight: 600 }}>Prazo:</span> {fmtDate(viewingProjeto.data_prazo)}</span>}
-              </div>
+                    {/* Metadados */}
+                    <div style={{ display: "flex", flexWrap: "wrap", gap: "10px 20px", borderTop: "1px solid var(--border)", paddingTop: 12, fontSize: 11, color: "var(--text-dim)", fontFamily: "var(--font-mono)" }}>
+                      {eixoLabel(viewingProjeto.eixo_id) && <span><span style={{ fontWeight: 600 }}>Eixo:</span> {eixoLabel(viewingProjeto.eixo_id)}</span>}
+                      {viewingProjeto.departamento && <span><span style={{ fontWeight: 600 }}>Departamento:</span> {viewingProjeto.departamento}</span>}
+                      {viewingProjeto.responsavel && <span><span style={{ fontWeight: 600 }}>Responsável:</span> {viewingProjeto.responsavel}</span>}
+                      {viewingProjeto.data_inicio && <span><span style={{ fontWeight: 600 }}>Início:</span> {fmtDate(viewingProjeto.data_inicio)}</span>}
+                      {viewingProjeto.data_prazo && (
+                        <span style={{ color: atraso !== null ? "var(--accent-2)" : undefined }}>
+                          <span style={{ fontWeight: 600 }}>Prazo:</span> {fmtDate(viewingProjeto.data_prazo)}
+                        </span>
+                      )}
+                    </div>
+
+                    {/* Descrição */}
+                    {viewingProjeto.descricao && (
+                      <p style={{ fontSize: 13, color: "var(--text-dim)", lineHeight: 1.6, borderTop: "1px solid var(--border)", paddingTop: 12 }}>{viewingProjeto.descricao}</p>
+                    )}
+
+                    {/* Checklist */}
+                    <div style={{ borderTop: "1px solid var(--border)", paddingTop: 12 }}>
+                      <ChecklistProjeto
+                        projeto={viewingProjeto}
+                        canEditar={canEditar}
+                        onChange={(tarefas) => handleTarefasChange(viewingProjeto.id, tarefas)}
+                      />
+                    </div>
+
+                    {/* Notas */}
+                    {viewingProjeto.conteudo && (
+                      <div style={{ fontSize: 13, color: "var(--text-dim)", whiteSpace: "pre-line", borderTop: "1px solid var(--border)", paddingTop: 12, lineHeight: 1.6 }}>
+                        <p style={{ fontSize: 10, fontFamily: "var(--font-mono)", textTransform: "uppercase", letterSpacing: "0.08em", color: "var(--text-mute)", margin: "0 0 6px" }}>Notas</p>
+                        {viewingProjeto.conteudo}
+                      </div>
+                    )}
+                  </>
+                );
+              })()}
             </motion.div>
           </motion.div>
         )}
