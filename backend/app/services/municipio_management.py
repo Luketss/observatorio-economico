@@ -216,21 +216,21 @@ def clone_municipio_data(
             # Projetos precisam de flush por linha: as tarefas do checklist
             # penduram no PK novo (o caminho genérico add_all não mapeia PKs).
             new_rows = []
-            for r in rows:
-                novo = _copy_row(r, target_id)
-                db.add(novo)
-                db.flush()
-                for t in r.tarefas:
-                    db.add(
-                        ProjetoTarefa(
-                            projeto_id=novo.id,
-                            titulo=t.titulo,
-                            prazo=t.prazo,
-                            concluida=t.concluida,
-                        )
-                    )
-                new_rows.append(novo)
             try:
+                for r in rows:
+                    novo = _copy_row(r, target_id)
+                    db.add(novo)
+                    db.flush()
+                    for t in r.tarefas:
+                        db.add(
+                            ProjetoTarefa(
+                                projeto_id=novo.id,
+                                titulo=t.titulo,
+                                prazo=t.prazo,
+                                concluida=t.concluida,
+                            )
+                        )
+                    new_rows.append(novo)
                 db.commit()
             except Exception:
                 db.rollback()
