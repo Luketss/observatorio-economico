@@ -119,6 +119,8 @@ def criar_usuario(
     else:
         # Delegado: cria só no próprio município e sempre como VISUALIZADOR.
         visualizador = db.query(Role).filter(Role.nome == "VISUALIZADOR").first()
+        if not visualizador:
+            raise ConflictException("Role VISUALIZADOR não configurada.")
         data = data.model_copy(
             update={
                 "municipio_id": current_user.municipio_id,
