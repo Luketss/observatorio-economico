@@ -15,8 +15,8 @@ class UsuarioCreate(BaseModel):
     nome: str
     email: EmailStr
     senha: str
-    municipio_id: Optional[int]
-    role_id: int
+    municipio_id: Optional[int] = None
+    role_id: Optional[int] = None
 
 
 class UsuarioUpdate(BaseModel):
