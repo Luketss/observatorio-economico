@@ -21,6 +21,7 @@ export default function ChecklistProjeto({ projeto, canEditar, onChange }) {
 
   async function adicionar(e) {
     e.preventDefault();
+    if (saving) return;
     const titulo = novoTitulo.trim();
     if (!titulo) return;
     setSaving(true);
@@ -40,13 +41,17 @@ export default function ChecklistProjeto({ projeto, canEditar, onChange }) {
   }
 
   async function toggle(t) {
+    if (saving) return;
+    setSaving(true);
     try {
       const res = await api.put(`/projetos/${projeto.id}/tarefas/${t.id}`, {
         concluida: !t.concluida,
       });
       onChange(tarefas.map((x) => (x.id === t.id ? res.data : x)));
-    } catch {
-      addToast("Erro ao atualizar tarefa", "error");
+    } catch (err) {
+      addToast(err?.response?.data?.detail || "Erro ao atualizar tarefa", "error");
+    } finally {
+      setSaving(false);
     }
   }
 
@@ -58,6 +63,7 @@ export default function ChecklistProjeto({ projeto, canEditar, onChange }) {
 
   async function salvarEdicao(e) {
     e.preventDefault();
+    if (saving) return;
     const titulo = editTitulo.trim();
     if (!titulo) return;
     setSaving(true);
@@ -76,12 +82,16 @@ export default function ChecklistProjeto({ projeto, canEditar, onChange }) {
   }
 
   async function excluir(t) {
+    if (saving) return;
+    setSaving(true);
     try {
       await api.delete(`/projetos/${projeto.id}/tarefas/${t.id}`);
       onChange(tarefas.filter((x) => x.id !== t.id));
       addToast("Tarefa excluída", "success");
-    } catch {
-      addToast("Erro ao excluir tarefa", "error");
+    } catch (err) {
+      addToast(err?.response?.data?.detail || "Erro ao excluir tarefa", "error");
+    } finally {
+      setSaving(false);
     }
   }
 
@@ -131,7 +141,7 @@ export default function ChecklistProjeto({ projeto, canEditar, onChange }) {
               type="checkbox"
               checked={t.concluida}
               onChange={() => toggle(t)}
-              disabled={!canEditar}
+              disabled={!canEditar || saving}
               aria-label={`Concluir ${t.titulo}`}
               style={{ cursor: canEditar ? "pointer" : "default", flexShrink: 0 }}
             />
@@ -153,10 +163,10 @@ export default function ChecklistProjeto({ projeto, canEditar, onChange }) {
             )}
             {canEditar && (
               <span style={{ display: "flex", gap: 4, flexShrink: 0 }}>
-                <button onClick={() => comecarEdicao(t)} aria-label="Editar tarefa" className="proj-card__icon-btn">
+                <button onClick={() => comecarEdicao(t)} disabled={saving} aria-label="Editar tarefa" className="proj-card__icon-btn">
                   <PencilIcon className="w-3.5 h-3.5" />
                 </button>
-                <button onClick={() => excluir(t)} aria-label="Excluir tarefa" className="proj-card__icon-btn proj-card__icon-btn--danger">
+                <button onClick={() => excluir(t)} disabled={saving} aria-label="Excluir tarefa" className="proj-card__icon-btn proj-card__icon-btn--danger">
                   <TrashIcon className="w-3.5 h-3.5" />
                 </button>
               </span>
