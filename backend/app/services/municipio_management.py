@@ -57,7 +57,7 @@ from app.models.pib import PibAnual
 from app.models.pix import PixMensal
 from app.models.populacao import PopulacaoMunicipio
 from app.models.vaf import VafAnual
-from app.models.projeto import Projeto
+from app.models.projeto import Projeto, ProjetoTarefa
 from app.models.role import Role
 from app.models.rais import (
     RaisMetricasAnuais,
@@ -211,6 +211,41 @@ def clone_municipio_data(
         rows = db.query(model).filter(model.municipio_id == source_id).all()
         if not rows:
             continue
+
+        if model is Projeto:
+            # Projetos precisam de flush por linha: as tarefas do checklist
+            # penduram no PK novo (o caminho genérico add_all não mapeia PKs).
+            new_rows = []
+            for r in rows:
+                novo = _copy_row(r, target_id)
+                db.add(novo)
+                db.flush()
+                for t in r.tarefas:
+                    db.add(
+                        ProjetoTarefa(
+                            projeto_id=novo.id,
+                            titulo=t.titulo,
+                            prazo=t.prazo,
+                            concluida=t.concluida,
+                        )
+                    )
+                new_rows.append(novo)
+            try:
+                db.commit()
+            except Exception:
+                db.rollback()
+                logger.exception("Clone failed at model %s", model.__name__)
+                raise HTTPException(
+                    status_code=500,
+                    detail=f"Falha ao clonar tabela {model.__name__}. Operação parcial — verifique o município destino.",
+                )
+            summary[model.__name__] = len(new_rows)
+            logger.info(
+                "Cloned %s rows from %s (source=%s → target=%s)",
+                len(new_rows), model.__name__, source_id, target_id,
+            )
+            continue
+
         new_rows = [_copy_row(r, target_id) for r in rows]
         db.add_all(new_rows)
         try:
