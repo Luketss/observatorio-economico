@@ -7,6 +7,8 @@ import {
   TrashIcon,
   InformationCircleIcon,
   PencilSquareIcon,
+  ViewColumnsIcon,
+  TableCellsIcon,
 } from "@heroicons/react/24/outline";
 import api from "../../services/api";
 import { useAuth } from "../../context/AuthContext";
@@ -44,6 +46,11 @@ function fmtMoeda(v) {
   return new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL", notation: "compact", maximumFractionDigits: 1 }).format(v);
 }
 
+function fmtDate(d) {
+  if (!d) return null;
+  return new Date(d + "T00:00:00").toLocaleDateString("pt-BR");
+}
+
 export default function EscritaTab() {
   const { user } = useAuth();
   const { addToast } = useToast();
@@ -62,11 +69,14 @@ export default function EscritaTab() {
   const [saving, setSaving] = useState(false);
   const [formError, setFormError] = useState(null);
   const [deleteConfirmId, setDeleteConfirmId] = useState(null);
+  const [viewingItem, setViewingItem] = useState(null);
+  const [viewMode, setViewMode] = useState("kanban");
 
   useEscapeKey(useCallback(() => {
     if (deleteConfirmId) { setDeleteConfirmId(null); return; }
+    if (viewingItem) { setViewingItem(null); return; }
     if (showForm) closeForm();
-  }, [deleteConfirmId, showForm]));
+  }, [deleteConfirmId, viewingItem, showForm]));
 
   async function load() {
     try {
@@ -222,7 +232,25 @@ export default function EscritaTab() {
       </div>
 
       {/* Toolbar */}
-      <div className="flex justify-end">
+      <div className="flex items-center justify-between gap-3 flex-wrap">
+        <div className="inline-flex rounded-xl border border-[var(--border)] overflow-hidden">
+          <button
+            onClick={() => setViewMode("kanban")}
+            aria-label="Kanban"
+            aria-pressed={viewMode === "kanban"}
+            className={`px-3 py-2 cursor-pointer transition-colors ${viewMode === "kanban" ? "bg-[var(--panel-2)] text-[var(--text)]" : "text-[var(--text-mute)] hover:bg-[var(--panel-2)]"}`}
+          >
+            <ViewColumnsIcon className="w-4 h-4" />
+          </button>
+          <button
+            onClick={() => setViewMode("table")}
+            aria-label="Tabela"
+            aria-pressed={viewMode === "table"}
+            className={`px-3 py-2 cursor-pointer transition-colors ${viewMode === "table" ? "bg-[var(--panel-2)] text-[var(--text)]" : "text-[var(--text-mute)] hover:bg-[var(--panel-2)]"}`}
+          >
+            <TableCellsIcon className="w-4 h-4" />
+          </button>
+        </div>
         {canCriar && (
           <button
             onClick={openCreate}
@@ -234,6 +262,8 @@ export default function EscritaTab() {
         )}
       </div>
 
+      {viewMode === "kanban" && (
+      <>
       {/* Kanban board */}
       {items.length === 0 ? (
         <div className="text-center py-16 text-slate-400">
@@ -265,7 +295,7 @@ export default function EscritaTab() {
                                 {cap.titulo}
                               </span>
                             )}
-                            <h4 className="font-medium text-[var(--text)] text-sm leading-snug">{item.titulo}</h4>
+                            <h4 className="font-medium text-[var(--text)] text-sm leading-snug cursor-pointer" onClick={() => setViewingItem(item)}>{item.titulo}</h4>
                           </div>
                           {(canEditar || canExcluir) && (
                             <div className="flex gap-1 shrink-0">
@@ -314,6 +344,109 @@ export default function EscritaTab() {
           })}
         </div>
       )}
+      </>
+      )}
+
+      {viewMode === "table" && (
+        <div className="bg-[var(--panel)] rounded-xl border border-[var(--border)] overflow-x-auto">
+          <table className="w-full text-sm border-collapse">
+            <thead>
+              <tr className="bg-[var(--panel-2)] text-[10px] uppercase tracking-wider text-[var(--text-mute)] text-left">
+                <th className="px-4 py-2.5">Título</th>
+                <th className="px-4 py-2.5">Captação vinculada</th>
+                <th className="px-4 py-2.5">Resultado</th>
+                <th className="px-4 py-2.5">Responsável</th>
+                <th className="px-4 py-2.5">Prazo</th>
+                <th className="px-4 py-2.5">Valor</th>
+                <th className="px-4 py-2.5">Estágio</th>
+                {(canEditar || canExcluir) && <th className="px-4 py-2.5" />}
+              </tr>
+            </thead>
+            <tbody>
+              {items.length === 0 ? (
+                <tr><td colSpan={8} className="px-4 py-10 text-center text-sm text-slate-400">Nenhum projeto de escrita cadastrado ainda.</td></tr>
+              ) : (
+                items.map((item) => {
+                  const cfg = ESTAGIO_CONFIG[item.estagio] || ESTAGIO_CONFIG.ideia;
+                  const resCfg = item.resultado ? RESULTADO_CONFIG[item.resultado] : null;
+                  const cap = captacoes.find((c) => c.id === item.oportunidade_captacao_id);
+                  return (
+                    <tr key={item.id} className="border-t border-[var(--border)]">
+                      <td className="px-4 py-2.5 font-medium text-[var(--text)] cursor-pointer" onClick={() => setViewingItem(item)}>{item.titulo}</td>
+                      <td className="px-4 py-2.5 text-xs text-[var(--accent-1)]">{cap?.titulo || "—"}</td>
+                      <td className="px-4 py-2.5">{resCfg ? <span className={`px-2 py-0.5 rounded-full text-[11px] font-medium ${resCfg.color}`}>{resCfg.label}</span> : <span className="text-xs text-[var(--text-mute)]">—</span>}</td>
+                      <td className="px-4 py-2.5 text-xs text-[var(--text-dim)]">{item.responsavel || "—"}</td>
+                      <td className="px-4 py-2.5 text-xs text-[var(--text-mute)]">{fmtDate(item.prazo) || "—"}</td>
+                      <td className="px-4 py-2.5 text-xs text-[var(--text-dim)]">{fmtMoeda(item.valor_pleiteado) || "—"}</td>
+                      <td className="px-4 py-2.5"><span className={`px-2 py-0.5 rounded-full text-[11px] font-medium ${cfg.color}`}>{cfg.label}</span></td>
+                      {(canEditar || canExcluir) && (
+                        <td className="px-4 py-2.5">
+                          <div className="flex items-center gap-1 justify-end">
+                            {canEditar && (<button onClick={() => openEdit(item)} className="p-1.5 rounded-lg text-slate-400 hover:text-blue-600 hover:bg-[var(--panel-2)] transition-colors cursor-pointer"><PencilIcon className="w-3.5 h-3.5" /></button>)}
+                            {canExcluir && (<button onClick={() => setDeleteConfirmId(item.id)} className="p-1.5 rounded-lg text-slate-400 hover:text-red-500 hover:bg-[var(--panel-2)] transition-colors cursor-pointer"><TrashIcon className="w-3.5 h-3.5" /></button>)}
+                          </div>
+                        </td>
+                      )}
+                    </tr>
+                  );
+                })
+              )}
+            </tbody>
+          </table>
+        </div>
+      )}
+
+      {/* Detail modal */}
+      <AnimatePresence>
+        {viewingItem && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4"
+            onClick={(e) => { if (e.target === e.currentTarget) setViewingItem(null); }}
+          >
+            <motion.div
+              initial={{ scale: 0.95 }}
+              animate={{ scale: 1 }}
+              exit={{ scale: 0.95 }}
+              transition={{ type: "spring", stiffness: 300, damping: 30 }}
+              className="bg-[var(--panel)] rounded-2xl shadow-xl w-full max-w-lg p-6 max-h-[90vh] overflow-y-auto space-y-4"
+            >
+              {(() => {
+                const cfg = ESTAGIO_CONFIG[viewingItem.estagio] || ESTAGIO_CONFIG.ideia;
+                const resCfg = viewingItem.resultado ? RESULTADO_CONFIG[viewingItem.resultado] : null;
+                const cap = captacoes.find((c) => c.id === viewingItem.oportunidade_captacao_id);
+                return (
+                  <>
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="flex items-center gap-1.5 flex-wrap">
+                        <span className={`px-2 py-0.5 rounded-full text-[11px] font-medium ${cfg.color}`}>{cfg.label}</span>
+                        {resCfg && <span className={`px-2 py-0.5 rounded-full text-[11px] font-medium ${resCfg.color}`}>{resCfg.label}</span>}
+                      </div>
+                      <button onClick={() => setViewingItem(null)} className="p-1.5 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-[var(--panel-2)] transition-colors cursor-pointer shrink-0">
+                        <XMarkIcon className="w-5 h-5" />
+                      </button>
+                    </div>
+                    <div>
+                      <h3 className="text-base font-bold text-[var(--text)] leading-snug">{viewingItem.titulo}</h3>
+                      {cap && <p className="text-xs text-[var(--accent-1)] mt-1">Captação vinculada: {cap.titulo}</p>}
+                    </div>
+                    {viewingItem.descricao && (
+                      <p className="text-sm text-[var(--text-dim)] leading-relaxed whitespace-pre-line border-t border-[var(--border)] pt-3">{viewingItem.descricao}</p>
+                    )}
+                    <div className="flex flex-col gap-1.5 text-xs text-slate-400 border-t border-[var(--border)] pt-3">
+                      {viewingItem.responsavel && <span>Responsável: {viewingItem.responsavel}</span>}
+                      {viewingItem.prazo && <span>Prazo: {fmtDate(viewingItem.prazo)}</span>}
+                      {viewingItem.valor_pleiteado != null && <span className="font-semibold text-[var(--text-dim)]">Valor pleiteado: {fmtMoeda(viewingItem.valor_pleiteado)}</span>}
+                    </div>
+                  </>
+                );
+              })()}
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* Delete confirm */}
       <AnimatePresence>
