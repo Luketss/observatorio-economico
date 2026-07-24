@@ -12,7 +12,7 @@ import { hasPermissao } from "../hooks/usePermissao";
  * para quem pode criar no módulo e o tem no plano — ADMIN_GLOBAL fica de fora
  * porque o registro nasce no município do usuário; o backend já bloqueia
  * VISUALIZADOR/ADMIN_GLOBAL de qualquer forma. */
-export default function CriarOportunidadeCaptacao({ payload, label = "Registrar no funil de captação", compact = false }) {
+export default function CriarOportunidadeCaptacao({ payload, label = "Registrar no funil de captação", compact = false, onCreated }) {
   const { user } = useAuth();
   const { canAccess } = usePlan();
   const { addToast } = useToast();
@@ -26,7 +26,12 @@ export default function CriarOportunidadeCaptacao({ payload, label = "Registrar 
     try {
       await api.post("/desenvolvimento-economico/captacao", { estagio: "oportunidade", ...payload });
       addToast("Oportunidade criada no funil de captação", "success");
-      navigate("/app/desenvolvimento-economico/captacao");
+      if (onCreated) {
+        onCreated();
+        setSaving(false);
+      } else {
+        navigate("/app/desenvolvimento-economico/captacao");
+      }
     } catch {
       addToast("Erro ao criar oportunidade", "error");
       setSaving(false);
