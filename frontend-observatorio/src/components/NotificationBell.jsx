@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import api from "../services/api";
+import { useNavigate } from "react-router-dom";
+import { fetchNotificacoes, marcarLida, marcarTodasLidas } from "../services/notificacoesApi";
 
 const KIND_CLASS = {
   info: "info",
@@ -33,6 +34,7 @@ function timeAgo(iso) {
 }
 
 export default function NotificationBell() {
+  const navigate = useNavigate();
   const [notifs, setNotifs] = useState([]);
   const [open, setOpen] = useState(false);
   const [panelPos, setPanelPos] = useState({ top: 0, right: 0 });
@@ -50,8 +52,7 @@ export default function NotificationBell() {
 
   const fetchNotifs = async () => {
     try {
-      const res = await api.get("/notificacoes");
-      setNotifs(res.data || []);
+      setNotifs(await fetchNotificacoes());
     } catch {
       // silent fail
     }
@@ -89,7 +90,7 @@ export default function NotificationBell() {
 
   const markLida = async (id) => {
     try {
-      await api.post(`/notificacoes/${id}/marcar_lida`);
+      await marcarLida(id);
       setNotifs((prev) => prev.map((n) => (n.id === id ? { ...n, lida: true } : n)));
     } catch {
       // silent fail
@@ -97,12 +98,7 @@ export default function NotificationBell() {
   };
 
   const markAllLida = async () => {
-    const unreadItems = notifs.filter((n) => !n.lida);
-    await Promise.all(
-      unreadItems.map((n) =>
-        api.post(`/notificacoes/${n.id}/marcar_lida`).catch(() => {})
-      )
-    );
+    await marcarTodasLidas(notifs);
     setNotifs((prev) => prev.map((n) => ({ ...n, lida: true })));
   };
 
@@ -173,11 +169,6 @@ export default function NotificationBell() {
                         <div className="nid-bell-time">{timeAgo(n.criado_em)}</div>
                       </div>
                       <div className="nid-bell-text">{n.mensagem}</div>
-                      {n.dataset && (
-                        <span className="nid-bell-tag">
-                          {String(n.dataset).toUpperCase()}
-                        </span>
-                      )}
                     </div>
                   </div>
                 );
@@ -186,7 +177,12 @@ export default function NotificationBell() {
           </div>
 
           <div className="nid-bell-foot">
-            <button className="nid-bell-link">Ver todas as notificações →</button>
+            <button
+              className="nid-bell-link"
+              onClick={() => { setOpen(false); navigate("/app/notificacoes"); }}
+            >
+              Ver todas as notificações →
+            </button>
           </div>
         </div>,
         document.body
