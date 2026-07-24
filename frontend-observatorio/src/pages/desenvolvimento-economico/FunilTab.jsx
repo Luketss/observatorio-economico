@@ -9,6 +9,8 @@ import {
   UserIcon,
   InformationCircleIcon,
   FunnelIcon,
+  ViewColumnsIcon,
+  TableCellsIcon,
 } from "@heroicons/react/24/outline";
 import NidFunnel from "../../components/nid/Funnel.jsx";
 import api from "../../services/api";
@@ -64,11 +66,14 @@ export default function FunilTab() {
   const [saving, setSaving] = useState(false);
   const [formError, setFormError] = useState(null);
   const [deleteConfirmId, setDeleteConfirmId] = useState(null);
+  const [viewingItem, setViewingItem] = useState(null);
+  const [viewMode, setViewMode] = useState("kanban");
 
   useEscapeKey(useCallback(() => {
     if (deleteConfirmId) { setDeleteConfirmId(null); return; }
+    if (viewingItem) { setViewingItem(null); return; }
     if (showForm) closeForm();
-  }, [deleteConfirmId, showForm]));
+  }, [deleteConfirmId, viewingItem, showForm]));
 
   async function load() {
     try {
@@ -153,6 +158,16 @@ export default function FunilTab() {
     }
   }
 
+  async function handleEstagioChange(id, newEstagio) {
+    try {
+      await api.put(`/desenvolvimento-economico/funil/${id}`, { estagio: newEstagio });
+      addToast("Estágio atualizado", "success");
+      await load();
+    } catch {
+      addToast("Erro ao atualizar estágio", "error");
+    }
+  }
+
   async function handleDelete(id) {
     try {
       await api.delete(`/desenvolvimento-economico/funil/${id}`);
@@ -217,7 +232,25 @@ export default function FunilTab() {
       )}
 
       {/* Toolbar */}
-      <div className="flex justify-end">
+      <div className="flex items-center justify-between gap-3 flex-wrap">
+        <div className="inline-flex rounded-xl border border-[var(--border)] overflow-hidden">
+          <button
+            onClick={() => setViewMode("kanban")}
+            aria-label="Kanban"
+            aria-pressed={viewMode === "kanban"}
+            className={`px-3 py-2 cursor-pointer transition-colors ${viewMode === "kanban" ? "bg-[var(--panel-2)] text-[var(--text)]" : "text-[var(--text-mute)] hover:bg-[var(--panel-2)]"}`}
+          >
+            <ViewColumnsIcon className="w-4 h-4" />
+          </button>
+          <button
+            onClick={() => setViewMode("table")}
+            aria-label="Tabela"
+            aria-pressed={viewMode === "table"}
+            className={`px-3 py-2 cursor-pointer transition-colors ${viewMode === "table" ? "bg-[var(--panel-2)] text-[var(--text)]" : "text-[var(--text-mute)] hover:bg-[var(--panel-2)]"}`}
+          >
+            <TableCellsIcon className="w-4 h-4" />
+          </button>
+        </div>
         {canCriar && (
           <button
             onClick={openCreate}
@@ -237,68 +270,184 @@ export default function FunilTab() {
         </div>
       )}
 
-      {/* Cards por estágio */}
-      {ESTAGIOS.map((estagio) => {
-        const cfg = ESTAGIO_CONFIG[estagio];
-        const cols = items.filter((i) => i.estagio === estagio);
-        if (cols.length === 0) return null;
-        return (
-          <div key={estagio} className="space-y-3">
-            <div className="flex items-center gap-2">
-              <div className="w-2 h-2 rounded-full" style={{ backgroundColor: cfg.color }} />
-              <h3 className="font-semibold text-[var(--text-dim)] text-sm">{cfg.label}</h3>
-              <span className="ml-auto text-xs text-slate-400 bg-[var(--panel-2)] px-2 py-0.5 rounded-full">{cols.length}</span>
-            </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
-              {cols.map((item) => (
-                <div key={item.id} className="bg-[var(--panel)] rounded-xl border border-[var(--border)] p-4 space-y-2.5 hover:shadow-md transition-shadow">
-                  <div className="flex items-start justify-between gap-2">
-                    <div className="flex-1 min-w-0">
-                      <h4 className="font-medium text-[var(--text)] text-sm leading-snug">{item.empresa_nome}</h4>
-                      {item.setor && <p className="text-xs text-slate-400 mt-0.5">{item.setor}</p>}
-                    </div>
-                    {(canEditar || canExcluir) && (
-                      <div className="flex gap-1 shrink-0">
-                        {canEditar && (
-                          <button onClick={() => openEdit(item)} className="p-1.5 rounded-lg text-slate-400 hover:text-blue-600 hover:bg-[var(--panel-2)] transition-colors cursor-pointer">
-                            <PencilIcon className="w-3.5 h-3.5" />
-                          </button>
-                        )}
-                        {canExcluir && (
-                          <button onClick={() => setDeleteConfirmId(item.id)} className="p-1.5 rounded-lg text-slate-400 hover:text-red-500 hover:bg-[var(--panel-2)] transition-colors cursor-pointer">
-                            <TrashIcon className="w-3.5 h-3.5" />
-                          </button>
+      {viewMode === "kanban" && (
+        <>
+          {/* Cards por estágio */}
+          {ESTAGIOS.map((estagio) => {
+            const cfg = ESTAGIO_CONFIG[estagio];
+            const cols = items.filter((i) => i.estagio === estagio);
+            return (
+              <div key={estagio} className="space-y-3">
+                <div className="flex items-center gap-2">
+                  <div className="w-2 h-2 rounded-full" style={{ backgroundColor: cfg.color }} />
+                  <h3 className="font-semibold text-[var(--text-dim)] text-sm">{cfg.label}</h3>
+                  <span className="ml-auto text-xs text-slate-400 bg-[var(--panel-2)] px-2 py-0.5 rounded-full">{cols.length}</span>
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
+                  {cols.map((item) => (
+                    <div key={item.id} className="bg-[var(--panel)] rounded-xl border border-[var(--border)] p-4 space-y-2.5 hover:shadow-md transition-shadow">
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="flex-1 min-w-0">
+                          <h4 className="font-medium text-[var(--text)] text-sm leading-snug cursor-pointer" onClick={() => setViewingItem(item)}>{item.empresa_nome}</h4>
+                          {item.setor && <p className="text-xs text-slate-400 mt-0.5">{item.setor}</p>}
+                        </div>
+                        {(canEditar || canExcluir) && (
+                          <div className="flex gap-1 shrink-0">
+                            {canEditar && (
+                              <button onClick={() => openEdit(item)} className="p-1.5 rounded-lg text-slate-400 hover:text-blue-600 hover:bg-[var(--panel-2)] transition-colors cursor-pointer">
+                                <PencilIcon className="w-3.5 h-3.5" />
+                              </button>
+                            )}
+                            {canExcluir && (
+                              <button onClick={() => setDeleteConfirmId(item.id)} className="p-1.5 rounded-lg text-slate-400 hover:text-red-500 hover:bg-[var(--panel-2)] transition-colors cursor-pointer">
+                                <TrashIcon className="w-3.5 h-3.5" />
+                              </button>
+                            )}
+                          </div>
                         )}
                       </div>
-                    )}
-                  </div>
-                  <div className="flex flex-col gap-1 text-xs text-slate-400">
-                    {item.valor_estimado && (
-                      <span className="font-semibold text-[var(--text-dim)]">{fmtMoeda(item.valor_estimado)}</span>
-                    )}
-                    {item.responsavel && (
-                      <span className="flex items-center gap-1"><UserIcon className="w-3.5 h-3.5" /> {item.responsavel}</span>
-                    )}
-                    {item.proxima_acao_data && (
-                      <span className="flex items-center gap-1"><CalendarDaysIcon className="w-3.5 h-3.5" /> {fmtDate(item.proxima_acao_data)}</span>
-                    )}
-                    {item.proxima_acao && (
-                      <span className="italic text-[var(--text-mute)]">{item.proxima_acao}</span>
-                    )}
-                  </div>
+                      <div className="flex flex-col gap-1 text-xs text-slate-400">
+                        {item.valor_estimado && (
+                          <span className="font-semibold text-[var(--text-dim)]">{fmtMoeda(item.valor_estimado)}</span>
+                        )}
+                        {item.responsavel && (
+                          <span className="flex items-center gap-1"><UserIcon className="w-3.5 h-3.5" /> {item.responsavel}</span>
+                        )}
+                        {item.proxima_acao_data && (
+                          <span className="flex items-center gap-1"><CalendarDaysIcon className="w-3.5 h-3.5" /> {fmtDate(item.proxima_acao_data)}</span>
+                        )}
+                        {item.proxima_acao && (
+                          <span className="italic text-[var(--text-mute)]">{item.proxima_acao}</span>
+                        )}
+                      </div>
+                      {canEditar && (
+                        <div className="pt-1.5 border-t border-[var(--border)]">
+                          <select
+                            value={item.estagio}
+                            onChange={(e) => handleEstagioChange(item.id, e.target.value)}
+                            className="w-full text-xs px-2 py-1.5 rounded-lg border border-[var(--border)] focus:outline-none focus:ring-1 focus:ring-blue-500 bg-[var(--panel-2)] text-[var(--text)] cursor-pointer"
+                          >
+                            {ESTAGIOS.map((e) => <option key={e} value={e}>{ESTAGIO_CONFIG[e].label}</option>)}
+                          </select>
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                  {cols.length === 0 && (
+                    <div className="h-20 border-2 border-dashed border-[var(--border)] rounded-xl flex items-center justify-center text-xs text-[var(--text-mute)]">
+                      Vazio
+                    </div>
+                  )}
                 </div>
-              ))}
-            </div>
-          </div>
-        );
-      })}
+              </div>
+            );
+          })}
 
-      {items.length === 0 && (
-        <div className="text-center py-16 text-slate-400">
-          <p className="text-sm">Nenhum lead no funil ainda.</p>
-          {canCriar && <p className="text-xs mt-1">Clique em "Novo Lead" para começar.</p>}
+          {items.length === 0 && (
+            <div className="text-center py-16 text-slate-400">
+              <p className="text-sm">Nenhum lead no funil ainda.</p>
+              {canCriar && <p className="text-xs mt-1">Clique em "Novo Lead" para começar.</p>}
+            </div>
+          )}
+        </>
+      )}
+
+      {viewMode === "table" && (
+        <div className="bg-[var(--panel)] rounded-xl border border-[var(--border)] overflow-x-auto">
+          <table className="w-full text-sm border-collapse">
+            <thead>
+              <tr className="bg-[var(--panel-2)] text-[10px] uppercase tracking-wider text-[var(--text-mute)] text-left">
+                <th className="px-4 py-2.5">Empresa</th>
+                <th className="px-4 py-2.5">Setor</th>
+                <th className="px-4 py-2.5">Valor</th>
+                <th className="px-4 py-2.5">Responsável</th>
+                <th className="px-4 py-2.5">Próxima ação</th>
+                <th className="px-4 py-2.5">Estágio</th>
+                {(canEditar || canExcluir) && <th className="px-4 py-2.5" />}
+              </tr>
+            </thead>
+            <tbody>
+              {items.length === 0 ? (
+                <tr><td colSpan={7} className="px-4 py-10 text-center text-sm text-slate-400">Nenhum lead no funil ainda.</td></tr>
+              ) : (
+                items.map((item) => {
+                  const cfg = ESTAGIO_CONFIG[item.estagio] || ESTAGIO_CONFIG.lead;
+                  return (
+                    <tr key={item.id} className="border-t border-[var(--border)]">
+                      <td className="px-4 py-2.5 font-medium text-[var(--text)] cursor-pointer" onClick={() => setViewingItem(item)}>{item.empresa_nome}</td>
+                      <td className="px-4 py-2.5 text-xs text-[var(--text-dim)]">{item.setor || "—"}</td>
+                      <td className="px-4 py-2.5 text-xs text-[var(--text-dim)]">{fmtMoeda(item.valor_estimado)}</td>
+                      <td className="px-4 py-2.5 text-xs text-[var(--text-dim)]">{item.responsavel || "—"}</td>
+                      <td className="px-4 py-2.5 text-xs text-[var(--text-mute)]">{item.proxima_acao || "—"}{item.proxima_acao_data ? ` · ${fmtDate(item.proxima_acao_data)}` : ""}</td>
+                      <td className="px-4 py-2.5"><span className="px-2 py-0.5 rounded-full text-[11px] font-medium" style={{ background: "var(--panel-2)", color: cfg.color }}>{cfg.label}</span></td>
+                      {(canEditar || canExcluir) && (
+                        <td className="px-4 py-2.5">
+                          <div className="flex items-center gap-1 justify-end">
+                            {canEditar && (<button onClick={() => openEdit(item)} className="p-1.5 rounded-lg text-slate-400 hover:text-blue-600 hover:bg-[var(--panel-2)] transition-colors cursor-pointer"><PencilIcon className="w-3.5 h-3.5" /></button>)}
+                            {canExcluir && (<button onClick={() => setDeleteConfirmId(item.id)} className="p-1.5 rounded-lg text-slate-400 hover:text-red-500 hover:bg-[var(--panel-2)] transition-colors cursor-pointer"><TrashIcon className="w-3.5 h-3.5" /></button>)}
+                          </div>
+                        </td>
+                      )}
+                    </tr>
+                  );
+                })
+              )}
+            </tbody>
+          </table>
         </div>
       )}
+
+      {/* Detail modal */}
+      <AnimatePresence>
+        {viewingItem && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4"
+            onClick={(e) => { if (e.target === e.currentTarget) setViewingItem(null); }}
+          >
+            <motion.div
+              initial={{ scale: 0.95 }}
+              animate={{ scale: 1 }}
+              exit={{ scale: 0.95 }}
+              transition={{ type: "spring", stiffness: 300, damping: 30 }}
+              className="bg-[var(--panel)] rounded-2xl shadow-xl w-full max-w-lg p-6 max-h-[90vh] overflow-y-auto space-y-4"
+            >
+              {(() => {
+                const cfg = ESTAGIO_CONFIG[viewingItem.estagio] || ESTAGIO_CONFIG.lead;
+                return (
+                  <>
+                    <div className="flex items-start justify-between gap-3">
+                      <span className="px-2 py-0.5 rounded-full text-[11px] font-medium" style={{ background: "var(--panel-2)", color: cfg.color }}>{cfg.label}</span>
+                      <button onClick={() => setViewingItem(null)} className="p-1.5 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-[var(--panel-2)] transition-colors cursor-pointer shrink-0">
+                        <XMarkIcon className="w-5 h-5" />
+                      </button>
+                    </div>
+                    <div>
+                      <h3 className="text-base font-bold text-[var(--text)] leading-snug">{viewingItem.empresa_nome}</h3>
+                      {viewingItem.setor && <p className="text-xs text-slate-400 mt-1">{viewingItem.setor}</p>}
+                    </div>
+                    {viewingItem.descricao && (
+                      <p className="text-sm text-[var(--text-dim)] leading-relaxed whitespace-pre-line border-t border-[var(--border)] pt-3">{viewingItem.descricao}</p>
+                    )}
+                    <div className="flex flex-col gap-1.5 text-xs text-slate-400 border-t border-[var(--border)] pt-3">
+                      {viewingItem.valor_estimado != null && <span className="font-semibold text-[var(--text-dim)]">Valor estimado: {fmtMoeda(viewingItem.valor_estimado)}</span>}
+                      {viewingItem.responsavel && <span className="flex items-center gap-1"><UserIcon className="w-3.5 h-3.5" /> {viewingItem.responsavel}</span>}
+                      {(viewingItem.proxima_acao || viewingItem.proxima_acao_data) && (
+                        <span className="flex items-center gap-1">
+                          <CalendarDaysIcon className="w-3.5 h-3.5" />
+                          {viewingItem.proxima_acao || "Próxima ação"}{viewingItem.proxima_acao_data ? ` · ${fmtDate(viewingItem.proxima_acao_data)}` : ""}
+                        </span>
+                      )}
+                    </div>
+                  </>
+                );
+              })()}
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* Delete confirm */}
       <AnimatePresence>
