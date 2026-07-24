@@ -11,12 +11,16 @@ import {
   BanknotesIcon,
   ViewColumnsIcon,
   TableCellsIcon,
+  LockClosedIcon,
 } from "@heroicons/react/24/outline";
 import api from "../../services/api";
 import { useAuth } from "../../context/AuthContext";
 import { useToast } from "../../context/ToastContext";
 import { useEscapeKey } from "../../hooks/useEscapeKey";
 import { usePermissao } from "../../hooks/usePermissao";
+import { usePlan } from "../../context/PlanContext";
+import BarraExecucao from "../../components/nid/BarraExecucao";
+import CriarOportunidadeCaptacao from "../../components/CriarOportunidadeCaptacao";
 
 const ESTAGIOS = ["oportunidade", "em_elaboracao", "enviado", "aprovado"];
 const ESTAGIO_CONFIG = {
@@ -57,6 +61,8 @@ function isVencendoEm30(prazo) {
   return diff >= 0 && diff <= 30;
 }
 
+const tipoCurto = (t) => (t || "").split(" - ")[0];
+
 export default function CaptacaoTab() {
   const { user } = useAuth();
   const { addToast } = useToast();
@@ -65,6 +71,8 @@ export default function CaptacaoTab() {
   const canCriar = usePermissao("captacao", "criar") && !isGlobal;
   const canEditar = usePermissao("captacao", "editar");
   const canExcluir = usePermissao("captacao", "excluir");
+  const { canAccess } = usePlan();
+  const temEmendas = canAccess("emendas");
 
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -76,6 +84,8 @@ export default function CaptacaoTab() {
   const [deleteConfirmId, setDeleteConfirmId] = useState(null);
   const [viewingItem, setViewingItem] = useState(null);
   const [viewMode, setViewMode] = useState("kanban");
+  const [radar, setRadar] = useState(null);
+  const [anoEmendas, setAnoEmendas] = useState("");
 
   useEscapeKey(useCallback(() => {
     if (deleteConfirmId) { setDeleteConfirmId(null); return; }
@@ -95,6 +105,13 @@ export default function CaptacaoTab() {
   }
 
   useEffect(() => { load(); }, []);
+
+  useEffect(() => {
+    if (!temEmendas || isGlobal) return;
+    api.get("/emendas/radar", { params: anoEmendas ? { ano: anoEmendas } : {} })
+      .then((r) => setRadar(r.data))
+      .catch(() => setRadar(null));
+  }, [temEmendas, isGlobal, anoEmendas]);
 
   const kpis = useMemo(() => ({
     total: items.length,
@@ -396,6 +413,76 @@ export default function CaptacaoTab() {
           </table>
         </div>
       )}
+
+      {/* Oportunidades de emendas */}
+      <div className="space-y-3">
+        <div className="flex items-center justify-between gap-3 flex-wrap">
+          <h2 className="text-sm font-semibold text-[var(--text-dim)]">Oportunidades de emendas destinadas ao município</h2>
+          {temEmendas && radar?.anos?.length > 0 && (
+            <select
+              value={anoEmendas}
+              onChange={(e) => setAnoEmendas(e.target.value)}
+              className="text-xs px-2 py-1.5 rounded-lg border border-[var(--border)] bg-[var(--panel-2)] text-[var(--text)] focus:outline-none focus:ring-1 focus:ring-blue-500 cursor-pointer"
+            >
+              <option value="">Todos os anos</option>
+              {radar.anos.map((a) => <option key={a} value={a}>{a}</option>)}
+            </select>
+          )}
+        </div>
+
+        {!temEmendas ? (
+          <div className="bg-[var(--panel)] rounded-xl border border-dashed border-[var(--border)] p-8 text-center">
+            <LockClosedIcon className="w-8 h-8 mx-auto mb-2 text-[var(--text-mute)] opacity-60" />
+            <p className="text-sm font-medium text-[var(--text-dim)]">Radar de Emendas disponível em planos superiores.</p>
+            <p className="text-xs text-[var(--text-mute)] mt-1">Prospecte emendas parlamentares destinadas ao município e envie direto para o funil.</p>
+          </div>
+        ) : !radar?.disponivel || !radar?.emendas?.length ? (
+          <p className="text-xs text-[var(--text-mute)]">Nenhuma emenda encontrada para o município.</p>
+        ) : (
+          <div className="bg-[var(--panel)] rounded-xl border border-[var(--border)] overflow-x-auto">
+            <table className="w-full text-sm border-collapse">
+              <thead>
+                <tr className="bg-[var(--panel-2)] text-[10px] uppercase tracking-wider text-[var(--text-mute)] text-left">
+                  <th className="px-4 py-2.5">Ano</th>
+                  <th className="px-4 py-2.5">Autor</th>
+                  <th className="px-4 py-2.5">Tipo</th>
+                  <th className="px-4 py-2.5">Área</th>
+                  <th className="px-4 py-2.5">Empenhado</th>
+                  <th className="px-4 py-2.5">Pago</th>
+                  <th className="px-4 py-2.5">Execução</th>
+                  <th className="px-4 py-2.5" />
+                </tr>
+              </thead>
+              <tbody>
+                {radar.emendas.map((e) => (
+                  <tr key={`${e.codigo}-${e.ano}`} className="border-t border-[var(--border)]">
+                    <td className="px-4 py-2.5 text-xs text-[var(--text-mute)]">{e.ano}</td>
+                    <td className="px-4 py-2.5 text-xs font-medium text-[var(--text)]">{e.autor}</td>
+                    <td className="px-4 py-2.5 text-xs text-[var(--text-dim)]">{tipoCurto(e.tipo)}</td>
+                    <td className="px-4 py-2.5 text-xs text-[var(--text-dim)]">{e.funcao || "—"}</td>
+                    <td className="px-4 py-2.5 text-xs text-[var(--text-dim)]">{fmtMoeda(e.empenhado) || "—"}</td>
+                    <td className="px-4 py-2.5 text-xs text-[var(--text-dim)]">{fmtMoeda(e.pago_total) || "—"}</td>
+                    <td className="px-4 py-2.5"><BarraExecucao pct={e.pct_pago} /></td>
+                    <td className="px-4 py-2.5 text-right">
+                      <CriarOportunidadeCaptacao
+                        compact
+                        onCreated={load}
+                        payload={{
+                          tipo: "emenda",
+                          titulo: `Emenda ${e.numero || e.codigo} — ${e.autor} (${e.ano})`,
+                          entidade_origem: e.autor,
+                          valor_estimado: e.empenhado || null,
+                          descricao: `Emenda ${tipoCurto(e.tipo)} · área ${e.funcao || "n/d"} · pago ${fmtMoeda(e.pago_total) || "R$ 0"} de ${fmtMoeda(e.empenhado) || "R$ 0"}.`,
+                        }}
+                      />
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
 
       {/* Detail modal */}
       <AnimatePresence>
