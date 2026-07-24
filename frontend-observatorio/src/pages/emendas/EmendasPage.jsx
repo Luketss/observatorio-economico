@@ -9,6 +9,7 @@ import CriarOportunidadeCaptacao from "../../components/CriarOportunidadeCaptaca
 import { NidPanel, NidPageHeader } from "../../components/nid/Panel";
 import { fmtMoneyShort, fmtMoneyFull } from "../../components/nid/charts";
 import BarraExecucao from "../../components/nid/BarraExecucao";
+import { emendaParaCaptacaoPayload } from "../../utils/emendaCaptacao";
 
 const tipoCurto = (t) => (t || "").split(" - ")[0];
 
@@ -170,13 +171,7 @@ export default function EmendasPage() {
                         <CriarOportunidadeCaptacao
                           compact
                           label="Criar oportunidade no funil a partir desta emenda"
-                          payload={{
-                            tipo: "emenda",
-                            titulo: `Emenda ${e.numero || e.codigo} — ${e.autor} (${e.ano})`,
-                            entidade_origem: e.autor,
-                            valor_estimado: e.empenhado || null,
-                            descricao: `Emenda ${tipoCurto(e.tipo)} · área ${e.funcao || "n/d"} · pago ${fmtMoneyFull(e.pago_total)} de ${fmtMoneyFull(e.empenhado)}.`,
-                          }}
+                          payload={emendaParaCaptacaoPayload(e)}
                         />
                       </td>
                     </tr>

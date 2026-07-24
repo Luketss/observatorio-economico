@@ -21,6 +21,7 @@ import { usePermissao } from "../../hooks/usePermissao";
 import { usePlan } from "../../context/PlanContext";
 import BarraExecucao from "../../components/nid/BarraExecucao";
 import CriarOportunidadeCaptacao from "../../components/CriarOportunidadeCaptacao";
+import { emendaParaCaptacaoPayload } from "../../utils/emendaCaptacao";
 
 const ESTAGIOS = ["oportunidade", "em_elaboracao", "enviado", "aprovado"];
 const ESTAGIO_CONFIG = {
@@ -85,6 +86,7 @@ export default function CaptacaoTab() {
   const [viewingItem, setViewingItem] = useState(null);
   const [viewMode, setViewMode] = useState("kanban");
   const [radar, setRadar] = useState(null);
+  const [radarErro, setRadarErro] = useState(false);
   const [anoEmendas, setAnoEmendas] = useState("");
 
   useEscapeKey(useCallback(() => {
@@ -108,9 +110,14 @@ export default function CaptacaoTab() {
 
   useEffect(() => {
     if (!temEmendas || isGlobal) return;
+    setRadarErro(false);
     api.get("/emendas/radar", { params: anoEmendas ? { ano: anoEmendas } : {} })
       .then((r) => setRadar(r.data))
-      .catch(() => setRadar(null));
+      .catch(() => {
+        setRadar(null);
+        setRadarErro(true);
+        setAnoEmendas("");
+      });
   }, [temEmendas, isGlobal, anoEmendas]);
 
   const kpis = useMemo(() => ({
@@ -437,7 +444,9 @@ export default function CaptacaoTab() {
             <p className="text-xs text-[var(--text-mute)] mt-1">Prospecte emendas parlamentares destinadas ao município e envie direto para o funil.</p>
           </div>
         ) : !radar?.disponivel || !radar?.emendas?.length ? (
-          <p className="text-xs text-[var(--text-mute)]">Nenhuma emenda encontrada para o município.</p>
+          <p className="text-xs text-[var(--text-mute)]">
+            {radarErro ? "Não foi possível carregar as emendas agora." : "Nenhuma emenda encontrada para o município."}
+          </p>
         ) : (
           <div className="bg-[var(--panel)] rounded-xl border border-[var(--border)] overflow-x-auto">
             <table className="w-full text-sm border-collapse">
@@ -467,13 +476,7 @@ export default function CaptacaoTab() {
                       <CriarOportunidadeCaptacao
                         compact
                         onCreated={load}
-                        payload={{
-                          tipo: "emenda",
-                          titulo: `Emenda ${e.numero || e.codigo} — ${e.autor} (${e.ano})`,
-                          entidade_origem: e.autor,
-                          valor_estimado: e.empenhado || null,
-                          descricao: `Emenda ${tipoCurto(e.tipo)} · área ${e.funcao || "n/d"} · pago ${fmtMoeda(e.pago_total) || "R$ 0"} de ${fmtMoeda(e.empenhado) || "R$ 0"}.`,
-                        }}
+                        payload={emendaParaCaptacaoPayload(e)}
                       />
                     </td>
                   </tr>
