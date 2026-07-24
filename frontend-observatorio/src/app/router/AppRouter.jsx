@@ -50,6 +50,7 @@ import PlanoGovPage from "../../pages/dados-internos/PlanoGovPage";
 import CalendarioPage from "../../pages/dados-internos/CalendarioPage";
 import ImpactoPage from "../../pages/impacto/ImpactoPage";
 import PainelPrefeitoPage from "../../pages/painel-prefeito/PainelPrefeitoPage";
+import NotificacoesPage from "../../pages/notificacoes/NotificacoesPage";
 
 function ProtectedRoute({ children }) {
   const { user, loading } = useAuth();
@@ -131,6 +132,7 @@ export default function AppRouter() {
           <Route path="empresas" element={<EmpresasPage />} />
           <Route path="pix" element={<PixPage />} />
           <Route path="releases" element={<ReleasesPage />} />
+          <Route path="notificacoes" element={<NotificacoesPage />} />
           <Route path="timeline" element={<TimelinePage />} />
           <Route path="projetos" element={<ProjetosPage />} />
           <Route path="desenvolvimento-economico" element={<Navigate to="/app/desenvolvimento-economico/funil" replace />} />
