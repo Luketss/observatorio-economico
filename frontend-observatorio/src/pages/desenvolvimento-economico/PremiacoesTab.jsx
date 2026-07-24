@@ -65,11 +65,13 @@ export default function PremiacoesTab() {
   const [saving, setSaving] = useState(false);
   const [formError, setFormError] = useState(null);
   const [deleteConfirmId, setDeleteConfirmId] = useState(null);
+  const [viewingItem, setViewingItem] = useState(null);
 
   useEscapeKey(useCallback(() => {
     if (deleteConfirmId) { setDeleteConfirmId(null); return; }
+    if (viewingItem) { setViewingItem(null); return; }
     if (showForm) closeForm();
-  }, [deleteConfirmId, showForm]));
+  }, [deleteConfirmId, viewingItem, showForm]));
 
   async function load() {
     try {
@@ -246,7 +248,12 @@ export default function PremiacoesTab() {
                       </span>
                       <span className={`px-2 py-0.5 rounded-full text-[11px] font-medium ${st.color}`}>{st.label}</span>
                     </div>
-                    <h4 className="font-semibold text-[var(--text)] text-sm leading-snug">{item.titulo}</h4>
+                    <h4
+                      className="font-semibold text-[var(--text)] text-sm leading-snug line-clamp-2 cursor-pointer"
+                      onClick={() => setViewingItem(item)}
+                    >
+                      {item.titulo}
+                    </h4>
                     {item.entidade && <p className="text-xs text-slate-400 mt-0.5">{item.entidade}</p>}
                   </div>
                   {(canEditar || canExcluir) && (
@@ -265,7 +272,14 @@ export default function PremiacoesTab() {
                   )}
                 </div>
 
-                {item.descricao && <p className="text-xs text-[var(--text-dim)] leading-relaxed">{item.descricao}</p>}
+                {item.descricao && (
+                  <p
+                    className="text-xs text-[var(--text-dim)] leading-relaxed line-clamp-3 cursor-pointer"
+                    onClick={() => setViewingItem(item)}
+                  >
+                    {item.descricao}
+                  </p>
+                )}
 
                 <div className="flex flex-col gap-1 text-xs text-slate-400">
                   {item.prazo && (
@@ -296,6 +310,76 @@ export default function PremiacoesTab() {
           })}
         </div>
       )}
+
+      {/* Detail modal */}
+      <AnimatePresence>
+        {viewingItem && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4"
+            onClick={(e) => { if (e.target === e.currentTarget) setViewingItem(null); }}
+          >
+            <motion.div
+              initial={{ scale: 0.95 }}
+              animate={{ scale: 1 }}
+              exit={{ scale: 0.95 }}
+              transition={{ type: "spring", stiffness: 300, damping: 30 }}
+              className="bg-[var(--panel)] rounded-2xl shadow-xl w-full max-w-lg p-6 max-h-[90vh] overflow-y-auto space-y-4"
+            >
+              {(() => {
+                const st = STATUS_CONFIG[viewingItem.status] || STATUS_CONFIG.oportunidade;
+                return (
+                  <>
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="flex items-center gap-1.5 flex-wrap">
+                        <span className="text-[10px] font-medium text-[var(--text-dim)] bg-[var(--panel-2)] px-1.5 py-0.5 rounded">
+                          {TIPO_LABEL[viewingItem.tipo] || viewingItem.tipo}
+                        </span>
+                        <span className={`px-2 py-0.5 rounded-full text-[11px] font-medium ${st.color}`}>{st.label}</span>
+                      </div>
+                      <button
+                        onClick={() => setViewingItem(null)}
+                        className="p-1.5 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-[var(--panel-2)] transition-colors cursor-pointer shrink-0"
+                      >
+                        <XMarkIcon className="w-5 h-5" />
+                      </button>
+                    </div>
+
+                    <div>
+                      <h3 className="text-base font-bold text-[var(--text)] leading-snug">{viewingItem.titulo}</h3>
+                      {viewingItem.entidade && (
+                        <p className="text-xs text-slate-400 mt-1">{viewingItem.entidade}</p>
+                      )}
+                    </div>
+
+                    {viewingItem.descricao && (
+                      <p className="text-sm text-[var(--text-dim)] leading-relaxed whitespace-pre-line border-t border-[var(--border)] pt-3">
+                        {viewingItem.descricao}
+                      </p>
+                    )}
+
+                    <div className="flex flex-col gap-1.5 text-xs text-slate-400 border-t border-[var(--border)] pt-3">
+                      {viewingItem.prazo && (
+                        <span className={`flex items-center gap-1 ${isVencendoEm30(viewingItem.prazo) ? "text-amber-600 font-medium" : ""}`}>
+                          <CalendarDaysIcon className="w-3.5 h-3.5" /> Prazo: {fmtDate(viewingItem.prazo)}
+                          {isVencendoEm30(viewingItem.prazo) && " · vence em até 30 dias"}
+                        </span>
+                      )}
+                      {viewingItem.link && (
+                        <a href={viewingItem.link} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1 text-blue-500 hover:underline">
+                          <LinkIcon className="w-3.5 h-3.5" /> Ver detalhes
+                        </a>
+                      )}
+                    </div>
+                  </>
+                );
+              })()}
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* Delete confirm */}
       <AnimatePresence>
