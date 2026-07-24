@@ -61,13 +61,13 @@ export default function NotificacoesPage() {
   }
 
   async function handleMarcarTodas() {
-    try {
-      await marcarTodasLidas(notifs);
-      setNotifs((prev) => prev.map((n) => ({ ...n, lida: true })));
-      addToast("Todas marcadas como lidas", "success");
-    } catch {
-      addToast("Erro ao marcar notificações", "error");
+    const falhas = await marcarTodasLidas(notifs);
+    if (falhas > 0) {
+      addToast(`Erro ao marcar ${falhas} notificação(ões)`, "error");
+      return;
     }
+    setNotifs((prev) => prev.map((n) => ({ ...n, lida: true })));
+    addToast("Todas marcadas como lidas", "success");
   }
 
   if (loading) {
@@ -115,7 +115,7 @@ export default function NotificacoesPage() {
         </div>
       ) : (
         <div className="nid-panel" style={{ padding: 0, overflow: "hidden" }}>
-          {visiveis.map((n, i) => {
+          {visiveis.map((n) => {
             const kindClass = KIND_CLASS[n.tipo] || "info";
             const glyph = KIND_GLYPH[n.tipo] || "i";
             return (
@@ -125,7 +125,6 @@ export default function NotificacoesPage() {
                 onClick={() => handleMarcarLida(n)}
                 style={{
                   cursor: n.lida ? "default" : "pointer",
-                  borderTop: i === 0 ? "none" : "1px solid var(--border)",
                 }}
               >
                 <div className={`nid-bell-mk ${kindClass}`}>{glyph}</div>

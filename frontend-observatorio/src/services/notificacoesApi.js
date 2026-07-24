@@ -11,7 +11,8 @@ export async function marcarLida(id) {
 
 export async function marcarTodasLidas(notifs) {
   const naoLidas = notifs.filter((n) => !n.lida);
-  await Promise.all(
-    naoLidas.map((n) => api.post(`/notificacoes/${n.id}/marcar_lida`).catch(() => {}))
+  const results = await Promise.allSettled(
+    naoLidas.map((n) => api.post(`/notificacoes/${n.id}/marcar_lida`))
   );
+  return results.filter((r) => r.status === "rejected").length;
 }
