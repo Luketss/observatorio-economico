@@ -6,7 +6,7 @@ from app.api.deps import get_current_user, get_db
 from app.models.insight_ia import InsightIA as InsightModel
 from app.services.insights_service import buscar_insight, gerar_insight, gerar_prioridades, gerar_release
 from fastapi import APIRouter, Depends, HTTPException, Query
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 
 router = APIRouter(prefix="/insights", tags=["Insights IA"])
@@ -64,6 +64,17 @@ class PrioridadesResponse(BaseModel):
 
 class GerarPrioridadesRequest(BaseModel):
     municipio_id: int
+
+
+class PrioridadeEditItem(BaseModel):
+    titulo: str = Field(min_length=1, max_length=255)
+    observacao: str = Field(min_length=1, max_length=1000)
+    dataset_referencia: str | None = None
+
+
+class SalvarPrioridadesRequest(BaseModel):
+    municipio_id: int | None = None  # usado APENAS por ADMIN_GLOBAL
+    prioridades: list[PrioridadeEditItem] = Field(min_length=1, max_length=3)
 
 
 def _to_prioridades_response(insight) -> PrioridadesResponse:
@@ -426,6 +437,68 @@ def get_prioridades(
     if not insight:
         raise HTTPException(status_code=404, detail="Prioridades ainda não foram geradas.")
 
+    return _to_prioridades_response(insight)
+
+
+@router.put("/prioridades", response_model=PrioridadesResponse)
+def salvar_prioridades(
+    body: SalvarPrioridadesRequest,
+    db: Session = Depends(get_db),
+    current_user=Depends(get_current_user),
+):
+    """Edição manual das prioridades (upsert do mês corrente, modelo=especialista).
+
+    ADMIN_GLOBAL grava no municipio_id do body; usuário comum precisa da
+    permissão (prioridades, editar) e grava SEMPRE no próprio município.
+    """
+    from app.core.permissions import tem_permissao
+
+    is_global = current_user.role.nome == "ADMIN_GLOBAL"
+    if is_global:
+        if not body.municipio_id:
+            raise HTTPException(status_code=400, detail="municipio_id é obrigatório.")
+        mid = body.municipio_id
+    else:
+        if not tem_permissao(current_user.role, "prioridades", "editar"):
+            raise HTTPException(status_code=403, detail="Sem permissão para editar prioridades.")
+        mid = current_user.municipio_id
+        if not mid:
+            raise HTTPException(status_code=400, detail="Usuário sem município.")
+
+    from datetime import timezone
+
+    periodo = datetime.now(timezone.utc).strftime("%Y-%m")
+    conteudo = json.dumps(
+        [
+            {
+                "titulo": p.titulo,
+                "observacao": p.observacao,
+                "dataset_referencia": p.dataset_referencia,
+            }
+            for p in body.prioridades
+        ],
+        ensure_ascii=False,
+    )
+
+    existing = buscar_insight(db, mid, "prioridades", periodo)
+    if existing:
+        existing.conteudo = conteudo
+        existing.modelo = "especialista"
+        existing.gerado_em = datetime.now(timezone.utc)
+        db.commit()
+        db.refresh(existing)
+        return _to_prioridades_response(existing)
+
+    insight = InsightModel(
+        municipio_id=mid,
+        dataset="prioridades",
+        periodo=periodo,
+        conteudo=conteudo,
+        modelo="especialista",
+    )
+    db.add(insight)
+    db.commit()
+    db.refresh(insight)
     return _to_prioridades_response(insight)
 
 
