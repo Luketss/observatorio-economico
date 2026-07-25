@@ -124,3 +124,25 @@ def test_permissoes_todas_cobre_tudo():
     assert set(PERMISSOES_TODAS) == set(AREAS)
     for verbos in PERMISSOES_TODAS.values():
         assert list(verbos) == list(VERBOS)
+
+
+# ── área prioridades (10ª área, verbo consultado: editar) ────────────────
+
+def test_prioridades_na_lista_de_areas():
+    assert "prioridades" in AREAS
+    assert AREA_LABELS["prioridades"] == "Prioridades do Mês"
+
+
+def test_prioridades_editar_concedido():
+    r = role(permissoes={"prioridades": ["editar"]})
+    assert tem_permissao(r, "prioridades", "editar") is True
+
+
+def test_prioridades_negado_sem_area():
+    r = role(permissoes={"captacao": ["criar", "editar", "excluir"]})
+    assert tem_permissao(r, "prioridades", "editar") is False
+
+
+def test_prioridades_efetivas_aparece():
+    r = role(permissoes={"prioridades": ["editar"]})
+    assert permissoes_efetivas(r) == {"prioridades": ["editar"]}
