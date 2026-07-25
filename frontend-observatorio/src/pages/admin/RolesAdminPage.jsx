@@ -17,8 +17,11 @@ const AREAS = [
   ["dados_internos", "Dados Internos"],
   ["mandato", "Timeline do Mandato"],
   ["usuarios", "Usuários do Município"],
+  ["prioridades", "Prioridades do Mês"],
 ];
 const VERBOS = ["criar", "editar", "excluir"];
+// Áreas com verbo único: só "editar" faz sentido para prioridades.
+const AREA_VERBOS = { prioridades: ["editar"] };
 
 const emptyForm = { nome: "", descricao: "", municipio_id: "", permissoes: {} };
 
@@ -276,12 +279,16 @@ export default function RolesAdminPage() {
                         <td className="py-1.5" style={{ color: "var(--text)" }}>{label}</td>
                         {VERBOS.map((verbo) => (
                           <td key={verbo} className="text-center py-1.5">
-                            <input
-                              type="checkbox"
-                              checked={(form.permissoes[area] || []).includes(verbo)}
-                              onChange={() => toggleVerbo(area, verbo)}
-                              className="cursor-pointer"
-                            />
+                            {(AREA_VERBOS[area] || VERBOS).includes(verbo) ? (
+                              <input
+                                type="checkbox"
+                                checked={(form.permissoes[area] || []).includes(verbo)}
+                                onChange={() => toggleVerbo(area, verbo)}
+                                className="cursor-pointer"
+                              />
+                            ) : (
+                              <span style={{ color: "var(--text-mute)" }}>—</span>
+                            )}
                           </td>
                         ))}
                       </tr>

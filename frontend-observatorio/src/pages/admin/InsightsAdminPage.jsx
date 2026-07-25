@@ -8,12 +8,14 @@ import {
   PencilSquareIcon,
   EyeIcon,
   EyeSlashIcon,
+  PencilIcon,
 } from "@heroicons/react/24/outline";
 import NidModal, { NidField } from "../../components/nid/NidModal";
 import StatusPill from "../../components/nid/StatusPill";
 import AdminStats from "../../components/nid/AdminStats";
 import AdminSearchInput from "../../components/nid/AdminSearchInput";
 import MunicipioPicker from "../../components/nid/MunicipioPicker";
+import PrioridadesEditorModal from "../../components/PrioridadesEditorModal";
 
 // ─── Dataset registry ──────────────────────────────────────────────────────────
 const DATASETS = [
@@ -300,6 +302,7 @@ export default function InsightsAdminPage() {
   const [submittingManual,  setSubmittingManual]  = useState(false);
   const [prioridades,       setPrioridades]       = useState(null);
   const [generatingPrioridades, setGeneratingPrioridades] = useState(false);
+  const [editandoPrioridades, setEditandoPrioridades] = useState(false);
   const [search,            setSearch]            = useState("");
 
   // Dataset list filtered by search (matches key / label / desc)
@@ -395,6 +398,10 @@ export default function InsightsAdminPage() {
   };
 
   const handleGerarPrioridades = async () => {
+    if (
+      prioridades?.modelo === "especialista" &&
+      !confirm("Há edição manual deste mês — regenerar substitui o conteúdo pela versão de IA. Continuar?")
+    ) return;
     setGeneratingPrioridades(true);
     try {
       const res = await api.post("/insights/prioridades/gerar", {
@@ -608,21 +615,38 @@ export default function InsightsAdminPage() {
                 Top 3 observações cruzando todos os datasets — renderizado no topo do Dashboard Geral.
               </div>
             </div>
-            <button
-              onClick={handleGerarPrioridades}
-              disabled={generatingPrioridades || loadingInsights}
-              style={{
-                display: "inline-flex", alignItems: "center", gap: 6,
-                fontFamily: "var(--font-display)", fontSize: 12, fontWeight: 600,
-                color: "var(--admin-accent)",
-                background: "transparent", border: "1px solid var(--border)",
-                borderRadius: 8, padding: "7px 12px", cursor: "pointer",
-                opacity: (generatingPrioridades || loadingInsights) ? 0.45 : 1,
-              }}
-            >
-              <ArrowPathIcon style={{ width: 14, height: 14 }} className={generatingPrioridades ? "animate-spin" : ""} />
-              {generatingPrioridades ? "Gerando..." : prioridades ? "Regenerar" : "Gerar"}
-            </button>
+            <div style={{ display: "flex", gap: 8 }}>
+              <button
+                onClick={() => setEditandoPrioridades(true)}
+                disabled={loadingInsights}
+                style={{
+                  display: "inline-flex", alignItems: "center", gap: 6,
+                  fontFamily: "var(--font-display)", fontSize: 12, fontWeight: 600,
+                  color: "var(--admin-accent)",
+                  background: "transparent", border: "1px solid var(--border)",
+                  borderRadius: 8, padding: "7px 12px", cursor: "pointer",
+                  opacity: loadingInsights ? 0.45 : 1,
+                }}
+              >
+                <PencilIcon style={{ width: 14, height: 14 }} />
+                Editar
+              </button>
+              <button
+                onClick={handleGerarPrioridades}
+                disabled={generatingPrioridades || loadingInsights}
+                style={{
+                  display: "inline-flex", alignItems: "center", gap: 6,
+                  fontFamily: "var(--font-display)", fontSize: 12, fontWeight: 600,
+                  color: "var(--admin-accent)",
+                  background: "transparent", border: "1px solid var(--border)",
+                  borderRadius: 8, padding: "7px 12px", cursor: "pointer",
+                  opacity: (generatingPrioridades || loadingInsights) ? 0.45 : 1,
+                }}
+              >
+                <ArrowPathIcon style={{ width: 14, height: 14 }} className={generatingPrioridades ? "animate-spin" : ""} />
+                {generatingPrioridades ? "Gerando..." : prioridades ? "Regenerar" : "Gerar"}
+              </button>
+            </div>
           </div>
           {prioridades ? (
             <div style={{ fontFamily: "var(--font-mono)", fontSize: 11, color: "var(--text-mute)", marginTop: 10 }}>
@@ -633,6 +657,13 @@ export default function InsightsAdminPage() {
               Ainda não gerado para este município.
             </div>
           )}
+          <PrioridadesEditorModal
+            aberto={editandoPrioridades}
+            onClose={() => setEditandoPrioridades(false)}
+            inicial={prioridades}
+            municipioId={parseInt(selectedId)}
+            onSaved={(d) => setPrioridades(d)}
+          />
         </div>
       )}
 
