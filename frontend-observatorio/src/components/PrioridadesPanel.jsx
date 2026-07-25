@@ -3,34 +3,7 @@ import { Link } from "react-router-dom";
 import { motion } from "framer-motion";
 import { SparklesIcon, ArrowRightIcon } from "@heroicons/react/24/outline";
 import api from "../services/api";
-
-const DATASET_ROUTE = {
-  caged: "/app/caged",
-  pib: "/app/pib",
-  arrecadacao: "/app/arrecadacao",
-  rais: "/app/rais",
-  bolsa_familia: "/app/bolsa-familia",
-  pe_de_meia: "/app/pe-de-meia",
-  inss: "/app/inss",
-  estban: "/app/estban",
-  comex: "/app/comex",
-  empresas: "/app/empresas",
-  pix: "/app/pix",
-};
-
-const DATASET_LABEL = {
-  caged: "CAGED",
-  pib: "PIB",
-  arrecadacao: "Arrecadação",
-  rais: "RAIS",
-  bolsa_familia: "Bolsa Família",
-  pe_de_meia: "Pé-de-Meia",
-  inss: "INSS",
-  estban: "Bancos",
-  comex: "Comércio Exterior",
-  empresas: "Empresas",
-  pix: "PIX",
-};
+import { DATASET_ROUTE, DATASET_LABEL, parseTitulo } from "../utils/prioridadesForm";
 
 const PREFIX_STYLES = {
   "Atenção": { badge: "bg-[var(--panel-2)] text-amber-400", label: "Atenção" },
@@ -38,12 +11,6 @@ const PREFIX_STYLES = {
   "Risco": { badge: "bg-[var(--panel-2)] text-red-400", label: "Risco" },
 };
 const DEFAULT_STYLE = { badge: "bg-[var(--panel-2)] text-[var(--text-dim)]", label: "Prioridade" };
-
-function parsePrefix(titulo) {
-  const match = /^(Atenção|Oportunidade|Risco):\s*/.exec(titulo || "");
-  if (!match) return { style: DEFAULT_STYLE, body: titulo || "" };
-  return { style: PREFIX_STYLES[match[1]], body: titulo.slice(match[0].length) };
-}
 
 function fmtDate(dt) {
   if (!dt) return "";
@@ -110,7 +77,8 @@ export default function PrioridadesPanel() {
 
       <div className="grid grid-cols-1 xl:grid-cols-3 gap-4">
         {prioridades.map((p, i) => {
-          const { style, body } = parsePrefix(p.titulo);
+          const { tipo, texto: body } = parseTitulo(p.titulo);
+          const style = tipo ? PREFIX_STYLES[tipo] : DEFAULT_STYLE;
           const route = p.dataset_referencia ? DATASET_ROUTE[p.dataset_referencia] : null;
           const datasetLabel = p.dataset_referencia ? DATASET_LABEL[p.dataset_referencia] : null;
           return (
