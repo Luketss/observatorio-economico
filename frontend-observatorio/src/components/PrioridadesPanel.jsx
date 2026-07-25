@@ -1,8 +1,10 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { motion } from "framer-motion";
-import { SparklesIcon, ArrowRightIcon } from "@heroicons/react/24/outline";
+import { SparklesIcon, ArrowRightIcon, PencilIcon } from "@heroicons/react/24/outline";
 import api from "../services/api";
+import { usePermissao } from "../hooks/usePermissao";
+import PrioridadesEditorModal from "./PrioridadesEditorModal";
 import { DATASET_ROUTE, DATASET_LABEL, parseTitulo } from "../utils/prioridadesForm";
 
 const PREFIX_STYLES = {
@@ -19,6 +21,12 @@ function fmtDate(dt) {
 
 export default function PrioridadesPanel() {
   const [state, setState] = useState({ status: "loading", data: null });
+  const canEditar = usePermissao("prioridades", "editar");
+  const [editorAberto, setEditorAberto] = useState(false);
+
+  function handleSaved(data) {
+    setState({ status: "ok", data });
+  }
 
   useEffect(() => {
     api.get("/insights/prioridades")
@@ -54,6 +62,22 @@ export default function PrioridadesPanel() {
         <p className="text-sm text-[var(--text-mute)]">
           As prioridades ainda não foram geradas. Aguarde o próximo ciclo de análise.
         </p>
+        {canEditar && (
+          <button
+            onClick={() => setEditorAberto(true)}
+            className="mt-3 flex items-center gap-2 text-sm font-medium text-blue-500 hover:opacity-80 cursor-pointer"
+          >
+            <PencilIcon className="w-4 h-4" />
+            Adicionar prioridades
+          </button>
+        )}
+        <PrioridadesEditorModal
+          aberto={editorAberto}
+          onClose={() => setEditorAberto(false)}
+          inicial={null}
+          municipioId={null}
+          onSaved={handleSaved}
+        />
       </div>
     );
   }
@@ -72,7 +96,20 @@ export default function PrioridadesPanel() {
           <SparklesIcon className="w-5 h-5 text-violet-500" />
           <h2 className="text-base font-bold text-[var(--text)]">Prioridades do mês</h2>
         </div>
-        <span className="text-xs text-[var(--text-mute)]">gerado em {fmtDate(gerado_em)}</span>
+        <div className="flex items-center gap-2">
+          <span className="text-xs text-[var(--text-mute)]">
+            {state.data.modelo === "especialista" ? "editado em" : "gerado em"} {fmtDate(gerado_em)}
+          </span>
+          {canEditar && (
+            <button
+              onClick={() => setEditorAberto(true)}
+              aria-label="Editar prioridades"
+              className="p-1.5 rounded-lg text-[var(--text-mute)] hover:text-blue-500 hover:bg-[var(--panel-2)] transition-colors cursor-pointer"
+            >
+              <PencilIcon className="w-4 h-4" />
+            </button>
+          )}
+        </div>
       </div>
 
       <div className="grid grid-cols-1 xl:grid-cols-3 gap-4">
@@ -101,6 +138,14 @@ export default function PrioridadesPanel() {
           );
         })}
       </div>
+
+      <PrioridadesEditorModal
+        aberto={editorAberto}
+        onClose={() => setEditorAberto(false)}
+        inicial={state.data}
+        municipioId={null}
+        onSaved={handleSaved}
+      />
     </motion.div>
   );
 }
