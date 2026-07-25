@@ -102,9 +102,10 @@ export default function PrioridadesEditorModal({ aberto, onClose, inicial, munic
             <div className="flex items-center justify-between mb-5">
               <h3 className="text-base font-bold text-[var(--text)]">Editar prioridades do mês</h3>
               <button
-                onClick={onClose}
+                onClick={() => { if (!salvando) onClose(); }}
+                disabled={salvando}
                 aria-label="Fechar"
-                className="p-1.5 rounded-lg text-[var(--text-mute)] hover:text-[var(--text)] hover:bg-[var(--panel-2)] transition-colors cursor-pointer"
+                className="p-1.5 rounded-lg text-[var(--text-mute)] hover:text-[var(--text)] hover:bg-[var(--panel-2)] transition-colors cursor-pointer disabled:opacity-50"
               >
                 <XMarkIcon className="w-5 h-5" />
               </button>
