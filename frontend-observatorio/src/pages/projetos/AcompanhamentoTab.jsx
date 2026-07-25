@@ -21,6 +21,11 @@ import NidTabBar from "../../components/nid/NidTabBar";
 import StatusPill from "../../components/nid/StatusPill";
 import ChecklistProjeto from "./ChecklistProjeto";
 import { diasAtraso, progresso } from "../../utils/projetoStatus";
+import KanbanDndContext from "../../components/kanban/KanbanDndContext";
+import DraggableCard from "../../components/kanban/DraggableCard";
+import DroppableColumn from "../../components/kanban/DroppableColumn";
+import { aplicarMovimento } from "../../utils/kanbanMove";
+import { propsTituloClicavel } from "../../utils/cliqueAcessivel";
 
 // Map backend status → StatusPill kind + display label
 const STATUS_CONFIG = {
@@ -47,6 +52,16 @@ const defaultForm = {
 function fmtDate(d) {
   if (!d) return null;
   return new Date(d + "T00:00:00").toLocaleDateString("pt-BR");
+}
+
+function renderOverlayProjeto(projeto) {
+  const st = STATUS_CONFIG[projeto.status] || STATUS_CONFIG.nao_iniciado;
+  return (
+    <div className="proj-card" style={{ width: 280 }}>
+      <h3 className="proj-card__title" style={{ margin: 0 }}>{projeto.titulo}</h3>
+      <StatusPill kind={st.kind} dot label={st.label} />
+    </div>
+  );
 }
 
 export default function AcompanhamentoTab() {
@@ -173,13 +188,18 @@ export default function AcompanhamentoTab() {
     }
   }
 
-  async function handleStatusChange(id, newStatus) {
+  async function moverCard(id, novoStatus) {
+    const anterior = projetos;
+    const otimista = aplicarMovimento(projetos, id, "status", novoStatus);
+    if (otimista === anterior) return;
+    setProjetos(otimista);
     try {
-      await api.put(`/projetos/${id}`, { status: newStatus });
+      await api.put(`/projetos/${id}`, { status: novoStatus });
       addToast("Status atualizado", "success");
       await load();
-    } catch {
-      addToast("Erro ao atualizar status", "error");
+    } catch (err) {
+      setProjetos(anterior);
+      addToast(err?.response?.data?.detail || "Erro ao atualizar status", "error");
     }
   }
 
@@ -275,9 +295,9 @@ export default function AcompanhamentoTab() {
               </span>
             )}
             <h3
-              className="proj-card__title"
-              onClick={() => setViewingProjeto(projeto)}
+              className="proj-card__title rounded focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
               style={{ cursor: "pointer" }}
+              {...propsTituloClicavel(() => setViewingProjeto(projeto))}
             >
               {projeto.titulo}
             </h3>
@@ -335,7 +355,7 @@ export default function AcompanhamentoTab() {
           {canEditar && (
             <select
               value={projeto.status}
-              onChange={(e) => handleStatusChange(projeto.id, e.target.value)}
+              onChange={(e) => moverCard(projeto.id, e.target.value)}
               className="nid-form-input"
               style={{ fontSize: 11, padding: "4px 8px" }}
             >
@@ -416,28 +436,34 @@ export default function AcompanhamentoTab() {
               <p style={{ fontSize: 12, marginTop: 4, color: "var(--text-mute)" }}>Selecione projetos do Acervo ou crie um novo diretamente.</p>
             </div>
           ) : (
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-              {Object.entries(STATUS_CONFIG).map(([status, cfg]) => {
-                const cols = filtrados.filter((p) => p.status === status);
-                return (
-                  <div key={status} className="space-y-3">
-                    <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                      <span style={{ width: 8, height: 8, borderRadius: "50%", background: cfg.dot, display: "inline-block", flexShrink: 0 }} />
-                      <h3 style={{ fontWeight: 600, color: "var(--text-dim)", fontSize: 12, fontFamily: "var(--font-mono)", textTransform: "uppercase", letterSpacing: "0.06em", margin: 0 }}>{cfg.label}</h3>
-                      <span style={{ marginLeft: "auto", fontSize: 11, color: "var(--text-mute)", background: "var(--panel-2)", border: "1px solid var(--border)", padding: "1px 7px", borderRadius: 999 }}>{cols.length}</span>
+            <KanbanDndContext items={projetos} campo="status" onMove={moverCard} renderOverlay={renderOverlayProjeto}>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                {Object.entries(STATUS_CONFIG).map(([status, cfg]) => {
+                  const cols = filtrados.filter((p) => p.status === status);
+                  return (
+                    <div key={status} className="space-y-3">
+                      <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                        <span style={{ width: 8, height: 8, borderRadius: "50%", background: cfg.dot, display: "inline-block", flexShrink: 0 }} />
+                        <h3 style={{ fontWeight: 600, color: "var(--text-dim)", fontSize: 12, fontFamily: "var(--font-mono)", textTransform: "uppercase", letterSpacing: "0.06em", margin: 0 }}>{cfg.label}</h3>
+                        <span style={{ marginLeft: "auto", fontSize: 11, color: "var(--text-mute)", background: "var(--panel-2)", border: "1px solid var(--border)", padding: "1px 7px", borderRadius: 999 }}>{cols.length}</span>
+                      </div>
+                      <DroppableColumn id={status} disabled={!canEditar} className="space-y-3" style={{ minHeight: 80 }}>
+                        {cols.map((p) => (
+                          <DraggableCard key={p.id} id={p.id} disabled={!canEditar}>
+                            <ProjetoCard projeto={p} />
+                          </DraggableCard>
+                        ))}
+                        {cols.length === 0 && (
+                          <div style={{ height: 80, border: "2px dashed var(--border)", borderRadius: 14, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 11, color: "var(--text-mute)" }}>
+                            Vazio
+                          </div>
+                        )}
+                      </DroppableColumn>
                     </div>
-                    <div className="space-y-3" style={{ minHeight: 80 }}>
-                      {cols.map((p) => <ProjetoCard key={p.id} projeto={p} />)}
-                      {cols.length === 0 && (
-                        <div style={{ height: 80, border: "2px dashed var(--border)", borderRadius: 14, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 11, color: "var(--text-mute)" }}>
-                          Vazio
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
+                  );
+                })}
+              </div>
+            </KanbanDndContext>
           )}
         </>
       )}
@@ -459,7 +485,7 @@ export default function AcompanhamentoTab() {
             <tbody>
               {filtrados.length === 0 ? (
                 <tr>
-                  <td colSpan={6} style={{ padding: "40px 20px", textAlign: "center", color: "var(--text-dim)", fontSize: 13 }}>
+                  <td colSpan={5 + ((canEditar || canExcluir) ? 1 : 0)} style={{ padding: "40px 20px", textAlign: "center", color: "var(--text-dim)", fontSize: 13 }}>
                     Nenhum projeto em acompanhamento.
                   </td>
                 </tr>
@@ -469,8 +495,9 @@ export default function AcompanhamentoTab() {
                   return (
                     <tr key={p.id} style={{ borderTop: "1px solid var(--border)" }}>
                       <td
+                        className="rounded focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
                         style={{ padding: "10px 20px", fontWeight: 500, color: "var(--text)", cursor: "pointer" }}
-                        onClick={() => setViewingProjeto(p)}
+                        {...propsTituloClicavel(() => setViewingProjeto(p))}
                       >
                         {p.titulo}
                       </td>
