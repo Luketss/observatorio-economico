@@ -29,8 +29,10 @@ e exibidas pelo `PrioridadesPanel` no Painel do Prefeito e no Dashboard Geral. N
   para essa área. `permissoes_efetivas`/`PERMISSOES_TODAS` derivam automaticamente (o `/auth/me`
   passa a expor a área sem mudança adicional).
 - **Migration 0035 (data-only, zero schema):** no JSON `permissoes` da role builtin
-  `ADMIN_MUNICIPIO`, adiciona `"prioridades": ["editar"]`. Downgrade remove a chave. Seed de roles
-  atualizado em paridade. Roles custom existentes: sem a área (negado por default).
+  `ADMIN_MUNICIPIO`, adiciona `"prioridades": ["criar", "editar", "excluir"]` — paridade com
+  `PERMISSOES_TODAS`/seed, que derivam todos os verbos por área; o backend consulta apenas
+  `editar` (verbos extras são inertes). Downgrade remove a chave. Seed não muda (deriva da
+  fonte). Roles custom existentes: sem a área (negado por default).
 
 ### `PUT /insights/prioridades`
 
