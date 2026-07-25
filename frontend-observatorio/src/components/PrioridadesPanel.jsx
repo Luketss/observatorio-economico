@@ -4,6 +4,7 @@ import { motion } from "framer-motion";
 import { SparklesIcon, ArrowRightIcon, PencilIcon } from "@heroicons/react/24/outline";
 import api from "../services/api";
 import { usePermissao } from "../hooks/usePermissao";
+import { useAuth } from "../context/AuthContext";
 import PrioridadesEditorModal from "./PrioridadesEditorModal";
 import { DATASET_ROUTE, DATASET_LABEL, parseTitulo } from "../utils/prioridadesForm";
 
@@ -21,7 +22,8 @@ function fmtDate(dt) {
 
 export default function PrioridadesPanel() {
   const [state, setState] = useState({ status: "loading", data: null });
-  const canEditar = usePermissao("prioridades", "editar");
+  const { user } = useAuth();
+  const canEditar = usePermissao("prioridades", "editar") && user?.role !== "ADMIN_GLOBAL";
   const [editorAberto, setEditorAberto] = useState(false);
 
   function handleSaved(data) {

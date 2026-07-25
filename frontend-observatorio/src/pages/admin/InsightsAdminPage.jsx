@@ -400,6 +400,7 @@ export default function InsightsAdminPage() {
   const handleGerarPrioridades = async () => {
     if (
       prioridades?.modelo === "especialista" &&
+      prioridades?.periodo === new Date().toISOString().slice(0, 7) &&
       !confirm("Há edição manual deste mês — regenerar substitui o conteúdo pela versão de IA. Continuar?")
     ) return;
     setGeneratingPrioridades(true);
