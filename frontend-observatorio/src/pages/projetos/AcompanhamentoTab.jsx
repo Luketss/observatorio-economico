@@ -441,13 +441,13 @@ export default function AcompanhamentoTab() {
                 {Object.entries(STATUS_CONFIG).map(([status, cfg]) => {
                   const cols = filtrados.filter((p) => p.status === status);
                   return (
-                    <div key={status} className="space-y-3">
+                    <div key={status} className="space-y-3 flex flex-col">
                       <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                         <span style={{ width: 8, height: 8, borderRadius: "50%", background: cfg.dot, display: "inline-block", flexShrink: 0 }} />
                         <h3 style={{ fontWeight: 600, color: "var(--text-dim)", fontSize: 12, fontFamily: "var(--font-mono)", textTransform: "uppercase", letterSpacing: "0.06em", margin: 0 }}>{cfg.label}</h3>
                         <span style={{ marginLeft: "auto", fontSize: 11, color: "var(--text-mute)", background: "var(--panel-2)", border: "1px solid var(--border)", padding: "1px 7px", borderRadius: 999 }}>{cols.length}</span>
                       </div>
-                      <DroppableColumn id={status} disabled={!canEditar} className="space-y-3" style={{ minHeight: 80 }}>
+                      <DroppableColumn id={status} disabled={!canEditar} className="space-y-3 flex-1" style={{ minHeight: 80 }}>
                         {cols.map((p) => (
                           <DraggableCard key={p.id} id={p.id} disabled={!canEditar}>
                             <ProjetoCard projeto={p} />

@@ -326,13 +326,13 @@ export default function CaptacaoTab() {
               const cfg = ESTAGIO_CONFIG[estagio];
               const cols = items.filter((i) => i.estagio === estagio);
               return (
-                <div key={estagio} className="space-y-3">
+                <div key={estagio} className="space-y-3 flex flex-col">
                   <div className="flex items-center gap-2">
                     <div className={`w-2 h-2 rounded-full ${cfg.dot}`} />
                     <h3 className="font-semibold text-[var(--text-dim)] text-sm">{cfg.label}</h3>
                     <span className="ml-auto text-xs text-[var(--text-mute)] bg-[var(--panel-2)] px-2 py-0.5 rounded-full">{cols.length}</span>
                   </div>
-                  <DroppableColumn id={estagio} disabled={!canEditar} className="space-y-3 min-h-[80px]">
+                  <DroppableColumn id={estagio} disabled={!canEditar} className="space-y-3 min-h-[80px] flex-1">
                     {cols.map((item) => (
                       <DraggableCard key={item.id} id={item.id} disabled={!canEditar}>
                         <div className="bg-[var(--panel)] rounded-xl border border-[var(--border)] p-4 space-y-2.5 hover:shadow-md transition-shadow">
@@ -372,7 +372,7 @@ export default function CaptacaoTab() {
                               </span>
                             )}
                             {item.link && (
-                              <a href={item.link} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1 text-blue-500 hover:underline">
+                              <a href={item.link} target="_blank" rel="noopener noreferrer" draggable={false} className="flex items-center gap-1 text-blue-500 hover:underline">
                                 <LinkIcon className="w-3.5 h-3.5" /> Ver edital
                               </a>
                             )}
