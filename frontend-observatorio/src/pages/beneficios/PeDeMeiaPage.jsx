@@ -6,7 +6,7 @@ import ReleasesPanel from "../../components/ReleasesPanel";
 import InfoTooltip from "../../components/InfoTooltip";
 import FilterBar from "../../components/FilterBar";
 import KpiCard from "../../components/KpiCard";
-import { NidPanel, NidLegend } from "../../components/nid/Panel";
+import { NidPageHeader, NidPanel, NidLegend } from "../../components/nid/Panel";
 import { AreaLineChart, MultiLineChart, HBarChart, DonutChart } from "../../components/nid/charts";
 import CompareToggle from "../../components/nid/CompareToggle";
 import { comparePanelData } from "../../utils/periodos";
@@ -109,17 +109,10 @@ export default function PeDeMeiaPage() {
       transition={{ duration: 0.3 }}
       className="space-y-8"
     >
-      <div>
-        <div className="flex items-center gap-2">
-          <h1 className="text-2xl font-extrabold tracking-tight text-[var(--text)]">
-            Pé-de-Meia
-          </h1>
-          <InfoTooltip dataset="pe_de_meia" />
-        </div>
-        <p className="text-sm text-[var(--text-mute)] mt-1">
-          Incentivos financeiros a estudantes do ensino médio público.
-        </p>
-      </div>
+      <NidPageHeader
+        title={<>Pé-de-Meia <InfoTooltip dataset="pe_de_meia" /></>}
+        sub="Incentivos financeiros a estudantes do ensino médio público."
+      />
 
       {needsMunicipio ? (
         <div

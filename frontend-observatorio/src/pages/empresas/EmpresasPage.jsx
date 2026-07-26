@@ -6,6 +6,7 @@ import ReleasesPanel from "../../components/ReleasesPanel";
 import InfoTooltip from "../../components/InfoTooltip";
 import KpiCard from "../../components/KpiCard";
 import PlanGate from "../../components/PlanGate";
+import { NidPageHeader } from "../../components/nid/Panel";
 import { DonutChart, HBarChart, StackedBarChart, AreaLineChart, fmtMoneyShort, fmtMoneyFull } from "../../components/nid/charts";
 import DetalheModal from "../../components/nid/DetalheModal";
 import { useAuth } from "../../context/AuthContext";
@@ -116,17 +117,10 @@ export default function EmpresasPage() {
       transition={{ duration: 0.3 }}
       className="space-y-8"
     >
-      <div>
-        <div className="flex items-center gap-2">
-          <h1 className="text-2xl font-extrabold tracking-tight text-[var(--text)]">
-            Empresas — CNPJ
-          </h1>
-          <InfoTooltip dataset="empresas" />
-        </div>
-        <p className="text-sm text-[var(--text-mute)] mt-1">
-          Perfil e composição do tecido empresarial local.
-        </p>
-      </div>
+      <NidPageHeader
+        title={<>Empresas — CNPJ <InfoTooltip dataset="empresas" /></>}
+        sub="Perfil e composição do tecido empresarial local."
+      />
 
       {needsMunicipio ? (
         <div
