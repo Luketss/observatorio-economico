@@ -243,10 +243,7 @@ export default function ComexPage() {
       <InsightsPanel dataset="comex" />
 
       {/* Exportações vs Importações ao longo do tempo */}
-      <div className="bg-[var(--panel)] p-6 rounded-2xl shadow-sm border border-[var(--border)]">
-        <h3 className="text-base font-bold mb-5 text-[var(--text)]">
-          Exportações vs Importações
-        </h3>
+      <NidPanel title="Exportações vs Importações">
         <MultiLineChart
           data={chartSerie.map((d) => ({
             label: d.periodo,
@@ -262,7 +259,7 @@ export default function ComexPage() {
           loading={loading}
           emptyMessage="Sem dados disponíveis"
         />
-      </div>
+      </NidPanel>
 
       {/* Saldo — Balança Comercial Mensal */}
       {chartSerie.length > 0 && (
@@ -306,10 +303,7 @@ export default function ComexPage() {
 
       {/* Peso Total por Período (kg) */}
       {chartSerie.length > 0 && (chartSerie.some(d => d.peso_export > 0 || d.peso_import > 0)) && (
-        <div className="bg-[var(--panel)] p-6 rounded-2xl shadow-sm border border-[var(--border)]">
-          <h3 className="text-base font-bold mb-5 text-[var(--text)]">
-            Volume Físico — Peso Exportado vs Importado (kg)
-          </h3>
+        <NidPanel title="Volume Físico — Peso Exportado vs Importado (kg)">
           <MultiLineChart
             data={chartSerie.map((d) => ({
               label: d.periodo,
@@ -323,17 +317,13 @@ export default function ComexPage() {
             yFmt={(v) => v >= 1_000_000 ? `${(v / 1_000_000).toFixed(1)}M kg` : v >= 1_000 ? `${(v / 1_000).toFixed(0)}t` : `${v} kg`}
             tipFmt={(v) => `${Number(v).toLocaleString("pt-BR")} kg`}
           />
-        </div>
+        </NidPanel>
       )}
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Top Produtos */}
         <PlanGate planKey="comex.por_produto">
-        <div className="bg-[var(--panel)] p-6 rounded-2xl shadow-sm border border-[var(--border)]">
-          <h3 className="text-base font-bold mb-1 text-[var(--text)]">
-            Top 10 Produtos
-          </h3>
-          <p className="text-xs text-[var(--text-mute)] mb-5">Ano: {anoSelecionado}</p>
+        <NidPanel title="Top 10 Produtos" sub={<>Ano: {anoSelecionado}</>}>
           <HBarChart
             data={porProduto.map((d) => ({ label: d.produto, value: d.valor_usd || 0 }))}
             color="var(--accent-4)"
@@ -341,29 +331,23 @@ export default function ComexPage() {
             loading={loading || loadingFilters}
             emptyMessage="Sem dados disponíveis"
           />
-        </div>
+        </NidPanel>
 
         {/* Top Produtos por Peso */}
         {!loading && !loadingFilters && porProduto.length > 0 && porProduto.some(p => p.peso_kg > 0) && (
-          <div className="bg-[var(--panel)] p-6 rounded-2xl shadow-sm border border-[var(--border)]">
-            <h3 className="text-base font-bold mb-1 text-[var(--text)]">Top Produtos por Peso</h3>
-            <p className="text-xs text-[var(--text-mute)] mb-5">Ano: {anoSelecionado}</p>
+          <NidPanel title="Top Produtos por Peso" sub={<>Ano: {anoSelecionado}</>}>
             <HBarChart
               data={[...porProduto].sort((a, b) => (b.peso_kg ?? 0) - (a.peso_kg ?? 0)).slice(0, 10).map((d) => ({ label: d.produto, value: d.peso_kg || 0 }))}
               color="var(--accent-4)"
               fmt={(v) => v >= 1_000_000 ? `${(v / 1_000_000).toFixed(1)}M kg` : `${(v / 1_000).toFixed(0)}t`}
             />
-          </div>
+          </NidPanel>
         )}
         </PlanGate>
 
         {/* Top Países */}
         <PlanGate planKey="comex.por_pais">
-        <div className="bg-[var(--panel)] p-6 rounded-2xl shadow-sm border border-[var(--border)]">
-          <h3 className="text-base font-bold mb-1 text-[var(--text)]">
-            Top 10 Países
-          </h3>
-          <p className="text-xs text-[var(--text-mute)] mb-5">Ano: {anoSelecionado}</p>
+        <NidPanel title="Top 10 Países" sub={<>Ano: {anoSelecionado}</>}>
           <HBarChart
             data={porPais.map((d) => ({ label: d.pais, value: d.valor_usd || 0 }))}
             color="var(--accent-4)"
@@ -371,7 +355,7 @@ export default function ComexPage() {
             loading={loading || loadingFilters}
             emptyMessage="Sem dados disponíveis"
           />
-        </div>
+        </NidPanel>
         </PlanGate>
       </div>
       <NidComparativoPanel

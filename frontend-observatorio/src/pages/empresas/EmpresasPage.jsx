@@ -6,7 +6,7 @@ import ReleasesPanel from "../../components/ReleasesPanel";
 import InfoTooltip from "../../components/InfoTooltip";
 import KpiCard from "../../components/KpiCard";
 import PlanGate from "../../components/PlanGate";
-import { NidPageHeader } from "../../components/nid/Panel";
+import { NidPageHeader, NidPanel } from "../../components/nid/Panel";
 import { DonutChart, HBarChart, StackedBarChart, AreaLineChart, fmtMoneyShort, fmtMoneyFull } from "../../components/nid/charts";
 import DetalheModal from "../../components/nid/DetalheModal";
 import { useAuth } from "../../context/AuthContext";
@@ -165,10 +165,7 @@ export default function EmpresasPage() {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Pie — porte */}
         <PlanGate planKey="empresas.por_porte">
-        <div className="bg-[var(--panel)] p-6 rounded-2xl shadow-sm border border-[var(--border)]">
-          <h3 className="text-base font-bold mb-5 text-[var(--text)]">
-            Distribuição por Porte
-          </h3>
+        <NidPanel title="Distribuição por Porte">
           <DonutChart
             data={porPorte.map((d) => ({ label: d.name, value: d.value }))}
             colors={["var(--accent-1)", "var(--accent-3)", "var(--accent-5)", "var(--accent-4)", "var(--accent-2)"]}
@@ -178,15 +175,12 @@ export default function EmpresasPage() {
             emptyMessage="Sem dados disponíveis"
             onSelect={(s) => setDetalhe({ titulo: s.label ?? s.name, valor: s.value })}
           />
-        </div>
+        </NidPanel>
 
         </PlanGate>
 
         {/* Situação cadastral */}
-        <div className="bg-[var(--panel)] p-6 rounded-2xl shadow-sm border border-[var(--border)]">
-          <h3 className="text-base font-bold mb-5 text-[var(--text)]">
-            Empresas por Situação Cadastral
-          </h3>
+        <NidPanel title="Empresas por Situação Cadastral">
           <HBarChart
             data={porSituacao.map((d) => ({ label: d.label, value: d.total || 0 }))}
             color="var(--accent-1)"
@@ -194,14 +188,11 @@ export default function EmpresasPage() {
             loading={loading}
             emptyMessage="Sem dados disponíveis"
           />
-        </div>
+        </NidPanel>
       </div>
 
       {/* Ativas vs Fechadas por Porte (Saldo) */}
-      <div className="bg-[var(--panel)] p-6 rounded-2xl shadow-sm border border-[var(--border)]">
-        <h3 className="text-base font-bold mb-5 text-[var(--text)]">
-          Ativas vs. Fechadas por Porte
-        </h3>
+      <NidPanel title="Ativas vs. Fechadas por Porte">
         <StackedBarChart
           data={situacaoPorPorte.map((d) => ({
             label: d.porte,
@@ -217,14 +208,11 @@ export default function EmpresasPage() {
           loading={loading}
           emptyMessage="Sem dados disponíveis"
         />
-      </div>
+      </NidPanel>
 
       {/* Empresas por Setor CNAE */}
       <PlanGate planKey="empresas.por_cnae">
-      <div className="bg-[var(--panel)] p-6 rounded-2xl shadow-sm border border-[var(--border)]">
-        <h3 className="text-base font-bold mb-5 text-[var(--text)]">
-          Empresas por Setor de Atividade (CNAE — Seção)
-        </h3>
+      <NidPanel title="Empresas por Setor de Atividade (CNAE — Seção)">
         <HBarChart
           data={porCnaeSecao.map((d) => ({ label: d.descricao, value: d.total_vinculos || 0 }))}
           color="var(--accent-1)"
@@ -232,7 +220,7 @@ export default function EmpresasPage() {
           loading={loading}
           emptyMessage="Sem dados disponíveis"
         />
-      </div>
+      </NidPanel>
 
       </PlanGate>
 
@@ -260,19 +248,16 @@ export default function EmpresasPage() {
       </div>
       {/* Capital Social por Porte */}
       {!loading && capitalPorPorte.length > 0 && (
-        <div className="bg-[var(--panel)] p-6 rounded-2xl shadow-sm border border-[var(--border)]">
-          <h3 className="text-base font-bold mb-1 text-[var(--text)]">
-            Capital Social por Porte de Empresa
-          </h3>
-          <p className="text-xs text-[var(--text-mute)] mb-5">
-            Capital médio declarado por empresas com registro ativo
-          </p>
+        <NidPanel
+          title="Capital Social por Porte de Empresa"
+          sub="Capital médio declarado por empresas com registro ativo"
+        >
           <HBarChart
             data={capitalPorPorte.map((d) => ({ label: d.porte, value: d.capital_medio || 0 }))}
             color="var(--accent-1)"
             fmt={fmtBRL}
           />
-        </div>
+        </NidPanel>
       )}
 
       <ReleasesPanel dataset="empresas" />

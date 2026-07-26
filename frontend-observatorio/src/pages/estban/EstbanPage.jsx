@@ -231,10 +231,7 @@ export default function EstbanPage() {
       </NidPanel>
 
       {/* Captação — Depósitos por Tipo */}
-      <div className="bg-[var(--panel)] p-6 rounded-2xl shadow-sm border border-[var(--border)]">
-        <h3 className="text-base font-bold mb-5 text-[var(--text)]">
-          Evolução da Captação — Depósitos por Tipo
-        </h3>
+      <NidPanel title="Evolução da Captação — Depósitos por Tipo">
         <MultiLineChart
           data={captacao.map((d) => ({
             label: String(d.data_referencia),
@@ -251,13 +248,10 @@ export default function EstbanPage() {
           loading={loading}
           emptyMessage="Sem dados disponíveis"
         />
-      </div>
+      </NidPanel>
 
       {/* Crédito vs. Captação Total */}
-      <div className="bg-[var(--panel)] p-6 rounded-2xl shadow-sm border border-[var(--border)]">
-        <h3 className="text-base font-bold mb-5 text-[var(--text)]">
-          Crédito vs. Captação Total
-        </h3>
+      <NidPanel title="Crédito vs. Captação Total">
         <MultiLineChart
           data={captacao.map((d) => ({
             label: String(d.data_referencia),
@@ -273,13 +267,10 @@ export default function EstbanPage() {
           loading={loading}
           emptyMessage="Sem dados disponíveis"
         />
-      </div>
+      </NidPanel>
 
       {/* Composição do Crédito */}
-      <div className="bg-[var(--panel)] p-6 rounded-2xl shadow-sm border border-[var(--border)]">
-        <h3 className="text-base font-bold mb-5 text-[var(--text)]">
-          Composição das Operações de Crédito
-        </h3>
+      <NidPanel title="Composição das Operações de Crédito">
         <StackedBarChart
           data={composicao.map((d) => ({
             label: String(d.data_referencia),
@@ -300,14 +291,11 @@ export default function EstbanPage() {
           loading={loading}
           emptyMessage="Sem dados disponíveis"
         />
-      </div>
+      </NidPanel>
 
       {/* Crédito por Instituição */}
       <PlanGate planKey="estban.por_instituicao">
-      <div className="bg-[var(--panel)] p-6 rounded-2xl shadow-sm border border-[var(--border)]">
-        <h3 className="text-base font-bold mb-5 text-[var(--text)]">
-          Operações de Crédito por Instituição
-        </h3>
+      <NidPanel title="Operações de Crédito por Instituição">
         <HBarChart
           data={porInstituicao.slice(0, 10).map((d) => ({ label: d.nome_instituicao, value: d.valor_operacoes_credito || 0 }))}
           color="var(--accent-1)"
@@ -315,14 +303,11 @@ export default function EstbanPage() {
           loading={loading}
           emptyMessage="Sem dados disponíveis"
         />
-      </div>
+      </NidPanel>
 
       {/* Composição do Crédito por Instituição */}
       {!loading && porInstituicao.length > 0 && porInstituicao.some(r => r.financiamentos_gerais > 0 || r.emprestimos_titulos_descontados > 0) && (
-        <div className="bg-[var(--panel)] p-6 rounded-2xl shadow-sm border border-[var(--border)]">
-          <h3 className="text-base font-bold mb-5 text-[var(--text)]">
-            Composição do Crédito por Instituição
-          </h3>
+        <NidPanel title="Composição do Crédito por Instituição">
           <StackedBarChart
             data={porInstituicao.slice(0, 8).map((d) => ({
               label: d.nome_instituicao,
@@ -341,7 +326,7 @@ export default function EstbanPage() {
             yFmt={(v) => `R$ ${(v / 1_000_000).toLocaleString("pt-BR", { maximumFractionDigits: 0 })}M`}
             tipFmt={fmtBRL}
           />
-        </div>
+        </NidPanel>
       )}
 
       {/* Tabela de Instituições — still inside PlanGate */}
