@@ -200,10 +200,7 @@ export default function PeDeMeiaPage() {
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Estudantes por Etapa de Ensino */}
-        <div className="bg-[var(--panel)] p-6 rounded-2xl shadow-sm border border-[var(--border)]">
-          <h3 className="text-base font-bold mb-5 text-[var(--text)]">
-            Estudantes por Etapa de Ensino
-          </h3>
+        <NidPanel title="Estudantes por Etapa de Ensino">
           <HBarChart
             data={porEtapa.map((d) => ({ label: d.etapa_ensino, value: d.total_estudantes || 0 }))}
             color="var(--accent-5)"
@@ -211,13 +208,10 @@ export default function PeDeMeiaPage() {
             loading={loading}
             emptyMessage="Sem dados disponíveis"
           />
-        </div>
+        </NidPanel>
 
         {/* Breakdown por Tipo de Incentivo */}
-        <div className="bg-[var(--panel)] p-6 rounded-2xl shadow-sm border border-[var(--border)]">
-          <h3 className="text-base font-bold mb-5 text-[var(--text)]">
-            Estudantes por Tipo de Incentivo
-          </h3>
+        <NidPanel title="Estudantes por Tipo de Incentivo">
           <DonutChart
             data={porIncentivo.map((d) => ({ label: d.name, value: d.value }))}
             baseColor="var(--accent-5)"
@@ -226,7 +220,7 @@ export default function PeDeMeiaPage() {
             loading={loading}
             emptyMessage="Sem dados disponíveis"
           />
-        </div>
+        </NidPanel>
       </div>
       <ReleasesPanel dataset="pe_de_meia" />
       </>

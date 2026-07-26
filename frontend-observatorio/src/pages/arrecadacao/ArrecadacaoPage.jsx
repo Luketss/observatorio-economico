@@ -199,10 +199,7 @@ export default function ArrecadacaoPage() {
 
       {/* ICMS / IPVA / IPI Breakdown */}
       {serie.length > 0 && (
-        <div className="bg-[var(--panel)] p-6 rounded-2xl shadow-sm border border-[var(--border)]">
-          <h3 className="text-base font-bold mb-5 text-[var(--text)]">
-            Composição por Tipo de Imposto (ICMS / IPVA / IPI)
-          </h3>
+        <NidPanel title="Composição por Tipo de Imposto (ICMS / IPVA / IPI)">
           <StackedBarChart
             data={serie.slice(-24).map((d) => ({
               label: String(d.periodo),
@@ -216,7 +213,7 @@ export default function ArrecadacaoPage() {
             yFmt={fmtMoneyShort}
             tipFmt={fmtMoneyFull}
           />
-        </div>
+        </NidPanel>
       )}
 
       {/* Breakdown table */}

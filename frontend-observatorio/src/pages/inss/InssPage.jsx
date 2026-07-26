@@ -162,10 +162,7 @@ export default function InssPage() {
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Top Categorias */}
-        <div className="bg-[var(--panel)] p-6 rounded-2xl shadow-sm border border-[var(--border)]">
-          <h3 className="text-base font-bold mb-5 text-[var(--text)]">
-            Top Categorias de Benefícios
-          </h3>
+        <NidPanel title="Top Categorias de Benefícios">
           <HBarChart
             data={topCategorias.map((d) => ({ label: d.categoria, value: d.quantidade_beneficios || 0 }))}
             color="var(--accent-3)"
@@ -173,13 +170,10 @@ export default function InssPage() {
             loading={loading}
             emptyMessage="Sem dados disponíveis"
           />
-        </div>
+        </NidPanel>
 
         {/* Evolução Anual */}
-        <div className="bg-[var(--panel)] p-6 rounded-2xl shadow-sm border border-[var(--border)]">
-          <h3 className="text-base font-bold mb-5 text-[var(--text)]">
-            Evolução Anual de Benefícios
-          </h3>
+        <NidPanel title="Evolução Anual de Benefícios">
           <AreaLineChart
             data={evolucaoAnual.map((d) => ({ label: String(d.ano), value: d.quantidade_beneficios || 0 }))}
             height={280}
@@ -190,7 +184,7 @@ export default function InssPage() {
             loading={loading}
             emptyMessage="Sem dados disponíveis"
           />
-        </div>
+        </NidPanel>
       </div>
 
       {/* Tabela detalhada */}

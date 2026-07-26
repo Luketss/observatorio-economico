@@ -197,10 +197,7 @@ export default function BolsaFamiliaPage() {
       </NidPanel>
 
       {/* Beneficiários: Total vs Primeira Infância */}
-      <div className="bg-[var(--panel)] p-6 rounded-2xl shadow-sm border border-[var(--border)]">
-        <h3 className="text-base font-bold mb-5 text-[var(--text)]">
-          Beneficiários: Total vs Primeira Infância
-        </h3>
+      <NidPanel title="Beneficiários: Total vs Primeira Infância">
         <MultiLineChart
           data={serie.map((d) => ({
             label: d.periodo,
@@ -216,13 +213,10 @@ export default function BolsaFamiliaPage() {
           loading={loading}
           emptyMessage="Sem dados disponíveis"
         />
-      </div>
+      </NidPanel>
 
       {/* Comparativo Bolsa vs Primeira Infância */}
-      <div className="bg-[var(--panel)] p-6 rounded-2xl shadow-sm border border-[var(--border)]">
-        <h3 className="text-base font-bold mb-5 text-[var(--text)]">
-          Repasses: Bolsa Família vs Primeira Infância
-        </h3>
+      <NidPanel title="Repasses: Bolsa Família vs Primeira Infância">
         <StackedBarChart
           data={serie.map((d) => ({
             label: d.periodo,
@@ -238,7 +232,7 @@ export default function BolsaFamiliaPage() {
           loading={loading}
           emptyMessage="Sem dados disponíveis"
         />
-      </div>
+      </NidPanel>
       <NidComparativoPanel
         title="Comparativo Municipal"
         sub="Ranking por valor total pago em Bolsa Família"
