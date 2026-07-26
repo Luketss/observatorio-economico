@@ -189,8 +189,6 @@ export default function PibPage() {
         </div>
       ) : (
       <>
-      <InsightsPanel dataset="pib" />
-
       <FilterBar id="filter-bar-pib" years={years} value={filters} onChange={setFilters} />
 
       {loading ? (
@@ -208,6 +206,8 @@ export default function PibPage() {
           ))}
         </div>
       )}
+
+      <InsightsPanel dataset="pib" />
 
       {/* Evolução Anual do PIB */}
       <NidPanel title="Evolução Anual do PIB" sub="série histórica · R$ milhões">

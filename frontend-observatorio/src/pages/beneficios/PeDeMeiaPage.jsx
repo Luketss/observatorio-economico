@@ -140,8 +140,6 @@ export default function PeDeMeiaPage() {
         </div>
       ) : (
       <>
-      <InsightsPanel dataset="pe_de_meia" />
-
       <div className="flex items-center justify-end">
         <CompareToggle active={comparar} onChange={setComparar} disabled={!cmp.temAnterior} />
       </div>
@@ -164,6 +162,8 @@ export default function PeDeMeiaPage() {
           ))}
         </div>
       )}
+
+      <InsightsPanel dataset="pe_de_meia" />
 
       {/* Evolução de Estudantes */}
       <NidPanel

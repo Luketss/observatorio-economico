@@ -140,8 +140,6 @@ export default function InssPage() {
         </div>
       ) : (
       <>
-      <InsightsPanel dataset="inss" />
-
       <FilterBar id="filter-bar-inss" years={years} value={filters} onChange={setFilters} />
 
       {loading ? (
@@ -159,6 +157,8 @@ export default function InssPage() {
           ))}
         </div>
       )}
+
+      <InsightsPanel dataset="inss" />
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Top Categorias */}

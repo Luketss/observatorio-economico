@@ -135,8 +135,6 @@ export default function ArrecadacaoPage() {
         </div>
       ) : (
       <>
-      <InsightsPanel dataset="arrecadacao" />
-
       <div className="flex items-center justify-end">
         <CompareToggle active={comparar} onChange={setComparar} disabled={!cmp.temAnterior} />
       </div>
@@ -158,6 +156,8 @@ export default function ArrecadacaoPage() {
           ))}
         </div>
       )}
+
+      <InsightsPanel dataset="arrecadacao" />
 
       <NidPanel
         title="Série Histórica Mensal"

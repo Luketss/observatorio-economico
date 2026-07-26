@@ -131,8 +131,6 @@ export default function BolsaFamiliaPage() {
         </div>
       ) : (
       <>
-      <InsightsPanel dataset="bolsa_familia" />
-
       <div className="flex items-center justify-end">
         <CompareToggle active={comparar} onChange={setComparar} disabled={!cmp.temAnterior} />
       </div>
@@ -155,6 +153,8 @@ export default function BolsaFamiliaPage() {
           ))}
         </div>
       )}
+
+      <InsightsPanel dataset="bolsa_familia" />
 
       {/* Evolução de Beneficiários */}
       <NidPanel
