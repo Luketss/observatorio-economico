@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
 import api from "../../services/api";
 import { useAuth } from "../../context/AuthContext";
@@ -7,7 +7,7 @@ import InfoTooltip from "../../components/InfoTooltip";
 import KpiCard from "../../components/KpiCard";
 import CriarOportunidadeCaptacao from "../../components/CriarOportunidadeCaptacao";
 import { NidPanel, NidPageHeader } from "../../components/nid/Panel";
-import { fmtMoneyShort, fmtMoneyFull } from "../../components/nid/charts";
+import { fmtMoneyShort, fmtMoneyFull, HBarChart } from "../../components/nid/charts";
 import BarraExecucao from "../../components/nid/BarraExecucao";
 import { emendaParaCaptacaoPayload } from "../../utils/emendaCaptacao";
 
@@ -30,11 +30,6 @@ export default function EmendasPage() {
       .catch((err) => console.error("Erro ao carregar radar de emendas:", err))
       .finally(() => setLoading(false));
   }, [needsMunicipio, ano]);
-
-  const maxFuncao = useMemo(
-    () => Math.max(1, ...(radar?.por_funcao || []).map((f) => f.empenhado)),
-    [radar]
-  );
 
   if (needsMunicipio) {
     return (
@@ -126,20 +121,12 @@ export default function EmendasPage() {
           </NidPanel>
 
           <NidPanel title="Destino por área" sub="Total empenhado por função orçamentária">
-            <div className="space-y-2">
-              {radar.por_funcao.map((f) => (
-                <div key={f.funcao} className="flex items-center gap-3">
-                  <span className="text-sm text-[var(--text)] w-40 truncate" title={f.funcao}>{f.funcao}</span>
-                  <div className="flex-1 h-3 rounded-full bg-[var(--panel-2)] overflow-hidden" aria-hidden>
-                    <div className="h-full rounded-full" style={{ width: `${(f.empenhado / maxFuncao) * 100}%`, background: "var(--accent-3)" }} />
-                  </div>
-                  <span className="text-xs text-[var(--text-dim)] w-24 text-right">{fmtMoneyShort(f.empenhado)}</span>
-                </div>
-              ))}
-              {radar.por_funcao.length === 0 && (
-                <p className="text-sm text-[var(--text-dim)] text-center py-4">Sem detalhamento por função.</p>
-              )}
-            </div>
+            <HBarChart
+              data={radar.por_funcao.map((f) => ({ label: f.funcao, value: f.empenhado }))}
+              color="var(--accent-3)"
+              fmt={fmtMoneyShort}
+              emptyMessage="Sem detalhamento por função."
+            />
           </NidPanel>
 
           <NidPanel title="Emendas destinadas ao município" sub="Funil de execução: empenhado → liquidado → pago (inclui restos a pagar pagos)">

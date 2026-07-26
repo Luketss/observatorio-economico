@@ -16,21 +16,6 @@ import ChartState from "../../components/nid/ChartState.jsx";
 import { useAuth } from "../../context/AuthContext";
 import { useViewAs } from "../../context/ViewAsContext";
 
-function ChartCard({ title, children, empty }) {
-  return (
-    <div className="bg-[var(--panel)] p-6 rounded-2xl shadow-sm border border-[var(--border)]">
-      <h3 className="text-base font-bold mb-5 text-[var(--text)]">{title}</h3>
-      {empty ? (
-        <div className="h-60 flex items-center justify-center text-[var(--text-mute)] text-sm">
-          Sem dados disponíveis
-        </div>
-      ) : (
-        children
-      )}
-    </div>
-  );
-}
-
 const fmtBRL = (v) =>
   v != null
     ? `R$ ${Number(v).toLocaleString("pt-BR", { maximumFractionDigits: 0 })}`
@@ -216,8 +201,9 @@ export default function PixPage() {
       </NidPanel>
 
       {/* Volume Recebimentos — PF vs PJ */}
-      <ChartCard title="Volume de Recebimentos — PF vs PJ" empty={serie.length === 0}>
+      <NidPanel title="Volume de Recebimentos — PF vs PJ">
         <MultiLineChart
+          emptyMessage="Sem dados disponíveis"
           data={serie.map((d) => ({ label: d.periodo, "Recebimento PF": d.vl_recebedor_pf || 0, "Recebimento PJ": d.vl_recebedor_pj || 0 }))}
           series={["Recebimento PF", "Recebimento PJ"]}
           colors={["#8b5cf6", "#f59e0b"]}
@@ -226,11 +212,12 @@ export default function PixPage() {
           yFmt={(v) => `R$ ${(v / 1_000_000).toLocaleString("pt-BR", { maximumFractionDigits: 0 })}M`}
           tipFmt={fmtBRL}
         />
-      </ChartCard>
+      </NidPanel>
 
       {/* Quantidade de Transações */}
-      <ChartCard title="Quantidade de Transações (Pagadores)" empty={serie.length === 0}>
+      <NidPanel title="Quantidade de Transações (Pagadores)">
         <StackedBarChart
+          emptyMessage="Sem dados disponíveis"
           data={serie.map((d) => ({ label: d.periodo, "Transações PF": d.qt_pagador_pf || 0, "Transações PJ": d.qt_pagador_pj || 0 }))}
           keys={["Transações PF", "Transações PJ"]}
           colors={["#3b82f6", "#10b981"]}
@@ -239,11 +226,12 @@ export default function PixPage() {
           yFmt={(v) => Number(v).toLocaleString("pt-BR")}
           tipFmt={(v) => Number(v).toLocaleString("pt-BR")}
         />
-      </ChartCard>
+      </NidPanel>
 
       {/* Pessoas Únicas Pagadoras */}
-      <ChartCard title="Pessoas Únicas Pagadoras" empty={serie.length === 0}>
+      <NidPanel title="Pessoas Únicas Pagadoras">
         <MultiLineChart
+          emptyMessage="Sem dados disponíveis"
           data={serie.map((d) => ({ label: d.periodo, "Pessoas PF": d.qt_pes_pagador_pf || 0, "Pessoas PJ": d.qt_pes_pagador_pj || 0 }))}
           series={["Pessoas PF", "Pessoas PJ"]}
           colors={["#8b5cf6", "#f97316"]}
@@ -252,11 +240,12 @@ export default function PixPage() {
           yFmt={(v) => Number(v).toLocaleString("pt-BR")}
           tipFmt={(v) => Number(v).toLocaleString("pt-BR")}
         />
-      </ChartCard>
+      </NidPanel>
 
       {/* Pessoas Únicas Recebedoras */}
-      <ChartCard title="Pessoas Únicas Recebedoras" empty={serie.length === 0}>
+      <NidPanel title="Pessoas Únicas Recebedoras">
         <MultiLineChart
+          emptyMessage="Sem dados disponíveis"
           data={serie.map((d) => ({ label: d.periodo, "Recebedores PF": d.qt_pes_recebedor_pf || 0, "Recebedores PJ": d.qt_pes_recebedor_pj || 0 }))}
           series={["Recebedores PF", "Recebedores PJ"]}
           colors={["#06b6d4", "#f43f5e"]}
@@ -265,7 +254,7 @@ export default function PixPage() {
           yFmt={(v) => Number(v).toLocaleString("pt-BR")}
           tipFmt={(v) => Number(v).toLocaleString("pt-BR")}
         />
-      </ChartCard>
+      </NidPanel>
       </PlanGate>
       <NidComparativoPanel
         title="Comparativo Municipal · PIX"
