@@ -160,8 +160,6 @@ export default function EstbanPage() {
         </div>
       ) : (
       <>
-      <InsightsPanel dataset="estban" />
-
       <div className="flex items-center justify-end">
         <CompareToggle active={comparar} onChange={setComparar} disabled={!cmp.temAnterior} />
       </div>
@@ -183,6 +181,8 @@ export default function EstbanPage() {
           ))}
         </div>
       )}
+
+      <InsightsPanel dataset="estban" />
 
       {/* Evolução das Operações de Crédito */}
       <NidPanel

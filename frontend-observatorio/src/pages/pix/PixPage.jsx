@@ -153,8 +153,6 @@ export default function PixPage() {
         </div>
       ) : (
       <>
-      <InsightsPanel dataset="pix" />
-
       <div className="flex items-center justify-end">
         <CompareToggle active={comparar} onChange={setComparar} disabled={!cmp.temAnterior} />
       </div>
@@ -174,6 +172,8 @@ export default function PixPage() {
           {cards.map((c) => <KpiCard key={c.label} {...c} />)}
         </div>
       )}
+
+      <InsightsPanel dataset="pix" />
 
       {/* Volume PF vs PJ — Pagamentos */}
       <PlanGate planKey="pix.detalhado">

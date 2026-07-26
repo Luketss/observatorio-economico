@@ -147,8 +147,6 @@ export default function EmpresasPage() {
         </div>
       ) : (
       <>
-      <InsightsPanel dataset="empresas" />
-
       {/* KPI Cards */}
       {loading ? (
         <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
@@ -166,6 +164,8 @@ export default function EmpresasPage() {
           ))}
         </div>
       )}
+
+      <InsightsPanel dataset="empresas" />
 
       {/* Distribuição por Porte + Situação */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">

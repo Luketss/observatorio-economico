@@ -207,8 +207,6 @@ export default function VafPage() {
         </div>
       ) : (
       <>
-      <InsightsPanel dataset="vaf" />
-
       <FilterBar id="filter-bar-vaf" years={years} value={filters} onChange={setFilters} />
 
       {loading ? (
@@ -226,6 +224,8 @@ export default function VafPage() {
           ))}
         </div>
       )}
+
+      <InsightsPanel dataset="vaf" />
 
       {/* Evolução do IPM */}
       <NidPanel title="Evolução do IPM" sub="índice de participação municipal por ano-base">

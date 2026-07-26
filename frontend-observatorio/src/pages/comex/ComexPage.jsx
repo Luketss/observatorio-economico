@@ -218,8 +218,6 @@ export default function ComexPage() {
         </div>
       )}
 
-      <InsightsPanel dataset="comex" />
-
       <div className="flex items-center justify-end">
         <CompareToggle active={comparar} onChange={setComparar} disabled={!cmp.temAnterior} />
       </div>
@@ -241,6 +239,8 @@ export default function ComexPage() {
           ))}
         </div>
       )}
+
+      <InsightsPanel dataset="comex" />
 
       {/* Exportações vs Importações ao longo do tempo */}
       <div className="bg-[var(--panel)] p-6 rounded-2xl shadow-sm border border-[var(--border)]">
