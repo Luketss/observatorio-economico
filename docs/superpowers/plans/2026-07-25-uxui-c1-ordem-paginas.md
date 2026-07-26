@@ -140,7 +140,7 @@ Mesmo procedimento da Task 1 (remover a linha de cima; inserir após o `)}` do t
       <div className="flex items-center justify-end">
 ```
 
-`ComexPage.jsx` (linha ~221 — **nota**: aqui o painel está FORA do fragmento condicional, após um `)}`; ao mover para depois do bloco de KPIs ele entra no fluxo onde os KPIs vivem, o que é intencional — ver Global Constraints):
+`ComexPage.jsx` (linha ~221 — **nota corrigida no review final**: o painel já estava DENTRO do fragmento condicional, logo após o bloco `{anos.length > 0 && (...)}` do select de ano; a mudança é reordenação pura dentro do mesmo branch, idêntica às demais páginas, sem mudança de visibilidade):
 ```jsx
       <InsightsPanel dataset="comex" />
 
