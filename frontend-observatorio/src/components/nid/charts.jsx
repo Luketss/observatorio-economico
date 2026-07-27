@@ -2,6 +2,7 @@ import { useEffect, useId, useRef, useState } from "react";
 import React from "react";
 import ChartState from "./ChartState.jsx";
 import { useChartHover } from "./ChartHoverContext.jsx";
+import { viewBoxXFromOverlay, nearestIndexByX } from "../../utils/chartHover.js";
 
 // ────────── glow resolver ──────────
 function resolveGlow(glow) {
@@ -271,14 +272,8 @@ export function AreaLineChart({
   const allPts = [...pts, ...fcPts];
 
   const handleMove = (e) => {
-    const rect = e.currentTarget.getBoundingClientRect();
-    const px = ((e.clientX - rect.left) / rect.width) * w;
-    let best = 0, bestD = Infinity;
-    allPts.forEach((p, i) => {
-      const d = Math.abs(p.x - px);
-      if (d < bestD) { bestD = d; best = i; }
-    });
-    setLocalHover(best);
+    const px = viewBoxXFromOverlay(e.clientX, e.currentTarget.getBoundingClientRect(), padL, innerW);
+    setLocalHover(nearestIndexByX(allPts.map((p) => p.x), px));
   };
 
   const hoveredPt = hover != null ? allPts[hover] : null;
@@ -818,14 +813,9 @@ export function MultiLineChart({
   }
 
   const handleMove = (e) => {
-    const rect = e.currentTarget.getBoundingClientRect();
-    const px = ((e.clientX - rect.left) / rect.width) * w;
-    let best = 0, bestD = Infinity;
-    for (let i = 0; i < totalPts; i++) {
-      const d = Math.abs(sx(i) - px);
-      if (d < bestD) { bestD = d; best = i; }
-    }
-    setLocalHover(best);
+    const px = viewBoxXFromOverlay(e.clientX, e.currentTarget.getBoundingClientRect(), padL, innerW);
+    const xsAll = Array.from({ length: totalPts }, (_, i) => sx(i));
+    setLocalHover(nearestIndexByX(xsAll, px));
   };
 
   const isHoverForecast = hover != null && hover >= data.length;
