@@ -1,29 +1,27 @@
 import { useEffect, useMemo, useState } from "react";
+import { motion } from "framer-motion";
 import api from "../../services/api";
 import { useAuth } from "../../context/AuthContext";
-import { HBarChart, MultiLineChart } from "../../components/nid/charts";
+import KpiCard from "../../components/KpiCard";
 import InfoTooltip from "../../components/InfoTooltip";
+import { NidPageHeader, NidPanel } from "../../components/nid/Panel";
+import { HBarChart, MultiLineChart } from "../../components/nid/charts";
+import BarraExecucao from "../../components/nid/BarraExecucao";
 import MunicipioPicker from "../../components/nid/MunicipioPicker";
+import NidSelect from "../../components/nid/NidSelect";
+import KpiSkeleton from "../../components/nid/KpiSkeleton";
 
 function fmt(v) {
   if (v == null) return "—";
   return Number(v).toFixed(1);
 }
 
-function scoreColor(score) {
-  if (score == null) return "text-slate-400";
-  if (score >= 70) return "text-emerald-500";
-  if (score >= 50) return "text-amber-500";
-  return "text-red-500";
-}
-
-function scoreBg(score) {
-  if (score == null) return "bg-[var(--panel-2)]";
-  if (score >= 70)
-    return "bg-[var(--panel-2)] border border-emerald-500/20";
-  if (score >= 50)
-    return "bg-amber-50  border border-amber-200 ";
-  return "bg-[var(--panel-2)] border border-red-500/20";
+// Convenção nid: positivo → accent-5, atenção → accent-4, crítico → accent-2.
+function scoreAccent(score) {
+  if (score == null) return undefined;
+  if (score >= 70) return "var(--accent-5)";
+  if (score >= 50) return "var(--accent-4)";
+  return "var(--accent-2)";
 }
 
 const DIMENSIONS = [
@@ -69,7 +67,10 @@ const SUB_INDICATORS = [
   { key: "nota_mediana_enem", label: "Nota Mediana ENEM", dim: "opo" },
 ];
 
-const COLORS = ["#3b82f6", "#10b981", "#f59e0b", "#ef4444", "#8b5cf6", "#06b6d4"];
+const SERIES_COLORS = [
+  "var(--accent-1)", "var(--accent-5)", "var(--accent-4)",
+  "var(--accent-2)", "var(--accent-3)", "var(--accent-7)",
+];
 
 export default function IpsPage() {
   const { user } = useAuth();
@@ -168,12 +169,11 @@ export default function IpsPage() {
     setCompareMunicipioIds((prev) => prev.filter((id) => id !== municipioId));
   }
 
-  const radarData = useMemo(
+  const perfilData = useMemo(
     () =>
       COMPONENTS.map((c) => ({
-        subject: c.label,
-        valor: scorecard?.[c.key] ?? 0,
-        fullMark: 100,
+        label: c.label,
+        value: scorecard?.[c.key] ?? 0,
       })),
     [scorecard]
   );
@@ -192,37 +192,40 @@ export default function IpsPage() {
     }));
   }, [comparativo]);
 
+  const pibPerCapita = scorecard?.pib_per_capita
+    ? `R$ ${Number(scorecard.pib_per_capita).toLocaleString("pt-BR", { maximumFractionDigits: 0 })}`
+    : "—";
+  const pibSub = [
+    scorecard?.populacao && `Pop. ${scorecard.populacao.toLocaleString("pt-BR")}`,
+    scorecard?.area_km2 && `Área ${Number(scorecard.area_km2).toLocaleString("pt-BR", { maximumFractionDigits: 1 })} km²`,
+  ].filter(Boolean).join(" · ");
+
   return (
-    <div className="max-w-6xl mx-auto space-y-8 pb-12">
-      {/* Header */}
-      <div>
-        <h1 className="text-2xl font-bold text-[var(--text)] flex items-center gap-1">
-          Índice de Progresso Social
-          <InfoTooltip dataset="ips" />
-        </h1>
-        <p className="text-sm text-[var(--text-dim)] mt-1">
-          Avaliação multidimensional da qualidade de vida — escala de 0 a 100
-        </p>
+    <motion.div initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3 }} className="space-y-6">
+      <div className="flex items-center gap-2">
+        <NidPageHeader
+          title="IPS"
+          sub="Índice de Progresso Social — avaliação multidimensional da qualidade de vida, de 0 a 100"
+        />
+        <InfoTooltip dataset="ips" />
       </div>
 
       {/* Selectors */}
       <div className="flex flex-wrap gap-3 items-end">
         <div>
-          <label className="block text-xs text-slate-500 mb-1">Estado</label>
-          <select
+          <label className="block text-xs text-[var(--text-mute)] mb-1">Estado</label>
+          <NidSelect
             value={selectedEstado}
             onChange={(e) => setSelectedEstado(e.target.value)}
-            className="rounded-lg border border-[var(--border)] bg-[var(--panel)] text-[var(--text)] px-3 py-2 text-sm"
+            ariaLabel="Filtrar por estado"
           >
             {estados.map((e) => (
-              <option key={e} value={e}>
-                {e}
-              </option>
+              <option key={e} value={e}>{e}</option>
             ))}
-          </select>
+          </NidSelect>
         </div>
         <div className="min-w-[220px]">
-          <label className="block text-xs text-slate-500 mb-1">Município</label>
+          <label className="block text-xs text-[var(--text-mute)] mb-1">Município</label>
           <MunicipioPicker
             municipios={municipios.map((m) => ({ ...m, id: m.municipio_id }))}
             value={selectedMunicipioId ?? ""}
@@ -230,17 +233,13 @@ export default function IpsPage() {
           />
         </div>
         <div>
-          <label className="block text-xs text-slate-500 mb-1">Ano</label>
-          <div className="flex rounded-lg overflow-hidden border border-[var(--border)]">
+          <label className="block text-xs text-[var(--text-mute)] mb-1">Ano</label>
+          <div className="flex" style={{ gap: 6 }}>
             {[2024, 2025].map((a) => (
               <button
                 key={a}
                 onClick={() => setSelectedAno(a)}
-                className={`px-4 py-2 text-sm font-medium transition-colors ${
-                  selectedAno === a
-                    ? "bg-blue-500 text-white"
-                    : "bg-[var(--panel)] text-[var(--text-dim)] hover:bg-[var(--panel-2)]"
-                }`}
+                className={`nid-tab ${selectedAno === a ? "active" : ""}`}
               >
                 {a}
               </button>
@@ -250,161 +249,104 @@ export default function IpsPage() {
       </div>
 
       {loading && (
-        <div className="text-center py-16 text-slate-400">Carregando dados...</div>
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          {[...Array(4)].map((_, i) => <KpiSkeleton key={i} />)}
+        </div>
       )}
 
       {!loading && scorecard && (
         <>
-          {/* Hero Scorecard */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div
-              className={`rounded-2xl p-6 flex flex-col items-center justify-center ${scoreBg(
-                scorecard.ips_geral
-              )}`}
-            >
-              <p className="text-xs font-semibold uppercase tracking-widest text-slate-500 mb-2">
-                IPS Geral
-              </p>
-              <p className={`text-6xl font-black ${scoreColor(scorecard.ips_geral)}`}>
-                {fmt(scorecard.ips_geral)}
-              </p>
-              <p className="text-sm text-slate-400 mt-1">de 100</p>
-            </div>
-
-            <div className="rounded-2xl p-6 bg-[var(--panel)] border border-[var(--border)] space-y-3">
-              <p className="text-xs font-semibold uppercase tracking-widest text-slate-500">
-                Ranking Nacional
-              </p>
-              {ranking ? (
-                <>
-                  <p className="text-3xl font-bold text-[var(--text)]">
-                    {ranking.ranking_nacional}º
-                    <span className="text-sm font-normal text-slate-400 ml-1">
-                      de {ranking.total_nacional.toLocaleString("pt-BR")}
-                    </span>
-                  </p>
-                  <p className="text-xs font-semibold uppercase tracking-widest text-slate-500">
-                    Ranking Estadual
-                  </p>
-                  <p className="text-2xl font-bold text-[var(--text)]">
-                    {ranking.ranking_estadual}º
-                    <span className="text-sm font-normal text-slate-400 ml-1">
-                      de {ranking.total_estadual.toLocaleString("pt-BR")}
-                    </span>
-                  </p>
-                </>
-              ) : (
-                <p className="text-slate-400">—</p>
-              )}
-            </div>
-
-            <div className="rounded-2xl p-6 bg-[var(--panel)] border border-[var(--border)]">
-              <p className="text-xs font-semibold uppercase tracking-widest text-slate-500 mb-2">
-                PIB per capita
-              </p>
-              <p className="text-2xl font-bold text-[var(--text)]">
-                {scorecard.pib_per_capita
-                  ? `R$ ${Number(scorecard.pib_per_capita).toLocaleString("pt-BR", {
-                      maximumFractionDigits: 0,
-                    })}`
-                  : "—"}
-              </p>
-              <p className="text-xs text-slate-400 mt-3">
-                Desenvolvimento econômico não equivale a desenvolvimento social.
-              </p>
-              <div className="mt-3 space-y-1 text-xs text-slate-500">
-                {scorecard.populacao && (
-                  <p>Populacao: {scorecard.populacao.toLocaleString("pt-BR")}</p>
-                )}
-                {scorecard.area_km2 && (
-                  <p>
-                    Area:{" "}
-                    {Number(scorecard.area_km2).toLocaleString("pt-BR", {
-                      maximumFractionDigits: 1,
-                    })}{" "}
-                    km²
-                  </p>
-                )}
-              </div>
-            </div>
-          </div>
-
-          {/* Three Dimension Cards */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            {DIMENSIONS.map((d) => (
-              <div key={d.key} className={`rounded-2xl p-5 ${scoreBg(scorecard[d.key])}`}>
-                <p className="text-xs font-semibold uppercase tracking-widest text-slate-500">
-                  {d.short}
-                </p>
-                <p className="text-sm font-medium text-slate-700  mt-0.5">
-                  {d.label}
-                </p>
-                <p className={`text-4xl font-black mt-2 ${scoreColor(scorecard[d.key])}`}>
-                  {fmt(scorecard[d.key])}
-                </p>
-              </div>
-            ))}
-          </div>
-
-          {/* Component Profile — HBarChart replaces RadarChart */}
-          <div className="bg-[var(--panel)] border border-[var(--border)] rounded-2xl p-6">
-            <h2 className="text-sm font-semibold text-[var(--text)] mb-4">
-              Perfil por Componente
-            </h2>
-            <HBarChart
-              data={radarData.map((d) => ({ label: d.subject, value: d.valor }))}
-              color="#3b82f6"
-              fmt={(v) => `${fmt(v)} / 100`}
+          {/* KPIs */}
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <KpiCard
+              label="IPS Geral"
+              value={fmt(scorecard.ips_geral)}
+              sub="de 100"
+              accent={scoreAccent(scorecard.ips_geral)}
+              dataset="ips"
+              indicadorKey="ips_geral"
+            />
+            <KpiCard
+              label="Ranking Nacional"
+              value={ranking ? `${ranking.ranking_nacional}º` : "—"}
+              sub={ranking ? `de ${ranking.total_nacional.toLocaleString("pt-BR")} municípios` : ""}
+              dataset="ips"
+              indicadorKey="ranking_nacional"
+            />
+            <KpiCard
+              label="Ranking Estadual"
+              value={ranking ? `${ranking.ranking_estadual}º` : "—"}
+              sub={ranking ? `de ${ranking.total_estadual.toLocaleString("pt-BR")} em ${selectedEstado}` : ""}
+              dataset="ips"
+              indicadorKey="ranking_estadual"
+            />
+            <KpiCard
+              label="PIB per capita"
+              value={pibPerCapita}
+              sub={pibSub}
+              dataset="ips"
+              indicadorKey="pib_per_capita"
             />
           </div>
 
-          {/* Strengths & Weaknesses */}
+          {/* Dimensões */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            {DIMENSIONS.map((d) => (
+              <KpiCard
+                key={d.key}
+                label={d.short}
+                value={fmt(scorecard[d.key])}
+                sub={d.label}
+                accent={scoreAccent(scorecard[d.key])}
+                dataset="ips"
+                indicadorKey={d.key}
+              />
+            ))}
+          </div>
+
+          <NidPanel title="Perfil por Componente" sub="Score de cada componente · de 100">
+            <HBarChart
+              data={perfilData}
+              color="var(--accent-1)"
+              fmt={(v) => `${fmt(v)} de 100`}
+              emptyMessage="Sem dados disponíveis"
+            />
+          </NidPanel>
+
           {destaques && (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="bg-[var(--panel)] border border-[var(--border)] rounded-2xl p-5">
-                <h2 className="text-sm font-semibold text-[var(--accent-5)] mb-3">
-                  Pontos Fortes
-                </h2>
+              <NidPanel title="Pontos Fortes" sub="Maiores diferenças positivas vs. média estadual">
                 <div className="space-y-3">
                   {destaques.melhores.map((d) => (
                     <div key={d.campo} className="flex justify-between items-center">
                       <span className="text-sm text-[var(--text-dim)]">{d.label}</span>
                       <div className="text-right">
-                        <span className="text-sm font-bold text-emerald-600">{fmt(d.valor)}</span>
-                        <span className="text-xs text-slate-400 ml-1">
-                          (+{fmt(d.diferenca)} vs média)
-                        </span>
+                        <span className="text-sm font-bold" style={{ color: "var(--accent-5)" }}>{fmt(d.valor)}</span>
+                        <span className="text-xs text-[var(--text-mute)] ml-1">(+{fmt(d.diferenca)} vs média)</span>
                       </div>
                     </div>
                   ))}
                 </div>
-              </div>
-              <div className="bg-[var(--panel)] border border-[var(--border)] rounded-2xl p-5">
-                <h2 className="text-sm font-semibold text-red-600  mb-3">
-                  Pontos a Melhorar
-                </h2>
+              </NidPanel>
+              <NidPanel title="Pontos a Melhorar" sub="Maiores diferenças negativas vs. média estadual">
                 <div className="space-y-3">
                   {destaques.piores.map((d) => (
                     <div key={d.campo} className="flex justify-between items-center">
                       <span className="text-sm text-[var(--text-dim)]">{d.label}</span>
                       <div className="text-right">
-                        <span className="text-sm font-bold text-red-500">{fmt(d.valor)}</span>
-                        <span className="text-xs text-slate-400 ml-1">
-                          ({fmt(d.diferenca)} vs média)
-                        </span>
+                        <span className="text-sm font-bold" style={{ color: "var(--accent-2)" }}>{fmt(d.valor)}</span>
+                        <span className="text-xs text-[var(--text-mute)] ml-1">({fmt(d.diferenca)} vs média)</span>
                       </div>
                     </div>
                   ))}
                 </div>
-              </div>
+              </NidPanel>
             </div>
           )}
 
-          {/* Dimension Drill-down */}
+          {/* Detalhamento por Dimensão (colapsável) */}
           <div className="space-y-3">
-            <h2 className="text-base font-semibold text-[var(--text)]">
-              Detalhamento por Dimensão
-            </h2>
+            <h2 className="text-base font-semibold text-[var(--text)]">Detalhamento por Dimensão</h2>
             {[
               { dimKey: "nhb", label: "Necessidades Humanas Básicas" },
               { dimKey: "fbe", label: "Fundamentos do Bem-estar" },
@@ -413,62 +355,41 @@ export default function IpsPage() {
               const comps = COMPONENTS.filter((c) => c.dim === dimKey);
               const subs = SUB_INDICATORS.filter((s) => s.dim === dimKey);
               return (
-                <div
-                  key={dimKey}
-                  className="bg-[var(--panel)] border border-[var(--border)] rounded-2xl overflow-hidden"
-                >
+                <div key={dimKey} className="nid-panel overflow-hidden" style={{ padding: 0 }}>
                   <button
                     onClick={() => setOpenDims((p) => ({ ...p, [dimKey]: !p[dimKey] }))}
                     className="w-full flex justify-between items-center p-5 text-left cursor-pointer"
                   >
                     <span className="font-medium text-[var(--text)]">{label}</span>
-                    <span className="text-slate-400 text-sm">{openDims[dimKey] ? "▲" : "▼"}</span>
+                    <span className="text-[var(--text-mute)] text-sm">{openDims[dimKey] ? "▲" : "▼"}</span>
                   </button>
                   {openDims[dimKey] && (
                     <div className="px-5 pb-5 space-y-2 border-t border-[var(--border)] pt-4">
-                      <p className="text-xs font-semibold uppercase tracking-widest text-slate-400 mb-3">
+                      <p className="text-xs font-semibold uppercase tracking-widest text-[var(--text-mute)] mb-3">
                         Componentes
                       </p>
                       {comps.map((c) => {
                         const v = scorecard[c.key];
                         return (
                           <div key={c.key} className="flex items-center gap-3">
-                            <span className="text-xs text-slate-500 w-48 flex-shrink-0">
-                              {c.label}
-                            </span>
-                            <div className="flex-1 bg-[var(--panel-2)] rounded-full h-2">
-                              <div
-                                className="h-2 rounded-full bg-blue-500"
-                                style={{ width: `${v ?? 0}%` }}
-                              />
+                            <span className="text-xs text-[var(--text-dim)] w-48 flex-shrink-0">{c.label}</span>
+                            <div className="flex-1">
+                              <BarraExecucao pct={v} label={fmt(v)} />
                             </div>
-                            <span
-                              className={`text-sm font-bold w-10 text-right ${scoreColor(v)}`}
-                            >
-                              {fmt(v)}
-                            </span>
                           </div>
                         );
                       })}
-                      <p className="text-xs font-semibold uppercase tracking-widest text-slate-400 mt-4 mb-3">
+                      <p className="text-xs font-semibold uppercase tracking-widest text-[var(--text-mute)] mt-4 mb-3">
                         Sub-indicadores
                       </p>
                       {subs.map((s) => {
                         const v = scorecard[s.key];
                         return (
                           <div key={s.key} className="flex items-center gap-3">
-                            <span className="text-xs text-slate-400 w-48 flex-shrink-0">
-                              {s.label}
-                            </span>
-                            <div className="flex-1 bg-[var(--panel-2)] rounded-full h-1.5">
-                              <div
-                                className="h-1.5 rounded-full bg-slate-400"
-                                style={{ width: `${Math.min(v ?? 0, 100)}%` }}
-                              />
+                            <span className="text-xs text-[var(--text-dim)] w-48 flex-shrink-0">{s.label}</span>
+                            <div className="flex-1">
+                              <BarraExecucao pct={v} label={fmt(v)} />
                             </div>
-                            <span className="text-xs text-slate-500 w-10 text-right">
-                              {fmt(v)}
-                            </span>
                           </div>
                         );
                       })}
@@ -479,12 +400,8 @@ export default function IpsPage() {
             })}
           </div>
 
-          {/* Evolution */}
           {evolucao.length > 0 && (
-            <div className="bg-[var(--panel)] border border-[var(--border)] rounded-2xl p-6">
-              <h2 className="text-sm font-semibold text-[var(--text)] mb-4">
-                Evolução ao Longo do Tempo
-              </h2>
+            <NidPanel title="Evolução ao Longo do Tempo" sub="IPS geral e dimensões por ano">
               <MultiLineChart
                 data={evolucao.map((d) => ({
                   label: String(d.ano),
@@ -494,40 +411,29 @@ export default function IpsPage() {
                   "OPO": d.oportunidades || 0,
                 }))}
                 series={["IPS Geral", "NHB", "FBE", "OPO"]}
-                colors={["#3b82f6", "#10b981", "#f59e0b", "#8b5cf6"]}
+                colors={["var(--accent-1)", "var(--accent-5)", "var(--accent-4)", "var(--accent-3)"]}
                 height={220}
                 yFmt={(v) => v.toFixed(1)}
                 tipFmt={(v) => v.toFixed(1)}
+                legend
+                emptyMessage="Sem histórico disponível"
               />
               {evolucao.length >= 2 && (() => {
                 const last = evolucao[evolucao.length - 1];
                 const prev = evolucao[evolucao.length - 2];
                 const delta = (last.ips_geral ?? 0) - (prev.ips_geral ?? 0);
                 return (
-                  <p
-                    className={`text-sm mt-3 font-medium ${
-                      delta >= 0 ? "text-emerald-500" : "text-red-500"
-                    }`}
-                  >
-                    {delta >= 0 ? "+" : ""}
-                    {fmt(delta)} pontos de {prev.ano} para {last.ano}
+                  <p className="text-sm mt-3 font-medium" style={{ color: delta >= 0 ? "var(--accent-5)" : "var(--accent-2)" }}>
+                    {delta >= 0 ? "+" : ""}{fmt(delta)} pontos de {prev.ano} para {last.ano}
                   </p>
                 );
               })()}
-            </div>
+            </NidPanel>
           )}
 
-          {/* Comparison */}
-          <div className="bg-[var(--panel)] border border-[var(--border)] rounded-2xl p-6 space-y-4">
-            <h2 className="text-sm font-semibold text-[var(--text)]">
-              Comparar com Outros Municípios
-            </h2>
-
-            {sugestoes.length > 0 && (
-              <div>
-                <p className="text-xs text-slate-400 mb-2">
-                  Municípios semelhantes (PIB per capita similar):
-                </p>
+          <NidPanel title="Comparar com Outros Municípios" sub="Municípios semelhantes por PIB per capita">
+            <div className="space-y-4">
+              {sugestoes.length > 0 && (
                 <div className="flex flex-wrap gap-2">
                   {sugestoes.map((s) => (
                     <button
@@ -544,44 +450,41 @@ export default function IpsPage() {
                     </button>
                   ))}
                 </div>
-              </div>
-            )}
+              )}
 
-            {compareMunicipioIds.length > 0 && (
-              <div className="flex flex-wrap gap-2">
-                {compareMunicipioIds.map((id) => {
-                  const m = comparativo.find((c) => c.municipio_id === id);
-                  return m ? (
-                    <span
-                      key={id}
-                      className="flex items-center gap-1 px-3 py-1.5 rounded-full text-xs font-medium bg-blue-500 text-white"
-                    >
-                      {m.nome}
-                      <button
-                        onClick={() => removeCompare(id)}
-                        className="ml-1 hover:opacity-70 cursor-pointer"
+              {compareMunicipioIds.length > 0 && (
+                <div className="flex flex-wrap gap-2">
+                  {compareMunicipioIds.map((id) => {
+                    const m = comparativo.find((c) => c.municipio_id === id);
+                    return m ? (
+                      <span
+                        key={id}
+                        className="flex items-center gap-1 px-3 py-1.5 rounded-full text-xs font-medium border"
+                        style={{ background: "var(--panel-2)", borderColor: "var(--accent-1)", color: "var(--accent-1)" }}
                       >
-                        ✕
-                      </button>
-                    </span>
-                  ) : null;
-                })}
-              </div>
-            )}
+                        {m.nome}
+                        <button onClick={() => removeCompare(id)} className="ml-1 hover:opacity-70 cursor-pointer">✕</button>
+                      </span>
+                    ) : null;
+                  })}
+                </div>
+              )}
 
-            {comparativo.length > 0 && (
-              <MultiLineChart
-                data={comparativoData.map((d) => ({ label: d.name, ...d }))}
-                series={comparativo.map((c) => c.nome)}
-                colors={COLORS}
-                height={250}
-                yFmt={(v) => v.toFixed(1)}
-                tipFmt={(v) => v.toFixed(1)}
-              />
-            )}
-          </div>
+              {comparativo.length > 0 && (
+                <MultiLineChart
+                  data={comparativoData.map((d) => ({ label: d.name, ...d }))}
+                  series={comparativo.map((c) => c.nome)}
+                  colors={SERIES_COLORS}
+                  height={250}
+                  yFmt={(v) => v.toFixed(1)}
+                  tipFmt={(v) => v.toFixed(1)}
+                  legend
+                />
+              )}
+            </div>
+          </NidPanel>
         </>
       )}
-    </div>
+    </motion.div>
   );
 }
