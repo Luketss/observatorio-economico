@@ -94,7 +94,7 @@ def _resolver_urls() -> dict[str, str]:
     estiver fora (mesmo padrão da fonte FPM/STN)."""
     urls = dict(URLS_FALLBACK)
     try:
-        resp = requests.get(CKAN_PACKAGE_SHOW, timeout=30)
+        resp = requests.get(CKAN_PACKAGE_SHOW, timeout=30, headers={"User-Agent": "Mozilla/5.0"})
         resp.raise_for_status()
         for recurso in resp.json()["result"]["resources"]:
             url = recurso.get("url") or ""

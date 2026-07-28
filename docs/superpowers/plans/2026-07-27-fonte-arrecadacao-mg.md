@@ -31,7 +31,7 @@
 - Consumes: nada.
 - Produces (Task 2 depende): `NOME_MESES: list[str]` (12 nomes pt-BR, índice 0 = Janeiro); `parse_dim_tempo(linhas) -> dict[str, tuple[int, int]]`; `parse_dim_municipio(linhas) -> dict[str, str]` (id → código IBGE, só 7 dígitos); `montar_repasses(linhas_fato, tempo, municipio_ibge, alvo: dict[str, int], anos=None) -> list[dict]` (dicts prontos p/ `ArrecadacaoMensal`).
 
-- [ ] **Step 1: Testes que falham** — acrescentar ao FINAL de `backend/tests/test_ingestao_automatica.py`:
+- [x] **Step 1: Testes que falham** — acrescentar ao FINAL de `backend/tests/test_ingestao_automatica.py`:
 
 ```python
 # ── fonte arrecadacao (repasses MG) ──
@@ -96,12 +96,12 @@ def test_montar_repasses_valor_vazio_vira_zero():
     assert r["valor_total"] == 5.5
 ```
 
-- [ ] **Step 2: Rodar e ver falhar**
+- [x] **Step 2: Rodar e ver falhar**
 
 Run (de `backend/`): `..\venv\Scripts\python.exe -m pytest tests\test_ingestao_automatica.py -q`
 Expected: exit 2, `ModuleNotFoundError: ... arrecadacao_mg`.
 
-- [ ] **Step 3: Criar `backend/app/services/ingestao_automatica/arrecadacao_mg.py`** (parte pura):
+- [x] **Step 3: Criar `backend/app/services/ingestao_automatica/arrecadacao_mg.py`** (parte pura):
 
 ```python
 """Fonte automática: Arrecadação — repasses de impostos do Estado de MG aos
@@ -195,12 +195,12 @@ def montar_repasses(linhas_fato, tempo, municipio_ibge, alvo: dict[str, int], an
     return regs
 ```
 
-- [ ] **Step 4: Rodar e ver passar**
+- [x] **Step 4: Rodar e ver passar**
 
 Run (de `backend/`): `..\venv\Scripts\python.exe -m pytest tests\test_ingestao_automatica.py -q`
 Expected: exit 0.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add backend/app/services/ingestao_automatica/arrecadacao_mg.py backend/tests/test_ingestao_automatica.py
@@ -220,7 +220,7 @@ git commit -m "feat(ingestao): helpers puros do star schema de repasses MG"
 - Consumes: helpers da Task 1; `FonteAutomatica/ResumoIngestao/registrar` (base.py).
 - Produces: fonte `key="arrecadacao"` no registry.
 
-- [ ] **Step 1: Acrescentar ao final de `arrecadacao_mg.py`:**
+- [x] **Step 1: Acrescentar ao final de `arrecadacao_mg.py`:**
 
 ```python
 def _resolver_urls() -> dict[str, str]:
@@ -318,13 +318,13 @@ registrar(FonteAutomatica(
 ))
 ```
 
-- [ ] **Step 2: Import no `__init__.py`** — após a linha do `inss_emps`:
+- [x] **Step 2: Import no `__init__.py`** — após a linha do `inss_emps`:
 
 ```python
 from app.services.ingestao_automatica import arrecadacao_mg  # noqa: F401
 ```
 
-- [ ] **Step 3: ORDEM_EXECUCAO_TODAS** — em `base.py`, inserir `"arrecadacao",` depois de `"inss",`:
+- [x] **Step 3: ORDEM_EXECUCAO_TODAS** — em `base.py`, inserir `"arrecadacao",` depois de `"inss",`:
 
 ```python
     "bolsa_familia",
@@ -336,12 +336,12 @@ from app.services.ingestao_automatica import arrecadacao_mg  # noqa: F401
 ]
 ```
 
-- [ ] **Step 4: Suíte completa**
+- [x] **Step 4: Suíte completa**
 
 Run (de `backend/`): `..\venv\Scripts\python.exe -m pytest tests -q`
 Expected: exit 0 (paridade da ORDEM agora com 12 fontes).
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add backend/app/services/ingestao_automatica/arrecadacao_mg.py backend/app/services/ingestao_automatica/__init__.py backend/app/services/ingestao_automatica/base.py
@@ -359,7 +359,7 @@ git commit -m "feat(ingestao): fonte automatica arrecadacao via CKAN de MG"
 - Consumes: fonte `arrecadacao` registrada (Task 2); banco Railway via `backend/.env`.
 - Produces: evidência para conferência visual em /app/arrecadacao.
 
-- [ ] **Step 1: Script E2E no scratchpad:**
+- [x] **Step 1: Script E2E no scratchpad:**
 
 ```python
 """E2E: fonte arrecadacao para Cabo Verde/MG contra a Railway."""
@@ -386,12 +386,12 @@ for r in ult:
 db.close()
 ```
 
-- [ ] **Step 2: Rodar** (de `backend/`, PYTHONPATH=`.`): `..\venv\Scripts\python.exe <scratchpad>\e2e_arrecadacao.py`
+- [x] **Step 2: Rodar** (de `backend/`, PYTHONPATH=`.`): `..\venv\Scripts\python.exe <scratchpad>\e2e_arrecadacao.py`
 Expected: ~230+ linhas (série 2007→2026), últimos meses de 2026 presentes, valores mensais na casa de centenas de milhares de reais para Cabo Verde, `erros: []`.
 
-- [ ] **Step 3: Conferência visual** — usuário abre /app/arrecadacao de Cabo Verde e valida a série.
+- [x] **Step 3: Conferência visual** — usuário abre /app/arrecadacao de Cabo Verde e valida a série.
 
-- [ ] **Step 4: Nada a commitar** (script fica no scratchpad).
+- [x] **Step 4: Nada a commitar** (script fica no scratchpad).
 
 ---
 
