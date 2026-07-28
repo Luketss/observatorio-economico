@@ -35,11 +35,11 @@ const CUSTOM_ICON_MAP = {
   TruckIcon, ChartBarIcon, BuildingOfficeIcon, BoltIcon, GlobeAltIcon,
 };
 const CUSTOM_COLOR_MAP = {
-  blue:   { bg: "bg-[var(--panel-2)]",     text: "text-blue-600" },
-  green:  { bg: "bg-[var(--panel-2)]",   text: "text-green-600" },
-  purple: { bg: "bg-[var(--panel-2)]", text: "text-purple-600" },
-  orange: { bg: "bg-[var(--panel-2)]", text: "text-orange-600" },
-  red:    { bg: "bg-[var(--panel-2)]",       text: "text-red-600" },
+  blue:   { bg: "bg-[var(--panel-2)]",     text: "var(--accent-1)" },
+  green:  { bg: "bg-[var(--panel-2)]",   text: "var(--accent-5)" },
+  purple: { bg: "bg-[var(--panel-2)]", text: "var(--accent-3)" },
+  orange: { bg: "bg-[var(--panel-2)]", text: "var(--accent-4)" },
+  red:    { bg: "bg-[var(--panel-2)]",       text: "var(--accent-2)" },
   slate:  { bg: "bg-[var(--panel-2)]",     text: "text-[var(--text-dim)]" },
 };
 

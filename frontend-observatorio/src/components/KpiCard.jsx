@@ -31,7 +31,7 @@ import { Sparkline } from "./nid/charts";
  *   sparkColor   — string? — CSS color for sparkline (defaults to --accent-1 or --accent-2 on down)
  *   icon         — Heroicon component (optional)
  *   color        — { bg, text } tailwind strings (optional, for icon background)
- *   accent       — tailwind color class for value text (optional)
+ *   accent       — CSS color (e.g. var(--accent-5)) for value text (optional)
  *   delay        — framer-motion animation delay (optional)
  *   dataset      — string — page key e.g. "pib"
  *   indicadorKey — string — slug e.g. "ultimo_ano"
@@ -125,7 +125,7 @@ export default function KpiCard({
           {/* Main content */}
           <div className="flex-1 min-w-0">
             <p className="nid-kpi-label">{fullLabel}</p>
-            <p className={`nid-kpi-value ${accent || ""}`}>
+            <p className="nid-kpi-value" style={accent ? { color: accent } : undefined}>
               {value}
               {unit && <span className="nid-unit"> {unit}</span>}
             </p>
