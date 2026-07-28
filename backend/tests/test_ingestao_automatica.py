@@ -222,3 +222,58 @@ def test_msg_nao_publicadas():
     assert msg_nao_publicadas("Bolsa Família", ["202512", "202601"]) == (
         "Bolsa Família: competências 202512–202601 ainda não publicadas pelo Portal da Transparência"
     )
+
+
+# ── fonte inss (EMPS) ──
+from app.services.ingestao_automatica.inss_emps import (
+    CATEGORIAS,
+    achar_aba,
+    montar_registros,
+    parse_emps_aba,
+)
+
+
+def test_parse_emps_aba_so_linhas_com_codigo_ibge_7_digitos():
+    rows = [
+        ("Nome ", "Código IBGE", "UF", "hdr", "hdr", "hdr", "hdr", "hdr", "hdr", "hdr", "hdr", "hdr", "hdr"),
+        ("Água Branca", "2700102", "AL", 2586, 2126, 318, 142, 907, 178, 8, 3679, 642, 4321),
+        ("Total Brasil", None, "", 9, 9, 9, 9, 9, 9, 9, 9, 9, 9),
+        ("Fonte: SÍNTESE/Dataprev", "", "", None, None, None, None, None, None, None, None, None, None),
+    ]
+    out = parse_emps_aba(rows)
+    assert list(out) == ["2700102"]
+    assert out["2700102"]["Aposentadorias por idade"] == 2126.0
+    assert out["2700102"]["Pensões por morte"] == 907.0
+    assert out["2700102"]["Benefícios assistenciais"] == 642.0
+    # subtotais/total NÃO viram categoria
+    assert len(out["2700102"]) == len(CATEGORIAS) == 7
+
+
+def test_parse_emps_aba_codigo_numerico_e_celulas_vazias():
+    rows = [("Cidade X", 3122306, "MG", 10, 4, None, 3, 2, "", 1, 10, 5, 15)]
+    out = parse_emps_aba(rows)
+    assert "3122306" in out
+    assert out["3122306"]["Aposentadorias por invalidez"] == 0.0   # None → 0
+    assert out["3122306"]["Auxílios"] == 0.0                        # "" → 0
+    assert out["3122306"]["Outros benefícios previdenciários"] == 1.0
+
+
+def test_montar_registros_casa_qtd_e_valor():
+    qtd = parse_emps_aba([("A", "2700102", "AL", 13, 4, 3, 3, 2, 1, 0, 13, 5, 18)])
+    val = parse_emps_aba([("A", "2700102", "AL", 130.0, 40.0, 30.0, 30.0, 20.55, 10.0, 0.0, 130.55, 50.0, 180.55)])
+    regs = montar_registros(qtd, val, {"2700102": 77}, 2024)
+    assert len(regs) == 7
+    r = next(x for x in regs if x["categoria"] == "Pensões por morte")
+    assert r == {"municipio_id": 77, "ano": 2024, "categoria": "Pensões por morte",
+                 "quantidade_beneficios": 2, "valor_anual": 20.55}
+
+
+def test_montar_registros_ignora_alvo_fora_do_emps():
+    assert montar_registros({}, {}, {"9999999": 1}, 2024) == []
+
+
+def test_achar_aba_por_prefixo_case_insensitive():
+    abas = ["Qtd_dez2024", "Valor_R$_dez24", "Valor_Médio_R$_dez24", "Valor_Total_2024"]
+    assert achar_aba(abas, "qtd") == "Qtd_dez2024"
+    assert achar_aba(abas, "valor_total") == "Valor_Total_2024"   # não confunde com Valor_R$
+    assert achar_aba(abas, "xyz") is None
