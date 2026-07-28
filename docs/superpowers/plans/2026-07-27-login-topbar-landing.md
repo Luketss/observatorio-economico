@@ -1,32 +1,32 @@
-﻿# BotÃ£o de Login na Topbar da Landing â€” Implementation Plan
+# Botão de Login na Topbar da Landing — Implementation Plan
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Adicionar um botÃ£o secundÃ¡rio "Entrar" (link para `/login`) na topbar da landing page, Ã  esquerda do CTA "Comece agora".
+**Goal:** Adicionar um botão secundário "Entrar" (link para `/login`) na topbar da landing page, à esquerda do CTA "Comece agora".
 
-**Architecture:** MudanÃ§a puramente de apresentaÃ§Ã£o em `LandingPage.jsx`: o CTA existente do header ganha um wrapper flex que agrupa o novo `<Link to="/login">` (estilo ghost/glass, mesmo vocabulÃ¡rio do botÃ£o "Entre em contato" do hero) e o CTA laranja atual, com alturas idÃªnticas via mesmo padding responsivo. Zero backend, zero rotas novas (`/login` jÃ¡ existe), zero mudanÃ§as fora do header.
+**Architecture:** Mudança puramente de apresentação em `LandingPage.jsx`: o CTA existente do header ganha um wrapper flex que agrupa o novo `<Link to="/login">` (estilo ghost/glass, mesmo vocabulário do botão "Entre em contato" do hero) e o CTA laranja atual, com alturas idênticas via mesmo padding responsivo. Zero backend, zero rotas novas (`/login` já existe), zero mudanças fora do header.
 
-**Tech Stack:** React 19 + react-router-dom (`Link`, jÃ¡ importado no arquivo) + Tailwind com CSS vars do design system da landing (`--border`, `--foreground`, `--primary`, classe `glass`).
+**Tech Stack:** React 19 + react-router-dom (`Link`, já importado no arquivo) + Tailwind com CSS vars do design system da landing (`--border`, `--foreground`, `--primary`, classe `glass`).
 
 ## Global Constraints
 
-- RÃ³tulo do botÃ£o: exatamente **"Entrar"** (sem Ã­cone).
-- Padding responsivo idÃªntico ao CTA vizinho: `px-3 py-2 text-xs sm:px-4 sm:text-sm`.
-- Ambos os botÃµes visÃ­veis tambÃ©m no mobile (nenhum `hidden`).
-- Nada alÃ©m do header `#site-header` muda (hero, nav, CTA final intactos).
+- Rótulo do botão: exatamente **"Entrar"** (sem ícone).
+- Padding responsivo idêntico ao CTA vizinho: `px-3 py-2 text-xs sm:px-4 sm:text-sm`.
+- Ambos os botões visíveis também no mobile (nenhum `hidden`).
+- Nada além do header `#site-header` muda (hero, nav, CTA final intactos).
 - Spec: `docs/superpowers/specs/2026-07-27-login-topbar-landing-design.md`.
-- Gate de verificaÃ§Ã£o do projeto: `npm run build` limpo; eslint tem baseline sujo conhecido ("motion unused", set-state-in-effect) â€” sÃ³ nÃ£o introduzir erro NOVO. Arquivo Ã© JSX de apresentaÃ§Ã£o sem lÃ³gica extraÃ­vel: nÃ£o hÃ¡ teste unitÃ¡rio a escrever (convenÃ§Ã£o do projeto: vitest sÃ³ para lÃ³gica pura em `src/utils`/`src/hooks`).
+- Gate de verificação do projeto: `npm run build` limpo; eslint tem baseline sujo conhecido ("motion unused", set-state-in-effect) — só não introduzir erro NOVO. Arquivo é JSX de apresentação sem lógica extraível: não há teste unitário a escrever (convenção do projeto: vitest só para lógica pura em `src/utils`/`src/hooks`).
 
 ---
 
-### Task 1: BotÃ£o "Entrar" no header da landing
+### Task 1: Botão "Entrar" no header da landing
 
 **Files:**
-- Modify: `frontend-observatorio/src/pages/landing/LandingPage.jsx` (header `#site-header`, o `<a>` do CTA "Comece agora" â€” aprox. linhas 223-226)
+- Modify: `frontend-observatorio/src/pages/landing/LandingPage.jsx` (header `#site-header`, o `<a>` do CTA "Comece agora" — aprox. linhas 223-226)
 
 **Interfaces:**
-- Consumes: rota `/login` jÃ¡ registrada em `src/app/router/AppRouter.jsx`; `Link` jÃ¡ importado na linha 2 do arquivo; constante `WA_CONTRATAR` existente.
-- Produces: nada consumido por outras tasks (task Ãºnica).
+- Consumes: rota `/login` já registrada em `src/app/router/AppRouter.jsx`; `Link` já importado na linha 2 do arquivo; constante `WA_CONTRATAR` existente.
+- Produces: nada consumido por outras tasks (task única).
 
 - [x] **Step 1: Substituir o CTA solto pelo grupo flex com "Entrar" + CTA**
 
@@ -53,17 +53,17 @@ por este:
           </div>
 ```
 
-(O `<a>` do CTA Ã© idÃªntico ao atual â€” sÃ³ ganha o wrapper e o `Link` irmÃ£o.)
+(O `<a>` do CTA é idêntico ao atual — só ganha o wrapper e o `Link` irmão.)
 
 - [x] **Step 2: Build**
 
 Run (de `frontend-observatorio/`): `npm run build`
-Expected: `âœ“ built` sem erros (warning de chunk >500kB Ã© prÃ©-existente, ignorar).
+Expected: `✓ built` sem erros (warning de chunk >500kB é pré-existente, ignorar).
 
 - [x] **Step 3: Lint sem erros novos**
 
 Run (de `frontend-observatorio/`): `npx eslint src/pages/landing/LandingPage.jsx`
-Expected: nenhum erro NOVO neste arquivo (baseline do projeto Ã© sujo em outros arquivos; este arquivo nÃ£o deve reportar nada).
+Expected: nenhum erro NOVO neste arquivo (baseline do projeto é sujo em outros arquivos; este arquivo não deve reportar nada).
 
 - [x] **Step 4: Commit**
 
@@ -76,6 +76,6 @@ git commit -m "feat(landing): botao Entrar na topbar linkando para /login"
 
 ## Self-Review
 
-- **Spec coverage:** rÃ³tulo/posiÃ§Ã£o/estilo/mobile/fora-de-escopo â€” tudo coberto pela Task 1; verificaÃ§Ã£o (build+lint) nos steps 2-3. âœ“
-- **Placeholder scan:** nenhum TBD/TODO; cÃ³digo completo no step 1. âœ“
-- **Type consistency:** task Ãºnica, sem interfaces entre tasks. âœ“
+- **Spec coverage:** rótulo/posição/estilo/mobile/fora-de-escopo — tudo coberto pela Task 1; verificação (build+lint) nos steps 2-3. ✓
+- **Placeholder scan:** nenhum TBD/TODO; código completo no step 1. ✓
+- **Type consistency:** task única, sem interfaces entre tasks. ✓
