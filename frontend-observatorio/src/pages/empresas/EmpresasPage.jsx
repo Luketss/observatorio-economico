@@ -14,18 +14,6 @@ import { useViewAs } from "../../context/ViewAsContext";
 import KpiSkeleton from "../../components/nid/KpiSkeleton";
 import SelecioneMunicipio from "../../components/nid/SelecioneMunicipio";
 
-
-function MiniStat({ label, value, color }) {
-  return (
-    <div className="flex items-center justify-between py-2 border-b border-slate-50  last:border-0">
-      <span className="text-sm text-[var(--text-dim)]">{label}</span>
-      <span className={`text-sm font-bold ${color || "text-[var(--text)]"}`}>
-        {value}
-      </span>
-    </div>
-  );
-}
-
 const fmtNum = (v) => (v != null ? Number(v).toLocaleString("pt-BR") : "—");
 const fmtBRL = (v) =>
   v != null ? `R$ ${Number(v).toLocaleString("pt-BR", { maximumFractionDigits: 0 })}` : "—";
@@ -206,28 +194,6 @@ export default function EmpresasPage() {
 
       </PlanGate>
 
-      {/* Composição Adicional */}
-      <div className="bg-[var(--panel)] p-6 rounded-2xl shadow-sm border border-[var(--border)]">
-        <h3 className="text-base font-bold mb-5 text-[var(--text)]">
-          Indicadores de Composição
-        </h3>
-        {loading ? (
-          <div className="animate-pulse h-48 bg-slate-50  rounded-xl" />
-        ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-x-12">
-            <div>
-              <MiniStat label="Taxa de Atividade" value={fmtPct(resumo?.total_ativas, resumo?.total_empresas)} color="text-green-600" />
-              <MiniStat label="Participação MEI" value={fmtPct(resumo?.total_mei, resumo?.total_empresas)} color="text-purple-600" />
-              <MiniStat label="Simples Nacional" value={fmtPct(resumo?.total_simples, resumo?.total_empresas)} color="text-orange-500" />
-            </div>
-            <div>
-              <MiniStat label="Total Cadastradas" value={fmtNum(resumo?.total_empresas)} color="text-blue-600" />
-              <MiniStat label="Empresas Ativas" value={fmtNum(resumo?.total_ativas)} color="text-green-600" />
-              <MiniStat label="MEI" value={fmtNum(resumo?.total_mei)} color="text-purple-600" />
-            </div>
-          </div>
-        )}
-      </div>
       {/* Capital Social por Porte */}
       {!loading && capitalPorPorte.length > 0 && (
         <NidPanel
