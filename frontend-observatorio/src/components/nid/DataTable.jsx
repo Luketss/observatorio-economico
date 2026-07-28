@@ -1,18 +1,27 @@
 import { useEffect, useMemo, useState } from "react";
 import { Sparkline } from "./charts";
+import ChartState from "./ChartState";
+import { applySort, isColumnSortable, nextSortState, sortKeyFor } from "../../utils/tableSort";
 
 // ─────────────────────────────────────────────────────────
 // DataTable — generic analytical series table
 // Ticket 10 — sparkline column + delta + row heatmap
+// UX/UI C3 — clickable sort + per-column render + emptyMessage
 //
 // Column descriptor shape:
-//   { key, label, width?, align?, fmt?, mono?, heatmap?, kind? }
+//   { key, label, width?, align?, fmt?, mono?, heatmap?, kind?,
+//     render?, sortable?, ariaLabel? }
 //
 // kind values:
 //   "delta"  — auto-computed YoY delta chip (uses __delta)
 //   "spark"  — trailing 5-period sparkline    (uses __trend)
 //   "code"   — compact mono pill (first 4 chars)
 //   (omit)   — raw value, optionally passed through col.fmt
+//
+// render: (row, index) => node — takes full precedence over kind/fmt when set.
+// sortable: false disables the click-to-sort header for that column
+//   (sparkline columns are never sortable regardless of this flag).
+// ariaLabel: optional accessible label rendered on the <th>.
 //
 // heatmap: true on a numeric column → row background tinted by
 //   sign/magnitude of that column's value (green near max,
@@ -24,10 +33,14 @@ import { Sparkline } from "./charts";
 //   controls. Enrichment (delta/trend/heatmap) is computed over the FULL
 //   dataset first, so values stay correct across page boundaries — only the
 //   visible slice is rendered.
+//
+// emptyMessage: optional. When `data` is empty, renders a 240px ChartState
+//   "empty" frame with this message instead of returning null.
 // ─────────────────────────────────────────────────────────
 
-export default function DataTable({ columns, data, ownIndex, pageSize }) {
+export default function DataTable({ columns, data, ownIndex, pageSize, emptyMessage }) {
   const [page, setPage] = useState(0);
+  const [sort, setSort] = useState(null);
   const enriched = useMemo(() => {
     if (!data || data.length === 0) return [];
 
@@ -40,11 +53,12 @@ export default function DataTable({ columns, data, ownIndex, pageSize }) {
 
     if (!valueKey) {
       // No numeric anchor — still render, just no enrichment.
-      return data.map((row) => ({
+      return data.map((row, i) => ({
         ...row,
         __delta: null,
         __trend: [],
         __heatBg: "transparent",
+        __own: i === ownIndex,
       }));
     }
 
@@ -80,39 +94,65 @@ export default function DataTable({ columns, data, ownIndex, pageSize }) {
         }
       }
 
-      return { ...row, __delta: delta, __trend: trend, __heatBg: heatBg };
+      return { ...row, __delta: delta, __trend: trend, __heatBg: heatBg, __own: i === ownIndex };
     });
-  }, [data, columns]);
+  }, [data, columns, ownIndex]);
+
+  const sorted = useMemo(() => applySort(enriched, sort), [enriched, sort]);
 
   const paginate = pageSize > 0;
-  const pageCount = paginate ? Math.max(1, Math.ceil(enriched.length / pageSize)) : 1;
+  const pageCount = paginate ? Math.max(1, Math.ceil(sorted.length / pageSize)) : 1;
 
   // Clamp the page if the dataset shrinks (e.g. a filter change).
   useEffect(() => {
     if (page > pageCount - 1) setPage(0);
   }, [pageCount, page]);
 
-  if (!data || data.length === 0) return null;
+  if (!data || data.length === 0) {
+    return emptyMessage
+      ? <ChartState kind="empty" height={240} message={emptyMessage} />
+      : null;
+  }
 
   const safePage = Math.min(page, pageCount - 1);
   const startIdx = paginate ? safePage * pageSize : 0;
   const visible = paginate
-    ? enriched.slice(startIdx, startIdx + pageSize)
-    : enriched;
+    ? sorted.slice(startIdx, startIdx + pageSize)
+    : sorted;
+
+  const handleSort = (col) => {
+    setSort((s) => nextSortState(s, col, enriched));
+    setPage(0);
+  };
 
   return (
     <div className="nid-data-table-wrap">
       <table className="nid-data-table">
         <thead>
           <tr>
-            {columns.map((c) => (
-              <th
-                key={c.key}
-                style={{ textAlign: c.align || "left", width: c.width }}
-              >
-                {c.label}
-              </th>
-            ))}
+            {columns.map((c) => {
+              const sortable = isColumnSortable(c);
+              const active = sort && sortable && sort.key === sortKeyFor(c);
+              return (
+                <th
+                  key={c.key}
+                  style={{ textAlign: c.align || "left", width: c.width }}
+                  aria-sort={active ? (sort.dir === "asc" ? "ascending" : "descending") : undefined}
+                  aria-label={c.ariaLabel}
+                >
+                  {sortable ? (
+                    <button type="button" className="nid-th-sort" onClick={() => handleSort(c)}>
+                      {c.label}
+                      <span className="sort-ind" aria-hidden="true">
+                        {active ? (sort.dir === "asc" ? "▲" : "▼") : ""}
+                      </span>
+                    </button>
+                  ) : (
+                    c.label
+                  )}
+                </th>
+              );
+            })}
           </tr>
         </thead>
         <tbody>
@@ -126,7 +166,7 @@ export default function DataTable({ columns, data, ownIndex, pageSize }) {
                     style={{ textAlign: c.align || "left" }}
                     className={c.mono ? "mono" : ""}
                   >
-                    <Cell row={row} col={c} isOwn={absIdx === ownIndex} />
+                    <Cell row={row} col={c} index={absIdx} />
                   </td>
                 ))}
               </tr>
@@ -138,7 +178,7 @@ export default function DataTable({ columns, data, ownIndex, pageSize }) {
       {paginate && pageCount > 1 && (
         <div className="nid-data-table-pager">
           <span className="nid-pager-info">
-            {startIdx + 1}–{startIdx + visible.length} de {enriched.length}
+            {startIdx + 1}–{startIdx + visible.length} de {sorted.length}
           </span>
           <div className="nid-pager-controls">
             <button
@@ -168,7 +208,9 @@ export default function DataTable({ columns, data, ownIndex, pageSize }) {
 }
 
 // ─── Cell renderer ─────────────────────────────────────────
-function Cell({ row, col, isOwn }) {
+function Cell({ row, col, index }) {
+  if (col.render) return <>{col.render(row, index)}</>;
+
   const v = row[col.key];
 
   // delta chip
@@ -214,7 +256,7 @@ function Cell({ row, col, isOwn }) {
     return (
       <>
         {formatted}
-        {isOwn && <span className="own-tag">você</span>}
+        {row.__own && <span className="own-tag">você</span>}
       </>
     );
   }
@@ -223,7 +265,7 @@ function Cell({ row, col, isOwn }) {
   return (
     <>
       {v != null ? v : "—"}
-      {isOwn && <span className="own-tag">você</span>}
+      {row.__own && <span className="own-tag">você</span>}
     </>
   );
 }

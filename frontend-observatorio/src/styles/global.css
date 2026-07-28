@@ -406,6 +406,30 @@ tr:not(:last-child) {
   color: var(--text-mute);
   white-space: nowrap;
 }
+.nid-data-table .nid-th-sort {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 0;
+  border: 0;
+  background: none;
+  cursor: pointer;
+  font: inherit;
+  color: inherit;
+  text-transform: inherit;
+  letter-spacing: inherit;
+}
+.nid-data-table .nid-th-sort:hover {
+  color: var(--text-dim);
+}
+.nid-data-table th[aria-sort] .nid-th-sort {
+  color: var(--text);
+}
+.nid-data-table .nid-th-sort .sort-ind {
+  font-size: 8px;
+  line-height: 1;
+  min-width: 8px;
+}
 .nid-data-table td {
   padding: 10px 14px;
   border-bottom: 1px solid var(--border);
