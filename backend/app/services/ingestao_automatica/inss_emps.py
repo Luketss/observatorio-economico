@@ -75,3 +75,82 @@ def achar_aba(sheetnames: list[str], prefixo: str) -> str | None:
         if nome.lower().startswith(prefixo.lower()):
             return nome
     return None
+
+
+def executar(db, municipios, anos=None, usuario_id=None, notificar=True, progresso=None) -> ResumoIngestao:
+    import openpyxl
+
+    from app.models.inss import InssAnual
+
+    resumo = ResumoIngestao(dataset="inss")
+    alvo = {str(m.codigo_ibge).strip(): m.id for m in municipios if m.codigo_ibge}
+    for m in municipios:
+        if not m.codigo_ibge:
+            resumo.erros.append(f"{m.nome}/{m.estado}: sem codigo_ibge cadastrado")
+            resumo.municipios_erro += 1
+    if not alvo:
+        return resumo
+
+    ultimo_encerrado = date.today().year - 1
+    anos_alvo = sorted({a for a in (anos or [ultimo_encerrado - 1, ultimo_encerrado]) if a >= INICIO_SERIE})
+    mids_ok: set[int] = set()
+    nao_publicados: list[str] = []
+
+    for i, ano in enumerate(anos_alvo, start=1):
+        if progresso:
+            progresso(len(mids_ok), len(alvo), f"baixando EMPS {ano} ({i}/{len(anos_alvo)})")
+        try:
+            resp = requests.get(URL.format(ano=ano), timeout=(30, 300),
+                                headers={"User-Agent": "Mozilla/5.0"})
+            resp.raise_for_status()
+        except requests.RequestException as exc:
+            if eh_nao_publicado(exc):
+                nao_publicados.append(str(ano))
+            else:
+                resumo.erros.append(f"EMPS {ano}: indisponível ({exc})")
+            continue
+
+        wb = openpyxl.load_workbook(io.BytesIO(resp.content), read_only=True, data_only=True)
+        aba_qtd = achar_aba(wb.sheetnames, "qtd")
+        aba_valor = achar_aba(wb.sheetnames, "valor_total")
+        if not aba_qtd or not aba_valor:
+            resumo.erros.append(f"EMPS {ano}: abas não reconhecidas ({wb.sheetnames}) — layout mudou?")
+            continue
+        qtd = parse_emps_aba(wb[aba_qtd].iter_rows(values_only=True))
+        val = parse_emps_aba(wb[aba_valor].iter_rows(values_only=True))
+        regs = montar_registros(qtd, val, alvo, ano)
+
+        mids_do_ano = {r["municipio_id"] for r in regs}
+        if mids_do_ano:
+            db.query(InssAnual).filter(
+                InssAnual.municipio_id.in_(mids_do_ano), InssAnual.ano == ano,
+            ).delete(synchronize_session=False)
+        for r in regs:
+            db.add(InssAnual(**r))
+        db.commit()
+        resumo.linhas += len(regs)
+        mids_ok |= mids_do_ano
+        if progresso:
+            progresso(len(mids_ok), len(alvo), f"EMPS {ano} gravado")
+
+    if nao_publicados:
+        anos_txt = ", ".join(nao_publicados)
+        plural = "s" if len(nao_publicados) > 1 else ""
+        resumo.erros.append(f"EMPS: ano{plural} {anos_txt} ainda não publicado{plural} pela Previdência")
+
+    resumo.municipios_ok = len(mids_ok)
+    faltantes = set(alvo.values()) - mids_ok
+    resumo.municipios_erro += len(faltantes)
+    if faltantes:
+        nomes = {m.id: f"{m.nome}/{m.estado}" for m in municipios}
+        for mid in sorted(faltantes):
+            resumo.erros.append(f"{nomes.get(mid, mid)}: não encontrado no EMPS")
+    return resumo
+
+
+registrar(FonteAutomatica(
+    key="inss",
+    label="INSS (EMPS/Previdência)",
+    fonte="EMPS — Estatísticas Municipais da Previdência Social (MPS/Dataprev): benefícios emitidos por município e categoria",
+    executar=executar,
+))

@@ -44,6 +44,7 @@ ORDEM_EXECUCAO_TODAS = [
     "estban",
     "bolsa_familia",
     "pe_de_meia",
+    "inss",
     "captacao_federal",
     "emendas",
 ]
