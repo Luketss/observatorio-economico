@@ -3,6 +3,7 @@ import React from "react";
 import ChartState from "./ChartState.jsx";
 import { useChartHover } from "./ChartHoverContext.jsx";
 import { viewBoxXFromOverlay, nearestIndexByX } from "../../utils/chartHover.js";
+import { niceTicks, yBounds } from "../../utils/chartScale.js";
 
 // ────────── glow resolver ──────────
 function resolveGlow(glow) {
@@ -66,18 +67,6 @@ const smoothPath = (pts) => {
     d += ` C ${c1x} ${c1y}, ${c2x} ${c2y}, ${p2.x} ${p2.y}`;
   }
   return d;
-};
-
-const niceTicks = (min, max, count = 5) => {
-  const span = max - min || 1;
-  const step0 = Math.pow(10, Math.floor(Math.log10(span / count)));
-  const steps = [1, 2, 5, 10].map((m) => m * step0);
-  const step = steps.find((s) => span / s <= count + 0.5) || step0 * 10;
-  const start = Math.floor(min / step) * step;
-  const end = Math.ceil(max / step) * step;
-  const out = [];
-  for (let v = start; v <= end + 0.0001; v += step) out.push(Math.round(v * 1e6) / 1e6);
-  return out;
 };
 
 export const fmtMoneyShort = (v) => {
@@ -241,18 +230,20 @@ export function AreaLineChart({
   const allLabels  = [...data.map((d) => d.label), ...projLabels];
   const totalPts   = allLabels.length;
 
-  // ── Y scale (expand for benchmark / forecast) ─────────────────────────
+  // ── Y scale (expand for benchmark / forecast; negativos estendem o
+  // domínio para baixo — saldo CAGED cruza zero) ────────────────────────
   const ys = data.map((d) => d.value);
   const allYs = [...ys, ...forecastVals, ...(resolvedBenchmark?.value != null ? [resolvedBenchmark.value] : [])];
-  const yMaxRaw = Math.max(...allYs) * 1.12;
-  const ticks = niceTicks(0, yMaxRaw, yCaption ? 3 : 4);
+  const { lo: yLoRaw, hi: yHiRaw } = yBounds(allYs);
+  const ticks = niceTicks(yLoRaw, yHiRaw, yCaption ? 3 : 4);
   const tickFmt = yCaption ? fmtNumberShort : yFmt;
-  const yScaleMax = ticks[ticks.length - 1];
+  const yLo = ticks[0];
+  const yHi = ticks[ticks.length - 1];
 
   // ── Coordinate mappers ────────────────────────────────────────────────
   // sx maps a global index over allLabels
   const sx = (i) => padL + (i / (totalPts - 1 || 1)) * innerW;
-  const sy = (v) => padT + (1 - v / yScaleMax) * innerH;
+  const sy = (v) => padT + (1 - (v - yLo) / (yHi - yLo || 1)) * innerH;
 
   // Real points (indices 0..data.length-1)
   const pts = data.map((d, i) => ({ x: sx(i), y: sy(d.value), v: d.value, label: d.label, isForecast: false }));
@@ -266,7 +257,9 @@ export function AreaLineChart({
   }));
 
   const path = smoothPath(pts);
-  const area = `${path} L ${pts[pts.length - 1].x} ${padT + innerH} L ${pts[0].x} ${padT + innerH} Z`;
+  // Área fecha na linha do zero (== fundo do plot quando a série é toda positiva)
+  const baseY = sy(0);
+  const area = `${path} L ${pts[pts.length - 1].x} ${baseY} L ${pts[0].x} ${baseY} Z`;
 
   // All hoverable points (real + forecast)
   const allPts = [...pts, ...fcPts];
@@ -748,19 +741,21 @@ export function MultiLineChart({
   const allLabels = [...data.map((d) => d.label), ...projLabels];
   const totalPts  = allLabels.length;
 
-  // ── Y scale (expand for benchmark / forecast) ────────────────────────
+  // ── Y scale (expand for benchmark / forecast; negativos estendem o
+  // domínio para baixo — saldo CAGED cruza zero no modo comparação) ────
   const allVals = [
     ...data.flatMap((d) => series.map((s) => d[s] || 0)),
     ...forecastValsBySeries.flat(),
     ...(resolvedBenchmark?.value != null ? [resolvedBenchmark.value] : []),
   ];
-  const yMaxRaw = Math.max(...allVals) * 1.12;
-  const ticks = niceTicks(0, yMaxRaw, yCaption ? 3 : 4);
+  const { lo: yLoRaw, hi: yHiRaw } = yBounds(allVals);
+  const ticks = niceTicks(yLoRaw, yHiRaw, yCaption ? 3 : 4);
   const tickFmt = yCaption ? fmtNumberShort : yFmt;
-  const yScaleMax = ticks[ticks.length - 1];
+  const yLo = ticks[0];
+  const yHi = ticks[ticks.length - 1];
 
   const sx = (i) => padL + (i / (totalPts - 1 || 1)) * innerW;
-  const sy = (v) => padT + (1 - v / yScaleMax) * innerH;
+  const sy = (v) => padT + (1 - (v - yLo) / (yHi - yLo || 1)) * innerH;
   const ptsBySeries = series.map((s) =>
     data.map((d, i) => ({ x: sx(i), y: sy(d[s] || 0), v: d[s] || 0 }))
   );
