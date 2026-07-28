@@ -220,10 +220,15 @@ export default function LandingPage() {
             <a href="#produto" className="text-sm text-[var(--muted-foreground)] transition hover:text-[var(--foreground)]">Produto</a>
             <a href="#faq" className="text-sm text-[var(--muted-foreground)] transition hover:text-[var(--foreground)]">FAQ</a>
           </nav>
-          <a href={WA_CONTRATAR} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2 rounded-lg bg-orange-gradient px-3 py-2 text-xs font-semibold text-[var(--primary-foreground)] shadow-glow transition hover:opacity-95 sm:px-4 sm:text-sm">
-            Comece agora
-            <ArrowIcon size={14} />
-          </a>
+          <div className="flex items-center gap-2 sm:gap-3">
+            <Link to="/login" className="inline-flex items-center rounded-lg border border-[var(--border)] glass px-3 py-2 text-xs font-semibold text-[var(--foreground)] transition hover:border-[color-mix(in_oklab,var(--primary)_60%,transparent)] sm:px-4 sm:text-sm">
+              Entrar
+            </Link>
+            <a href={WA_CONTRATAR} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2 rounded-lg bg-orange-gradient px-3 py-2 text-xs font-semibold text-[var(--primary-foreground)] shadow-glow transition hover:opacity-95 sm:px-4 sm:text-sm">
+              Comece agora
+              <ArrowIcon size={14} />
+            </a>
+          </div>
         </div>
       </header>
 
