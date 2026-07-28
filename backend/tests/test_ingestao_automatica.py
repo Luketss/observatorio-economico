@@ -277,3 +277,65 @@ def test_achar_aba_por_prefixo_case_insensitive():
     assert achar_aba(abas, "qtd") == "Qtd_dez2024"
     assert achar_aba(abas, "valor_total") == "Valor_Total_2024"   # não confunde com Valor_R$
     assert achar_aba(abas, "xyz") is None
+
+
+# ── fonte arrecadacao (repasses MG) ──
+from datetime import date as _date
+
+from app.services.ingestao_automatica.arrecadacao_mg import (
+    montar_repasses,
+    parse_dim_municipio,
+    parse_dim_tempo,
+)
+
+
+def test_parse_dim_tempo():
+    linhas = ["id_tempo;anomes_iso;mes;ano;anomes_formatado",
+              "1009;202211;11;2022;11/2022",
+              "1189;202605;5;2026;05/2026"]
+    assert parse_dim_tempo(linhas) == {"1009": (2022, 11), "1189": (2026, 5)}
+
+
+def test_parse_dim_municipio_descarta_territorios():
+    linhas = ["id_municipio;cd_municipio_ibge;nome",
+              "896;37;TERRITORIO ALTO JEQUITINHONHA",
+              "474;3109501;CABO VERDE"]
+    assert parse_dim_municipio(linhas) == {"474": "3109501"}
+
+
+def test_montar_repasses_join_e_derivados():
+    tempo = {"1009": (2022, 11)}
+    mun = {"474": "3109501"}
+    fato = ["id_tempo;id_municipio;ano_particao;vr_icms;vr_ipi;vr_ipva",
+            "1009;474;2022;161332.64;2712.47;22250.11",
+            "1009;999;2022;1.0;1.0;1.0"]          # id_municipio fora das dims → ignorado
+    regs = montar_repasses(fato, tempo, mun, {"3109501": 77})
+    assert len(regs) == 1
+    r = regs[0]
+    assert r["municipio_id"] == 77 and r["ano"] == 2022 and r["mes"] == 11
+    assert r["nome_mes"] == "Novembro"
+    assert r["data_base"] == _date(2022, 11, 1)
+    assert r["valor_icms"] == 161332.64 and r["valor_ipi"] == 2712.47 and r["valor_ipva"] == 22250.11
+    assert r["valor_total"] == round(161332.64 + 2712.47 + 22250.11, 2)
+
+
+def test_montar_repasses_filtro_anos_e_alvo():
+    tempo = {"1": (2022, 1), "2": (2023, 1)}
+    mun = {"474": "3109501", "500": "3106200"}
+    fato = ["id_tempo;id_municipio;ano_particao;vr_icms;vr_ipi;vr_ipva",
+            "1;474;2022;10;1;2",
+            "2;474;2023;20;2;4",
+            "2;500;2023;30;3;6"]                   # 3106200 não é alvo
+    regs = montar_repasses(fato, tempo, mun, {"3109501": 77}, anos=[2023])
+    assert len(regs) == 1
+    assert regs[0]["ano"] == 2023 and regs[0]["valor_icms"] == 20.0
+
+
+def test_montar_repasses_valor_vazio_vira_zero():
+    tempo = {"1": (2022, 1)}
+    mun = {"474": "3109501"}
+    fato = ["id_tempo;id_municipio;ano_particao;vr_icms;vr_ipi;vr_ipva",
+            "1;474;2022;;;5.5"]
+    r = montar_repasses(fato, tempo, mun, {"3109501": 77})[0]
+    assert r["valor_icms"] == 0.0 and r["valor_ipi"] == 0.0 and r["valor_ipva"] == 5.5
+    assert r["valor_total"] == 5.5
