@@ -11,6 +11,8 @@ import { DonutChart, HBarChart, StackedBarChart, AreaLineChart, fmtMoneyShort, f
 import DetalheModal from "../../components/nid/DetalheModal";
 import { useAuth } from "../../context/AuthContext";
 import { useViewAs } from "../../context/ViewAsContext";
+import KpiSkeleton from "../../components/nid/KpiSkeleton";
+import SelecioneMunicipio from "../../components/nid/SelecioneMunicipio";
 
 
 function MiniStat({ label, value, color }) {
@@ -123,33 +125,13 @@ export default function EmpresasPage() {
       />
 
       {needsMunicipio ? (
-        <div
-          className="rounded-2xl p-10 text-center"
-          style={{
-            background: "var(--panel)",
-            border: "1px dashed var(--border-strong)",
-            color: "var(--text-dim)",
-          }}
-        >
-          <p className="text-base font-semibold" style={{ color: "var(--text)" }}>
-            Selecione um município
-          </p>
-          <p className="text-sm mt-1">
-            Use <b>"Ver como"</b> na administração de Municípios para escolher um
-            município e visualizar os dados de Empresas.
-          </p>
-        </div>
+        <SelecioneMunicipio />
       ) : (
       <>
       {/* KPI Cards */}
       {loading ? (
         <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-          {[...Array(4)].map((_, i) => (
-            <div
-              key={i}
-              className="bg-[var(--panel)] p-6 rounded-2xl border border-[var(--border)] animate-pulse h-28"
-            />
-          ))}
+          {[...Array(4)].map((_, i) => <KpiSkeleton key={i} />)}
         </div>
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-6">

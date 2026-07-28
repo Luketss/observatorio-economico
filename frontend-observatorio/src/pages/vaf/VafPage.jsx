@@ -10,7 +10,7 @@ import KpiCard from "../../components/KpiCard";
 import { NidPanel, NidLegend, NidPageHeader } from "../../components/nid/Panel";
 import { useAuth } from "../../context/AuthContext";
 import { useViewAs } from "../../context/ViewAsContext";
-import ChartState from "../../components/nid/ChartState.jsx";
+import KpiSkeleton from "../../components/nid/KpiSkeleton";
 import {
   AreaLineChart,
   MultiLineChart,
@@ -211,11 +211,7 @@ export default function VafPage() {
 
       {loading ? (
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          {[...Array(3)].map((_, i) => (
-            <div key={i} className="bg-[var(--panel)] p-6 rounded-2xl border border-[var(--border)]">
-              <ChartState kind="loading" shape="kpi" height={80} />
-            </div>
-          ))}
+          {[...Array(3)].map((_, i) => <KpiSkeleton key={i} />)}
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">

@@ -10,9 +10,9 @@ import KpiCard from "../../components/KpiCard";
 import { NidPanel, NidPageHeader } from "../../components/nid/Panel";
 import { HBarChart, AreaLineChart, fmtMoneyShort } from "../../components/nid/charts";
 import DataTable from "../../components/nid/DataTable";
-import ChartState from "../../components/nid/ChartState.jsx";
 import { useAuth } from "../../context/AuthContext";
 import { useViewAs } from "../../context/ViewAsContext";
+import KpiSkeleton from "../../components/nid/KpiSkeleton";
 
 
 const fmtBRL = (v) =>
@@ -144,11 +144,7 @@ export default function InssPage() {
 
       {loading ? (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          {[...Array(2)].map((_, i) => (
-            <div key={i} className="bg-[var(--panel)] p-6 rounded-2xl border border-[var(--border)]">
-              <ChartState kind="loading" shape="kpi" height={80} />
-            </div>
-          ))}
+          {[...Array(2)].map((_, i) => <KpiSkeleton key={i} />)}
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">

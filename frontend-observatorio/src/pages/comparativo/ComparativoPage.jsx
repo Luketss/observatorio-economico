@@ -3,6 +3,7 @@ import api from "../../services/api";
 import { useAuth } from "../../context/AuthContext";
 import { motion } from "framer-motion";
 import { HBarChart } from "../../components/nid/charts";
+import NidSelect from "../../components/nid/NidSelect";
 
 const fmtBRL = (v) =>
   v != null
@@ -112,16 +113,12 @@ export default function BenchmarkPage() {
         {estados.length > 1 && (
           <div className="flex items-center gap-2">
             <label className="text-sm font-medium text-[var(--text-dim)]">Estado:</label>
-            <select
-              value={estadoFiltro}
-              onChange={(e) => setEstadoFiltro(e.target.value)}
-              className="text-sm border border-[var(--border)] rounded-lg px-3 py-1.5 bg-[var(--panel)] text-[var(--text)] focus:outline-none focus:ring-2 focus:ring-blue-500"
-            >
+            <NidSelect value={estadoFiltro} onChange={(e) => setEstadoFiltro(e.target.value)} ariaLabel="Filtrar por estado">
               <option value="">Todos</option>
               {estados.map((uf) => (
                 <option key={uf} value={uf}>{uf}</option>
               ))}
-            </select>
+            </NidSelect>
           </div>
         )}
 
@@ -129,15 +126,11 @@ export default function BenchmarkPage() {
         {activeDataset?.hasAno && (
           <div className="flex items-center gap-2">
             <label className="text-sm font-medium text-[var(--text-dim)]">Ano:</label>
-            <select
-              value={ano}
-              onChange={(e) => setAno(+e.target.value)}
-              className="text-sm border border-[var(--border)] rounded-lg px-3 py-1.5 bg-[var(--panel)] text-[var(--text)] focus:outline-none focus:ring-2 focus:ring-blue-500"
-            >
+            <NidSelect value={ano} onChange={(e) => setAno(+e.target.value)} ariaLabel="Filtrar por ano">
               {YEAR_OPTIONS.map((y) => (
                 <option key={y} value={y}>{y}</option>
               ))}
-            </select>
+            </NidSelect>
           </div>
         )}
       </div>

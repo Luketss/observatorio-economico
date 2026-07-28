@@ -11,6 +11,7 @@ import AlertaFpmCard from "../../components/AlertaFpmCard";
 import DinheiroNaMesaCard from "../../components/DinheiroNaMesaCard";
 import EmendasResumoCard from "../../components/EmendasResumoCard";
 import { fmtMoneyShort, fmtNumberShort } from "../../components/nid/charts";
+import KpiSkeleton from "../../components/nid/KpiSkeleton";
 import {
   BanknotesIcon,
   BuildingOffice2Icon,
@@ -381,9 +382,7 @@ export default function PainelPrefeitoPage() {
       <SectionTitle>Panorama geral</SectionTitle>
       {loading ? (
         <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-4 mb-9">
-          {[...Array(8)].map((_, i) => (
-            <div key={i} className="nid-kpi" style={{ minHeight: 110, opacity: 0.4 }} />
-          ))}
+          {[...Array(8)].map((_, i) => <KpiSkeleton key={i} />)}
         </div>
       ) : (
         <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-4 mb-9">

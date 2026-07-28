@@ -14,6 +14,8 @@ import {
   fmtNumberShort,
   fmtNumber,
 } from "../../components/nid/charts";
+import KpiSkeleton from "../../components/nid/KpiSkeleton";
+import SelecioneMunicipio from "../../components/nid/SelecioneMunicipio";
 
 const MESES = ["jan", "fev", "mar", "abr", "mai", "jun", "jul", "ago", "set", "out", "nov", "dez"];
 const fmtHab = (n) => (n == null ? "—" : Number(n).toLocaleString("pt-BR"));
@@ -145,10 +147,7 @@ export default function FpmPage() {
     return (
       <motion.div initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3 }}>
         <NidPageHeader title="FPM" sub="Fundo de Participação dos Municípios" />
-        <div className="mt-6 rounded-2xl p-10 text-center" style={{ background: "var(--panel)", border: "1px dashed var(--border-strong)" }}>
-          <p className="text-base font-semibold text-[var(--text)]">Selecione um município</p>
-          <p className="text-sm mt-1 text-[var(--text-dim)]">Use <b>"Ver como"</b> na administração de Municípios.</p>
-        </div>
+        <SelecioneMunicipio />
       </motion.div>
     );
   }
@@ -156,9 +155,7 @@ export default function FpmPage() {
   if (loading) {
     return (
       <div className="space-y-4">
-        {[...Array(4)].map((_, i) => (
-          <div key={i} className="nid-kpi" style={{ minHeight: 110, opacity: 0.4 }} />
-        ))}
+        {[...Array(4)].map((_, i) => <KpiSkeleton key={i} />)}
       </div>
     );
   }

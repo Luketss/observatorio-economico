@@ -12,9 +12,11 @@ import { NidPageHeader, NidPanel, NidLegend } from "../../components/nid/Panel";
 import { MultiLineChart, HBarChart } from "../../components/nid/charts";
 import CompareToggle from "../../components/nid/CompareToggle";
 import { comparePanelData } from "../../utils/periodos";
-import ChartState from "../../components/nid/ChartState.jsx";
 import { useAuth } from "../../context/AuthContext";
 import { useViewAs } from "../../context/ViewAsContext";
+import NidSelect from "../../components/nid/NidSelect";
+import KpiSkeleton from "../../components/nid/KpiSkeleton";
+import SelecioneMunicipio from "../../components/nid/SelecioneMunicipio";
 
 
 const fmtUSD = (v) =>
@@ -139,7 +141,7 @@ export default function ComexPage() {
     {
       label: "Total Exportado",
       value: fmtUSD(resumo?.total_exportado_usd),
-      sub: "No período",
+      sub: describeFilter(filters) || "Todo o período",
       accent: "var(--accent-5)",
       dataset: "comex",
       indicadorKey: "exportacoes",
@@ -147,7 +149,7 @@ export default function ComexPage() {
     {
       label: "Total Importado",
       value: fmtUSD(resumo?.total_importado_usd),
-      sub: "No período",
+      sub: describeFilter(filters) || "Todo o período",
       accent: "var(--accent-4)",
       dataset: "comex",
       indicadorKey: "importacoes",
@@ -183,38 +185,17 @@ export default function ComexPage() {
       />
 
       {needsMunicipio ? (
-        <div
-          className="rounded-2xl p-10 text-center"
-          style={{
-            background: "var(--panel)",
-            border: "1px dashed var(--border-strong)",
-            color: "var(--text-dim)",
-          }}
-        >
-          <p className="text-base font-semibold" style={{ color: "var(--text)" }}>
-            Selecione um município
-          </p>
-          <p className="text-sm mt-1">
-            Use <b>"Ver como"</b> na administração de Municípios para escolher um
-            município e visualizar os dados de Comércio Exterior.
-          </p>
-        </div>
+        <SelecioneMunicipio />
       ) : (
       <>
       {anos.length > 0 && (
         <div className="flex items-center gap-2">
           <label className="text-sm text-[var(--text-dim)] font-medium">Ano:</label>
-          <select
-            value={anoSelecionado}
-            onChange={(e) => setAnoSelecionado(e.target.value)}
-            className="border border-[var(--border)] rounded-lg px-3 py-1.5 text-sm text-[var(--text)] bg-[var(--panel)] shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-          >
+          <NidSelect value={anoSelecionado} onChange={(e) => setAnoSelecionado(e.target.value)} ariaLabel="Filtrar por ano">
             {anos.map((ano) => (
-              <option key={ano} value={String(ano)}>
-                {ano}
-              </option>
+              <option key={ano} value={String(ano)}>{ano}</option>
             ))}
-          </select>
+          </NidSelect>
         </div>
       )}
 
@@ -226,11 +207,7 @@ export default function ComexPage() {
 
       {loading ? (
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          {[...Array(3)].map((_, i) => (
-            <div key={i} className="bg-[var(--panel)] p-6 rounded-2xl border border-[var(--border)]">
-              <ChartState kind="loading" shape="kpi" height={80} />
-            </div>
-          ))}
+          {[...Array(3)].map((_, i) => <KpiSkeleton key={i} />)}
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">

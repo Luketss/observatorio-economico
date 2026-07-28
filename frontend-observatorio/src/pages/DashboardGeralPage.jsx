@@ -6,6 +6,7 @@ import InsightsPanel from "../components/InsightsPanel";
 import PrioridadesPanel from "../components/PrioridadesPanel";
 import ReleasesPanel from "../components/ReleasesPanel";
 import KpiCard from "../components/KpiCard";
+import KpiSkeleton from "../components/nid/KpiSkeleton";
 import {
   NidPageHeader,
   NidPanel,
@@ -238,9 +239,7 @@ export default function DashboardGeralPage() {
       {/* Hero KPIs (neon design) */}
       {loading ? (
         <div className="nid-kpis">
-          {[...Array(4)].map((_, i) => (
-            <div key={i} className="nid-kpi" style={{ minHeight: 150, opacity: 0.4 }} />
-          ))}
+          {[...Array(4)].map((_, i) => <KpiSkeleton key={i} height={110} />)}
         </div>
       ) : (
         <div className="nid-kpis">

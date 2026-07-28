@@ -11,6 +11,9 @@ import { fmtMoneyShort, fmtMoneyFull, HBarChart } from "../../components/nid/cha
 import BarraExecucao from "../../components/nid/BarraExecucao";
 import DataTable from "../../components/nid/DataTable";
 import { emendaParaCaptacaoPayload } from "../../utils/emendaCaptacao";
+import NidSelect from "../../components/nid/NidSelect";
+import KpiSkeleton from "../../components/nid/KpiSkeleton";
+import SelecioneMunicipio from "../../components/nid/SelecioneMunicipio";
 
 const tipoCurto = (t) => (t || "").split(" - ")[0];
 
@@ -41,10 +44,7 @@ export default function EmendasPage() {
     return (
       <motion.div initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3 }}>
         <NidPageHeader title="Radar de Emendas" sub="Emendas parlamentares destinadas ao município" />
-        <div className="mt-6 rounded-2xl p-10 text-center" style={{ background: "var(--panel)", border: "1px dashed var(--border-strong)" }}>
-          <p className="text-base font-semibold text-[var(--text)]">Selecione um município</p>
-          <p className="text-sm mt-1 text-[var(--text-dim)]">Use <b>"Ver como"</b> na administração de Municípios.</p>
-        </div>
+        <SelecioneMunicipio />
       </motion.div>
     );
   }
@@ -52,9 +52,7 @@ export default function EmendasPage() {
   if (loading && !radar) {
     return (
       <div className="space-y-4">
-        {[...Array(4)].map((_, i) => (
-          <div key={i} className="nid-kpi" style={{ minHeight: 110, opacity: 0.4 }} />
-        ))}
+        {[...Array(4)].map((_, i) => <KpiSkeleton key={i} />)}
       </div>
     );
   }
@@ -68,15 +66,10 @@ export default function EmendasPage() {
         <NidPageHeader title="Radar de Emendas" sub="Quem envia recurso, quanto e o que já foi executado" />
         <InfoTooltip dataset="emendas" />
         {(radar?.anos || []).length > 0 && (
-          <select
-            value={ano}
-            onChange={(e) => setAno(e.target.value)}
-            className="ml-auto rounded-xl border border-[var(--border)] bg-[var(--panel)] text-[var(--text)] text-sm px-3 py-1.5"
-            aria-label="Filtrar por ano"
-          >
+          <NidSelect value={ano} onChange={(e) => setAno(e.target.value)} ariaLabel="Filtrar por ano" className="ml-auto">
             <option value="">Todos os anos</option>
             {radar.anos.map((a) => <option key={a} value={a}>{a}</option>)}
-          </select>
+          </NidSelect>
         )}
       </div>
 

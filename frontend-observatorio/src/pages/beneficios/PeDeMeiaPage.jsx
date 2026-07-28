@@ -12,6 +12,7 @@ import CompareToggle from "../../components/nid/CompareToggle";
 import { comparePanelData } from "../../utils/periodos";
 import { useAuth } from "../../context/AuthContext";
 import { useViewAs } from "../../context/ViewAsContext";
+import KpiSkeleton from "../../components/nid/KpiSkeleton";
 
 
 const fmtBRL = (v) =>
@@ -141,12 +142,7 @@ export default function PeDeMeiaPage() {
 
       {loading ? (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          {[...Array(2)].map((_, i) => (
-            <div
-              key={i}
-              className="bg-[var(--panel)] p-6 rounded-2xl border border-[var(--border)] animate-pulse h-28"
-            />
-          ))}
+          {[...Array(2)].map((_, i) => <KpiSkeleton key={i} />)}
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">

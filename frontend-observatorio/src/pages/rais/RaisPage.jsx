@@ -16,6 +16,8 @@ import DetalheModal from "../../components/nid/DetalheModal";
 import DataTable from "../../components/nid/DataTable";
 import { useAuth } from "../../context/AuthContext";
 import { useViewAs } from "../../context/ViewAsContext";
+import KpiSkeleton from "../../components/nid/KpiSkeleton";
+import SelecioneMunicipio from "../../components/nid/SelecioneMunicipio";
 
 const A1 = "var(--accent-1)";
 const A2 = "var(--accent-2)";
@@ -290,22 +292,7 @@ export default function RaisPage() {
       />
 
       {needsMunicipio ? (
-        <div
-          className="rounded-2xl p-10 text-center"
-          style={{
-            background: "var(--panel)",
-            border: "1px dashed var(--border-strong)",
-            color: "var(--text-dim)",
-          }}
-        >
-          <p className="text-base font-semibold" style={{ color: "var(--text)" }}>
-            Selecione um município
-          </p>
-          <p className="text-sm mt-1">
-            Use <b>"Ver como"</b> na administração de Municípios para escolher um
-            município e visualizar os dados da RAIS.
-          </p>
-        </div>
+        <SelecioneMunicipio />
       ) : (
       <>
       {/* Year picker */}
@@ -326,9 +313,7 @@ export default function RaisPage() {
       {/* Hero KPIs */}
       {loading ? (
         <div className="nid-kpis">
-          {[...Array(4)].map((_, i) => (
-            <div key={i} className="nid-kpi" style={{ minHeight: 150, opacity: 0.4 }} />
-          ))}
+          {[...Array(4)].map((_, i) => <KpiSkeleton key={i} height={110} />)}
         </div>
       ) : (
         <div className="nid-kpis">

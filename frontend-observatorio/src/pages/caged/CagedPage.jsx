@@ -12,12 +12,13 @@ import {
 } from "../../components/nid/charts";
 import CompareToggle from "../../components/nid/CompareToggle";
 import { comparePanelData } from "../../utils/periodos";
-import ChartState from "../../components/nid/ChartState.jsx";
 import InfoTooltip from "../../components/InfoTooltip";
 import PlanGate from "../../components/PlanGate";
 import DetalheModal from "../../components/nid/DetalheModal";
 import { useAuth } from "../../context/AuthContext";
 import { useViewAs } from "../../context/ViewAsContext";
+import KpiSkeleton from "../../components/nid/KpiSkeleton";
+import SelecioneMunicipio from "../../components/nid/SelecioneMunicipio";
 
 const A1 = "var(--accent-1)";
 const A2 = "var(--accent-2)";
@@ -334,22 +335,7 @@ export default function CagedPage() {
       />
 
       {needsMunicipio ? (
-        <div
-          className="rounded-2xl p-10 text-center"
-          style={{
-            background: "var(--panel)",
-            border: "1px dashed var(--border-strong)",
-            color: "var(--text-dim)",
-          }}
-        >
-          <p className="text-base font-semibold" style={{ color: "var(--text)" }}>
-            Selecione um município
-          </p>
-          <p className="text-sm mt-1">
-            Use <b>"Ver como"</b> na administração de Municípios para escolher um
-            município e visualizar os dados de CAGED.
-          </p>
-        </div>
+        <SelecioneMunicipio />
       ) : (
       <>
       {years.length > 0 && (
@@ -372,11 +358,7 @@ export default function CagedPage() {
       {/* Hero KPIs */}
       {loading ? (
         <div className="nid-kpis">
-          {[...Array(4)].map((_, i) => (
-            <div key={i} className="nid-kpi">
-              <ChartState kind="loading" shape="kpi" height={120} />
-            </div>
-          ))}
+          {[...Array(4)].map((_, i) => <KpiSkeleton key={i} height={120} />)}
         </div>
       ) : (
         <div className="nid-kpis">
