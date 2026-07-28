@@ -15,8 +15,10 @@ from app.services.ingestao_automatica.base import FonteAutomatica, ResumoIngesta
 from app.services.ingestao_automatica.util import (
     baixar_zip,
     competencias_janela,
+    eh_nao_publicado,
     indices_colunas,
     linhas_zip,
+    msg_nao_publicadas,
     norm_nome_municipio,
     parse_valor_br,
 )
@@ -69,6 +71,7 @@ def executar(db, municipios, anos=None, usuario_id=None, notificar=True, progres
 
     competencias = competencias_janela(anos=anos, inicio=INICIO_SERIE, meses_default=12)
     mids_ok: set[int] = set()
+    nao_publicadas: list[str] = []
     for i, (ano, mes) in enumerate(competencias, start=1):
         anomes = f"{ano}{mes:02d}"
         if progresso:
@@ -79,7 +82,10 @@ def executar(db, municipios, anos=None, usuario_id=None, notificar=True, progres
                 with linhas_zip(caminho, encoding="latin-1") as linhas:
                     parsed = parse_pe_de_meia_csv(linhas, alvo)
             except requests.RequestException as exc:
-                resumo.erros.append(f"Pé-de-Meia {anomes}: indisponível ({exc})")
+                if eh_nao_publicado(exc):
+                    nao_publicadas.append(anomes)
+                else:
+                    resumo.erros.append(f"Pé-de-Meia {anomes}: indisponível ({exc})")
                 continue
 
         for mid, agg in parsed["resumo"].items():
@@ -113,6 +119,9 @@ def executar(db, municipios, anos=None, usuario_id=None, notificar=True, progres
             resumo.linhas += 1
         db.commit()
 
+    aviso = msg_nao_publicadas("Pé-de-Meia", nao_publicadas)
+    if aviso:
+        resumo.erros.append(aviso)
     resumo.municipios_ok = len(mids_ok)
     faltantes = set(alvo.values()) - mids_ok
     resumo.municipios_erro += len(faltantes)

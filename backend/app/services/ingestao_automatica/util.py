@@ -52,6 +52,47 @@ def linhas_zip(caminho: str, encoding: str = "utf-8-sig"):
             yield io.TextIOWrapper(bruto, encoding=encoding, newline="")
 
 
+def eh_nao_publicado(exc) -> bool:
+    """True se a exceção HTTP significa 'competência ainda não publicada' no
+    host de download da CGU (dadosabertos-download.cgu.gov.br): lá 403 é o
+    AccessDenied do S3 para objeto INEXISTENTE, não bloqueio de cliente —
+    confirmado em 2026-07 (mês impossível também responde 403; meses
+    publicados respondem 200 com o mesmo User-Agent)."""
+    resp = getattr(exc, "response", None)
+    return resp is not None and resp.status_code in (403, 404)
+
+
+def agrupar_competencias(anomes: list[str]) -> str:
+    """['202512','202601','202606'] → '202512–202601, 202606' (faixas de
+    meses consecutivos, atravessando a virada de ano)."""
+    def _prox(a: int, m: int) -> tuple[int, int]:
+        return (a, m + 1) if m < 12 else (a + 1, 1)
+
+    pares = sorted({(int(s[:4]), int(s[4:6])) for s in anomes})
+    grupos: list[list[tuple[int, int]]] = []
+    for par in pares:
+        if grupos and par == _prox(*grupos[-1][1]):
+            grupos[-1][1] = par
+        else:
+            grupos.append([par, par])
+
+    def _fmt(p: tuple[int, int]) -> str:
+        return f"{p[0]}{p[1]:02d}"
+
+    return ", ".join(_fmt(a) if a == b else f"{_fmt(a)}–{_fmt(b)}" for a, b in grupos)
+
+
+def msg_nao_publicadas(rotulo: str, anomes: list[str]) -> str | None:
+    """Aviso único e legível para competências não publicadas, no lugar de um
+    '403 Forbidden' técnico por mês."""
+    if not anomes:
+        return None
+    faixa = agrupar_competencias(anomes)
+    if len(set(anomes)) > 1:
+        return f"{rotulo}: competências {faixa} ainda não publicadas pelo Portal da Transparência"
+    return f"{rotulo}: competência {faixa} ainda não publicada pelo Portal da Transparência"
+
+
 def norm_nome_municipio(s) -> str:
     """Normaliza nome de município para match entre a grafia IBGE do banco e
     grafias históricas de CSVs federais (acentos, caixa, hífens, 'th', s/z).

@@ -171,3 +171,54 @@ def test_norm_nome_municipio_compartilhado():
 
 def test_norm_nome_municipio_apostrofo_tipografico():
     assert norm_nome_municipio("Sant’Ana do Riacho") == norm_nome_municipio("Sant'Ana do Riacho")
+
+
+# ── competências não publicadas (403 do host da CGU = arquivo inexistente) ──
+import requests
+
+from app.services.ingestao_automatica.util import (
+    agrupar_competencias,
+    eh_nao_publicado,
+    msg_nao_publicadas,
+)
+
+
+def _http_error(status: int) -> requests.HTTPError:
+    resp = requests.Response()
+    resp.status_code = status
+    return requests.HTTPError(response=resp)
+
+
+def test_eh_nao_publicado_403_e_404():
+    assert eh_nao_publicado(_http_error(403)) is True
+    assert eh_nao_publicado(_http_error(404)) is True
+
+
+def test_eh_nao_publicado_erros_reais_continuam_tecnicos():
+    assert eh_nao_publicado(_http_error(500)) is False
+    assert eh_nao_publicado(_http_error(429)) is False
+    assert eh_nao_publicado(requests.ConnectionError("boom")) is False
+    assert eh_nao_publicado(requests.Timeout("slow")) is False
+
+
+def test_agrupar_competencias_faixa_atravessa_virada_de_ano():
+    assert agrupar_competencias(["202512", "202601", "202602"]) == "202512–202602"
+
+
+def test_agrupar_competencias_faixas_e_isolados():
+    out = agrupar_competencias(["202606", "202511", "202512", "202603", "202602"])
+    assert out == "202511–202512, 202602–202603, 202606"
+
+
+def test_agrupar_competencias_um_mes():
+    assert agrupar_competencias(["202512"]) == "202512"
+
+
+def test_msg_nao_publicadas():
+    assert msg_nao_publicadas("Pé-de-Meia", []) is None
+    assert msg_nao_publicadas("Pé-de-Meia", ["202512"]) == (
+        "Pé-de-Meia: competência 202512 ainda não publicada pelo Portal da Transparência"
+    )
+    assert msg_nao_publicadas("Bolsa Família", ["202512", "202601"]) == (
+        "Bolsa Família: competências 202512–202601 ainda não publicadas pelo Portal da Transparência"
+    )
