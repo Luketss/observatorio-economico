@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import { motion } from "framer-motion";
 import api from "../../services/api";
 import { useAuth } from "../../context/AuthContext";
@@ -9,6 +9,7 @@ import CriarOportunidadeCaptacao from "../../components/CriarOportunidadeCaptaca
 import { NidPanel, NidPageHeader } from "../../components/nid/Panel";
 import { fmtMoneyShort, fmtMoneyFull, HBarChart } from "../../components/nid/charts";
 import BarraExecucao from "../../components/nid/BarraExecucao";
+import DataTable from "../../components/nid/DataTable";
 import { emendaParaCaptacaoPayload } from "../../utils/emendaCaptacao";
 
 const tipoCurto = (t) => (t || "").split(" - ")[0];
@@ -30,6 +31,11 @@ export default function EmendasPage() {
       .catch((err) => console.error("Erro ao carregar radar de emendas:", err))
       .finally(() => setLoading(false));
   }, [needsMunicipio, ano]);
+
+  const porAutorRankeado = useMemo(
+    () => (radar?.por_autor || []).map((a, i) => ({ ...a, rank: i + 1 })),
+    [radar]
+  );
 
   if (needsMunicipio) {
     return (
@@ -92,32 +98,19 @@ export default function EmendasPage() {
           </div>
 
           <NidPanel title="Ranking por parlamentar" sub="Total destinado e execução — quem manda (e quem não manda) recurso">
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="border-b border-[var(--border)] text-left">
-                    <th className="px-3 py-2 font-semibold text-[var(--text-dim)]">#</th>
-                    <th className="px-3 py-2 font-semibold text-[var(--text-dim)]">Parlamentar</th>
-                    <th className="px-3 py-2 font-semibold text-[var(--text-dim)] text-right">Emendas</th>
-                    <th className="px-3 py-2 font-semibold text-[var(--text-dim)] text-right">Destinado (R$)</th>
-                    <th className="px-3 py-2 font-semibold text-[var(--text-dim)] text-right">Pago (R$)</th>
-                    <th className="px-3 py-2 font-semibold text-[var(--text-dim)]">Execução</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {radar.por_autor.map((a, i) => (
-                    <tr key={a.autor} className="border-b border-[var(--border)] last:border-0">
-                      <td className="px-3 py-2 text-[var(--text-dim)]">{i + 1}º</td>
-                      <td className="px-3 py-2 font-medium text-[var(--text)]">{a.autor}</td>
-                      <td className="px-3 py-2 text-right text-[var(--text-dim)]">{a.num_emendas}</td>
-                      <td className="px-3 py-2 text-right text-[var(--text)]">{fmtMoneyFull(a.empenhado)}</td>
-                      <td className="px-3 py-2 text-right text-[var(--text-dim)]">{fmtMoneyFull(a.pago_total)}</td>
-                      <td className="px-3 py-2"><BarraExecucao pct={a.pct_pago} /></td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+            <DataTable
+              columns={[
+                { key: "rank", label: "#", width: 50, sortable: false, render: (a) => <span className="muted">{a.rank}º</span> },
+                { key: "autor", label: "Parlamentar" },
+                { key: "num_emendas", label: "Emendas", align: "right", mono: true },
+                { key: "empenhado", label: "Destinado (R$)", align: "right", mono: true, fmt: fmtMoneyFull },
+                { key: "pago_total", label: "Pago (R$)", align: "right", mono: true, fmt: fmtMoneyFull },
+                { key: "pct_pago", label: "Execução", width: 170, render: (a) => <BarraExecucao pct={a.pct_pago} /> },
+              ]}
+              data={porAutorRankeado}
+              pageSize={12}
+              emptyMessage="Sem emendas no período."
+            />
           </NidPanel>
 
           <NidPanel title="Destino por área" sub="Total empenhado por função orçamentária">
@@ -130,42 +123,30 @@ export default function EmendasPage() {
           </NidPanel>
 
           <NidPanel title="Emendas destinadas ao município" sub="Funil de execução: empenhado → liquidado → pago (inclui restos a pagar pagos)">
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="border-b border-[var(--border)] text-left">
-                    <th className="px-3 py-2 font-semibold text-[var(--text-dim)]">Ano</th>
-                    <th className="px-3 py-2 font-semibold text-[var(--text-dim)]">Autor</th>
-                    <th className="px-3 py-2 font-semibold text-[var(--text-dim)]">Tipo</th>
-                    <th className="px-3 py-2 font-semibold text-[var(--text-dim)]">Área</th>
-                    <th className="px-3 py-2 font-semibold text-[var(--text-dim)] text-right">Empenhado (R$)</th>
-                    <th className="px-3 py-2 font-semibold text-[var(--text-dim)] text-right">Pago (R$)</th>
-                    <th className="px-3 py-2 font-semibold text-[var(--text-dim)]">Execução</th>
-                    <th className="px-3 py-2" aria-label="Ações"></th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {radar.emendas.map((e) => (
-                    <tr key={`${e.codigo}-${e.ano}`} className="border-b border-[var(--border)] last:border-0">
-                      <td className="px-3 py-2 text-[var(--text)]">{e.ano}</td>
-                      <td className="px-3 py-2 font-medium text-[var(--text)]">{e.autor}</td>
-                      <td className="px-3 py-2 text-[var(--text-dim)]" title={e.tipo}>{tipoCurto(e.tipo)}</td>
-                      <td className="px-3 py-2 text-[var(--text-dim)]">{e.funcao || "—"}</td>
-                      <td className="px-3 py-2 text-right text-[var(--text)]">{fmtMoneyFull(e.empenhado)}</td>
-                      <td className="px-3 py-2 text-right text-[var(--text-dim)]">{fmtMoneyFull(e.pago_total)}</td>
-                      <td className="px-3 py-2"><BarraExecucao pct={e.pct_pago} /></td>
-                      <td className="px-3 py-2 text-right">
-                        <CriarOportunidadeCaptacao
-                          compact
-                          label="Criar oportunidade no funil a partir desta emenda"
-                          payload={emendaParaCaptacaoPayload(e)}
-                        />
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+            <DataTable
+              columns={[
+                { key: "ano", label: "Ano", width: 70 },
+                { key: "autor", label: "Autor" },
+                { key: "tipo", label: "Tipo", render: (e) => <span className="muted" title={e.tipo}>{tipoCurto(e.tipo)}</span> },
+                { key: "funcao", label: "Área" },
+                { key: "empenhado", label: "Empenhado (R$)", align: "right", mono: true, fmt: fmtMoneyFull },
+                { key: "pago_total", label: "Pago (R$)", align: "right", mono: true, fmt: fmtMoneyFull },
+                { key: "pct_pago", label: "Execução", width: 170, render: (e) => <BarraExecucao pct={e.pct_pago} /> },
+                {
+                  key: "acoes", label: "", sortable: false, align: "right", ariaLabel: "Ações",
+                  render: (e) => (
+                    <CriarOportunidadeCaptacao
+                      compact
+                      label="Criar oportunidade no funil a partir desta emenda"
+                      payload={emendaParaCaptacaoPayload(e)}
+                    />
+                  ),
+                },
+              ]}
+              data={radar.emendas}
+              pageSize={12}
+              emptyMessage="Sem emendas no período."
+            />
           </NidPanel>
         </>
       )}
