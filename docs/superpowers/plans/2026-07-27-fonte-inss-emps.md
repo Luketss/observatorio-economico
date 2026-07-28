@@ -32,7 +32,7 @@
 - Consumes: nada de tasks anteriores.
 - Produces (Task 2 depende): `CATEGORIAS: list[tuple[int, str]]`; `parse_emps_aba(rows) -> dict[str, dict[str, float]]` (código IBGE → {categoria: valor}); `montar_registros(qtd_por_codigo, valor_por_codigo, alvo: dict[str, int], ano: int) -> list[dict]` (dicts prontos p/ `InssAnual(**d)`); `achar_aba(sheetnames: list[str], prefixo: str) -> str | None`.
 
-- [ ] **Step 1: Escrever os testes que falham** — acrescentar ao FINAL de `backend/tests/test_ingestao_automatica.py`:
+- [x] **Step 1: Escrever os testes que falham** — acrescentar ao FINAL de `backend/tests/test_ingestao_automatica.py`:
 
 ```python
 # ── fonte inss (EMPS) ──
@@ -90,12 +90,12 @@ def test_achar_aba_por_prefixo_case_insensitive():
     assert achar_aba(abas, "xyz") is None
 ```
 
-- [ ] **Step 2: Rodar e ver falhar**
+- [x] **Step 2: Rodar e ver falhar**
 
 Run (de `backend/`): `..\venv\Scripts\python.exe -m pytest tests\test_ingestao_automatica.py -q`
 Expected: exit 2, `ImportError: cannot import name ... from 'app.services.ingestao_automatica.inss_emps'` (módulo inexistente).
 
-- [ ] **Step 3: Criar `backend/app/services/ingestao_automatica/inss_emps.py`** (parte pura):
+- [x] **Step 3: Criar `backend/app/services/ingestao_automatica/inss_emps.py`** (parte pura):
 
 ```python
 """Fonte automática: INSS — benefícios por município (EMPS/MPS).
@@ -177,12 +177,12 @@ def achar_aba(sheetnames: list[str], prefixo: str) -> str | None:
     return None
 ```
 
-- [ ] **Step 4: Rodar e ver passar**
+- [x] **Step 4: Rodar e ver passar**
 
 Run (de `backend/`): `..\venv\Scripts\python.exe -m pytest tests\test_ingestao_automatica.py -q`
 Expected: exit 0.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add backend/app/services/ingestao_automatica/inss_emps.py backend/tests/test_ingestao_automatica.py
@@ -203,7 +203,7 @@ git commit -m "feat(ingestao): helpers puros do parse EMPS (fonte inss)"
 - Consumes: `CATEGORIAS`, `parse_emps_aba`, `montar_registros`, `achar_aba` (Task 1); `eh_nao_publicado` (util.py); `FonteAutomatica/ResumoIngestao/registrar` (base.py).
 - Produces: fonte `key="inss"` no registry — runner, `/admin/fontes` e meta-job "todas" a consomem sem código novo.
 
-- [ ] **Step 1: Acrescentar ao final de `inss_emps.py`:**
+- [x] **Step 1: Acrescentar ao final de `inss_emps.py`:**
 
 ```python
 def executar(db, municipios, anos=None, usuario_id=None, notificar=True, progresso=None) -> ResumoIngestao:
@@ -285,13 +285,13 @@ registrar(FonteAutomatica(
 ))
 ```
 
-- [ ] **Step 2: Import no `__init__.py`** — acrescentar após a linha do `pe_de_meia_portal`:
+- [x] **Step 2: Import no `__init__.py`** — acrescentar após a linha do `pe_de_meia_portal`:
 
 ```python
 from app.services.ingestao_automatica import inss_emps  # noqa: F401
 ```
 
-- [ ] **Step 3: ORDEM_EXECUCAO_TODAS** — em `base.py`, inserir `"inss",` depois de `"pe_de_meia",` (mantendo `captacao_federal`/`emendas` como últimas):
+- [x] **Step 3: ORDEM_EXECUCAO_TODAS** — em `base.py`, inserir `"inss",` depois de `"pe_de_meia",` (mantendo `captacao_federal`/`emendas` como últimas):
 
 ```python
 ORDEM_EXECUCAO_TODAS = [
@@ -309,7 +309,7 @@ ORDEM_EXECUCAO_TODAS = [
 ]
 ```
 
-- [ ] **Step 4: Dependência** — acrescentar em `backend/requirements.txt`:
+- [x] **Step 4: Dependência** — acrescentar em `backend/requirements.txt`:
 
 ```
 openpyxl==3.1.5
@@ -317,12 +317,12 @@ openpyxl==3.1.5
 
 (Já instalada no venv da raiz em 2026-07-27; a linha garante o deploy na Railway.)
 
-- [ ] **Step 5: Suíte completa**
+- [x] **Step 5: Suíte completa**
 
 Run (de `backend/`): `..\venv\Scripts\python.exe -m pytest tests -q`
 Expected: exit 0 — inclui o teste de paridade de `ORDEM_EXECUCAO_TODAS` (agora com 11 fontes) e o de `captacao_federal`/`emendas` no fim.
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add backend/app/services/ingestao_automatica/inss_emps.py backend/app/services/ingestao_automatica/__init__.py backend/app/services/ingestao_automatica/base.py backend/requirements.txt
@@ -340,7 +340,7 @@ git commit -m "feat(ingestao): fonte automatica inss via EMPS da Previdencia"
 - Consumes: fonte `inss` registrada (Task 2); banco da Railway via `backend/.env`.
 - Produces: evidência de dados reais em `inss_anual` para conferência visual em /app/inss.
 
-- [ ] **Step 1: Script E2E no scratchpad** (service-level, sem HTTP/JWT — mesmo padrão dos E2E anteriores):
+- [x] **Step 1: Script E2E no scratchpad** (service-level, sem HTTP/JWT — mesmo padrão dos E2E anteriores):
 
 ```python
 """E2E: fonte inss para Cabo Verde/MG contra a Railway."""
@@ -359,12 +359,12 @@ for r in db.query(InssAnual).filter(InssAnual.municipio_id == m.id, InssAnual.an
 db.close()
 ```
 
-- [ ] **Step 2: Rodar** (de `backend/`, com PYTHONPATH=`.`): `..\venv\Scripts\python.exe <scratchpad>\e2e_inss.py`
+- [x] **Step 2: Rodar** (de `backend/`, com PYTHONPATH=`.`): `..\venv\Scripts\python.exe <scratchpad>\e2e_inss.py`
 Expected: `linhas: 7`, 7 categorias impressas com valores plausíveis (aposentadorias na casa de milhares de benefícios/dezenas de milhões de R$ para um município pequeno), `erros: []`.
 
-- [ ] **Step 3: Conferir a página** — usuário abre /app/inss de Cabo Verde e valida o gráfico com as novas categorias.
+- [x] **Step 3: Conferir a página** — usuário abre /app/inss de Cabo Verde e valida o gráfico com as novas categorias.
 
-- [ ] **Step 4: Nada a commitar** (script fica no scratchpad). Registrar resultado no resumo final ao usuário.
+- [x] **Step 4: Nada a commitar** (script fica no scratchpad). Registrar resultado no resumo final ao usuário.
 
 ---
 
