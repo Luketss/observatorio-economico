@@ -87,3 +87,98 @@ def montar_repasses(linhas_fato, tempo, municipio_ibge, alvo: dict[str, int], an
             "valor_total": round(icms + ipva + ipi, 2),
         })
     return regs
+
+
+def _resolver_urls() -> dict[str, str]:
+    """URLs dos 3 resources via API CKAN; cai para as URLs fixas se a API
+    estiver fora (mesmo padrão da fonte FPM/STN)."""
+    urls = dict(URLS_FALLBACK)
+    try:
+        resp = requests.get(CKAN_PACKAGE_SHOW, timeout=30)
+        resp.raise_for_status()
+        for recurso in resp.json()["result"]["resources"]:
+            url = recurso.get("url") or ""
+            for chave in urls:
+                if chave in url:
+                    urls[chave] = url
+    except (requests.RequestException, KeyError, ValueError) as exc:
+        logger.warning("CKAN de MG indisponível (%s); usando URLs fixas.", exc)
+    return urls
+
+
+def _baixar_gz_linhas(url: str) -> list[str]:
+    resp = requests.get(url, timeout=(30, 300), headers={"User-Agent": "Mozilla/5.0"})
+    resp.raise_for_status()
+    return gzip.decompress(resp.content).decode("utf-8-sig").splitlines()
+
+
+def executar(db, municipios, anos=None, usuario_id=None, notificar=True, progresso=None) -> ResumoIngestao:
+    from app.models.arrecadacao import ArrecadacaoMensal
+
+    resumo = ResumoIngestao(dataset="arrecadacao")
+
+    fora_mg = [m for m in municipios if (m.estado or "").upper() != "MG"]
+    de_mg = [m for m in municipios if (m.estado or "").upper() == "MG"]
+    if fora_mg:
+        resumo.erros.append(
+            f"fonte cobre apenas municípios de MG — {len(fora_mg)} município(s) de outra(s) UF ignorado(s)"
+        )
+        resumo.municipios_erro += len(fora_mg)
+
+    alvo = {str(m.codigo_ibge).strip(): m.id for m in de_mg if m.codigo_ibge}
+    for m in de_mg:
+        if not m.codigo_ibge:
+            resumo.erros.append(f"{m.nome}/{m.estado}: sem codigo_ibge cadastrado")
+            resumo.municipios_erro += 1
+    if not alvo:
+        return resumo
+
+    if progresso:
+        progresso(0, len(alvo), "baixando repasses de MG (CKAN)")
+    try:
+        urls = _resolver_urls()
+        tempo = parse_dim_tempo(_baixar_gz_linhas(urls["dm_tempo_mensal"]))
+        municipio_ibge = parse_dim_municipio(_baixar_gz_linhas(urls["dm_municipio"]))
+        linhas_fato = _baixar_gz_linhas(urls["ft_repasse_mun"])
+    except requests.RequestException as exc:
+        resumo.erros.append(f"repasses de MG: indisponível ({exc})")
+        resumo.municipios_erro += len(alvo)
+        return resumo
+
+    if progresso:
+        progresso(0, len(alvo), "cruzando fato × dimensões")
+    regs = montar_repasses(linhas_fato, tempo, municipio_ibge, alvo, anos=anos)
+
+    mids = {r["municipio_id"] for r in regs}
+    existentes = {
+        (r.municipio_id, r.ano, r.mes): r
+        for r in db.query(ArrecadacaoMensal).filter(ArrecadacaoMensal.municipio_id.in_(mids)).all()
+    } if mids else {}
+    for r in regs:
+        reg = existentes.get((r["municipio_id"], r["ano"], r["mes"]))
+        if reg:
+            for coluna, valor in r.items():
+                setattr(reg, coluna, valor)
+        else:
+            db.add(ArrecadacaoMensal(**r))
+        resumo.linhas += 1
+    db.commit()
+
+    resumo.municipios_ok = len(mids)
+    faltantes = set(alvo.values()) - mids
+    resumo.municipios_erro += len(faltantes)
+    if faltantes:
+        nomes = {m.id: f"{m.nome}/{m.estado}" for m in de_mg}
+        for mid in sorted(faltantes):
+            resumo.erros.append(f"{nomes.get(mid, mid)}: não encontrado nos repasses de MG")
+    if progresso:
+        progresso(len(mids), len(alvo), "repasses gravados")
+    return resumo
+
+
+registrar(FonteAutomatica(
+    key="arrecadacao",
+    label="Arrecadação (repasses MG)",
+    fonte="SEF-MG via dados.mg.gov.br — repasses mensais de ICMS, IPVA e IPI aos municípios (consulta oficial da Transparência-MG)",
+    executar=executar,
+))
