@@ -6,6 +6,7 @@ import { useViewAs } from "../../context/ViewAsContext";
 import InfoTooltip from "../../components/InfoTooltip";
 import KpiCard from "../../components/KpiCard";
 import { NidPanel, NidPageHeader } from "../../components/nid/Panel";
+import DataTable from "../../components/nid/DataTable";
 import {
   AreaLineChart,
   fmtMoneyShort,
@@ -222,29 +223,15 @@ export default function FpmPage() {
           </NidPanel>
 
           <NidPanel title="Total anual" sub="Soma dos repasses por ano">
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="border-b border-[var(--border)] text-left">
-                    <th className="px-3 py-2 font-semibold text-[var(--text-dim)]">Ano</th>
-                    <th className="px-3 py-2 font-semibold text-[var(--text-dim)] text-right">Total (R$)</th>
-                    <th className="px-3 py-2 font-semibold text-[var(--text-dim)] text-right">Meses com dado</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {anualDesc.map((a) => (
-                    <tr key={a.ano} className="border-b border-[var(--border)] last:border-0">
-                      <td className="px-3 py-2 font-medium text-[var(--text)]">{a.ano}</td>
-                      <td className="px-3 py-2 text-right text-[var(--text)]">{fmtMoneyFull(a.valor_total)}</td>
-                      <td className="px-3 py-2 text-right text-[var(--text-dim)]">{a.meses}</td>
-                    </tr>
-                  ))}
-                  {anualDesc.length === 0 && (
-                    <tr><td colSpan={3} className="px-3 py-6 text-center text-[var(--text-dim)]">Sem dados de repasse.</td></tr>
-                  )}
-                </tbody>
-              </table>
-            </div>
+            <DataTable
+              columns={[
+                { key: "ano", label: "Ano", width: 80 },
+                { key: "valor_total", label: "Total (R$)", align: "right", mono: true, fmt: fmtMoneyFull },
+                { key: "meses", label: "Meses com dado", align: "right", mono: true },
+              ]}
+              data={anualDesc}
+              emptyMessage="Sem dados de repasse."
+            />
           </NidPanel>
         </>
       )}

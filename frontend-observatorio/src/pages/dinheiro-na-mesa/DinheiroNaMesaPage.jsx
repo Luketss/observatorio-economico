@@ -7,6 +7,7 @@ import InfoTooltip from "../../components/InfoTooltip";
 import KpiCard from "../../components/KpiCard";
 import CriarOportunidadeCaptacao from "../../components/CriarOportunidadeCaptacao";
 import { NidPanel, NidPageHeader } from "../../components/nid/Panel";
+import DataTable from "../../components/nid/DataTable";
 import { MultiLineChart, fmtMoneyShort, fmtMoneyFull } from "../../components/nid/charts";
 
 const fmtMi = (v) => {
@@ -138,35 +139,18 @@ export default function DinheiroNaMesaPage() {
           </NidPanel>
 
           <NidPanel title="Detalhe anual" sub="Valores firmados, via emenda e desembolsados">
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="border-b border-[var(--border)] text-left">
-                    <th className="px-3 py-2 font-semibold text-[var(--text-dim)]">Ano</th>
-                    <th className="px-3 py-2 font-semibold text-[var(--text-dim)] text-right">Você (R$)</th>
-                    <th className="px-3 py-2 font-semibold text-[var(--text-dim)] text-right">Média pares (R$)</th>
-                    <th className="px-3 py-2 font-semibold text-[var(--text-dim)] text-right">Via emenda (R$)</th>
-                    <th className="px-3 py-2 font-semibold text-[var(--text-dim)] text-right">Desembolsado (R$)</th>
-                    <th className="px-3 py-2 font-semibold text-[var(--text-dim)] text-right">Convênios</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {serieDesc.map((i) => (
-                    <tr key={i.ano} className="border-b border-[var(--border)] last:border-0">
-                      <td className="px-3 py-2 font-medium text-[var(--text)]">{i.ano}{i.parcial ? "*" : ""}</td>
-                      <td className="px-3 py-2 text-right text-[var(--text)]">{fmtMoneyFull(i.voce)}</td>
-                      <td className="px-3 py-2 text-right text-[var(--text-dim)]">{i.media_pares != null ? fmtMoneyFull(i.media_pares) : "—"}</td>
-                      <td className="px-3 py-2 text-right text-[var(--text-dim)]">{fmtMoneyFull(i.via_emenda)}</td>
-                      <td className="px-3 py-2 text-right text-[var(--text-dim)]">{fmtMoneyFull(i.desembolsado)}</td>
-                      <td className="px-3 py-2 text-right text-[var(--text-dim)]">{i.qtd_convenios}</td>
-                    </tr>
-                  ))}
-                  {serieDesc.length === 0 && (
-                    <tr><td colSpan={6} className="px-3 py-6 text-center text-[var(--text-dim)]">Sem dados de captação.</td></tr>
-                  )}
-                </tbody>
-              </table>
-            </div>
+            <DataTable
+              columns={[
+                { key: "ano", label: "Ano", width: 80, render: (i) => `${i.ano}${i.parcial ? "*" : ""}` },
+                { key: "voce", label: "Você (R$)", align: "right", mono: true, fmt: fmtMoneyFull },
+                { key: "media_pares", label: "Média pares (R$)", align: "right", mono: true, fmt: fmtMoneyFull },
+                { key: "via_emenda", label: "Via emenda (R$)", align: "right", mono: true, fmt: fmtMoneyFull },
+                { key: "desembolsado", label: "Desembolsado (R$)", align: "right", mono: true, fmt: fmtMoneyFull },
+                { key: "qtd_convenios", label: "Convênios", align: "right", mono: true },
+              ]}
+              data={serieDesc}
+              emptyMessage="Sem dados de captação."
+            />
           </NidPanel>
 
           <div className="flex justify-end">
