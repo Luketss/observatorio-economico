@@ -142,7 +142,7 @@ export default function KpiCard({
           <div className="flex items-start gap-1.5 flex-shrink-0">
             {Icon && color && (
               <div className={`p-2 rounded-xl ${color.bg}`}>
-                <Icon className={`w-5 h-5 ${color.text}`} />
+                <Icon className="w-5 h-5" style={{ color: color.text }} />
               </div>
             )}
 

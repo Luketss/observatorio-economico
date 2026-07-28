@@ -41,7 +41,7 @@ const CUSTOM_COLOR_MAP = {
   purple: { bg: "bg-[var(--panel-2)]", text: "var(--accent-3)" },
   orange: { bg: "bg-[var(--panel-2)]", text: "var(--accent-4)" },
   red:    { bg: "bg-[var(--panel-2)]",       text: "var(--accent-2)" },
-  slate:  { bg: "bg-[var(--panel-2)]",     text: "text-[var(--text-dim)]" },
+  slate:  { bg: "bg-[var(--panel-2)]",     text: "var(--text-dim)" },
 };
 
 const A1 = "var(--accent-1)";
