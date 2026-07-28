@@ -15,6 +15,7 @@ import { comparePanelData } from "../../utils/periodos";
 import { useAuth } from "../../context/AuthContext";
 import { useViewAs } from "../../context/ViewAsContext";
 import KpiSkeleton from "../../components/nid/KpiSkeleton";
+import SelecioneMunicipio from "../../components/nid/SelecioneMunicipio";
 
 const fmtBRL = (v) =>
   v != null
@@ -120,22 +121,7 @@ export default function PixPage() {
       />
 
       {needsMunicipio ? (
-        <div
-          className="rounded-2xl p-10 text-center"
-          style={{
-            background: "var(--panel)",
-            border: "1px dashed var(--border-strong)",
-            color: "var(--text-dim)",
-          }}
-        >
-          <p className="text-base font-semibold" style={{ color: "var(--text)" }}>
-            Selecione um município
-          </p>
-          <p className="text-sm mt-1">
-            Use <b>"Ver como"</b> na administração de Municípios para escolher um
-            município e visualizar os dados de PIX.
-          </p>
-        </div>
+        <SelecioneMunicipio />
       ) : (
       <>
       <div className="flex items-center justify-end">

@@ -8,6 +8,7 @@ import FilterBar, { describeFilter, clearFilter } from "../../components/FilterB
 import KpiCard from "../../components/KpiCard";
 import { NidPanel, NidPageHeader, NidLegend } from "../../components/nid/Panel";
 import KpiSkeleton from "../../components/nid/KpiSkeleton";
+import SelecioneMunicipio from "../../components/nid/SelecioneMunicipio";
 import { useAuth } from "../../context/AuthContext";
 import { useViewAs } from "../../context/ViewAsContext";
 import { AreaLineChart, MultiLineChart, StackedBarChart, fmtMoneyShort, fmtMoneyFull } from "../../components/nid/charts";
@@ -117,22 +118,7 @@ export default function ArrecadacaoPage() {
       />
 
       {needsMunicipio ? (
-        <div
-          className="rounded-2xl p-10 text-center"
-          style={{
-            background: "var(--panel)",
-            border: "1px dashed var(--border-strong)",
-            color: "var(--text-dim)",
-          }}
-        >
-          <p className="text-base font-semibold" style={{ color: "var(--text)" }}>
-            Selecione um município
-          </p>
-          <p className="text-sm mt-1">
-            Use <b>"Ver como"</b> na administração de Municípios para escolher um
-            município e visualizar os dados de Arrecadação.
-          </p>
-        </div>
+        <SelecioneMunicipio />
       ) : (
       <>
       <div className="flex items-center justify-end">

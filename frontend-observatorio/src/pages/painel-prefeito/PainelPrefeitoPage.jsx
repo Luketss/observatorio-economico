@@ -12,6 +12,7 @@ import DinheiroNaMesaCard from "../../components/DinheiroNaMesaCard";
 import EmendasResumoCard from "../../components/EmendasResumoCard";
 import { fmtMoneyShort, fmtNumberShort } from "../../components/nid/charts";
 import KpiSkeleton from "../../components/nid/KpiSkeleton";
+import SelecioneMunicipio from "../../components/nid/SelecioneMunicipio";
 import {
   BanknotesIcon,
   BuildingOffice2Icon,
@@ -345,15 +346,7 @@ export default function PainelPrefeitoPage() {
     return (
       <motion.div initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3 }}>
         <NidPageHeader title="Painel do Prefeito" sub="Visão executiva de todas as áreas do município" />
-        <div
-          className="mt-6 rounded-2xl p-10 text-center"
-          style={{ background: "var(--panel)", border: "1px dashed var(--border-strong)" }}
-        >
-          <p className="text-base font-semibold text-[var(--text)]">Selecione um município</p>
-          <p className="text-sm mt-1 text-[var(--text-dim)]">
-            Use <b>"Ver como"</b> na administração de Municípios para escolher um município e visualizar o painel.
-          </p>
-        </div>
+        <SelecioneMunicipio />
       </motion.div>
     );
   }

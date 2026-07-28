@@ -6,6 +6,7 @@ import { AreaLineChart, Annotation, fmtMoneyShort, fmtNumber } from "../../compo
 import { useAuth } from "../../context/AuthContext";
 import { useViewAs } from "../../context/ViewAsContext";
 import { beforeAfter } from "../../utils/periodos";
+import SelecioneMunicipio from "../../components/nid/SelecioneMunicipio";
 
 // ─── Indicator registry ───────────────────────────────────────────────────────
 // For Comex: rows carry tipo_operacao + valor_fob_usd; saldo = exp - imp grouped by period.
@@ -209,22 +210,7 @@ export default function ImpactoPage() {
       />
 
       {needsMunicipio ? (
-        <div
-          className="rounded-2xl p-10 text-center"
-          style={{
-            background: "var(--panel)",
-            border: "1px dashed var(--border-strong)",
-            color: "var(--text-dim)",
-          }}
-        >
-          <p className="text-base font-semibold" style={{ color: "var(--text)" }}>
-            Selecione um município
-          </p>
-          <p className="text-sm mt-1">
-            Use <b>"Ver como"</b> na administração de Municípios para escolher um
-            município e visualizar os dados de Impacto de Ações.
-          </p>
-        </div>
+        <SelecioneMunicipio />
       ) : (
         <>
           {/* ── Selectors ── */}
