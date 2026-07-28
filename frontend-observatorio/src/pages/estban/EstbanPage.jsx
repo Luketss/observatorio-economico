@@ -13,6 +13,7 @@ import { MultiLineChart, StackedBarChart, HBarChart, fmtMoneyShort, fmtMoneyFull
 import CompareToggle from "../../components/nid/CompareToggle";
 import { comparePanelData } from "../../utils/periodos";
 import ChartState from "../../components/nid/ChartState.jsx";
+import DataTable from "../../components/nid/DataTable";
 import { useAuth } from "../../context/AuthContext";
 import { useViewAs } from "../../context/ViewAsContext";
 
@@ -330,72 +331,25 @@ export default function EstbanPage() {
       )}
 
       {/* Tabela de Instituições — still inside PlanGate */}
-      <div className="bg-[var(--panel)] p-6 rounded-2xl shadow-sm border border-[var(--border)]">
-        <h3 className="text-base font-bold mb-5 text-[var(--text)]">
-          Detalhamento por Instituição
-        </h3>
+      <NidPanel title="Detalhamento por Instituição">
         {loading ? (
-          <div className="animate-pulse h-40 bg-slate-50  rounded-xl" />
-        ) : porInstituicao.length === 0 ? (
-          <div className="h-32 flex items-center justify-center text-[var(--text-mute)] text-sm">
-            Sem dados disponíveis
-          </div>
+          <div className="animate-pulse h-40 bg-slate-50 rounded-xl" />
         ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b border-[var(--border)]">
-                  <th className="text-left py-3 px-4 text-xs uppercase tracking-wider text-[var(--text-mute)] font-medium">
-                    Instituição
-                  </th>
-                  <th className="text-right py-3 px-4 text-xs uppercase tracking-wider text-[var(--text-mute)] font-medium">
-                    Agências
-                  </th>
-                  <th className="text-right py-3 px-4 text-xs uppercase tracking-wider text-[var(--text-mute)] font-medium">
-                    Operações Crédito
-                  </th>
-                  <th className="text-right py-3 px-4 text-xs uppercase tracking-wider text-[var(--text-mute)] font-medium">
-                    Depósitos Vista
-                  </th>
-                  <th className="text-right py-3 px-4 text-xs uppercase tracking-wider text-[var(--text-mute)] font-medium">
-                    Poupança
-                  </th>
-                  <th className="text-right py-3 px-4 text-xs uppercase tracking-wider text-[var(--text-mute)] font-medium">
-                    Dep. Prazo
-                  </th>
-                </tr>
-              </thead>
-              <tbody>
-                {porInstituicao.map((row, i) => (
-                  <tr
-                    key={i}
-                    className="border-b border-slate-50  hover:bg-[var(--panel-2)] transition-colors"
-                  >
-                    <td className="py-3 px-4 text-[var(--text)] font-medium">
-                      {row.nome_instituicao}
-                    </td>
-                    <td className="py-3 px-4 text-right text-[var(--text-dim)]">
-                      {fmtNum(row.qtd_agencias)}
-                    </td>
-                    <td className="py-3 px-4 text-right text-[var(--text)] font-medium">
-                      {fmtBRL(row.valor_operacoes_credito)}
-                    </td>
-                    <td className="py-3 px-4 text-right text-[var(--text-dim)]">
-                      {fmtBRL(row.valor_depositos_vista)}
-                    </td>
-                    <td className="py-3 px-4 text-right text-[var(--text-dim)]">
-                      {fmtBRL(row.valor_poupanca)}
-                    </td>
-                    <td className="py-3 px-4 text-right text-[var(--text-dim)]">
-                      {fmtBRL(row.valor_depositos_prazo)}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+          <DataTable
+            columns={[
+              { key: "nome_instituicao", label: "Instituição" },
+              { key: "qtd_agencias", label: "Agências", align: "right", mono: true, fmt: fmtNum },
+              { key: "valor_operacoes_credito", label: "Operações Crédito", align: "right", mono: true, fmt: fmtBRL },
+              { key: "valor_depositos_vista", label: "Depósitos Vista", align: "right", mono: true, fmt: fmtBRL },
+              { key: "valor_poupanca", label: "Poupança", align: "right", mono: true, fmt: fmtBRL },
+              { key: "valor_depositos_prazo", label: "Dep. Prazo", align: "right", mono: true, fmt: fmtBRL },
+            ]}
+            data={porInstituicao}
+            pageSize={12}
+            emptyMessage="Sem dados disponíveis"
+          />
         )}
-      </div>
+      </NidPanel>
       </PlanGate>
       <NidComparativoPanel
         title="Comparativo Municipal · Crédito Bancário"

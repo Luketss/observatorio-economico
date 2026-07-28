@@ -13,6 +13,7 @@ import {
 import InfoTooltip from "../../components/InfoTooltip";
 import PlanGate from "../../components/PlanGate";
 import DetalheModal from "../../components/nid/DetalheModal";
+import DataTable from "../../components/nid/DataTable";
 import { useAuth } from "../../context/AuthContext";
 import { useViewAs } from "../../context/ViewAsContext";
 
@@ -643,30 +644,16 @@ export default function RaisPage() {
         </NidPanel>
 
         <NidPanel title="Top 10 Ocupações (CBO 2002)" sub={`Família ocupacional · ${anoAtivo || ""}`}>
-          {cboAno.length > 0 ? (
-            <div className="table-wrap" style={{ background: "transparent", border: "none" }}>
-              <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12.5, color: "var(--text-dim)" }}>
-                <thead>
-                  <tr>
-                    <th style={thStyle}>CBO</th>
-                    <th style={thStyle}>Descrição</th>
-                    <th style={{ ...thStyle, textAlign: "right" }}>Vínculos</th>
-                    <th style={{ ...thStyle, textAlign: "right" }}>Rem. média</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {cboAno.map((c) => (
-                    <tr key={c.cbo_familia} style={{ borderBottom: "1px solid var(--border)" }}>
-                      <td style={tdStyle}><span className="nid-mono" style={{ color: "var(--text)" }}>{c.cbo_familia}</span></td>
-                      <td style={tdStyle}>{c.descricao || <span style={{ color: "var(--text-mute)" }}>—</span>}</td>
-                      <td style={{ ...tdStyle, textAlign: "right", fontFamily: "var(--font-mono)", color: "var(--text)" }}>{fmtBR(c.total_vinculos)}</td>
-                      <td style={{ ...tdStyle, textAlign: "right", fontFamily: "var(--font-mono)" }}>{fmtCurrency(c.remuneracao_media)}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          ) : <EmptyMsg height={240} />}
+          <DataTable
+            columns={[
+              { key: "cbo_familia", label: "CBO", width: 70, mono: true },
+              { key: "descricao", label: "Descrição" },
+              { key: "total_vinculos", label: "Vínculos", align: "right", mono: true, fmt: fmtBR },
+              { key: "remuneracao_media", label: "Rem. média", align: "right", mono: true, fmt: fmtCurrency },
+            ]}
+            data={cboAno}
+            emptyMessage="Sem dados disponíveis"
+          />
         </NidPanel>
       </div>
 
@@ -686,22 +673,6 @@ export default function RaisPage() {
     </motion.div>
   );
 }
-
-const thStyle = {
-  textAlign: "left",
-  padding: "10px 12px",
-  fontFamily: "var(--font-mono)",
-  fontSize: 10.5,
-  fontWeight: 600,
-  letterSpacing: "0.08em",
-  textTransform: "uppercase",
-  color: "var(--text-mute)",
-  borderBottom: "1px solid var(--border)",
-};
-const tdStyle = {
-  padding: "10px 12px",
-  color: "var(--text-dim)",
-};
 
 function EmptyMsg({ height = 200 }) {
   return (
