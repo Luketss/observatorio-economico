@@ -200,7 +200,7 @@ export default function EmpresasPage() {
             "Fechadas/Baixadas": d.fechadas || 0,
           }))}
           keys={["Ativas", "Fechadas/Baixadas"]}
-          colors={["#10b981", "#ef4444"]}
+          colors={["var(--accent-5)", "var(--accent-2)"]}
           legend
           height={280}
           yFmt={(v) => Number(v).toLocaleString("pt-BR")}

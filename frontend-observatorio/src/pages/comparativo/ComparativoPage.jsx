@@ -168,8 +168,8 @@ export default function BenchmarkPage() {
         <HBarChart
           data={chartData.map((row) => ({ label: row.municipio, value: row.valor, municipio_id: row.municipio_id }))}
           highlight={myId ? chartData.find((r) => r.municipio_id === myId)?.municipio : undefined}
-          color="#3b82f6"
-          highlightColor="#f59e0b"
+          color="var(--accent-1)"
+          highlightColor="var(--accent-4)"
           showPosition={true}
           fmt={activeDataset?.fmt ?? ((v) => String(v))}
           loading={loading}

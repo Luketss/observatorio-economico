@@ -275,7 +275,7 @@ export default function RaisPage() {
       });
   }, [porTempoEmprego, anoAtivo]);
 
-  const palette = [A1, A3, A2, A4, A5, "#8b5cf6", "#06b6d4"];
+  const palette = [A1, A3, A2, A4, A5, "var(--accent-6)", "var(--accent-7)"];
 
   return (
     <motion.div

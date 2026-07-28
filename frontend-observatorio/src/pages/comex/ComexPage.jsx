@@ -251,7 +251,7 @@ export default function ComexPage() {
             "Importações": d.importacoes,
           }))}
           series={["Exportações", "Importações"]}
-          colors={["#10b981", "#f97316"]}
+          colors={["var(--accent-5)", "var(--accent-4)"]}
           legend
           height={280}
           yFmt={(v) => `US$ ${(v / 1_000_000).toLocaleString("pt-BR", { maximumFractionDigits: 1 })}M`}
@@ -292,7 +292,7 @@ export default function ComexPage() {
             <MultiLineChart
               data={chartSerie.map((d) => ({ label: d.periodo, "Saldo": d.saldo }))}
               series={["Saldo"]}
-              colors={["#8b5cf6"]}
+              colors={["var(--accent-3)"]}
               height={240}
               yFmt={(v) => `US$ ${(v / 1_000_000).toLocaleString("pt-BR", { maximumFractionDigits: 1 })}M`}
               tipFmt={fmtUSD}
@@ -311,7 +311,7 @@ export default function ComexPage() {
               "Peso Importado": d.peso_import,
             }))}
             series={["Peso Exportado", "Peso Importado"]}
-            colors={["#10b981", "#f97316"]}
+            colors={["var(--accent-5)", "var(--accent-4)"]}
             legend
             height={240}
             yFmt={(v) => v >= 1_000_000 ? `${(v / 1_000_000).toFixed(1)}M kg` : v >= 1_000 ? `${(v / 1_000).toFixed(0)}t` : `${v} kg`}

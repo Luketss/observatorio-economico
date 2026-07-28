@@ -191,7 +191,7 @@ export default function PixPage() {
           <MultiLineChart
             data={serie.map((d) => ({ label: d.periodo, "Volume PF": d.vl_pagador_pf || 0, "Volume PJ": d.vl_pagador_pj || 0 }))}
             series={["Volume PF", "Volume PJ"]}
-            colors={["#3b82f6", "#10b981"]}
+            colors={["var(--accent-1)", "var(--accent-5)"]}
             height={280}
             legend
             yFmt={(v) => `R$ ${(v / 1_000_000).toLocaleString("pt-BR", { maximumFractionDigits: 0 })}M`}
@@ -206,7 +206,7 @@ export default function PixPage() {
           emptyMessage="Sem dados disponíveis"
           data={serie.map((d) => ({ label: d.periodo, "Recebimento PF": d.vl_recebedor_pf || 0, "Recebimento PJ": d.vl_recebedor_pj || 0 }))}
           series={["Recebimento PF", "Recebimento PJ"]}
-          colors={["#8b5cf6", "#f59e0b"]}
+          colors={["var(--accent-3)", "var(--accent-4)"]}
           height={240}
           legend
           yFmt={(v) => `R$ ${(v / 1_000_000).toLocaleString("pt-BR", { maximumFractionDigits: 0 })}M`}
@@ -220,7 +220,7 @@ export default function PixPage() {
           emptyMessage="Sem dados disponíveis"
           data={serie.map((d) => ({ label: d.periodo, "Transações PF": d.qt_pagador_pf || 0, "Transações PJ": d.qt_pagador_pj || 0 }))}
           keys={["Transações PF", "Transações PJ"]}
-          colors={["#3b82f6", "#10b981"]}
+          colors={["var(--accent-1)", "var(--accent-5)"]}
           height={240}
           legend
           yFmt={(v) => Number(v).toLocaleString("pt-BR")}
@@ -234,7 +234,7 @@ export default function PixPage() {
           emptyMessage="Sem dados disponíveis"
           data={serie.map((d) => ({ label: d.periodo, "Pessoas PF": d.qt_pes_pagador_pf || 0, "Pessoas PJ": d.qt_pes_pagador_pj || 0 }))}
           series={["Pessoas PF", "Pessoas PJ"]}
-          colors={["#8b5cf6", "#f97316"]}
+          colors={["var(--accent-3)", "var(--accent-4)"]}
           height={240}
           legend
           yFmt={(v) => Number(v).toLocaleString("pt-BR")}
@@ -248,7 +248,7 @@ export default function PixPage() {
           emptyMessage="Sem dados disponíveis"
           data={serie.map((d) => ({ label: d.periodo, "Recebedores PF": d.qt_pes_recebedor_pf || 0, "Recebedores PJ": d.qt_pes_recebedor_pj || 0 }))}
           series={["Recebedores PF", "Recebedores PJ"]}
-          colors={["#06b6d4", "#f43f5e"]}
+          colors={["var(--accent-7)", "var(--accent-2)"]}
           height={240}
           legend
           yFmt={(v) => Number(v).toLocaleString("pt-BR")}

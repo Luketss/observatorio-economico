@@ -220,7 +220,7 @@ export default function EstbanPage() {
               "Depósitos a Prazo": d.valor_depositos_prazo || 0,
             }))}
             series={["Operações de Crédito", "Poupança", "Depósitos a Prazo"]}
-            colors={["#3b82f6", "#10b981", "#f59e0b"]}
+            colors={["var(--accent-1)", "var(--accent-5)", "var(--accent-4)"]}
             height={280}
             legend
             yFmt={(v) => `R$ ${(v / 1_000_000).toLocaleString("pt-BR", { maximumFractionDigits: 0 })}M`}
@@ -241,7 +241,7 @@ export default function EstbanPage() {
             "Depósitos a Prazo": d.depositos_prazo || 0,
           }))}
           series={["Depósitos à Vista", "Poupança", "Depósitos a Prazo"]}
-          colors={["#3b82f6", "#10b981", "#f59e0b"]}
+          colors={["var(--accent-1)", "var(--accent-5)", "var(--accent-4)"]}
           height={280}
           legend
           yFmt={(v) => `R$ ${(v / 1_000_000).toLocaleString("pt-BR", { maximumFractionDigits: 0 })}M`}
@@ -260,7 +260,7 @@ export default function EstbanPage() {
             "Total Captação": d.total_captacao || 0,
           }))}
           series={["Operações de Crédito", "Total Captação"]}
-          colors={["#3b82f6", "#10b981"]}
+          colors={["var(--accent-1)", "var(--accent-5)"]}
           height={240}
           legend
           yFmt={(v) => `R$ ${(v / 1_000_000).toLocaleString("pt-BR", { maximumFractionDigits: 0 })}M`}
@@ -284,7 +284,7 @@ export default function EstbanPage() {
             "Outros Créditos": d.outros_creditos || 0,
           }))}
           keys={["Empréstimos/Títulos", "Financiamentos Gerais", "Financiamentos Imobiliários", "Financiamento Agropecuário", "Arrendamento Mercantil", "Setor Público", "Outros Créditos"]}
-          colors={["#3b82f6", "#10b981", "#f59e0b", "#84cc16", "#8b5cf6", "#06b6d4", "#94a3b8"]}
+          colors={["var(--accent-1)", "var(--accent-5)", "var(--accent-4)", "var(--accent-6)", "var(--accent-3)", "var(--accent-7)", "var(--chart-muted)"]}
           height={280}
           legend
           yFmt={(v) => `R$ ${(v / 1_000_000).toLocaleString("pt-BR", { maximumFractionDigits: 0 })}M`}
@@ -321,7 +321,7 @@ export default function EstbanPage() {
               "Outros": d.outros_creditos || 0,
             }))}
             keys={["Empréstimos/Títulos", "Financiamentos Gerais", "Imobiliário", "Agropecuário", "Arrendamento", "Setor Público", "Outros"]}
-            colors={["#3b82f6", "#10b981", "#f59e0b", "#84cc16", "#8b5cf6", "#06b6d4", "#94a3b8"]}
+            colors={["var(--accent-1)", "var(--accent-5)", "var(--accent-4)", "var(--accent-6)", "var(--accent-3)", "var(--accent-7)", "var(--chart-muted)"]}
             height={280}
             legend
             yFmt={(v) => `R$ ${(v / 1_000_000).toLocaleString("pt-BR", { maximumFractionDigits: 0 })}M`}

@@ -208,7 +208,7 @@ export default function ArrecadacaoPage() {
               ipi: d.ipi || 0,
             }))}
             keys={["icms", "ipva", "ipi"]}
-            colors={["#6366f1", "#10b981", "#f59e0b"]}
+            colors={["var(--accent-1)", "var(--accent-5)", "var(--accent-4)"]}
             height={280}
             yFmt={fmtMoneyShort}
             tipFmt={fmtMoneyFull}

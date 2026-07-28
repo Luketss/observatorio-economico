@@ -186,7 +186,7 @@ export default function BolsaFamiliaPage() {
           <AreaLineChart
             data={serie.map((d) => ({ label: d.periodo, value: d.total_beneficiarios || 0 }))}
             height={280}
-            color="#3b82f6"
+            color="var(--accent-1)"
             label="Beneficiários"
             yFmt={(v) => Number(v).toLocaleString("pt-BR")}
             tipFmt={(v) => Number(v).toLocaleString("pt-BR")}
@@ -205,7 +205,7 @@ export default function BolsaFamiliaPage() {
             "Primeira Infância": d.beneficiarios_primeira_infancia || 0,
           }))}
           series={["Total Beneficiários", "Primeira Infância"]}
-          colors={["#3b82f6", "#8b5cf6"]}
+          colors={["var(--accent-1)", "var(--accent-3)"]}
           legend
           height={280}
           yFmt={(v) => Number(v).toLocaleString("pt-BR")}
@@ -224,7 +224,7 @@ export default function BolsaFamiliaPage() {
             "Primeira Infância": d.valor_primeira_infancia || 0,
           }))}
           keys={["Valor Bolsa", "Primeira Infância"]}
-          colors={["#3b82f6", "#8b5cf6"]}
+          colors={["var(--accent-1)", "var(--accent-3)"]}
           legend
           height={280}
           yFmt={(v) => `R$ ${(v / 1000).toLocaleString("pt-BR", { maximumFractionDigits: 0 })}k`}
