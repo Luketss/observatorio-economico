@@ -16,6 +16,7 @@ from datetime import date
 import requests
 
 from app.services.ingestao_automatica.base import FonteAutomatica, ResumoIngestao, registrar
+from app.services.ingestao_automatica.util import ca_bundle_gov
 
 logger = logging.getLogger(__name__)
 
@@ -70,7 +71,7 @@ def parse_comex_mun(linhas, ibge_para_mid: dict[str, int], tipo_operacao: str) -
 
 
 def _tabela_auxiliar(url: str, col_codigo: str, col_nome: str) -> dict[str, str]:
-    resp = requests.get(url, timeout=120)
+    resp = requests.get(url, timeout=120, verify=ca_bundle_gov())
     resp.raise_for_status()
     reader = csv.reader(io.StringIO(resp.content.decode("latin-1")), delimiter=";")
     header = next(reader)
@@ -118,7 +119,9 @@ def executar(db, municipios, anos=None, usuario_id=None, notificar=True, progres
             if progresso:
                 progresso(0, len(alvo), f"baixando {sigla} {ano}")
             try:
-                resp = requests.get(BASE_MUN.format(tipo=sigla, ano=ano), timeout=(30, 600))
+                resp = requests.get(
+                    BASE_MUN.format(tipo=sigla, ano=ano), timeout=(30, 600), verify=ca_bundle_gov()
+                )
                 resp.raise_for_status()
             except requests.RequestException as exc:
                 resumo.erros.append(f"Comex {sigla} {ano}: {exc}")

@@ -1,12 +1,40 @@
 """Helpers compartilhados das fontes automáticas (CSV bulk)."""
 import contextlib
 import io
+import os
 import re
+import tempfile
 import unicodedata
 import zipfile
 from datetime import date
+from pathlib import Path
 
+import certifi
 import requests
+
+_CERTS_EXTRA_DIR = Path(__file__).with_name("certs")
+_ca_bundle_cache: str | None = None
+
+
+def ca_bundle_gov() -> str:
+    """Caminho de um bundle de CA = certifi + intermediários em certs/*.pem.
+
+    Servidores gov.br às vezes enviam só o certificado leaf (ex.:
+    balanca.economia.gov.br, do Comex/MDIC, omite o intermediário Sectigo
+    OV R36) — navegadores resolvem via AIA chasing, o OpenSSL do Python não.
+    Com o intermediário no bundle a cadeia fecha e a verificação continua
+    ligada. Gerado uma vez por processo em arquivo temporário; se o MDIC
+    trocar de CA emissora, basta adicionar o novo intermediário em certs/."""
+    global _ca_bundle_cache
+    if _ca_bundle_cache and os.path.exists(_ca_bundle_cache):
+        return _ca_bundle_cache
+    partes = [Path(certifi.where()).read_text(encoding="utf-8")]
+    partes += [p.read_text(encoding="utf-8") for p in sorted(_CERTS_EXTRA_DIR.glob("*.pem"))]
+    fd, caminho = tempfile.mkstemp(suffix=".pem", prefix="ca-bundle-gov-")
+    with os.fdopen(fd, "w", encoding="utf-8") as f:
+        f.write("\n".join(partes))
+    _ca_bundle_cache = caminho
+    return caminho
 
 
 def parse_valor_br(s) -> float | None:
