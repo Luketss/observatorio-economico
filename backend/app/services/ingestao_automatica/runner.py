@@ -52,6 +52,52 @@ def job_orfao(job, agora=None) -> bool:
     return (agora - referencia) > timedelta(minutes=JOB_ORFAO_MINUTOS)
 
 
+def _transicao_abortado_condicional(db, job) -> bool:
+    """UPDATE condicional (id + status + atualizado_em vistos por `job`) que
+    marca 'abortado'. Read-then-write vira corrida quando outro executor
+    reivindica ou atualiza o heartbeat do mesmo job entre a leitura que
+    decidiu 'é órfão' e esta escrita — o UPDATE só casa a linha se nada mudou
+    nesse intervalo. Não comita nem dá refresh: cabe ao chamador, que conhece
+    o boundary da própria transação. Devolve True se abortou; False se
+    rowcount==0 (o job avançou nesse meio-tempo e não deve ser tratado como
+    órfão)."""
+    from app.models.ingestao_job import IngestaoJob
+
+    filtro_heartbeat = (
+        IngestaoJob.atualizado_em.is_(None)
+        if job.atualizado_em is None
+        else IngestaoJob.atualizado_em == job.atualizado_em
+    )
+    linhas = (
+        db.query(IngestaoJob)
+        .filter(IngestaoJob.id == job.id, IngestaoJob.status == job.status, filtro_heartbeat)
+        .update(
+            {
+                "status": "abortado",
+                "erro": "Sem heartbeat — processo reiniciado durante a execução.",
+                "finalizado_em": _agora(),
+            },
+            synchronize_session=False,
+        )
+    )
+    return linhas == 1
+
+
+def _modo_worker() -> bool:
+    """Normaliza INGESTAO_EXECUTOR (espaços/caixa) antes de decidir o modo.
+    Valor não reconhecido loga um aviso e cai para inline — o default seguro
+    — em vez de travar a criação de jobs por causa de um env var mal
+    formatado."""
+    valor = (settings.INGESTAO_EXECUTOR or "").strip().lower()
+    if valor not in ("inline", "worker"):
+        logger.warning(
+            "INGESTAO_EXECUTOR=%r não reconhecido (esperado 'inline' ou 'worker') — tratando como 'inline'",
+            settings.INGESTAO_EXECUTOR,
+        )
+        return False
+    return valor == "worker"
+
+
 def job_para_dict(job) -> dict:
     def _iso(dt):
         return dt.isoformat() if dt else None
@@ -195,22 +241,22 @@ def iniciar_job(db, dataset_key: str, filtros: dict, usuario_id: int):
     db.execute(text("SELECT pg_advisory_xact_lock(hashtext('ingestao_job_iniciar'))"))
     ativos = db.query(IngestaoJob).filter(IngestaoJob.status.in_(STATUS_ATIVOS)).all()
     for ativo in ativos:
-        if job_orfao(ativo):
-            ativo.status = "abortado"
-            ativo.erro = "Sem heartbeat — processo reiniciado durante a execução."
-            ativo.finalizado_em = _agora()
-        else:
-            raise HTTPException(
-                status_code=409,
-                detail=f"Já existe uma execução em andamento ({ativo.dataset}, job {ativo.id}). Aguarde terminar.",
-            )
+        # rowcount==0 (outro executor reivindicou/atualizou o heartbeat entre
+        # a leitura acima e este UPDATE) faz o job seguir tratado como ativo,
+        # exatamente como se job_orfao tivesse dado False.
+        if job_orfao(ativo) and _transicao_abortado_condicional(db, ativo):
+            continue
+        raise HTTPException(
+            status_code=409,
+            detail=f"Já existe uma execução em andamento ({ativo.dataset}, job {ativo.id}). Aguarde terminar.",
+        )
 
     job = IngestaoJob(dataset=dataset_key, status="pendente", filtros=filtros, usuario_id=usuario_id)
     db.add(job)
     db.commit()   # único commit: persiste aborto de órfãos + job novo e libera o lock
     db.refresh(job)
 
-    if settings.INGESTAO_EXECUTOR == "worker":
+    if _modo_worker():
         # o processo worker reivindica o 'pendente' mais antigo e executa
         return job
     threading.Thread(
@@ -241,7 +287,15 @@ def _ticker_heartbeat(job_id: int, parar_ticker: threading.Event) -> None:
             db_t.close()
 
 
-def _executar_job(job_id: int) -> None:
+def _executar_job(job_id: int, ja_reivindicado: bool = False) -> None:
+    """`ja_reivindicado=False` (modo inline/thread): a própria função faz a
+    transição 'pendente'->'executando' via UPDATE guardado — se um worker já
+    reivindicou o mesmo job entre a criação e esta chamada, o UPDATE não casa
+    nenhuma linha e a função desiste sem tocar a fonte (o outro executor já
+    está rodando). `ja_reivindicado=True` (modo worker): o claim
+    (`reivindicar_job`) já fez essa transição atomicamente via
+    SELECT FOR UPDATE SKIP LOCKED; aqui só resta gravar o progresso_total
+    (calculado depois do claim, quando os municípios já foram resolvidos)."""
     from app.db.session import SessionLocal
     from app.models.ingestao_job import IngestaoJob
     from app.services.municipio_management import record_ingestao_audit
@@ -260,11 +314,35 @@ def _executar_job(job_id: int) -> None:
         filtros = job.filtros or {}
         municipios = resolver_municipios(db, filtros)
 
-        job.status = "executando"
-        job.iniciado_em = _agora()
-        job.atualizado_em = _agora()
-        job.progresso_total = len(municipios)
-        db_job.commit()
+        if ja_reivindicado:
+            db_job.query(IngestaoJob).filter(IngestaoJob.id == job_id).update(
+                {"progresso_total": len(municipios), "atualizado_em": _agora()},
+                synchronize_session=False,
+            )
+            db_job.commit()
+            db_job.refresh(job)
+        else:
+            linhas = (
+                db_job.query(IngestaoJob)
+                .filter(IngestaoJob.id == job_id, IngestaoJob.status == "pendente")
+                .update(
+                    {
+                        "status": "executando",
+                        "iniciado_em": _agora(),
+                        "atualizado_em": _agora(),
+                        "progresso_total": len(municipios),
+                    },
+                    synchronize_session=False,
+                )
+            )
+            db_job.commit()
+            if linhas == 0:
+                logger.warning(
+                    "Job %s não estava mais 'pendente' — outro executor assumiu; desistindo desta execução",
+                    job_id,
+                )
+                return
+            db_job.refresh(job)
 
         ticker = threading.Thread(
             target=_ticker_heartbeat, args=(job_id, parar_ticker), daemon=True,

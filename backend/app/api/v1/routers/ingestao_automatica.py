@@ -4,7 +4,7 @@ from app.models.ingestao_job import IngestaoJob
 from app.services.ingestao_automatica import FONTES_AUTOMATICAS
 from app.services.ingestao_automatica.runner import (
     STATUS_ATIVOS,
-    _agora,
+    _transicao_abortado_condicional,
     iniciar_job,
     job_orfao,
     job_para_dict,
@@ -23,22 +23,28 @@ class ExecutarIn(BaseModel):
     notificar: bool = True
 
 
-def _abortar_orfao(db: Session, job: IngestaoJob) -> None:
+def _abortar_orfao(db: Session, job: IngestaoJob) -> bool:
     """Sweep lento (na leitura): um job ativo sem heartbeat recente vira
     'abortado' aqui mesmo, sem esperar a próxima tentativa de criação — assim
-    um job morto por deploy/restart se autocura no próximo polling."""
-    job.status = "abortado"
-    job.erro = "Sem heartbeat — processo reiniciado durante a execução."
-    job.finalizado_em = _agora()
+    um job morto por deploy/restart se autocura no próximo polling. UPDATE
+    condicional: se o job avançou entre a leitura e esta escrita (outro
+    executor reivindicou/atualizou o heartbeat nesse intervalo), não aborta —
+    `job` é atualizado (refresh) para refletir o estado atual e o chamador o
+    trata como ativo. Devolve True se abortou, False caso contrário."""
+    abortou = _transicao_abortado_condicional(db, job)
     db.commit()
+    db.refresh(job)
+    return abortou
 
 
 def _job_ativo(db: Session) -> IngestaoJob | None:
     """Job pendente/executando com heartbeat vivo (órfãos são varridos aqui)."""
     for job in db.query(IngestaoJob).filter(IngestaoJob.status.in_(STATUS_ATIVOS)).all():
         if job_orfao(job):
-            _abortar_orfao(db, job)
-            continue
+            if _abortar_orfao(db, job):
+                continue
+            # o job avançou entre a leitura e a tentativa de aborto — segue
+            # ativo (refresh já deixou `job` refletindo o estado atual)
         return job
     return None
 

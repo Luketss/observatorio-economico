@@ -349,7 +349,8 @@ processo da API. Com `INGESTAO_EXECUTOR=worker` na API, o `POST` apenas cria o
 job `pendente` e um processo separado (`python -m app.worker`) reivindica o job
 mais antigo (`FOR UPDATE SKIP LOCKED`) e executa — mesma semântica de
 heartbeat, trava global e órfãos. No docker-compose o serviço `worker` já sobe
-nesse modo.
+nesse modo. Não escalar o serviço worker para mais de 1 réplica — a trava de
+1 job ativo por vez pressupõe exatamente 1 worker.
 
 **Railway (passos manuais):**
 1. Criar um serviço novo no mesmo repositório, root `backend/` (mesmo Dockerfile

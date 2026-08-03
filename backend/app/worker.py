@@ -62,7 +62,7 @@ def main():
             db.close()
         if job_id is not None:
             logger.info("Job %s reivindicado — executando", job_id)
-            _executar_job(job_id)
+            _executar_job(job_id, ja_reivindicado=True)
             logger.info("Job %s finalizado", job_id)
         else:
             time.sleep(POLL_SEGUNDOS)

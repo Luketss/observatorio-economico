@@ -2,9 +2,14 @@
 
 Padrão do repo: sessão/queries via MagicMock — sem Postgres real
 (SKIP LOCKED de verdade é coberto no E2E da verificação final)."""
+from datetime import datetime, timedelta, timezone
+from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
 
-from app.services.ingestao_automatica.runner import iniciar_job
+import pytest
+from fastapi import HTTPException
+
+from app.services.ingestao_automatica.runner import _executar_job, iniciar_job
 
 
 def _db_sem_job_ativo():
@@ -81,3 +86,89 @@ def test_reivindicar_job_usa_skip_locked():
     reivindicar_job(db)
     db.query.return_value.filter.return_value.order_by.return_value \
         .with_for_update.assert_called_once_with(skip_locked=True)
+
+
+# --- M2: transição guardada em _executar_job ---------------------------------
+
+def test_executar_job_inline_rowcount_zero_desiste_sem_executar_fonte():
+    """Corrida inline vs. worker: a thread inline chama _executar_job sem
+    ja_reivindicado, mas outro executor (ex.: um worker) já reivindicou o
+    mesmo job 'pendente' antes dela — o UPDATE guardado (WHERE status ==
+    'pendente') não casa nenhuma linha. A função deve desistir sem executar a
+    fonte (nunca chega em fonte.executar)."""
+    db_mock = MagicMock()
+    db_job_mock = MagicMock()
+    job = MagicMock()
+    job.dataset = "populacao"
+    job.filtros = {"municipio_ids": [1]}
+    db_job_mock.get.return_value = job
+    db_job_mock.query.return_value.filter.return_value.update.return_value = 0
+
+    fonte_mock = MagicMock()
+
+    with patch("app.db.session.SessionLocal", side_effect=[db_mock, db_job_mock]), \
+         patch("app.services.ingestao_automatica.runner.resolver_municipios", return_value=[MagicMock()]), \
+         patch("app.services.ingestao_automatica.runner.FONTES_AUTOMATICAS", {"populacao": fonte_mock}):
+        _executar_job(99, ja_reivindicado=False)
+
+    fonte_mock.executar.assert_not_called()
+    db_job_mock.commit.assert_called_once()   # commit do UPDATE de claim (0 linhas)
+    db_job_mock.refresh.assert_not_called()   # retorno antecipado: nunca chega lá
+    db_mock.close.assert_called_once()
+    db_job_mock.close.assert_called_once()
+
+
+# --- M3: normalização de INGESTAO_EXECUTOR ------------------------------------
+
+def test_modo_worker_normaliza_espacos_e_caixa():
+    db = _db_sem_job_ativo()
+    with patch("app.services.ingestao_automatica.runner.settings") as st, \
+         patch("app.services.ingestao_automatica.runner.threading.Thread") as thread:
+        st.INGESTAO_EXECUTOR = " Worker "
+        job = iniciar_job(db, "populacao", {"municipio_ids": [1]}, usuario_id=1)
+    thread.assert_not_called()
+    assert job is not None
+
+
+def test_modo_worker_valor_invalido_loga_aviso_e_cai_para_inline():
+    db = _db_sem_job_ativo()
+    with patch("app.services.ingestao_automatica.runner.settings") as st, \
+         patch("app.services.ingestao_automatica.runner.threading.Thread") as thread, \
+         patch("app.services.ingestao_automatica.runner.logger") as logger_mock:
+        st.INGESTAO_EXECUTOR = "workr"
+        iniciar_job(db, "populacao", {"municipio_ids": [1]}, usuario_id=1)
+    thread.assert_called_once()
+    thread.return_value.start.assert_called_once()
+    logger_mock.warning.assert_called_once()
+
+
+# --- M1: abort de órfão com re-checagem (sweep do iniciar_job) ---------------
+
+def test_iniciar_job_sweep_rowcount_zero_trata_job_como_ativo():
+    """Corrida no sweep de órfãos: entre a leitura que decidiu 'é órfão' e o
+    UPDATE condicional de aborto, outro executor reivindicou/atualizou o
+    heartbeat do mesmo job — o UPDATE não casa nenhuma linha. iniciar_job deve
+    tratar o job como ativo (409), e não como abortado."""
+    agora = datetime.now(timezone.utc)
+    ativo = SimpleNamespace(
+        id=99, dataset="populacao", status="executando",
+        atualizado_em=agora - timedelta(minutes=30),
+        iniciado_em=None, criado_em=agora - timedelta(minutes=40),
+    )
+
+    db = MagicMock()
+    municipio_q = MagicMock()
+    municipio_q.filter.return_value = municipio_q
+    municipio_q.all.return_value = [MagicMock()]
+    job_q = MagicMock()
+    job_q.filter.return_value = job_q
+    job_q.all.return_value = [ativo]
+    job_q.update.return_value = 0  # a UPDATE condicional não casa nenhuma linha
+    db.query.side_effect = lambda model: municipio_q if model.__name__ == "Municipio" else job_q
+
+    with pytest.raises(HTTPException) as exc_info:
+        iniciar_job(db, "populacao", {"municipio_ids": [1]}, usuario_id=1)
+
+    assert exc_info.value.status_code == 409
+    assert "job 99" in exc_info.value.detail
+    db.commit.assert_not_called()  # nunca chega a criar/commitar o job novo

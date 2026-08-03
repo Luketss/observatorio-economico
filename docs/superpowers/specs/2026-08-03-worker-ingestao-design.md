@@ -86,8 +86,13 @@ Loop principal:
 
 ## Casos de borda
 
-- Worker sobe com `INGESTAO_EXECUTOR` da API ainda `inline`: inofensivo — a API executa
-  na thread e o worker nunca vê job `pendente` (a thread transiciona imediatamente).
+- Worker sobe com `INGESTAO_EXECUTOR` da API ainda `inline`: modo misto seguro. A
+  transição `pendente` → `executando` não é atômica com a criação do job — tanto a
+  thread inline quanto o claim do worker podem, em tese, ver o mesmo job `pendente`.
+  Mas cada lado só transiciona via UPDATE guardado (`WHERE status == 'pendente'`, no
+  caso da thread; `SELECT ... FOR UPDATE SKIP LOCKED`, no caso do worker) — quem chegar
+  depois casa zero linhas, desiste e loga um aviso em vez de executar a fonte
+  duplicada. Garantia: exatamente 1 executor por job, não importa a ordem de chegada.
 - Dois claims simultâneos (restart sobreposto): `SKIP LOCKED` + transição de status na
   mesma transação garantem 1 vencedor.
 - Job criado durante redeploy do worker: fica `pendente` e é pego quando o worker volta.
