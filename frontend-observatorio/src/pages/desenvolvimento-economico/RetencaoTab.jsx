@@ -5,8 +5,6 @@ import {
   XMarkIcon,
   PencilIcon,
   TrashIcon,
-  ChevronDownIcon,
-  ChevronUpIcon,
   CameraIcon,
   InformationCircleIcon,
   BuildingOffice2Icon,
@@ -16,6 +14,8 @@ import { useAuth } from "../../context/AuthContext";
 import { useToast } from "../../context/ToastContext";
 import { useEscapeKey } from "../../hooks/useEscapeKey";
 import { usePermissao } from "../../hooks/usePermissao";
+import NidDrawer from "../../components/nid/NidDrawer";
+import { propsTituloClicavel } from "../../utils/cliqueAcessivel";
 
 const RISCO_CONFIG = {
   baixo:  { label: "Risco baixo",  color: "bg-[var(--panel-2)] text-green-400" },
@@ -62,7 +62,7 @@ export default function RetencaoTab() {
 
   const [empresas, setEmpresas] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [expandedId, setExpandedId] = useState(null);
+  const [viewingEmpresa, setViewingEmpresa] = useState(null);
   const [detalhe, setDetalhe] = useState({});
 
   const [showForm, setShowForm] = useState(false);
@@ -78,8 +78,9 @@ export default function RetencaoTab() {
 
   useEscapeKey(useCallback(() => {
     if (deleteConfirmId) { setDeleteConfirmId(null); return; }
+    if (viewingEmpresa) { setViewingEmpresa(null); return; }
     if (showForm) closeForm();
-  }, [deleteConfirmId, showForm]));
+  }, [deleteConfirmId, viewingEmpresa, showForm]));
 
   async function load() {
     try {
@@ -103,13 +104,9 @@ export default function RetencaoTab() {
 
   useEffect(() => { load(); }, []);
 
-  async function toggleExpand(id) {
-    if (expandedId === id) {
-      setExpandedId(null);
-    } else {
-      setExpandedId(id);
-      if (!detalhe[id]) await loadDetalhe(id);
-    }
+  function abrirEmpresa(empresa) {
+    setViewingEmpresa(empresa);
+    if (!detalhe[empresa.id]) loadDetalhe(empresa.id);
   }
 
   function openCreate() {
@@ -167,7 +164,7 @@ export default function RetencaoTab() {
     try {
       await api.delete(`/desenvolvimento-economico/retencao/${id}`);
       setDeleteConfirmId(null);
-      setExpandedId(null);
+      setViewingEmpresa(null);
       setDetalhe((prev) => { const n = { ...prev }; delete n[id]; return n; });
       addToast("Empresa removida", "success");
       await load();
@@ -298,15 +295,18 @@ export default function RetencaoTab() {
           {empresas.map((empresa) => {
             const risco = RISCO_CONFIG[empresa.status_risco] || RISCO_CONFIG.baixo;
             const expansao = EXPANSAO_CONFIG[empresa.potencial_expansao] || EXPANSAO_CONFIG.baixo;
-            const isExpanded = expandedId === empresa.id;
-            const det = detalhe[empresa.id];
             return (
               <div key={empresa.id} className="bg-[var(--panel)] rounded-xl border border-[var(--border)] overflow-hidden">
                 {/* Card header */}
                 <div className="p-4 space-y-3">
                   <div className="flex items-start justify-between gap-2">
                     <div className="flex-1 min-w-0">
-                      <h4 className="font-semibold text-[var(--text)] text-sm leading-snug">{empresa.nome}</h4>
+                      <h4
+                        className="font-semibold text-[var(--text)] text-sm leading-snug cursor-pointer rounded focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
+                        {...propsTituloClicavel(() => abrirEmpresa(empresa))}
+                      >
+                        {empresa.nome}
+                      </h4>
                       {empresa.setor && <p className="text-xs text-slate-400 mt-0.5">{empresa.setor}</p>}
                     </div>
                     {(canEditar || canExcluir) && (
@@ -335,112 +335,138 @@ export default function RetencaoTab() {
                   )}
 
                   <button
-                    onClick={() => toggleExpand(empresa.id)}
+                    onClick={() => abrirEmpresa(empresa)}
                     className="flex items-center gap-1 text-xs text-blue-600 hover:text-blue-700 font-medium cursor-pointer"
                   >
-                    {isExpanded ? <ChevronUpIcon className="w-3.5 h-3.5" /> : <ChevronDownIcon className="w-3.5 h-3.5" />}
-                    {isExpanded ? "Ocultar" : "Ver"} histórico de visitas
+                    Ver histórico de visitas
                   </button>
                 </div>
-
-                {/* Expanded visit timeline */}
-                <AnimatePresence>
-                  {isExpanded && (
-                    <motion.div
-                      initial={{ height: 0, opacity: 0 }}
-                      animate={{ height: "auto", opacity: 1 }}
-                      exit={{ height: 0, opacity: 0 }}
-                      transition={{ duration: 0.2 }}
-                      className="border-t border-[var(--border)] overflow-hidden"
-                    >
-                      <div className="p-4 space-y-4">
-                        {/* Visit list */}
-                        {det ? (
-                          det.visitas.length === 0 ? (
-                            <p className="text-xs text-slate-400 text-center py-2">Nenhuma visita registrada.</p>
-                          ) : (
-                            <div className="space-y-3">
-                              {det.visitas.map((v) => (
-                                <div key={v.id} className="flex gap-3">
-                                  <div className="flex flex-col items-center">
-                                    <div className="w-2 h-2 rounded-full bg-blue-500 mt-1 shrink-0" />
-                                    <div className="w-px flex-1 bg-[var(--panel-2)] mt-1" />
-                                  </div>
-                                  <div className="flex-1 pb-2 space-y-1">
-                                    <div className="flex items-center justify-between gap-2">
-                                      <p className="text-xs font-medium text-[var(--text-dim)]">{fmtDate(v.data_visita)}</p>
-                                      {canEditar && (
-                                        <button
-                                          onClick={() => handleDeleteVisita(v, empresa.id)}
-                                          disabled={deletingVisitaId === v.id}
-                                          className="p-1 rounded text-slate-300 hover:text-red-500 transition-colors cursor-pointer"
-                                        >
-                                          <TrashIcon className="w-3 h-3" />
-                                        </button>
-                                      )}
-                                    </div>
-                                    {v.responsavel && <p className="text-xs text-slate-400">{v.responsavel}</p>}
-                                    {v.observacoes && <p className="text-xs text-[var(--text-dim)]">{v.observacoes}</p>}
-                                    {v.foto_base64 && (
-                                      <img src={v.foto_base64} alt="Foto da visita" className="w-16 h-16 object-cover rounded mt-1" />
-                                    )}
-                                  </div>
-                                </div>
-                              ))}
-                            </div>
-                          )
-                        ) : (
-                          <div className="flex justify-center py-2">
-                            <div className="w-4 h-4 border-2 border-blue-600 border-t-transparent rounded-full animate-spin" />
-                          </div>
-                        )}
-
-                        {/* Add visit form (backend: visitas exigem retencao/editar) */}
-                        {canEditar && (
-                          <div className="border-t border-[var(--border)] pt-3 space-y-2">
-                            <p className="text-xs font-semibold text-[var(--text-dim)] uppercase tracking-wider">Registrar nova visita</p>
-                            <input
-                              type="date"
-                              value={visitaForm.data_visita}
-                              onChange={(e) => setVisitaForm((p) => ({ ...p, data_visita: e.target.value }))}
-                              className="w-full px-3 py-1.5 rounded-lg border border-[var(--border)] text-xs bg-[var(--panel-2)] text-[var(--text)] focus:outline-none focus:ring-1 focus:ring-blue-500"
-                            />
-                            <input
-                              value={visitaForm.responsavel}
-                              onChange={(e) => setVisitaForm((p) => ({ ...p, responsavel: e.target.value }))}
-                              placeholder="Responsável"
-                              className="w-full px-3 py-1.5 rounded-lg border border-[var(--border)] text-xs bg-[var(--panel-2)] text-[var(--text)] focus:outline-none focus:ring-1 focus:ring-blue-500"
-                            />
-                            <textarea
-                              value={visitaForm.observacoes}
-                              onChange={(e) => setVisitaForm((p) => ({ ...p, observacoes: e.target.value }))}
-                              placeholder="Observações"
-                              rows={2}
-                              className="w-full px-3 py-1.5 rounded-lg border border-[var(--border)] text-xs bg-[var(--panel-2)] text-[var(--text)] focus:outline-none focus:ring-1 focus:ring-blue-500 resize-none"
-                            />
-                            <label className="flex items-center gap-2 cursor-pointer text-xs text-slate-400 hover:text-slate-600">
-                              <CameraIcon className="w-4 h-4" />
-                              {visitaForm.foto_base64 ? "Foto selecionada ✓" : "Adicionar foto"}
-                              <input type="file" accept="image/*" className="hidden" onChange={handleFotoChange} />
-                            </label>
-                            <button
-                              onClick={() => handleAddVisita(empresa.id)}
-                              disabled={savingVisita}
-                              className="w-full py-1.5 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-xs font-medium disabled:opacity-50 cursor-pointer"
-                            >
-                              {savingVisita ? "Registrando..." : "Registrar visita"}
-                            </button>
-                          </div>
-                        )}
-                      </div>
-                    </motion.div>
-                  )}
-                </AnimatePresence>
               </div>
             );
           })}
         </div>
       )}
+
+      {/* Detail drawer */}
+      {(() => {
+        const empresa = viewingEmpresa;
+        const det = empresa ? detalhe[empresa.id] : null;
+        const risco = empresa ? (RISCO_CONFIG[empresa.status_risco] || RISCO_CONFIG.baixo) : null;
+        const expansao = empresa ? (EXPANSAO_CONFIG[empresa.potencial_expansao] || EXPANSAO_CONFIG.baixo) : null;
+        const fotoHero = det?.visitas?.find((v) => v.foto_base64)?.foto_base64 || null;
+        return (
+          <NidDrawer
+            open={!!empresa}
+            onClose={() => setViewingEmpresa(null)}
+            ariaLabel={empresa ? `Detalhes da empresa ${empresa.nome}` : "Detalhes da empresa"}
+            hero={fotoHero && (
+              <img
+                src={fotoHero}
+                alt={`Foto de visita a ${empresa.nome}`}
+                style={{ width: "100%", height: 200, objectFit: "cover", display: "block" }}
+              />
+            )}
+          >
+            {empresa && (
+              <div className="space-y-4">
+                <div className="pr-8">
+                  <h3 className="text-base font-bold text-[var(--text)] leading-snug">{empresa.nome}</h3>
+                  {empresa.setor && <p className="text-xs text-slate-400 mt-1">{empresa.setor}</p>}
+                </div>
+                <div className="flex flex-wrap gap-1.5">
+                  <span className={`px-2 py-0.5 rounded-full text-[11px] font-medium ${risco.color}`}>{risco.label}</span>
+                  <span className={`px-2 py-0.5 rounded-full text-[11px] font-medium ${expansao.color}`}>{expansao.label}</span>
+                </div>
+                {empresa.num_empregos != null && (
+                  <p className="text-xs text-slate-400">{empresa.num_empregos.toLocaleString("pt-BR")} emprego(s)</p>
+                )}
+
+                {/* Timeline de visitas */}
+                <div className="border-t border-[var(--border)] pt-3 space-y-4">
+                  <p className="text-xs font-semibold text-[var(--text-dim)] uppercase tracking-wider">Histórico de visitas</p>
+                  {det ? (
+                    det.visitas.length === 0 ? (
+                      <p className="text-xs text-slate-400 text-center py-2">Nenhuma visita registrada.</p>
+                    ) : (
+                      <div className="space-y-3">
+                        {det.visitas.map((v) => (
+                          <div key={v.id} className="flex gap-3">
+                            <div className="flex flex-col items-center">
+                              <div className="w-2 h-2 rounded-full bg-blue-500 mt-1 shrink-0" />
+                              <div className="w-px flex-1 bg-[var(--panel-2)] mt-1" />
+                            </div>
+                            <div className="flex-1 pb-2 space-y-1">
+                              <div className="flex items-center justify-between gap-2">
+                                <p className="text-xs font-medium text-[var(--text-dim)]">{fmtDate(v.data_visita)}</p>
+                                {canEditar && (
+                                  <button
+                                    onClick={() => handleDeleteVisita(v, empresa.id)}
+                                    disabled={deletingVisitaId === v.id}
+                                    className="p-1 rounded text-slate-300 hover:text-red-500 transition-colors cursor-pointer"
+                                  >
+                                    <TrashIcon className="w-3 h-3" />
+                                  </button>
+                                )}
+                              </div>
+                              {v.responsavel && <p className="text-xs text-slate-400">{v.responsavel}</p>}
+                              {v.observacoes && <p className="text-xs text-[var(--text-dim)]">{v.observacoes}</p>}
+                              {v.foto_base64 && (
+                                <img src={v.foto_base64} alt="Foto da visita" className="w-16 h-16 object-cover rounded mt-1" />
+                              )}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )
+                  ) : (
+                    <div className="flex justify-center py-2">
+                      <div className="w-4 h-4 border-2 border-blue-600 border-t-transparent rounded-full animate-spin" />
+                    </div>
+                  )}
+
+                  {/* Add visit form (backend: visitas exigem retencao/editar) */}
+                  {canEditar && (
+                    <div className="border-t border-[var(--border)] pt-3 space-y-2">
+                      <p className="text-xs font-semibold text-[var(--text-dim)] uppercase tracking-wider">Registrar nova visita</p>
+                      <input
+                        type="date"
+                        value={visitaForm.data_visita}
+                        onChange={(e) => setVisitaForm((p) => ({ ...p, data_visita: e.target.value }))}
+                        className="w-full px-3 py-1.5 rounded-lg border border-[var(--border)] text-xs bg-[var(--panel-2)] text-[var(--text)] focus:outline-none focus:ring-1 focus:ring-blue-500"
+                      />
+                      <input
+                        value={visitaForm.responsavel}
+                        onChange={(e) => setVisitaForm((p) => ({ ...p, responsavel: e.target.value }))}
+                        placeholder="Responsável"
+                        className="w-full px-3 py-1.5 rounded-lg border border-[var(--border)] text-xs bg-[var(--panel-2)] text-[var(--text)] focus:outline-none focus:ring-1 focus:ring-blue-500"
+                      />
+                      <textarea
+                        value={visitaForm.observacoes}
+                        onChange={(e) => setVisitaForm((p) => ({ ...p, observacoes: e.target.value }))}
+                        placeholder="Observações"
+                        rows={2}
+                        className="w-full px-3 py-1.5 rounded-lg border border-[var(--border)] text-xs bg-[var(--panel-2)] text-[var(--text)] focus:outline-none focus:ring-1 focus:ring-blue-500 resize-none"
+                      />
+                      <label className="flex items-center gap-2 cursor-pointer text-xs text-slate-400 hover:text-slate-600">
+                        <CameraIcon className="w-4 h-4" />
+                        {visitaForm.foto_base64 ? "Foto selecionada ✓" : "Adicionar foto"}
+                        <input type="file" accept="image/*" className="hidden" onChange={handleFotoChange} />
+                      </label>
+                      <button
+                        onClick={() => handleAddVisita(empresa.id)}
+                        disabled={savingVisita}
+                        className="w-full py-1.5 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-xs font-medium disabled:opacity-50 cursor-pointer"
+                      >
+                        {savingVisita ? "Registrando..." : "Registrar visita"}
+                      </button>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+          </NidDrawer>
+        );
+      })()}
 
       {/* Delete confirm */}
       <AnimatePresence>
