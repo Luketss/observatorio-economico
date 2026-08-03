@@ -17,7 +17,11 @@ EXCEÇÕES DELIBERADAS (não sofrem fallback):
 - `por_tipo_def` (PCD): apenas códigos em TIPO_DEFICIENCIA_MAP (1–6) entram
   no recorte e no indicador pcd (0, 9 = "Não Identificado" ficam fora).
 - `salario`: só média valores > 0 (desligados sem renda = ignorados).
+
+ESCALA: execução Brasil-inteiro mantém agregados de todos os municípios em
+memória — usar com parcimônia até existir o worker separado (RAIS/CNPJ).
 """
+import contextlib
 import csv
 import ftplib
 import os
@@ -148,8 +152,8 @@ def agregar_arquivo(linhas, ibge6_para_mid, competencias_alvo, agg, sinal: int =
         _soma(agg["por_escolaridade"], (mid, ano, mes, GRAU_INSTRUCAO_MAP.get(col(row, "graudeinstrução"), "Não informado")), lado, inc)
 
         secao = col(row, "seção").upper()
-        secao_label = CNAE_SECAO_DESC.get(secao, secao) if secao else "Não informada"
-        secao_chave = secao if secao else "?"
+        secao_label = (CNAE_SECAO_DESC.get(secao, secao) if secao else "Não informada")[:150]
+        secao_chave = (secao or "?")[:5]
         _soma(agg["por_cnae"], (mid, ano, mes, secao_chave, secao_label), lado, inc)
 
         try:
@@ -159,7 +163,7 @@ def agregar_arquivo(linhas, ibge6_para_mid, competencias_alvo, agg, sinal: int =
         _soma(agg["por_faixa_etaria"], (mid, ano, mes, _faixa_etaria(idade)), lado, inc)
 
         tipo_mov = col(row, "tipomovimentação")
-        rotulo_mov = TIPO_MOV_MAP.get(tipo_mov, f"Código {tipo_mov}" if tipo_mov else "Não informado")
+        rotulo_mov = TIPO_MOV_MAP.get(tipo_mov, f"Código {tipo_mov}" if tipo_mov else "Não informado")[:80]
         _soma(agg["por_tipo_mov"], (mid, ano, mes, rotulo_mov), lado, inc)
 
         tipo_def = col(row, "tipodedeficiência")
@@ -168,13 +172,13 @@ def agregar_arquivo(linhas, ibge6_para_mid, competencias_alvo, agg, sinal: int =
             _soma(agg["por_tipo_def"], (mid, ano, mes, TIPO_DEFICIENCIA_MAP[tipo_def]), lado, inc)
 
         raw_tam = col(row, "tamestabjan")
-        tam = TAMANHO_ESTAB_MAP.get(raw_tam) or (f"Código {raw_tam}" if raw_tam else "Não informado")
+        tam = (TAMANHO_ESTAB_MAP.get(raw_tam) or (f"Código {raw_tam}" if raw_tam else "Não informado"))[:60]
         _soma(agg["por_tamanho"], (mid, ano, mes, tam), lado, inc)
         raw_emp = col(row, "tipoempregador")
-        emp = TIPO_EMPREGADOR_MAP.get(raw_emp) or (f"Código {raw_emp}" if raw_emp else "Não informado")
+        emp = (TIPO_EMPREGADOR_MAP.get(raw_emp) or (f"Código {raw_emp}" if raw_emp else "Não informado"))[:80]
         _soma(agg["por_tipo_emp"], (mid, ano, mes, emp), lado, inc)
         raw_estab = col(row, "tipoestabelecimento")
-        estab = TIPO_ESTABELECIMENTO_MAP.get(raw_estab) or (f"Código {raw_estab}" if raw_estab else "Não informado")
+        estab = (TIPO_ESTABELECIMENTO_MAP.get(raw_estab) or (f"Código {raw_estab}" if raw_estab else "Não informado"))[:80]
         _soma(agg["por_tipo_estab"], (mid, ano, mes, estab), lado, inc)
 
         sal = parse_valor_br(col(row, "salário")) or 0.0
@@ -266,6 +270,28 @@ def baixar_e_extrair(ftp, tipo: str, ano: int, mes: int, destino_dir: str) -> st
     return os.path.join(destino_dir, nomes[0])
 
 
+NAO_PUBLICADO = "nao_publicado"
+
+
+def baixar_tolerante(ftp, tipo: str, ano: int, mes: int, destino_dir: str):
+    """baixar_e_extrair com UMA reconexão em falha transitória de rede.
+    Retorna (ftp, caminho, erro): caminho None quando não baixou; erro None
+    no sucesso, NAO_PUBLICADO (550) ou a mensagem da falha de rede — quem
+    chama decide o aviso. O ftp retornado pode ser uma conexão nova."""
+    try:
+        caminho = baixar_e_extrair(ftp, tipo, ano, mes, destino_dir)
+        return ftp, caminho, (None if caminho else NAO_PUBLICADO)
+    except ftplib.all_errors:
+        with contextlib.suppress(Exception):
+            ftp.close()
+        try:
+            ftp = conectar_ftp()
+            caminho = baixar_e_extrair(ftp, tipo, ano, mes, destino_dir)
+            return ftp, caminho, (None if caminho else NAO_PUBLICADO)
+        except ftplib.all_errors as exc:
+            return ftp, None, f"{type(exc).__name__}: {exc}"
+
+
 def executar(db, municipios, anos=None, usuario_id=None, notificar=True, progresso=None) -> ResumoIngestao:
     from app.models.caged import (
         CagedIndicadoresContrato, CagedMovimentacao, CagedPorCnae,
@@ -303,11 +329,16 @@ def executar(db, municipios, anos=None, usuario_id=None, notificar=True, progres
             if progresso:
                 progresso(i - 1, total_meses, f"MOV {ano}-{mes:02d}: baixando")
             with tempfile.TemporaryDirectory(prefix="caged_") as tmp:
-                caminho = baixar_e_extrair(ftp, "MOV", ano, mes, tmp)
+                ftp, caminho, erro = baixar_tolerante(ftp, "MOV", ano, mes, tmp)
                 if caminho is None:
-                    resumo.erros.append(
-                        f"CAGED {ano}-{mes:02d}: competência ainda não publicada — mês pulado"
-                    )
+                    if erro == NAO_PUBLICADO:
+                        resumo.erros.append(
+                            f"CAGED {ano}-{mes:02d}: competência ainda não publicada — mês pulado"
+                        )
+                    else:
+                        resumo.erros.append(
+                            f"CAGED MOV {ano}-{mes:02d}: falha de rede ({erro}) — mês pulado, dados existentes preservados"
+                        )
                     continue
                 if progresso:
                     progresso(i, total_meses, f"MOV {ano}-{mes:02d}: agregando")
@@ -325,9 +356,13 @@ def executar(db, municipios, anos=None, usuario_id=None, notificar=True, progres
                 progresso(total_meses, total_meses, f"ajustes {ano}-{mes:02d} (FOR/EXC)")
             for tipo, sinal in (("FOR", 1), ("EXC", -1)):
                 with tempfile.TemporaryDirectory(prefix="caged_") as tmp:
-                    caminho = baixar_e_extrair(ftp, tipo, ano, mes, tmp)
+                    ftp, caminho, erro = baixar_tolerante(ftp, tipo, ano, mes, tmp)
                     if caminho is None:
-                        continue  # ajuste do mês ainda não publicado — normal
+                        if erro is not None and erro != NAO_PUBLICADO:
+                            resumo.erros.append(
+                                f"CAGED {tipo} {ano}-{mes:02d}: falha de rede ({erro}) — ajuste pulado"
+                            )
+                        continue  # 550 = ajuste do mês ainda não publicado — normal
                     with open(caminho, newline="", encoding="utf-8-sig") as f:
                         agregar_arquivo(f, alvo, meses_ok, agg, sinal=sinal)
     finally:

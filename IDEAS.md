@@ -252,6 +252,7 @@ Pipeline que baixa e ingere automaticamente os principais datasets de qualquer m
 
 **O que falta para o Demo Express completo**:
 - Fontes pesadas (microdados GB): **RAIS, Empresas/CNPJ** — exigem worker separado no Railway (a tabela de jobs já suporta; mover o executor) — *CAGED implementado via FTP PDET automático com ajustes MOV+FOR−EXC (2026-08-02)*
+- Manutenção anual do CAGED: `caged_indicadores_contrato` do ano Y-1 roda com `anos=[ano anterior]` por volta de fevereiro para consolidar o indicador anual (lag de publicação do PDET), já que janelas padrão de 12 meses deixam Y-1 permanentemente com 11/12 meses
 - Fontes estaduais: **arrecadação e VAF** (portais SEF por UF, sem API padronizada)
 - **IPS** (xlsx anual) e **INSS** (fonte a confirmar)
 - **Agendamento/cron** (atualização mensal automática por fonte) e **cancelamento** de job em andamento

@@ -7,11 +7,16 @@ import ftplib
 import io
 from datetime import date
 
+import py7zr
+
+from app.services.ingestao_automatica import caged_pdet
 from app.services.ingestao_automatica.caged_pdet import (
+    NAO_PUBLICADO,
     SEXO_MAP,
     agregar_arquivo,
     anos_completos,
     baixar_e_extrair,
+    baixar_tolerante,
     meses_forexc,
     novo_agregados,
 )
@@ -128,6 +133,17 @@ def test_nenhum_dado_descartado_nos_recortes():
     assert agg["por_cnae"][(42, 2025, 6, "?", "Não informada")]["admissoes"] == 1
 
 
+def test_rotulo_grande_e_truncado_ao_limite_da_coluna():
+    # tamanho: String(60) em app/models/caged.py — código cru inédito não pode
+    # estourar a coluna do banco.
+    codigo_grande = "9" * 70
+    agg = _agrega([_linha(tam=codigo_grande)])
+    rotulo_esperado = f"Código {codigo_grande}"[:60]
+    assert len(rotulo_esperado) == 60
+    chave = (42, 2025, 6, rotulo_esperado)
+    assert agg["por_tamanho"][chave]["admissoes"] == 1
+
+
 def test_anos_completos_exige_todos_os_meses_publicados():
     meses_2024 = {(2024, m) for m in range(1, 13)}
     # 2024 completo; 2025 até o último publicado (2025-06) completo
@@ -161,3 +177,79 @@ def test_baixar_e_extrair_550_vira_none(tmp_path):
     assert baixar_e_extrair(ftp, "MOV", 2026, 7, str(tmp_path)) is None
     assert ftp.cmds == ["RETR /pdet/microdados/NOVO CAGED/2026/202607/CAGEDMOV202607.7z"]
     assert list(tmp_path.iterdir()) == []  # nada de .7z parcial deixado para trás
+
+
+def _bytes_7z_valido(tmp_path, nome_interno):
+    """Monta um .7z real (via py7zr) contendo um único arquivo txt — usado
+    para exercitar o baixar_e_extrair de verdade (sem mockar a extração)."""
+    origem_dir = tmp_path / "origem_7z"
+    origem_dir.mkdir()
+    arquivo = origem_dir / nome_interno
+    arquivo.write_text("dado\n", encoding="utf-8")
+    caminho_7z = origem_dir / "pacote.7z"
+    with py7zr.SevenZipFile(caminho_7z, "w") as z:
+        z.write(str(arquivo), nome_interno)
+    return caminho_7z.read_bytes()
+
+
+class _FtpFalhaRede:
+    """Falha transitória de rede (timeout) — não é 550, deve disparar reconexão."""
+
+    def __init__(self):
+        self.cmds = []
+        self.closed = False
+
+    def retrbinary(self, cmd, cb):
+        self.cmds.append(cmd)
+        raise ftplib.error_temp("421 timeout")
+
+    def close(self):
+        self.closed = True
+
+
+class _FtpSucesso:
+    def __init__(self, dados: bytes):
+        self.dados = dados
+        self.cmds = []
+
+    def retrbinary(self, cmd, cb):
+        self.cmds.append(cmd)
+        cb(self.dados)
+
+
+def test_baixar_tolerante_reconecta_apos_falha_transitoria(tmp_path, monkeypatch):
+    dados = _bytes_7z_valido(tmp_path, "CAGEDMOV202607")
+    ftp_ruim = _FtpFalhaRede()
+    ftp_bom = _FtpSucesso(dados)
+    monkeypatch.setattr(caged_pdet, "conectar_ftp", lambda: ftp_bom)
+    destino = tmp_path / "destino"
+    destino.mkdir()
+
+    ftp, caminho, erro = baixar_tolerante(ftp_ruim, "MOV", 2026, 7, str(destino))
+
+    assert ftp is ftp_bom
+    assert erro is None
+    assert caminho == str(destino / "CAGEDMOV202607")
+    assert ftp_ruim.closed is True  # conexão ruim foi fechada antes de reconectar
+
+
+def test_baixar_tolerante_falha_dupla_retorna_erro_de_rede(tmp_path, monkeypatch):
+    ftp_ruim = _FtpFalhaRede()
+    ftp_tambem_ruim = _FtpFalhaRede()
+    monkeypatch.setattr(caged_pdet, "conectar_ftp", lambda: ftp_tambem_ruim)
+
+    ftp, caminho, erro = baixar_tolerante(ftp_ruim, "MOV", 2026, 7, str(tmp_path))
+
+    assert caminho is None
+    assert erro and erro != NAO_PUBLICADO
+    assert "421" in erro
+
+
+def test_baixar_tolerante_550_retorna_nao_publicado(tmp_path):
+    ftp = _FtpInexistente()
+
+    ftp_retornado, caminho, erro = baixar_tolerante(ftp, "MOV", 2026, 7, str(tmp_path))
+
+    assert ftp_retornado is ftp
+    assert caminho is None
+    assert erro == NAO_PUBLICADO
