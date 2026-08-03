@@ -1326,6 +1326,57 @@ body.theme-light .tbl-row-checkbox.partial::after {
   flex-shrink: 0;
 }
 
+/* NidDrawer — painel lateral de detalhes (desliza da direita) */
+.nid-drawer-backdrop {
+  position: fixed; inset: 0;
+  z-index: 100;
+  background: rgba(5, 6, 16, 0.6);
+  backdrop-filter: blur(8px);
+  display: flex; justify-content: flex-end;
+}
+body.theme-light .nid-drawer-backdrop { background: rgba(15, 23, 42, 0.45); }
+
+.nid-drawer {
+  position: relative;
+  height: 100dvh;
+  width: 100vw;
+  background: var(--panel);
+  border-left: 1px solid var(--border-strong);
+  box-shadow: var(--shadow-card);
+  display: flex; flex-direction: column;
+  overflow: hidden;
+}
+@media (min-width: 768px)  { .nid-drawer { width: 560px; } }
+@media (min-width: 1280px) { .nid-drawer { width: 680px; } }
+@media (min-width: 1600px) { .nid-drawer { width: 800px; } }
+
+.nid-drawer__close {
+  position: absolute; top: 14px; right: 14px; z-index: 2;
+  background: color-mix(in oklab, var(--panel) 78%, transparent);
+  backdrop-filter: blur(6px);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 6px; cursor: pointer;
+  color: var(--text-dim);
+  transition: color 0.12s, background 0.12s;
+}
+.nid-drawer__close:hover { color: var(--text); background: var(--panel-2); }
+
+.nid-drawer__hero { flex-shrink: 0; }
+
+.nid-drawer__body {
+  flex: 1; min-height: 0;
+  overflow-y: auto;
+  padding: 20px 24px;
+}
+
+.nid-drawer__footer {
+  flex-shrink: 0;
+  padding: 14px 24px;
+  border-top: 1px solid var(--border);
+  background: var(--panel-2);
+}
+
 /* NidField — labeled form field inside a modal */
 .nid-field { display: grid; gap: 6px; margin-bottom: 14px; }
 .nid-field:last-child { margin-bottom: 0; }
