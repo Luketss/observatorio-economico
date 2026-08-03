@@ -3,6 +3,7 @@
 Header real do PDET (validado 2026-08-02); saldomovimentação ±1 por linha;
 EXC entra com sinal -1 no MESMO lado (admissão excluída decrementa admissões,
 não vira desligamento)."""
+import ftplib
 import io
 from datetime import date
 
@@ -10,6 +11,7 @@ from app.services.ingestao_automatica.caged_pdet import (
     SEXO_MAP,
     agregar_arquivo,
     anos_completos,
+    baixar_e_extrair,
     meses_forexc,
     novo_agregados,
 )
@@ -143,3 +145,12 @@ def test_meses_forexc_vai_da_janela_ate_o_mes_anterior_a_hoje():
     meses = meses_forexc(janela, hoje=date(2026, 7, 15))
     assert meses[0] == (2024, 1) and meses[-1] == (2026, 6)
     assert len(meses) == 30
+
+
+class _FtpInexistente:
+    def retrbinary(self, cmd, cb):
+        raise ftplib.error_perm("550 The system cannot find the file specified.")
+
+
+def test_baixar_e_extrair_550_vira_none(tmp_path):
+    assert baixar_e_extrair(_FtpInexistente(), "MOV", 2026, 7, str(tmp_path)) is None

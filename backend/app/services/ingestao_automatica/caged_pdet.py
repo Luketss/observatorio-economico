@@ -19,6 +19,11 @@ EXCEÇÕES DELIBERADAS (não sofrem fallback):
 - `salario`: só média valores > 0 (desligados sem renda = ignorados).
 """
 import csv
+import ftplib
+import os
+from ftplib import FTP
+
+import py7zr
 
 from app.services.ingestao_automatica.base import FonteAutomatica, ResumoIngestao, registrar
 from app.services.ingestao_automatica.util import parse_valor_br
@@ -222,3 +227,34 @@ def meses_forexc(competencias: list, hoje) -> list:
         out.append((ano, mes))
         ano, mes = (ano, mes + 1) if mes < 12 else (ano + 1, 1)
     return out
+
+
+FTP_HOST = "ftp.mtps.gov.br"
+FTP_DIR = "/pdet/microdados/NOVO CAGED/{ano}/{ano}{mes:02d}"
+
+
+def conectar_ftp() -> "FTP":
+    ftp = FTP(FTP_HOST, timeout=120)
+    ftp.login()
+    ftp.encoding = "latin-1"  # caminhos do PDET têm acento
+    return ftp
+
+
+def baixar_e_extrair(ftp, tipo: str, ano: int, mes: int, destino_dir: str) -> str | None:
+    """RETR do CAGED{tipo}{AAAAMM}.7z para disco + extractall (py7zr 1.1 não
+    lê em memória). 550 = competência não publicada → None (aviso, não erro)."""
+    nome = f"CAGED{tipo}{ano}{mes:02d}"
+    remoto = f"{FTP_DIR.format(ano=ano, mes=mes)}/{nome}.7z"
+    caminho_7z = os.path.join(destino_dir, f"{nome}.7z")
+    try:
+        with open(caminho_7z, "wb") as f:
+            ftp.retrbinary(f"RETR {remoto}", f.write)
+    except ftplib.error_perm as exc:
+        if str(exc).startswith("550"):
+            return None
+        raise
+    with py7zr.SevenZipFile(caminho_7z) as z:
+        nomes = z.getnames()
+        z.extractall(destino_dir)
+    os.remove(caminho_7z)
+    return os.path.join(destino_dir, nomes[0])
