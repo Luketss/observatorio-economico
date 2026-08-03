@@ -251,7 +251,7 @@ Pipeline que baixa e ingere automaticamente os principais datasets de qualquer m
 - **Execução one-click de todas as fontes** (jul/2026): meta-job `dataset="todas"` encadeia as 10 fontes na ordem certa (população primeiro; captação/emendas por último), com isolamento de falha por fonte e captação expandida para a UF dos municípios selecionados
 
 **O que falta para o Demo Express completo**:
-- Fontes pesadas (microdados GB): **CAGED, RAIS, Empresas/CNPJ** — exigem worker separado no Railway (a tabela de jobs já suporta; mover o executor)
+- Fontes pesadas (microdados GB): **RAIS, Empresas/CNPJ** — exigem worker separado no Railway (a tabela de jobs já suporta; mover o executor) — *CAGED implementado via FTP PDET automático com ajustes MOV+FOR−EXC (2026-08-02)*
 - Fontes estaduais: **arrecadação e VAF** (portais SEF por UF, sem API padronizada)
 - **IPS** (xlsx anual) e **INSS** (fonte a confirmar)
 - **Agendamento/cron** (atualização mensal automática por fonte) e **cancelamento** de job em andamento
