@@ -63,11 +63,13 @@ Loop principal:
   processa sequencialmente (1 claim por vez).
 - Heartbeat: callback a cada 25 municípios/etapa + ticker 60s — inalterados, rodam no
   processo que executa.
-- Sweep lazy de órfãos na API (`_job_ativo`/`obter_job`) — inalterado; cobre a queda do
-  worker. Um job `pendente` com worker parado NÃO vira órfão (órfão exige `executando`):
-  fica na fila até o worker voltar. Comportamento aceito e documentado — o README
-  instrui a conferir o serviço worker se um job ficar `pendente` por muito tempo (não
-  existe abortar manual hoje; segue no backlog junto com o cancelamento de job).
+- Sweep lazy de órfãos na API (`_job_ativo`/`obter_job`) — inalterado; cobre tanto a
+  queda do worker no meio de um job quanto um `pendente` que nunca foi reivindicado:
+  `STATUS_ATIVOS = (pendente, executando)` e `job_orfao` trata os dois igual — sem
+  atividade (heartbeat/criação) há mais de 10 minutos, o job vira `abortado` na
+  próxima consulta às telas de coleta. Não existe abortar manual hoje (segue no
+  backlog junto com o cancelamento de job) — o README instrui conferir o serviço
+  worker se um job ficar `pendente`.
 - Fontes/registry/meta-job `todas`: sem mudança — o worker importa o mesmo pacote.
 
 ## 4. Dev e deploy

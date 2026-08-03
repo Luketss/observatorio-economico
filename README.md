@@ -358,10 +358,12 @@ nesse modo.
 3. Adicionar `INGESTAO_EXECUTOR=worker` **no serviço da API** e redeploy.
 
 **Rollback:** remover `INGESTAO_EXECUTOR` da API (volta ao modo inline) e pausar
-o serviço worker. Um job que ficar `pendente` por muito tempo indica worker
-parado — conferir os logs do serviço (não existe abortar manual; o job espera).
-Queda do worker no meio de um job: o job fica sem heartbeat e é marcado
-`abortado` em até 10 minutos pelo sweep da API.
+o serviço worker. Um job que ficar `pendente` indica worker parado — conferir
+os logs do serviço. Não existe abortar manual, mas o sweep da API marca
+`abortado` qualquer job ativo (`pendente` ou `executando`) sem atividade há
+mais de 10 minutos, na próxima consulta às telas de coleta — isso cobre tanto
+um worker que nunca chegou a reivindicar o job quanto uma queda no meio da
+execução. Depois é só disparar de novo com o worker de pé.
 
 ### Dinheiro na Mesa & Radar de Emendas
 
