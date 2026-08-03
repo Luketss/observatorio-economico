@@ -46,6 +46,8 @@ Mesmos 13 destinos e mesma estrutura de agregação do loader manual. Diferença
 
 `caged_por_cnae` usa `seção` (letra A–U) + `CNAE_SECAO_DESC` (reutilizado). Faixa etária pela função `_faixa_etaria` (reutilizada). Salário: média ponderada só de valores > 0, somas com sinal (EXC subtrai).
 
+**Nenhum dado da origem é descartado silenciosamente nos recortes** (decisão do usuário, 2026-08-02): código fora do mapa vira bucket rotulado — rótulo oficial de ruído quando existir ("Ignorado", "Inválido", "Não se aplica", "Não informado"), senão "Código N"; seção CNAE desconhecida entra com a própria letra como descrição; seção vazia vira "?"/"Não informada". Exceções deliberadas (não são descarte de dado): `caged_por_tipo_deficiencia` é PCD-only por semântica da tabela (códigos 0=Não Deficiente e 9=Não Identificado ficam fora do recorte e do indicador `total_pcd`), e a média salarial considera apenas valores > 0.
+
 Código compartilhado com o loader manual (mapas/`_faixa_etaria`/`CNAE_SECAO_DESC`): o módulo novo importa do `ingestao/carregar_caged.py` o que for idêntico, sem duplicar — exceto os mapas que divergem (sexo/tipomovimentação/grau), que são próprios da fonte.
 
 ## Gravação

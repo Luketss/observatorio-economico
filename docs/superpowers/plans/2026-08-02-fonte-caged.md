@@ -369,6 +369,8 @@ git commit -m "feat(ingestao): agregacao pura do Novo CAGED (mapas oficiais, MOV
 
 ---
 
+> **Alteração (2026-08-02, decisão do usuário, fix round da Task 1):** nenhum dado da origem é descartado silenciosamente nos recortes. `TAMANHO_ESTAB_MAP` ganha `"90": "Não informado", "97": "Não se aplica", "98": "Inválido", "99": "Ignorado"`; `TIPO_EMPREGADOR_MAP` e `TIPO_ESTABELECIMENTO_MAP` ganham `"9": "Não informado"`; os três recortes usam fallback `f"Código {raw}"` (ou "Não informado" se vazio) em vez de pular a linha; seção CNAE desconhecida entra com a letra como descrição e seção vazia vira `"?"`/"Não informada". Exceções deliberadas: `por_tipo_def` continua PCD-only (0/9 fora, inclusive do indicador pcd) e salário só média valores > 0. Teste `test_nenhum_dado_descartado_nos_recortes` cobre a regra.
+
 ### Task 2: Janela de competências + regra do ano completo (TDD)
 
 **Files:**
