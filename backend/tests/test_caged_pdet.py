@@ -102,3 +102,22 @@ def test_cnae_faixa_etaria_e_tamanho_oficial():
 def test_linha_malformada_nao_derruba():
     agg = _agrega(["lixo;sem;colunas", _linha()])
     assert agg["mensal"][(42, 2025, 6)]["admissoes"] == 1
+
+
+def test_grau_instrucao_completo():
+    # Verifica que código "80" = "Pós-graduação completa" existe
+    from app.services.ingestao_automatica.caged_pdet import GRAU_INSTRUCAO_MAP
+    assert GRAU_INSTRUCAO_MAP["80"] == "Pós-graduação completa"
+
+
+def test_nenhum_dado_descartado_nos_recortes():
+    agg = _agrega([
+        _linha(tam="99"), _linha(tam="123"), _linha(tipo_emp="9"),
+        _linha(tipo_estab="9"), _linha(secao="Z"), _linha(secao=""),
+    ])
+    assert agg["por_tamanho"][(42, 2025, 6, "Ignorado")]["admissoes"] == 1
+    assert agg["por_tamanho"][(42, 2025, 6, "Código 123")]["admissoes"] == 1
+    assert agg["por_tipo_emp"][(42, 2025, 6, "Não informado")]["admissoes"] == 1
+    assert agg["por_tipo_estab"][(42, 2025, 6, "Não informado")]["admissoes"] == 1
+    assert agg["por_cnae"][(42, 2025, 6, "Z", "Z")]["admissoes"] == 1
+    assert agg["por_cnae"][(42, 2025, 6, "?", "Não informada")]["admissoes"] == 1
