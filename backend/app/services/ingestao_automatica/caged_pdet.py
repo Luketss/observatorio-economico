@@ -276,20 +276,24 @@ NAO_PUBLICADO = "nao_publicado"
 def baixar_tolerante(ftp, tipo: str, ano: int, mes: int, destino_dir: str):
     """baixar_e_extrair com UMA reconexão em falha transitória de rede.
     Retorna (ftp, caminho, erro): caminho None quando não baixou; erro None
-    no sucesso, NAO_PUBLICADO (550) ou a mensagem da falha de rede — quem
-    chama decide o aviso. O ftp retornado pode ser uma conexão nova."""
+    no sucesso, NAO_PUBLICADO (550) ou a mensagem da falha de rede. O ftp
+    retornado pode ser conexão nova — ou None quando nem a reconexão foi
+    possível; passar None de volta faz a próxima chamada reconectar."""
     try:
+        if ftp is None:
+            ftp = conectar_ftp()
         caminho = baixar_e_extrair(ftp, tipo, ano, mes, destino_dir)
         return ftp, caminho, (None if caminho else NAO_PUBLICADO)
     except ftplib.all_errors:
         with contextlib.suppress(Exception):
-            ftp.close()
+            if ftp is not None:
+                ftp.close()
         try:
             ftp = conectar_ftp()
             caminho = baixar_e_extrair(ftp, tipo, ano, mes, destino_dir)
             return ftp, caminho, (None if caminho else NAO_PUBLICADO)
         except ftplib.all_errors as exc:
-            return ftp, None, f"{type(exc).__name__}: {exc}"
+            return None, None, f"{type(exc).__name__}: {exc}"
 
 
 def executar(db, municipios, anos=None, usuario_id=None, notificar=True, progresso=None) -> ResumoIngestao:
@@ -358,7 +362,7 @@ def executar(db, municipios, anos=None, usuario_id=None, notificar=True, progres
                 with tempfile.TemporaryDirectory(prefix="caged_") as tmp:
                     ftp, caminho, erro = baixar_tolerante(ftp, tipo, ano, mes, tmp)
                     if caminho is None:
-                        if erro is not None and erro != NAO_PUBLICADO:
+                        if erro != NAO_PUBLICADO:
                             resumo.erros.append(
                                 f"CAGED {tipo} {ano}-{mes:02d}: falha de rede ({erro}) — ajuste pulado"
                             )
@@ -366,10 +370,11 @@ def executar(db, municipios, anos=None, usuario_id=None, notificar=True, progres
                     with open(caminho, newline="", encoding="utf-8-sig") as f:
                         agregar_arquivo(f, alvo, meses_ok, agg, sinal=sinal)
     finally:
-        try:
-            ftp.quit()
-        except Exception:  # noqa: BLE001 — conexão pode já ter caído
-            ftp.close()
+        if ftp is not None:
+            try:
+                ftp.quit()
+            except Exception:  # noqa: BLE001 — conexão pode já ter caído
+                ftp.close()
 
     ultimo_publicado = max(meses_ok)
     anos_ind = anos_completos(meses_ok, ultimo_publicado)

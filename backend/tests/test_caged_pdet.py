@@ -253,3 +253,39 @@ def test_baixar_tolerante_550_retorna_nao_publicado(tmp_path):
     assert ftp_retornado is ftp
     assert caminho is None
     assert erro == NAO_PUBLICADO
+
+
+def test_baixar_tolerante_reconexao_impossivel_retorna_none(tmp_path, monkeypatch):
+    # Regressão: se a rede ainda está fora quando conectar_ftp() é chamado de
+    # novo, a função NÃO pode devolver a conexão original (já fechada) — o
+    # chamador reusaria uma conexão morta no mês seguinte e cairia com
+    # AttributeError (fora de ftplib.all_errors), derrubando o job inteiro.
+    ftp_ruim = _FtpFalhaRede()
+
+    def _reconectar_falha():
+        raise ftplib.error_temp("421 reconexão falhou")
+
+    monkeypatch.setattr(caged_pdet, "conectar_ftp", _reconectar_falha)
+
+    ftp, caminho, erro = baixar_tolerante(ftp_ruim, "MOV", 2026, 7, str(tmp_path))
+
+    assert ftp is None
+    assert caminho is None
+    assert erro and erro != NAO_PUBLICADO
+
+
+def test_baixar_tolerante_reconecta_a_partir_de_none(tmp_path, monkeypatch):
+    # Contrato pós-fix: ftp=None de entrada significa "reconecte antes de
+    # tentar" — é o que o call-site em executar() faz naturalmente no mês
+    # seguinte a uma reconexão impossível.
+    dados = _bytes_7z_valido(tmp_path, "CAGEDMOV202607")
+    ftp_bom = _FtpSucesso(dados)
+    monkeypatch.setattr(caged_pdet, "conectar_ftp", lambda: ftp_bom)
+    destino = tmp_path / "destino"
+    destino.mkdir()
+
+    ftp, caminho, erro = baixar_tolerante(None, "MOV", 2026, 7, str(destino))
+
+    assert ftp is ftp_bom
+    assert erro is None
+    assert caminho == str(destino / "CAGEDMOV202607")
