@@ -13,6 +13,9 @@ import api from "../../services/api";
 import { useToast } from "../../context/ToastContext";
 import { useEscapeKey } from "../../hooks/useEscapeKey";
 import { usePermissao } from "../../hooks/usePermissao";
+import NidDrawer from "../../components/nid/NidDrawer";
+import MarkdownLite from "../../components/nid/MarkdownLite";
+import { propsTituloClicavel } from "../../utils/cliqueAcessivel";
 
 const STATUS_CONFIG = {
   nao_iniciado: { label: "Não iniciado", color: "bg-[var(--panel-2)] text-[var(--text-dim)]", dot: "bg-slate-400" },
@@ -164,8 +167,8 @@ export default function PlanoGovPage() {
       <div className="bg-[var(--panel)] rounded-xl border border-[var(--border)] p-4 space-y-2 hover:shadow-md transition-shadow">
         <div className="flex items-start justify-between gap-2">
           <h4
-            className="font-medium text-[var(--text)] text-sm leading-snug cursor-pointer hover:text-blue-600 transition-colors flex-1"
-            onClick={() => setViewingAcao(acao)}
+            className="font-medium text-[var(--text)] text-sm leading-snug cursor-pointer hover:text-blue-600 transition-colors flex-1 rounded focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
+            {...propsTituloClicavel(() => setViewingAcao(acao))}
           >
             {acao.titulo}
           </h4>
@@ -291,7 +294,7 @@ export default function PlanoGovPage() {
                   const st = STATUS_CONFIG[a.status];
                   return (
                     <tr key={a.id} className="hover:bg-[var(--panel-2)]/30 transition-colors">
-                      <td className="px-6 py-3 font-medium text-[var(--text)] cursor-pointer hover:text-blue-600" onClick={() => setViewingAcao(a)}>{a.titulo}</td>
+                      <td className="px-6 py-3 font-medium text-[var(--text)] cursor-pointer hover:text-blue-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500" {...propsTituloClicavel(() => setViewingAcao(a))}>{a.titulo}</td>
                       <td className="px-6 py-3 text-slate-500">{a.departamento}</td>
                       <td className="px-6 py-3"><span className={`px-2.5 py-1 rounded-full text-xs font-medium ${st.color}`}>{st.label}</span></td>
                       <td className="px-6 py-3 text-slate-400 text-xs">{fmtDate(a.data_prazo) || "—"}</td>
@@ -313,37 +316,37 @@ export default function PlanoGovPage() {
         </div>
       )}
 
-      {/* Detail modal */}
-      <AnimatePresence>
-        {viewingAcao && (
-          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-            className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4"
-            onClick={(e) => { if (e.target === e.currentTarget) setViewingAcao(null); }}
+      {/* Detail drawer */}
+      {(() => {
+        const acao = viewingAcao;
+        const st = acao ? STATUS_CONFIG[acao.status] : null;
+        return (
+          <NidDrawer
+            open={!!acao}
+            onClose={() => setViewingAcao(null)}
+            ariaLabel={acao ? `Detalhes da ação ${acao.titulo}` : "Detalhes da ação"}
           >
-            <motion.div initial={{ scale: 0.95 }} animate={{ scale: 1 }} exit={{ scale: 0.95 }}
-              className="bg-[var(--panel)] rounded-2xl shadow-xl w-full max-w-lg p-6 space-y-4 max-h-[90vh] overflow-y-auto"
-            >
-              <div className="flex items-start justify-between gap-3">
-                <div>
-                  <span className={`px-2.5 py-1 rounded-full text-xs font-medium ${STATUS_CONFIG[viewingAcao.status]?.color}`}>{STATUS_CONFIG[viewingAcao.status]?.label}</span>
-                  <h2 className="text-lg font-bold text-[var(--text)] mt-2">{viewingAcao.titulo}</h2>
-                  <p className="text-sm text-slate-400">{viewingAcao.departamento}</p>
+            {acao && (
+              <div className="space-y-4">
+                <div className="pr-8">
+                  <span className={`px-2.5 py-1 rounded-full text-xs font-medium ${st?.color}`}>{st?.label}</span>
+                  <h2 className="text-lg font-bold text-[var(--text)] mt-2">{acao.titulo}</h2>
+                  <p className="text-sm text-slate-400">{acao.departamento}</p>
                 </div>
-                <button onClick={() => setViewingAcao(null)} className="text-slate-400 hover:text-slate-600"><XMarkIcon className="w-5 h-5" /></button>
+                {acao.descricao && <MarkdownLite texto={acao.descricao} />}
+                <div className="flex flex-wrap gap-4 text-xs text-slate-400 border-t border-[var(--border)] pt-3">
+                  {acao.responsavel && <span><span className="font-medium">Responsável:</span> {acao.responsavel}</span>}
+                  {acao.data_inicio && <span><span className="font-medium">Início:</span> {fmtDate(acao.data_inicio)}</span>}
+                  {acao.data_prazo && <span><span className="font-medium">Prazo:</span> {fmtDate(acao.data_prazo)}</span>}
+                  {acao.departamentos_envolvidos?.length > 0 && (
+                    <span className="w-full"><span className="font-medium">Depts. envolvidos:</span> {acao.departamentos_envolvidos.join(", ")}</span>
+                  )}
+                </div>
               </div>
-              {viewingAcao.descricao && <p className="text-sm text-[var(--text-dim)]">{viewingAcao.descricao}</p>}
-              <div className="flex flex-wrap gap-4 text-xs text-slate-400 border-t border-[var(--border)] pt-3">
-                {viewingAcao.responsavel && <span><span className="font-medium">Responsável:</span> {viewingAcao.responsavel}</span>}
-                {viewingAcao.data_inicio && <span><span className="font-medium">Início:</span> {fmtDate(viewingAcao.data_inicio)}</span>}
-                {viewingAcao.data_prazo && <span><span className="font-medium">Prazo:</span> {fmtDate(viewingAcao.data_prazo)}</span>}
-                {viewingAcao.departamentos_envolvidos?.length > 0 && (
-                  <span className="w-full"><span className="font-medium">Depts. envolvidos:</span> {viewingAcao.departamentos_envolvidos.join(", ")}</span>
-                )}
-              </div>
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+            )}
+          </NidDrawer>
+        );
+      })()}
 
       {/* Form modal */}
       <AnimatePresence>
@@ -392,7 +395,7 @@ export default function PlanoGovPage() {
                 </div>
                 <div className="md:col-span-2 flex flex-col gap-1">
                   <label className="text-xs font-medium text-slate-500 uppercase tracking-wider">Descrição</label>
-                  <textarea value={form.descricao} onChange={(e) => setForm((p) => ({ ...p, descricao: e.target.value }))} rows={3} className="px-3 py-2 rounded-lg border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none" />
+                  <textarea value={form.descricao} onChange={(e) => setForm((p) => ({ ...p, descricao: e.target.value }))} rows={3} placeholder="Aceita ## títulos, - listas e **negrito**" className="px-3 py-2 rounded-lg border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none" />
                 </div>
                 <div className="md:col-span-2 flex items-center gap-3 pt-2">
                   {formError && <p className="text-sm text-red-600 flex-1">{formError}</p>}
