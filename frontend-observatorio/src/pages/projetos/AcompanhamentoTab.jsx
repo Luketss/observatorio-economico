@@ -19,6 +19,8 @@ import { useEscapeKey } from "../../hooks/useEscapeKey";
 import { usePermissao } from "../../hooks/usePermissao";
 import NidTabBar from "../../components/nid/NidTabBar";
 import StatusPill from "../../components/nid/StatusPill";
+import NidDrawer from "../../components/nid/NidDrawer";
+import MarkdownLite from "../../components/nid/MarkdownLite";
 import ChecklistProjeto from "./ChecklistProjeto";
 import { diasAtraso, progresso } from "../../utils/projetoStatus";
 import KanbanDndContext from "../../components/kanban/KanbanDndContext";
@@ -535,95 +537,96 @@ export default function AcompanhamentoTab() {
         </div>
       )}
 
-      {/* Project detail modal */}
-      <AnimatePresence>
-        {viewingProjeto && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="nid-modal-backdrop"
-            onClick={(e) => { if (e.target === e.currentTarget) setViewingProjeto(null); }}
+      {/* Project detail drawer */}
+      {(() => {
+        const p = viewingProjeto;
+        const accentVar = p ? (eixoAccentMap[String(p.eixo_id)] || "--accent-1") : "--accent-1";
+        const coverImg = p ? eixoImagemMap[String(p.eixo_id)] : null;
+        const st = p ? (STATUS_CONFIG[p.status] || STATUS_CONFIG.nao_iniciado) : null;
+        const atraso = p ? diasAtraso(p) : null;
+        const prog = p ? progresso(p.tarefas) : null;
+        return (
+          <NidDrawer
+            open={!!p}
+            onClose={() => setViewingProjeto(null)}
+            ariaLabel={p ? `Detalhes do projeto ${p.titulo}` : "Detalhes do projeto"}
+            hero={p && (
+              coverImg ? (
+                <img
+                  src={coverImg}
+                  alt={eixoLabel(p.eixo_id) || "capa do projeto"}
+                  style={{ width: "100%", height: 200, objectFit: "cover", display: "block" }}
+                />
+              ) : (
+                <div
+                  className="proj-card__img"
+                  style={{ "--proj-accent": `var(${accentVar})`, height: 200, borderRadius: 0, border: "none" }}
+                >
+                  PROJETO · IMAGEM
+                </div>
+              )
+            )}
           >
-            <motion.div
-              initial={{ scale: 0.95 }}
-              animate={{ scale: 1 }}
-              exit={{ scale: 0.95 }}
-              transition={{ type: "spring", stiffness: 300, damping: 30 }}
-              className="nid-modal"
-              style={{ maxWidth: 680 }}
-            >
-              {(() => {
-                const st = STATUS_CONFIG[viewingProjeto.status] || STATUS_CONFIG.nao_iniciado;
-                const atraso = diasAtraso(viewingProjeto);
-                const prog = progresso(viewingProjeto.tarefas);
-                return (
-                  <>
-                    {/* Cabeçalho: pills + título + progresso */}
-                    <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 12 }}>
-                      <div style={{ flex: 1, minWidth: 0 }}>
-                        <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
-                          <StatusPill kind={st.kind} dot label={st.label} />
-                          {atraso !== null && <StatusPill kind="err" dot label={`⚠ Atrasado há ${atraso}d`} />}
-                        </div>
-                        <h2 style={{ fontSize: 17, fontWeight: 700, color: "var(--text)", margin: "8px 0 0" }}>{viewingProjeto.titulo}</h2>
-                        {prog && (
-                          <div style={{ display: "flex", alignItems: "center", gap: 10, marginTop: 10 }}>
-                            <div style={{ flex: 1, height: 6, borderRadius: 999, background: "var(--panel-2)", overflow: "hidden" }}>
-                              <div style={{ width: `${prog.pct}%`, height: "100%", borderRadius: 999, background: "var(--accent-1)" }} />
-                            </div>
-                            <span style={{ fontSize: 11, fontFamily: "var(--font-mono)", color: "var(--text-dim)", flexShrink: 0 }}>
-                              {prog.feitas}/{prog.total} tarefas · {prog.pct}%
-                            </span>
-                          </div>
-                        )}
+            {p && (
+              <div style={{ display: "grid", gap: 14 }}>
+                {/* Cabeçalho: pills + título + progresso */}
+                <div>
+                  <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+                    <StatusPill kind={st.kind} dot label={st.label} />
+                    {atraso !== null && <StatusPill kind="err" dot label={`⚠ Atrasado há ${atraso}d`} />}
+                  </div>
+                  <h2 style={{ fontSize: 18, fontWeight: 700, color: "var(--text)", margin: "8px 0 0" }}>{p.titulo}</h2>
+                  {prog && (
+                    <div style={{ display: "flex", alignItems: "center", gap: 10, marginTop: 10 }}>
+                      <div style={{ flex: 1, height: 6, borderRadius: 999, background: "var(--panel-2)", overflow: "hidden" }}>
+                        <div style={{ width: `${prog.pct}%`, height: "100%", borderRadius: 999, background: "var(--accent-1)" }} />
                       </div>
-                      <button onClick={() => setViewingProjeto(null)} className="nid-modal__close">
-                        <XMarkIcon className="w-5 h-5" />
-                      </button>
+                      <span style={{ fontSize: 11, fontFamily: "var(--font-mono)", color: "var(--text-dim)", flexShrink: 0 }}>
+                        {prog.feitas}/{prog.total} tarefas · {prog.pct}%
+                      </span>
                     </div>
+                  )}
+                </div>
 
-                    {/* Metadados */}
-                    <div style={{ display: "flex", flexWrap: "wrap", gap: "10px 20px", borderTop: "1px solid var(--border)", paddingTop: 12, fontSize: 11, color: "var(--text-dim)", fontFamily: "var(--font-mono)" }}>
-                      {eixoLabel(viewingProjeto.eixo_id) && <span><span style={{ fontWeight: 600 }}>Eixo:</span> {eixoLabel(viewingProjeto.eixo_id)}</span>}
-                      {viewingProjeto.departamento && <span><span style={{ fontWeight: 600 }}>Departamento:</span> {viewingProjeto.departamento}</span>}
-                      {viewingProjeto.responsavel && <span><span style={{ fontWeight: 600 }}>Responsável:</span> {viewingProjeto.responsavel}</span>}
-                      {viewingProjeto.data_inicio && <span><span style={{ fontWeight: 600 }}>Início:</span> {fmtDate(viewingProjeto.data_inicio)}</span>}
-                      {viewingProjeto.data_prazo && (
-                        <span style={{ color: atraso !== null ? "var(--accent-2)" : undefined }}>
-                          <span style={{ fontWeight: 600 }}>Prazo:</span> {fmtDate(viewingProjeto.data_prazo)}
-                        </span>
-                      )}
-                    </div>
+                {/* Metadados */}
+                <div style={{ display: "flex", flexWrap: "wrap", gap: "10px 20px", borderTop: "1px solid var(--border)", paddingTop: 12, fontSize: 11, color: "var(--text-dim)", fontFamily: "var(--font-mono)" }}>
+                  {eixoLabel(p.eixo_id) && <span><span style={{ fontWeight: 600 }}>Eixo:</span> {eixoLabel(p.eixo_id)}</span>}
+                  {p.departamento && <span><span style={{ fontWeight: 600 }}>Departamento:</span> {p.departamento}</span>}
+                  {p.responsavel && <span><span style={{ fontWeight: 600 }}>Responsável:</span> {p.responsavel}</span>}
+                  {p.data_inicio && <span><span style={{ fontWeight: 600 }}>Início:</span> {fmtDate(p.data_inicio)}</span>}
+                  {p.data_prazo && (
+                    <span style={{ color: atraso !== null ? "var(--accent-2)" : undefined }}>
+                      <span style={{ fontWeight: 600 }}>Prazo:</span> {fmtDate(p.data_prazo)}
+                    </span>
+                  )}
+                </div>
 
-                    {/* Descrição */}
-                    {viewingProjeto.descricao && (
-                      <p style={{ fontSize: 13, color: "var(--text-dim)", lineHeight: 1.6, borderTop: "1px solid var(--border)", paddingTop: 12 }}>{viewingProjeto.descricao}</p>
-                    )}
+                {/* Descrição */}
+                {p.descricao && (
+                  <p style={{ fontSize: 13, color: "var(--text-dim)", lineHeight: 1.6, margin: 0, borderTop: "1px solid var(--border)", paddingTop: 12 }}>{p.descricao}</p>
+                )}
 
-                    {/* Checklist */}
-                    <div style={{ borderTop: "1px solid var(--border)", paddingTop: 12 }}>
-                      <ChecklistProjeto
-                        projeto={viewingProjeto}
-                        canEditar={canEditar}
-                        onChange={(tarefas) => handleTarefasChange(viewingProjeto.id, tarefas)}
-                      />
-                    </div>
+                {/* Checklist */}
+                <div style={{ borderTop: "1px solid var(--border)", paddingTop: 12 }}>
+                  <ChecklistProjeto
+                    projeto={p}
+                    canEditar={canEditar}
+                    onChange={(tarefas) => handleTarefasChange(p.id, tarefas)}
+                  />
+                </div>
 
-                    {/* Notas */}
-                    {viewingProjeto.conteudo && (
-                      <div style={{ fontSize: 13, color: "var(--text-dim)", whiteSpace: "pre-line", borderTop: "1px solid var(--border)", paddingTop: 12, lineHeight: 1.6 }}>
-                        <p style={{ fontSize: 10, fontFamily: "var(--font-mono)", textTransform: "uppercase", letterSpacing: "0.08em", color: "var(--text-mute)", margin: "0 0 6px" }}>Notas</p>
-                        {viewingProjeto.conteudo}
-                      </div>
-                    )}
-                  </>
-                );
-              })()}
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+                {/* Notas */}
+                {p.conteudo && (
+                  <div style={{ borderTop: "1px solid var(--border)", paddingTop: 12 }}>
+                    <p style={{ fontSize: 10, fontFamily: "var(--font-mono)", textTransform: "uppercase", letterSpacing: "0.08em", color: "var(--text-mute)", margin: "0 0 6px" }}>Notas</p>
+                    <MarkdownLite texto={p.conteudo} />
+                  </div>
+                )}
+              </div>
+            )}
+          </NidDrawer>
+        );
+      })()}
 
       {/* Delete confirm */}
       <AnimatePresence>
