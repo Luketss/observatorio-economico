@@ -13,11 +13,26 @@ import { useAuth } from "../../context/AuthContext";
 import { useToast } from "../../context/ToastContext";
 import { useEscapeKey } from "../../hooks/useEscapeKey";
 import NidTabBar from "../../components/nid/NidTabBar";
+import NidDrawer from "../../components/nid/NidDrawer";
+import MarkdownLite from "../../components/nid/MarkdownLite";
+import StatusPill from "../../components/nid/StatusPill";
+import { diasAtraso, progresso } from "../../utils/projetoStatus";
 
 // Cycle through accent vars by eixo index
 const EIXO_ACCENTS = ["--accent-1", "--accent-2", "--accent-3", "--accent-4", "--accent-5"];
 
 const defaultForm = { eixo_id: "", titulo: "", descricao: "", conteudo: "" };
+
+const STATUS_CONFIG = {
+  nao_iniciado: { label: "Não iniciado", kind: "draft" },
+  em_andamento: { label: "Em andamento", kind: "warn" },
+  concluido:    { label: "Concluído",    kind: "ok" },
+};
+
+function fmtDate(d) {
+  if (!d) return null;
+  return new Date(d + "T00:00:00").toLocaleDateString("pt-BR");
+}
 
 export default function AcervoTab({ onSelectSuccess }) {
   const { user } = useAuth();
@@ -317,75 +332,108 @@ export default function AcervoTab({ onSelectSuccess }) {
         </div>
       )}
 
-      {/* Template detail modal */}
-      <AnimatePresence>
-        {viewingTemplate && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="nid-modal-backdrop"
-            onClick={(e) => { if (e.target === e.currentTarget) setViewingTemplate(null); }}
+      {/* Template detail drawer */}
+      {(() => {
+        const t = viewingTemplate;
+        const accentVar = t ? (eixoAccentMap[String(t.eixo_id)] || "--accent-1") : "--accent-1";
+        const coverImg = t ? eixoImagemMap[String(t.eixo_id)] : null;
+        const vinculado = t && !isGlobal
+          ? acompanhamentos.find((p) => p.template_id === t.id)
+          : null;
+        const st = vinculado ? (STATUS_CONFIG[vinculado.status] || STATUS_CONFIG.nao_iniciado) : null;
+        const atraso = vinculado ? diasAtraso(vinculado) : null;
+        const prog = vinculado ? progresso(vinculado.tarefas) : null;
+        const podeSelecionar = t && !isGlobal && !selectedTemplateIds.has(t.id);
+        return (
+          <NidDrawer
+            open={!!t}
+            onClose={() => setViewingTemplate(null)}
+            ariaLabel={t ? `Detalhes do projeto ${t.titulo}` : "Detalhes do projeto"}
+            hero={t && (
+              coverImg ? (
+                <img
+                  src={coverImg}
+                  alt={eixoLabel(t.eixo_id) || "capa do projeto"}
+                  style={{ width: "100%", height: 200, objectFit: "cover", display: "block" }}
+                />
+              ) : (
+                <div
+                  className="proj-card__img"
+                  style={{ "--proj-accent": `var(${accentVar})`, height: 200, borderRadius: 0, border: "none" }}
+                >
+                  PROJETO · IMAGEM
+                </div>
+              )
+            )}
+            footer={podeSelecionar && (
+              <button
+                onClick={() => { handleSelecionar(t); setViewingTemplate(null); }}
+                disabled={selecting === t.id}
+                className="proj-card__select-btn"
+                style={{ width: "100%" }}
+              >
+                Selecionar projeto
+              </button>
+            )}
           >
-            <motion.div
-              initial={{ scale: 0.95 }}
-              animate={{ scale: 1 }}
-              exit={{ scale: 0.95 }}
-              transition={{ type: "spring", stiffness: 300, damping: 30 }}
-              className="nid-modal"
-              style={{ maxWidth: 520 }}
-            >
-              <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 12 }}>
+            {t && (
+              <div style={{ display: "grid", gap: 14 }}>
                 <div>
-                  {eixoLabel(viewingTemplate.eixo_id) && (() => {
-                    const idx = eixos.findIndex((e) => e.id === viewingTemplate.eixo_id);
-                    const av = EIXO_ACCENTS[idx >= 0 ? idx % EIXO_ACCENTS.length : 0];
-                    return (
-                      <span
-                        className="proj-card__eixo-tag"
-                        style={{ color: `var(${av})`, background: `color-mix(in oklab, var(${av}) 14%, transparent)`, borderColor: "transparent", marginBottom: 8, display: "inline-block" }}
-                      >
-                        {eixoLabel(viewingTemplate.eixo_id)}
-                      </span>
-                    );
-                  })()}
-                  <h2 style={{ fontSize: 17, fontWeight: 700, color: "var(--text)", margin: 0 }}>{viewingTemplate.titulo}</h2>
-                </div>
-                <button onClick={() => setViewingTemplate(null)} className="nid-modal__close">
-                  <XMarkIcon className="w-5 h-5" />
-                </button>
-              </div>
-              {viewingTemplate.descricao && (
-                <p style={{ fontSize: 13, color: "var(--text-dim)", lineHeight: 1.6 }}>{viewingTemplate.descricao}</p>
-              )}
-              {viewingTemplate.conteudo && (
-                <div style={{ fontSize: 13, color: "var(--text-dim)", whiteSpace: "pre-line", borderTop: "1px solid var(--border)", paddingTop: 16, lineHeight: 1.6 }}>
-                  {viewingTemplate.conteudo}
-                </div>
-              )}
-              {!isGlobal && (
-                <div style={{ borderTop: "1px solid var(--border)", paddingTop: 16 }}>
-                  {selectedTemplateIds.has(viewingTemplate.id) ? (
-                    <div style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13, color: "var(--accent-5)", fontWeight: 500 }}>
-                      <CheckIcon style={{ width: 16, height: 16 }} />
-                      Já adicionado ao acompanhamento
-                    </div>
-                  ) : (
-                    <button
-                      onClick={() => { handleSelecionar(viewingTemplate); setViewingTemplate(null); }}
-                      disabled={selecting === viewingTemplate.id}
-                      className="proj-card__select-btn"
-                      style={{ width: "100%" }}
+                  {eixoLabel(t.eixo_id) && (
+                    <span
+                      className="proj-card__eixo-tag"
+                      style={{
+                        color: `var(${accentVar})`,
+                        background: `color-mix(in oklab, var(${accentVar}) 14%, transparent)`,
+                        borderColor: "transparent",
+                        marginBottom: 8,
+                        display: "inline-block",
+                      }}
                     >
-                      Selecionar projeto
-                    </button>
+                      {eixoLabel(t.eixo_id)}
+                    </span>
                   )}
+                  <h2 style={{ fontSize: 18, fontWeight: 700, color: "var(--text)", margin: 0 }}>{t.titulo}</h2>
                 </div>
-              )}
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+                {t.descricao && (
+                  <p style={{ fontSize: 13, color: "var(--text-dim)", lineHeight: 1.6, margin: 0 }}>{t.descricao}</p>
+                )}
+                {t.conteudo && (
+                  <div style={{ borderTop: "1px solid var(--border)", paddingTop: 14 }}>
+                    <MarkdownLite texto={t.conteudo} />
+                  </div>
+                )}
+                {vinculado && (
+                  <div style={{ borderTop: "1px solid var(--border)", paddingTop: 14, display: "grid", gap: 10 }}>
+                    <p style={{ font: "600 10.5px/1 var(--font-mono)", letterSpacing: "0.08em", textTransform: "uppercase", color: "var(--text-mute)", margin: 0 }}>
+                      Acompanhamento
+                    </p>
+                    <div style={{ display: "flex", gap: 6, flexWrap: "wrap", alignItems: "center" }}>
+                      <StatusPill kind={st.kind} dot label={st.label} />
+                      {atraso !== null && <StatusPill kind="err" dot label={`⚠ Atrasado há ${atraso}d`} />}
+                      {vinculado.data_prazo && (
+                        <span style={{ fontSize: 11, fontFamily: "var(--font-mono)", color: atraso !== null ? "var(--accent-2)" : "var(--text-dim)" }}>
+                          Prazo: {fmtDate(vinculado.data_prazo)}
+                        </span>
+                      )}
+                    </div>
+                    {prog && (
+                      <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                        <div style={{ flex: 1, height: 6, borderRadius: 999, background: "var(--panel-2)", overflow: "hidden" }}>
+                          <div style={{ width: `${prog.pct}%`, height: "100%", borderRadius: 999, background: "var(--accent-1)" }} />
+                        </div>
+                        <span style={{ fontSize: 11, fontFamily: "var(--font-mono)", color: "var(--text-dim)", flexShrink: 0 }}>
+                          {prog.feitas}/{prog.total} tarefas · {prog.pct}%
+                        </span>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
+          </NidDrawer>
+        );
+      })()}
 
       {/* Delete confirm modal */}
       <AnimatePresence>
@@ -485,7 +533,7 @@ export default function AcervoTab({ onSelectSuccess }) {
                     value={form.conteudo}
                     onChange={(e) => setForm((p) => ({ ...p, conteudo: e.target.value }))}
                     rows={6}
-                    placeholder="Detalhes, objetivos, metodologia, resultados esperados..."
+                    placeholder="Detalhes, objetivos, metodologia... Aceita ## títulos, - listas e **negrito**"
                     className="nid-form-input"
                     style={{ resize: "none" }}
                   />
