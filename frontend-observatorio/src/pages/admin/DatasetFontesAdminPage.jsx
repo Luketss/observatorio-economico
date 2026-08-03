@@ -4,6 +4,11 @@ import { CheckIcon, TrashIcon, XMarkIcon } from "@heroicons/react/24/outline";
 import api from "../../services/api";
 import { useToast } from "../../context/ToastContext";
 import MunicipioPicker from "../../components/nid/MunicipioPicker";
+import StatusChip from "../../components/nid/StatusChip";
+import DatasetFontesJobModal from "./DatasetFontesJobModal";
+import {
+  DATASET_TODAS, duracaoJob, labelDataset, labelStatus, linhasJob, resumoTodas, textoResumoTodas,
+} from "../../utils/jobStatus";
 
 const ESTADOS_UF = [
   "AC", "AL", "AP", "AM", "BA", "CE", "DF", "ES", "GO", "MA", "MT", "MS",
@@ -12,47 +17,6 @@ const ESTADOS_UF = [
 ];
 
 const JOB_ATIVO = ["pendente", "executando"];
-
-function labelStatus(status) {
-  return {
-    pendente: "Na fila", executando: "Executando", concluido: "Concluído",
-    erro: "Erro", abortado: "Abortado",
-  }[status] || status;
-}
-
-function duracao(job) {
-  if (!job?.iniciado_em || !job?.finalizado_em) return "—";
-  const s = Math.round((new Date(job.finalizado_em) - new Date(job.iniciado_em)) / 1000);
-  return s < 60 ? `${s}s` : `${Math.floor(s / 60)}min${s % 60 ? ` ${s % 60}s` : ""}`;
-}
-
-const DATASET_TODAS = "todas";
-
-const labelDataset = (key) => (key === DATASET_TODAS ? "Todas as fontes" : key);
-
-/** Agrega o resumo do meta-job ({fontes: [...]}) para toast e histórico. */
-function resumoTodas(resumo) {
-  const fontes = resumo?.fontes || [];
-  const comErro = fontes.filter((f) => f.status === "erro");
-  const comAviso = fontes.filter((f) => f.status === "aviso");
-  return {
-    fontes,
-    ok: fontes.length - comErro.length - comAviso.length,
-    aviso: comAviso.length,
-    erro: comErro.length,
-    keysErro: comErro.map((f) => f.key),
-    linhas: fontes.reduce((s, f) => s + (f.linhas || 0), 0),
-  };
-}
-
-/** "N ok, M com aviso, K com erro (keys)" — segmentos zerados são omitidos. */
-function textoResumoTodas({ ok, aviso, erro, keysErro }) {
-  const partes = [];
-  if (ok) partes.push(`${ok} ok`);
-  if (aviso) partes.push(`${aviso} com aviso`);
-  if (erro) partes.push(`${erro} com erro (${keysErro.slice(0, 3).join(", ")})`);
-  return partes.join(", ") || "0 fontes";
-}
 
 /**
  * ADMIN_GLOBAL page: metadados de fonte por dataset + esteira de fontes
@@ -71,6 +35,7 @@ export default function DatasetFontesAdminPage() {
   const [anosText, setAnosText] = useState("");
   const [job, setJob] = useState(null);          // job ativo (polled)
   const [historico, setHistorico] = useState([]);
+  const [jobDetalhe, setJobDetalhe] = useState(null);
   const pollRef = useRef(null);
 
   const jobAtivo = job && JOB_ATIVO.includes(job.status);
@@ -429,26 +394,21 @@ export default function DatasetFontesAdminPage() {
                 </thead>
                 <tbody>
                   {historico.map((j) => (
-                    <tr key={j.id} className="border-b border-[var(--border)] last:border-0 align-top">
+                    <tr
+                      key={j.id}
+                      onClick={() => setJobDetalhe(j)}
+                      title="Ver detalhes"
+                      className="border-b border-[var(--border)] last:border-0 align-top cursor-pointer hover:bg-[var(--panel-2)]"
+                    >
                       <td className="py-2 pr-3 font-medium text-[var(--text)]">{labelDataset(j.dataset)}</td>
                       <td className="py-2 pr-3 text-[var(--text-dim)]">
                         {new Date(j.criado_em).toLocaleString("pt-BR")}
                       </td>
                       <td className="py-2 pr-3">
-                        <span className={
-                          j.status === "concluido" ? "text-emerald-500" :
-                          j.status === "erro" || j.status === "abortado" ? "text-red-500" :
-                          "text-amber-500"
-                        }>
-                          {labelStatus(j.status)}
-                        </span>
+                        <StatusChip job={j} />
                       </td>
-                      <td className="py-2 pr-3 text-[var(--text-dim)]">{duracao(j)}</td>
-                      <td className="py-2 pr-3 text-[var(--text-dim)]">
-                        {j.dataset === DATASET_TODAS
-                          ? (j.resumo?.fontes ? resumoTodas(j.resumo).linhas : "—")
-                          : (j.resumo?.linhas ?? "—")}
-                      </td>
+                      <td className="py-2 pr-3 text-[var(--text-dim)]">{duracaoJob(j)}</td>
+                      <td className="py-2 pr-3 text-[var(--text-dim)]">{linhasJob(j) ?? "—"}</td>
                       <td className="py-2 text-[var(--text-dim)]">
                         {j.dataset === DATASET_TODAS && j.resumo?.fontes
                           ? textoResumoTodas(resumoTodas(j.resumo))
@@ -531,6 +491,8 @@ export default function DatasetFontesAdminPage() {
           </table>
         )}
       </div>
+
+      <DatasetFontesJobModal job={jobDetalhe} onClose={() => setJobDetalhe(null)} />
     </motion.div>
   );
 }
