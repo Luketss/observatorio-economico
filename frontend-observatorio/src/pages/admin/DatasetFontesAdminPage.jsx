@@ -5,6 +5,7 @@ import api from "../../services/api";
 import { useToast } from "../../context/ToastContext";
 import MunicipioPicker from "../../components/nid/MunicipioPicker";
 import StatusChip from "../../components/nid/StatusChip";
+import DataTable from "../../components/nid/DataTable";
 import DatasetFontesJobModal from "./DatasetFontesJobModal";
 import {
   DATASET_TODAS, duracaoJob, labelDataset, labelStatus, linhasJob, resumoTodas, textoResumoTodas,
@@ -227,7 +228,12 @@ export default function DatasetFontesAdminPage() {
                 <button
                   onClick={handleExecutarTodas}
                   disabled={jobAtivo}
-                  className="px-4 py-2 text-sm rounded-lg bg-teal-600 hover:bg-teal-700 text-white transition-colors disabled:opacity-50"
+                  className="px-4 py-2 text-sm rounded-lg transition-colors disabled:opacity-50"
+                  style={{
+                    background: "var(--admin-accent, #3b82f6)",
+                    color: "#fff",
+                    border: "1px solid color-mix(in oklab, var(--admin-accent, #3b82f6) 70%, black)",
+                  }}
                   aria-label="Rodar todas as fontes agora"
                 >
                   {jobAtivo && job.dataset === DATASET_TODAS ? "Executando…" : "Rodar todas as fontes"}
@@ -297,7 +303,10 @@ export default function DatasetFontesAdminPage() {
           </div>
 
           {jobAtivo && job.dataset === DATASET_TODAS && (
-            <div className="rounded-xl border border-teal-600/40 px-4 py-3 space-y-1">
+            <div
+              className="rounded-xl border px-4 py-3 space-y-1"
+              style={{ borderColor: "color-mix(in oklab, var(--admin-accent, #3b82f6) 40%, transparent)" }}
+            >
               <p className="font-semibold text-[var(--text)]">Todas as fontes</p>
               <div className="flex justify-between text-xs text-[var(--text-dim)]">
                 <span>{job.etapa || labelStatus(job.status)}</span>
@@ -309,8 +318,9 @@ export default function DatasetFontesAdminPage() {
               </div>
               <div className="h-1.5 rounded-full bg-[var(--panel-2)] overflow-hidden">
                 <div
-                  className="h-full bg-teal-600 transition-all"
+                  className="h-full transition-all"
                   style={{
+                    background: "var(--admin-accent, #3b82f6)",
                     width: job.progresso_total
                       ? `${Math.min(100, (100 * job.progresso_atual) / job.progresso_total)}%`
                       : "5%",
@@ -320,61 +330,89 @@ export default function DatasetFontesAdminPage() {
             </div>
           )}
 
-          <div className="space-y-2">
-            {autoFontes.map((f) => {
-              const esteRodando = jobAtivo && job.dataset === f.key;
-              return (
-                <div key={f.key} className="rounded-xl border border-[var(--border)] px-4 py-3 space-y-2">
-                  <div className="flex items-center justify-between gap-4 flex-wrap">
-                    <div className="min-w-0">
-                      <p className="font-semibold text-[var(--text)]">{f.label}</p>
-                      <p className="text-xs text-[var(--text-mute)] truncate">{f.fonte}</p>
-                      <p className="text-xs mt-0.5 text-[var(--text-dim)]">
-                        {f.ultimo_job
-                          ? `Último job: ${new Date(f.ultimo_job.criado_em).toLocaleString("pt-BR")} · ${labelStatus(f.ultimo_job.status)} · ${f.ultimo_job.resumo?.linhas ?? 0} linhas`
-                          : "Nunca executada"}
+          <DataTable
+            columns={[
+              {
+                key: "label", label: "Fonte", sortable: false,
+                render: (f) => (
+                  <div className="min-w-0 py-0.5">
+                    <p className="font-semibold" style={{ color: "var(--text)" }}>{f.label}</p>
+                    <p className="text-xs truncate max-w-[380px]" style={{ color: "var(--text-mute)" }} title={f.fonte}>
+                      {f.fonte}
+                    </p>
+                    {f.key === "captacao_federal" && (
+                      <p className="text-xs mt-0.5" style={{ color: "var(--accent-4)" }}>
+                        Compara a UF inteira — prefira o filtro de estado.
                       </p>
-                      {f.key === "captacao_federal" && (
-                        <p className="text-xs mt-0.5 text-amber-500">
-                          O diagnóstico de pares compara a UF inteira — prefira o filtro de estado a municípios avulsos.
-                        </p>
-                      )}
-                    </div>
-                    <button
-                      onClick={() => handleExecutar(f)}
-                      disabled={jobAtivo}
-                      className="px-4 py-2 text-sm rounded-lg bg-teal-600 hover:bg-teal-700 text-white transition-colors disabled:opacity-50"
-                      aria-label={`Atualizar ${f.label} agora`}
-                    >
-                      {esteRodando ? "Executando…" : "Atualizar agora"}
-                    </button>
+                    )}
                   </div>
-                  {esteRodando && (
-                    <div className="space-y-1">
-                      <div className="flex justify-between text-xs text-[var(--text-dim)]">
-                        <span>{job.etapa || labelStatus(job.status)}</span>
-                        <span>
-                          {job.progresso_total
-                            ? `${job.progresso_atual}/${job.progresso_total} municípios`
-                            : "iniciando…"}
-                        </span>
+                ),
+              },
+              {
+                key: "ultimo_job", label: "Última execução", sortable: false, width: 320,
+                render: (f) => {
+                  const rodando = jobAtivo && job.dataset === f.key;
+                  if (rodando) {
+                    return (
+                      <div className="space-y-1 py-0.5">
+                        <div className="flex items-center gap-2">
+                          <StatusChip job={job} />
+                          <span className="text-xs" style={{ color: "var(--text-dim)" }}>
+                            {job.progresso_total
+                              ? `${job.progresso_atual}/${job.progresso_total}`
+                              : "iniciando…"}
+                          </span>
+                        </div>
+                        <div className="h-1.5 rounded-full overflow-hidden" style={{ background: "var(--panel-2)" }}>
+                          <div
+                            className="h-full transition-all"
+                            style={{
+                              background: "var(--admin-accent, #3b82f6)",
+                              width: job.progresso_total
+                                ? `${Math.min(100, (100 * job.progresso_atual) / job.progresso_total)}%`
+                                : "5%",
+                            }}
+                          />
+                        </div>
+                        <p className="text-xs truncate" style={{ color: "var(--text-dim)" }}>{job.etapa || "…"}</p>
                       </div>
-                      <div className="h-1.5 rounded-full bg-[var(--panel-2)] overflow-hidden">
-                        <div
-                          className="h-full bg-teal-600 transition-all"
-                          style={{
-                            width: job.progresso_total
-                              ? `${Math.min(100, (100 * job.progresso_atual) / job.progresso_total)}%`
-                              : "5%",
-                          }}
-                        />
-                      </div>
+                    );
+                  }
+                  if (!f.ultimo_job) {
+                    return <span className="text-xs" style={{ color: "var(--text-mute)" }}>Nunca executada</span>;
+                  }
+                  return (
+                    <div className="flex items-center gap-2 flex-wrap py-0.5">
+                      <StatusChip job={f.ultimo_job} />
+                      <span className="text-xs" style={{ color: "var(--text-dim)" }}>
+                        {new Date(f.ultimo_job.criado_em).toLocaleString("pt-BR")}
+                        {` · ${f.ultimo_job.resumo?.linhas ?? 0} linhas`}
+                      </span>
                     </div>
-                  )}
-                </div>
-              );
-            })}
-          </div>
+                  );
+                },
+              },
+              {
+                key: "acao", label: "", align: "right", sortable: false, width: 150,
+                render: (f) => (
+                  <button
+                    onClick={() => handleExecutar(f)}
+                    disabled={jobAtivo}
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
+                    style={{
+                      background: "color-mix(in oklab, var(--admin-accent, #3b82f6) 12%, transparent)",
+                      border: "1px solid color-mix(in oklab, var(--admin-accent, #3b82f6) 35%, transparent)",
+                      color: "var(--admin-accent, #3b82f6)",
+                    }}
+                    aria-label={`Atualizar ${f.label} agora`}
+                  >
+                    {jobAtivo && job.dataset === f.key ? "Executando…" : "Atualizar agora"}
+                  </button>
+                ),
+              },
+            ]}
+            data={autoFontes}
+          />
 
           <div>
             <h3 className="text-sm font-bold text-[var(--text)] mb-2">Histórico de execuções</h3>
@@ -452,7 +490,8 @@ export default function DatasetFontesAdminPage() {
                       onChange={(e) => updateField(row.key, "fonte", e.target.value)}
                       placeholder="Ex.: IBGE — SIDRA"
                       maxLength={200}
-                      className="w-full rounded-lg border border-[var(--border)] bg-[var(--panel-2)] text-[var(--text)] px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500"
+                      className="w-full rounded-lg border border-[var(--border)] bg-[var(--panel-2)] text-[var(--text)] px-3 py-2 text-sm focus:outline-none focus:ring-2"
+                      style={{ "--tw-ring-color": "var(--admin-accent, #3b82f6)" }}
                     />
                   </td>
                   <td className="px-4 py-3">
@@ -461,7 +500,8 @@ export default function DatasetFontesAdminPage() {
                       onChange={(e) => updateField(row.key, "data_atualizacao", e.target.value)}
                       placeholder="Ex.: Março/2026 ou Ano-base 2024"
                       maxLength={60}
-                      className="w-full rounded-lg border border-[var(--border)] bg-[var(--panel-2)] text-[var(--text)] px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500"
+                      className="w-full rounded-lg border border-[var(--border)] bg-[var(--panel-2)] text-[var(--text)] px-3 py-2 text-sm focus:outline-none focus:ring-2"
+                      style={{ "--tw-ring-color": "var(--admin-accent, #3b82f6)" }}
                     />
                   </td>
                   <td className="px-4 py-3">
@@ -469,7 +509,12 @@ export default function DatasetFontesAdminPage() {
                       <button
                         onClick={() => handleSave(row)}
                         disabled={savingKey === row.key}
-                        className="flex items-center gap-1.5 px-3 py-1.5 text-sm rounded-lg bg-teal-600 hover:bg-teal-700 text-white transition-colors disabled:opacity-50"
+                        className="flex items-center gap-1.5 px-3 py-1.5 text-sm rounded-lg transition-colors disabled:opacity-50"
+                        style={{
+                          background: "var(--admin-accent, #3b82f6)",
+                          color: "#fff",
+                          border: "1px solid color-mix(in oklab, var(--admin-accent, #3b82f6) 70%, black)",
+                        }}
                         aria-label={`Salvar fonte de ${row.label}`}
                       >
                         <CheckIcon className="w-4 h-4" />
