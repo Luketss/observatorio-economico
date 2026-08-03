@@ -4,35 +4,49 @@ import { AnimatePresence, motion } from "framer-motion";
 import { XMarkIcon } from "@heroicons/react/24/outline";
 
 const FOCAVEIS =
-  'a[href], button:not([disabled]), input, select, textarea, [tabindex]:not([tabindex="-1"])';
+  'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
+
+function focaveisVisiveis(panel) {
+  return Array.from(panel.querySelectorAll(FOCAVEIS)).filter((el) => el.offsetParent !== null);
+}
 
 function DrawerPanel({ onClose, ariaLabel, hero, footer, children }) {
   const panelRef = useRef(null);
   const closeRef = useRef(null);
 
-  // Foco entra no X ao abrir; volta ao elemento anterior ao desmontar.
+  // Foco entra no X ao abrir; trap de Tab no documento (recaptura quando o foco
+  // escapa do painel); foco volta ao elemento anterior ao desmontar.
   useEffect(() => {
     const anterior = document.activeElement;
     closeRef.current?.focus();
+
+    function handleKeyDown(e) {
+      if (e.key !== "Tab" || !panelRef.current) return;
+      const focaveis = focaveisVisiveis(panelRef.current);
+      if (focaveis.length === 0) return;
+      const primeiro = focaveis[0];
+      const ultimo = focaveis[focaveis.length - 1];
+      const ativo = document.activeElement;
+      if (!panelRef.current.contains(ativo)) {
+        e.preventDefault();
+        primeiro.focus();
+        return;
+      }
+      if (e.shiftKey && ativo === primeiro) {
+        e.preventDefault();
+        ultimo.focus();
+      } else if (!e.shiftKey && ativo === ultimo) {
+        e.preventDefault();
+        primeiro.focus();
+      }
+    }
+
+    document.addEventListener("keydown", handleKeyDown, true);
     return () => {
+      document.removeEventListener("keydown", handleKeyDown, true);
       if (anterior instanceof HTMLElement && document.contains(anterior)) anterior.focus();
     };
   }, []);
-
-  function handleKeyDown(e) {
-    if (e.key !== "Tab") return;
-    const focaveis = panelRef.current?.querySelectorAll(FOCAVEIS);
-    if (!focaveis || focaveis.length === 0) return;
-    const primeiro = focaveis[0];
-    const ultimo = focaveis[focaveis.length - 1];
-    if (e.shiftKey && document.activeElement === primeiro) {
-      e.preventDefault();
-      ultimo.focus();
-    } else if (!e.shiftKey && document.activeElement === ultimo) {
-      e.preventDefault();
-      primeiro.focus();
-    }
-  }
 
   return (
     <motion.div
@@ -45,7 +59,6 @@ function DrawerPanel({ onClose, ariaLabel, hero, footer, children }) {
       aria-modal="true"
       aria-label={ariaLabel}
       ref={panelRef}
-      onKeyDown={handleKeyDown}
     >
       <button ref={closeRef} onClick={onClose} className="nid-drawer__close" aria-label="Fechar">
         <XMarkIcon className="w-5 h-5" />
@@ -60,7 +73,8 @@ function DrawerPanel({ onClose, ariaLabel, hero, footer, children }) {
 /**
  * Painel lateral de detalhes (desliza da direita, altura total).
  * AnimatePresence embutido — a página só alterna `open`.
- * Foco: entra no X, Tab preso no painel, devolvido ao gatilho ao fechar.
+ * Foco: entra no X, Tab preso no painel (trap no documento, com recaptura
+ * quando o foco escapa), devolvido ao gatilho ao fechar.
  * Escape fica a cargo da página (useEscapeKey), como nos modais.
  */
 export default function NidDrawer({ open, onClose, ariaLabel, hero, footer, children }) {

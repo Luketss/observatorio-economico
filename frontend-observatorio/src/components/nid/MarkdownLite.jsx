@@ -25,7 +25,7 @@ export default function MarkdownLite({ texto }) {
         }
         if (b.tipo === "h3") {
           return (
-            <h4 key={i} style={{ font: "700 12.5px/1.3 var(--font-display)", color: "var(--text)", margin: "4px 0 0" }}>
+            <h4 key={i} style={{ font: "700 13.5px/1.3 var(--font-display)", color: "var(--text)", margin: "4px 0 0" }}>
               <Inline segs={b.inline} />
             </h4>
           );
