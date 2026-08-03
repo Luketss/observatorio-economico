@@ -333,7 +333,11 @@ export default function PlanoGovPage() {
                   <h2 className="text-lg font-bold text-[var(--text)] mt-2">{acao.titulo}</h2>
                   <p className="text-sm text-slate-400">{acao.departamento}</p>
                 </div>
-                {acao.descricao && <MarkdownLite texto={acao.descricao} />}
+                {acao.descricao && (
+                  <div className="border-t border-[var(--border)] pt-3">
+                    <MarkdownLite texto={acao.descricao} />
+                  </div>
+                )}
                 <div className="flex flex-wrap gap-4 text-xs text-slate-400 border-t border-[var(--border)] pt-3">
                   {acao.responsavel && <span><span className="font-medium">Responsável:</span> {acao.responsavel}</span>}
                   {acao.data_inicio && <span><span className="font-medium">Início:</span> {fmtDate(acao.data_inicio)}</span>}

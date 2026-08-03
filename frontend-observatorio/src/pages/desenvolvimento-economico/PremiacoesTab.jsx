@@ -333,7 +333,7 @@ export default function PremiacoesTab() {
                   <span className={`px-2 py-0.5 rounded-full text-[11px] font-medium ${st.color}`}>{st.label}</span>
                 </div>
                 <div>
-                  <h3 className="text-base font-bold text-[var(--text)] leading-snug">{item.titulo}</h3>
+                  <h2 className="text-lg font-bold text-[var(--text)] leading-snug">{item.titulo}</h2>
                   {item.entidade && <p className="text-xs text-slate-400 mt-1">{item.entidade}</p>}
                 </div>
                 {item.descricao && (

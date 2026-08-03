@@ -545,7 +545,7 @@ export default function CaptacaoTab() {
                   <EstagioPill label={cfg.label} className={cfg.color} />
                 </div>
                 <div>
-                  <h3 className="text-base font-bold text-[var(--text)] leading-snug">{item.titulo}</h3>
+                  <h2 className="text-lg font-bold text-[var(--text)] leading-snug">{item.titulo}</h2>
                   {item.entidade_origem && <p className="text-xs text-slate-400 mt-1">{item.entidade_origem}</p>}
                 </div>
                 {item.descricao && (

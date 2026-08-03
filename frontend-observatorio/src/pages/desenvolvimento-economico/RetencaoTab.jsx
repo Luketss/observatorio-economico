@@ -370,7 +370,7 @@ export default function RetencaoTab() {
             {empresa && (
               <div className="space-y-4">
                 <div className="pr-8">
-                  <h3 className="text-base font-bold text-[var(--text)] leading-snug">{empresa.nome}</h3>
+                  <h2 className="text-lg font-bold text-[var(--text)] leading-snug">{empresa.nome}</h2>
                   {empresa.setor && <p className="text-xs text-slate-400 mt-1">{empresa.setor}</p>}
                 </div>
                 <div className="flex flex-wrap gap-1.5">

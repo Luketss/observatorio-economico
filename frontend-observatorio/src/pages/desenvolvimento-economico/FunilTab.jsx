@@ -452,7 +452,7 @@ export default function FunilTab() {
                   <EstagioPill label={cfg.label} color={cfg.color} />
                 </div>
                 <div>
-                  <h3 className="text-base font-bold text-[var(--text)] leading-snug">{item.empresa_nome}</h3>
+                  <h2 className="text-lg font-bold text-[var(--text)] leading-snug">{item.empresa_nome}</h2>
                   {item.setor && <p className="text-xs text-slate-400 mt-1">{item.setor}</p>}
                 </div>
                 {item.descricao && (

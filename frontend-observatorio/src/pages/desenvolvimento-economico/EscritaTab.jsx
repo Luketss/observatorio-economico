@@ -453,7 +453,7 @@ export default function EscritaTab() {
                   {resCfg && <span className={`px-2 py-0.5 rounded-full text-[11px] font-medium ${resCfg.color}`}>{resCfg.label}</span>}
                 </div>
                 <div>
-                  <h3 className="text-base font-bold text-[var(--text)] leading-snug">{item.titulo}</h3>
+                  <h2 className="text-lg font-bold text-[var(--text)] leading-snug">{item.titulo}</h2>
                   {cap && <p className="text-xs text-[var(--accent-1)] mt-1">Captação vinculada: {cap.titulo}</p>}
                 </div>
                 {item.descricao && (
