@@ -28,6 +28,8 @@ import DroppableColumn from "../../components/kanban/DroppableColumn";
 import EstagioPill from "../../components/kanban/EstagioPill";
 import { aplicarMovimento } from "../../utils/kanbanMove";
 import { propsTituloClicavel } from "../../utils/cliqueAcessivel";
+import NidDrawer from "../../components/nid/NidDrawer";
+import MarkdownLite from "../../components/nid/MarkdownLite";
 
 const ESTAGIOS = ["oportunidade", "em_elaboracao", "enviado", "aprovado"];
 const ESTAGIO_CONFIG = {
@@ -526,62 +528,48 @@ export default function CaptacaoTab() {
         )}
       </div>
 
-      {/* Detail modal */}
-      <AnimatePresence>
-        {viewingItem && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4"
-            onClick={(e) => { if (e.target === e.currentTarget) setViewingItem(null); }}
+      {/* Detail drawer */}
+      {(() => {
+        const item = viewingItem;
+        const cfg = item ? (ESTAGIO_CONFIG[item.estagio] || ESTAGIO_CONFIG.oportunidade) : null;
+        return (
+          <NidDrawer
+            open={!!item}
+            onClose={() => setViewingItem(null)}
+            ariaLabel={item ? `Detalhes da oportunidade ${item.titulo}` : "Detalhes da oportunidade"}
           >
-            <motion.div
-              initial={{ scale: 0.95 }}
-              animate={{ scale: 1 }}
-              exit={{ scale: 0.95 }}
-              transition={{ type: "spring", stiffness: 300, damping: 30 }}
-              className="bg-[var(--panel)] rounded-2xl shadow-xl w-full max-w-lg p-6 max-h-[90vh] overflow-y-auto space-y-4"
-            >
-              {(() => {
-                const cfg = ESTAGIO_CONFIG[viewingItem.estagio] || ESTAGIO_CONFIG.oportunidade;
-                return (
-                  <>
-                    <div className="flex items-start justify-between gap-3">
-                      <div className="flex items-center gap-1.5 flex-wrap">
-                        <span className="text-[10px] font-medium text-[var(--text-dim)] bg-[var(--panel-2)] px-1.5 py-0.5 rounded">{TIPO_LABEL[viewingItem.tipo] || viewingItem.tipo}</span>
-                        <EstagioPill label={cfg.label} className={cfg.color} />
-                      </div>
-                      <button onClick={() => setViewingItem(null)} className="p-1.5 rounded-lg text-[var(--text-mute)] hover:text-[var(--text)] hover:bg-[var(--panel-2)] transition-colors cursor-pointer shrink-0">
-                        <XMarkIcon className="w-5 h-5" />
-                      </button>
-                    </div>
-                    <div>
-                      <h3 className="text-base font-bold text-[var(--text)] leading-snug">{viewingItem.titulo}</h3>
-                      {viewingItem.entidade_origem && <p className="text-xs text-slate-400 mt-1">{viewingItem.entidade_origem}</p>}
-                    </div>
-                    {viewingItem.descricao && (
-                      <p className="text-sm text-[var(--text-dim)] leading-relaxed whitespace-pre-line border-t border-[var(--border)] pt-3">{viewingItem.descricao}</p>
-                    )}
-                    <div className="flex flex-col gap-1.5 text-xs text-slate-400 border-t border-[var(--border)] pt-3">
-                      {viewingItem.valor_estimado != null && <span className="font-semibold text-[var(--text-dim)]">Valor estimado: {fmtMoeda(viewingItem.valor_estimado)}</span>}
-                      {viewingItem.prazo && (
-                        <span className={`flex items-center gap-1 ${isVencendoEm30(viewingItem.prazo) ? "text-amber-600 font-medium" : ""}`}>
-                          <CalendarDaysIcon className="w-3.5 h-3.5" /> Prazo: {fmtDate(viewingItem.prazo)}
-                          {isVencendoEm30(viewingItem.prazo) && " · vence em até 30 dias"}
-                        </span>
-                      )}
-                      {viewingItem.link && (
-                        <a href={viewingItem.link} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1 text-blue-500 hover:underline"><LinkIcon className="w-3.5 h-3.5" /> Ver edital</a>
-                      )}
-                    </div>
-                  </>
-                );
-              })()}
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+            {item && (
+              <div className="space-y-4">
+                <div className="flex items-center gap-1.5 flex-wrap pr-8">
+                  <span className="text-[10px] font-medium text-[var(--text-dim)] bg-[var(--panel-2)] px-1.5 py-0.5 rounded">{TIPO_LABEL[item.tipo] || item.tipo}</span>
+                  <EstagioPill label={cfg.label} className={cfg.color} />
+                </div>
+                <div>
+                  <h3 className="text-base font-bold text-[var(--text)] leading-snug">{item.titulo}</h3>
+                  {item.entidade_origem && <p className="text-xs text-slate-400 mt-1">{item.entidade_origem}</p>}
+                </div>
+                {item.descricao && (
+                  <div className="border-t border-[var(--border)] pt-3">
+                    <MarkdownLite texto={item.descricao} />
+                  </div>
+                )}
+                <div className="flex flex-col gap-1.5 text-xs text-slate-400 border-t border-[var(--border)] pt-3">
+                  {item.valor_estimado != null && <span className="font-semibold text-[var(--text-dim)]">Valor estimado: {fmtMoeda(item.valor_estimado)}</span>}
+                  {item.prazo && (
+                    <span className={`flex items-center gap-1 ${isVencendoEm30(item.prazo) ? "text-amber-600 font-medium" : ""}`}>
+                      <CalendarDaysIcon className="w-3.5 h-3.5" /> Prazo: {fmtDate(item.prazo)}
+                      {isVencendoEm30(item.prazo) && " · vence em até 30 dias"}
+                    </span>
+                  )}
+                  {item.link && (
+                    <a href={item.link} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1 text-blue-500 hover:underline"><LinkIcon className="w-3.5 h-3.5" /> Ver edital</a>
+                  )}
+                </div>
+              </div>
+            )}
+          </NidDrawer>
+        );
+      })()}
 
       {/* Delete confirm */}
       <AnimatePresence>
@@ -676,7 +664,7 @@ export default function CaptacaoTab() {
 
                 <div className="md:col-span-2 flex flex-col gap-1">
                   <label className="text-xs font-semibold text-[var(--text-dim)] uppercase tracking-wider">Descrição</label>
-                  <textarea value={form.descricao} onChange={(e) => setForm((p) => ({ ...p, descricao: e.target.value }))} rows={3} className="px-3 py-2 rounded-lg border border-[var(--border)] text-sm bg-[var(--panel-2)] text-[var(--text)] focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none" />
+                  <textarea value={form.descricao} onChange={(e) => setForm((p) => ({ ...p, descricao: e.target.value }))} rows={3} placeholder="Aceita ## títulos, - listas e **negrito**" className="px-3 py-2 rounded-lg border border-[var(--border)] text-sm bg-[var(--panel-2)] text-[var(--text)] focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none" />
                 </div>
 
                 <div className="md:col-span-2 flex items-center gap-3 pt-2">
