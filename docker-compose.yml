@@ -27,10 +27,26 @@ services:
     restart: always
     env_file:
       - .env
+    environment:
+      INGESTAO_EXECUTOR: worker
     depends_on:
       - db
     ports:
       - "8000:8000"
+    networks:
+      - observatorio_net
+
+  worker:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: observatorio_worker
+    restart: always
+    command: python -m app.worker
+    env_file:
+      - .env
+    depends_on:
+      - db
     networks:
       - observatorio_net
 

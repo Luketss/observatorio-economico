@@ -342,6 +342,27 @@ immediately with `{"job_id": ...}`. The frontend polls
 - Job `status` values: `pendente` → `executando` → `concluido` | `erro` |
   `abortado`.
 
+### Worker de ingestão separado (opcional, recomendado para fontes pesadas)
+
+Por padrão (`INGESTAO_EXECUTOR=inline`) os jobs rodam em uma thread do próprio
+processo da API. Com `INGESTAO_EXECUTOR=worker` na API, o `POST` apenas cria o
+job `pendente` e um processo separado (`python -m app.worker`) reivindica o job
+mais antigo (`FOR UPDATE SKIP LOCKED`) e executa — mesma semântica de
+heartbeat, trava global e órfãos. No docker-compose o serviço `worker` já sobe
+nesse modo.
+
+**Railway (passos manuais):**
+1. Criar um serviço novo no mesmo repositório, root `backend/` (mesmo Dockerfile
+   da API), com **Custom Start Command** `python -m app.worker`.
+2. Copiar as variáveis de ambiente do serviço da API (banco etc.) para o worker.
+3. Adicionar `INGESTAO_EXECUTOR=worker` **no serviço da API** e redeploy.
+
+**Rollback:** remover `INGESTAO_EXECUTOR` da API (volta ao modo inline) e pausar
+o serviço worker. Um job que ficar `pendente` por muito tempo indica worker
+parado — conferir os logs do serviço (não existe abortar manual; o job espera).
+Queda do worker no meio de um job: o job fica sem heartbeat e é marcado
+`abortado` em até 10 minutos pelo sweep da API.
+
 ### Dinheiro na Mesa & Radar de Emendas
 
 **Dinheiro na Mesa** (`/app/dinheiro-na-mesa`) compares the município's federal
