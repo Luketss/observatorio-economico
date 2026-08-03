@@ -6,6 +6,7 @@ import { useToast } from "../../context/ToastContext";
 import MunicipioPicker from "../../components/nid/MunicipioPicker";
 import StatusChip from "../../components/nid/StatusChip";
 import DataTable from "../../components/nid/DataTable";
+import NidModal from "../../components/nid/NidModal";
 import DatasetFontesJobModal from "./DatasetFontesJobModal";
 import {
   DATASET_TODAS, duracaoJob, labelDataset, labelStatus, linhasJob, resumoTodas, textoResumoTodas,
@@ -37,6 +38,8 @@ export default function DatasetFontesAdminPage() {
   const [job, setJob] = useState(null);          // job ativo (polled)
   const [historico, setHistorico] = useState([]);
   const [jobDetalhe, setJobDetalhe] = useState(null);
+  const [confirmTodas, setConfirmTodas] = useState(false);
+  const [clearTarget, setClearTarget] = useState(null);
   const pollRef = useRef(null);
 
   const jobAtivo = job && JOB_ATIVO.includes(job.status);
@@ -136,13 +139,15 @@ export default function DatasetFontesAdminPage() {
     }
   };
 
-  const handleExecutarTodas = async () => {
-    if (
-      !municipiosSel.length && !estadoFiltro &&
-      !confirm("Sem filtro, todas as fontes rodarão para o Brasil inteiro — pode levar horas. Continuar?")
-    ) {
+  const handleExecutarTodas = () => {
+    if (!municipiosSel.length && !estadoFiltro) {
+      setConfirmTodas(true);
       return;
     }
+    executarTodas();
+  };
+  const executarTodas = async () => {
+    setConfirmTodas(false);
     await handleExecutar({ key: DATASET_TODAS, label: "Todas as fontes" });
   };
 
@@ -171,8 +176,12 @@ export default function DatasetFontesAdminPage() {
     }
   };
 
-  const handleClear = async (row) => {
-    if (!confirm(`Limpar fonte e data de atualização de "${row.label}"?`)) return;
+  const handleClear = (row) => setClearTarget(row);
+
+  const confirmClear = async () => {
+    const row = clearTarget;
+    if (!row) return;
+    setClearTarget(null);
     setSavingKey(row.key);
     try {
       await api.delete(`/dataset-info/${row.key}`);
@@ -200,11 +209,11 @@ export default function DatasetFontesAdminPage() {
     >
       <div>
         <h1 className="text-2xl font-extrabold tracking-tight text-[var(--text)]">
-          Fontes de Dados
+          Coletas e fontes de dados
         </h1>
         <p className="text-sm text-[var(--text-mute)] mt-1">
-          Defina a fonte e a data de atualização de cada conjunto de dados de
-          ingestão. Essas informações aparecem como tooltip nas páginas de dados.
+          Execute as coletas automáticas (APIs públicas, em segundo plano) e mantenha os
+          metadados de fonte que aparecem como tooltip nas páginas de dados.
         </p>
       </div>
 
@@ -213,13 +222,13 @@ export default function DatasetFontesAdminPage() {
           <div className="space-y-3">
             <div className="flex items-start justify-between gap-4 flex-wrap">
               <div>
-                <h2 className="text-lg font-bold text-[var(--text)]">Fontes automáticas</h2>
+                <h2 className="text-lg font-bold text-[var(--text)]">Coletas automáticas</h2>
                 <p className="text-sm text-[var(--text-mute)]">
                   Buscam dados direto das APIs públicas — sem CSV. A execução roda em segundo
                   plano; acompanhe o progresso aqui e no histórico abaixo.
                 </p>
                 {estadoFiltro === "" && municipiosSel.length === 0 && (
-                  <p className="text-xs mt-1 text-amber-500">
+                  <p className="text-xs mt-1" style={{ color: "var(--accent-4)" }}>
                     Sem filtro, a execução cobre todos os municípios do Brasil e pode levar muito tempo.
                   </p>
                 )}
@@ -463,6 +472,13 @@ export default function DatasetFontesAdminPage() {
         </div>
       )}
 
+      <div>
+        <h2 className="text-lg font-bold text-[var(--text)]">Metadados dos datasets</h2>
+        <p className="text-sm text-[var(--text-mute)]">
+          Fonte e data de atualização exibidas nos tooltips.
+        </p>
+      </div>
+
       <div className="bg-[var(--panel)] rounded-2xl border border-[var(--border)] shadow-sm overflow-hidden">
         {loading ? (
           <div className="px-6 py-12 text-center text-[var(--text-dim)]">
@@ -538,6 +554,73 @@ export default function DatasetFontesAdminPage() {
       </div>
 
       <DatasetFontesJobModal job={jobDetalhe} onClose={() => setJobDetalhe(null)} />
+
+      <NidModal
+        open={confirmTodas}
+        onClose={() => setConfirmTodas(false)}
+        eyebrow="Atenção · execução longa"
+        title="Rodar para o Brasil inteiro?"
+        size="md"
+        footer={
+          <>
+            <button
+              onClick={() => setConfirmTodas(false)}
+              className="px-4 py-2 rounded-lg text-sm cursor-pointer"
+              style={{ background: "var(--panel-2)", border: "1px solid var(--border)", color: "var(--text-dim)" }}
+            >
+              Cancelar
+            </button>
+            <button
+              onClick={executarTodas}
+              className="px-4 py-2 rounded-lg text-sm font-semibold cursor-pointer"
+              style={{
+                background: "var(--admin-accent, #3b82f6)", color: "#fff",
+                border: "1px solid color-mix(in oklab, var(--admin-accent, #3b82f6) 70%, black)",
+              }}
+            >
+              Rodar mesmo assim
+            </button>
+          </>
+        }
+      >
+        <p style={{ color: "var(--text-dim)" }}>
+          Sem filtro de estado ou município, <b style={{ color: "var(--text)" }}>todas as fontes
+          rodarão para o Brasil inteiro</b> — pode levar horas. Selecione uma UF ou municípios
+          para uma execução mais rápida.
+        </p>
+      </NidModal>
+
+      <NidModal
+        open={Boolean(clearTarget)}
+        onClose={() => setClearTarget(null)}
+        eyebrow="Confirmação"
+        title={clearTarget ? `Limpar fonte de "${clearTarget.label}"` : ""}
+        size="md"
+        footer={
+          <>
+            <button
+              onClick={() => setClearTarget(null)}
+              className="px-4 py-2 rounded-lg text-sm cursor-pointer"
+              style={{ background: "var(--panel-2)", border: "1px solid var(--border)", color: "var(--text-dim)" }}
+            >
+              Cancelar
+            </button>
+            <button
+              onClick={confirmClear}
+              className="px-4 py-2 rounded-lg text-sm font-semibold cursor-pointer"
+              style={{ background: "#ef4444", color: "#fff", border: "1px solid #dc2626" }}
+            >
+              Limpar
+            </button>
+          </>
+        }
+      >
+        <p style={{ color: "var(--text-dim)" }}>
+          A fonte e a data de atualização de{" "}
+          <b style={{ color: "var(--text)" }}>{clearTarget?.label}</b> deixarão de aparecer
+          nos tooltips das páginas de dados.
+        </p>
+      </NidModal>
     </motion.div>
   );
 }
