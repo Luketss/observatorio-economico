@@ -16,6 +16,7 @@ from dataclasses import asdict
 from fastapi import HTTPException
 from sqlalchemy import text
 
+from app.core.config import settings
 from app.services.ingestao_automatica.base import (
     DATASET_TODAS,
     FONTES_AUTOMATICAS,
@@ -209,6 +210,9 @@ def iniciar_job(db, dataset_key: str, filtros: dict, usuario_id: int):
     db.commit()   # único commit: persiste aborto de órfãos + job novo e libera o lock
     db.refresh(job)
 
+    if settings.INGESTAO_EXECUTOR == "worker":
+        # o processo worker reivindica o 'pendente' mais antigo e executa
+        return job
     threading.Thread(
         target=_executar_job, args=(job.id,), daemon=True, name=f"ingestao-job-{job.id}"
     ).start()

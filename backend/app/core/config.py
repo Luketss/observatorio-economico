@@ -19,6 +19,10 @@ class Settings(BaseSettings):
     ENVIRONMENT: str = "development"
     CORS_ORIGINS: str = "http://localhost:5173,http://localhost:3000"
 
+    # Ingestão: "inline" executa na thread da API (default); "worker" só
+    # enfileira — o processo `python -m app.worker` reivindica e executa.
+    INGESTAO_EXECUTOR: str = "inline"
+
     # AI
     ANTHROPIC_API_KEY: str = ""
 
