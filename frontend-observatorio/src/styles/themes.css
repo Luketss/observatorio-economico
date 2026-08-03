@@ -417,6 +417,9 @@ body.theme-light .nid-pill { background: #ffffff; border-color: rgba(15, 23, 42,
 .nid-pill--ok      { color: var(--accent-5); background: color-mix(in oklab, var(--accent-5) 14%, transparent); border-color: color-mix(in oklab, var(--accent-5) 28%, transparent); }
 .nid-pill--warn    { color: var(--accent-4); background: color-mix(in oklab, var(--accent-4) 14%, transparent); border-color: color-mix(in oklab, var(--accent-4) 28%, transparent); }
 .nid-pill--err     { color: var(--accent-2); background: color-mix(in oklab, var(--accent-2) 14%, transparent); border-color: color-mix(in oklab, var(--accent-2) 28%, transparent); }
+.nid-pill--run     { color: var(--accent-1); background: color-mix(in oklab, var(--accent-1) 14%, transparent); border-color: color-mix(in oklab, var(--accent-1) 28%, transparent); }
+.nid-pill__dot     { width: 6px; height: 6px; border-radius: 999px; background: currentColor; animation: nid-pill-pulse 1.2s ease-in-out infinite; }
+@keyframes nid-pill-pulse { 0%, 100% { opacity: 0.35; } 50% { opacity: 1; } }
 .nid-pill--draft   { color: var(--text-dim); background: var(--panel-2); border-color: var(--border); }
 .nid-pill--info    { color: var(--accent-1); background: color-mix(in oklab, var(--accent-1) 14%, transparent); border-color: color-mix(in oklab, var(--accent-1) 28%, transparent); }
 .nid-pill--pro     { color: var(--admin-accent); background: var(--admin-accent-soft); border-color: color-mix(in oklab, var(--admin-accent) 28%, transparent); }
