@@ -46,3 +46,38 @@ def test_iniciar_job_inline_dispara_thread():
 def test_default_do_settings_e_inline():
     from app.core.config import settings
     assert settings.INGESTAO_EXECUTOR == "inline"
+
+
+from app.worker import reivindicar_job
+
+
+def test_reivindicar_job_marca_executando_e_commita():
+    db = MagicMock()
+    job = MagicMock()
+    job.id = 42
+    db.query.return_value.filter.return_value.order_by.return_value \
+        .with_for_update.return_value.first.return_value = job
+    assert reivindicar_job(db) == 42
+    assert job.status == "executando"
+    assert job.iniciado_em is not None
+    assert job.atualizado_em is not None
+    db.commit.assert_called_once()
+    db.rollback.assert_not_called()
+
+
+def test_reivindicar_job_fila_vazia_faz_rollback_e_devolve_none():
+    db = MagicMock()
+    db.query.return_value.filter.return_value.order_by.return_value \
+        .with_for_update.return_value.first.return_value = None
+    assert reivindicar_job(db) is None
+    db.rollback.assert_called_once()
+    db.commit.assert_not_called()
+
+
+def test_reivindicar_job_usa_skip_locked():
+    db = MagicMock()
+    db.query.return_value.filter.return_value.order_by.return_value \
+        .with_for_update.return_value.first.return_value = None
+    reivindicar_job(db)
+    db.query.return_value.filter.return_value.order_by.return_value \
+        .with_for_update.assert_called_once_with(skip_locked=True)
