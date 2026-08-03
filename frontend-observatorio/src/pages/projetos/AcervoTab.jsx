@@ -17,6 +17,7 @@ import NidDrawer from "../../components/nid/NidDrawer";
 import MarkdownLite from "../../components/nid/MarkdownLite";
 import StatusPill from "../../components/nid/StatusPill";
 import { diasAtraso, progresso } from "../../utils/projetoStatus";
+import { propsTituloClicavel } from "../../utils/cliqueAcessivel";
 
 // Cycle through accent vars by eixo index
 const EIXO_ACCENTS = ["--accent-1", "--accent-2", "--accent-3", "--accent-4", "--accent-5"];
@@ -271,9 +272,9 @@ export default function AcervoTab({ onSelectSuccess }) {
                       </span>
                     )}
                     <h3
-                      className="proj-card__title"
-                      onClick={() => setViewingTemplate(t)}
+                      className="proj-card__title rounded focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
                       style={{ cursor: "pointer" }}
+                      {...propsTituloClicavel(() => setViewingTemplate(t))}
                     >
                       {t.titulo}
                     </h3>
