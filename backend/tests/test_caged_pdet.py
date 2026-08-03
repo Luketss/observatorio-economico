@@ -148,9 +148,16 @@ def test_meses_forexc_vai_da_janela_ate_o_mes_anterior_a_hoje():
 
 
 class _FtpInexistente:
+    def __init__(self):
+        self.cmds = []
+
     def retrbinary(self, cmd, cb):
+        self.cmds.append(cmd)
         raise ftplib.error_perm("550 The system cannot find the file specified.")
 
 
 def test_baixar_e_extrair_550_vira_none(tmp_path):
-    assert baixar_e_extrair(_FtpInexistente(), "MOV", 2026, 7, str(tmp_path)) is None
+    ftp = _FtpInexistente()
+    assert baixar_e_extrair(ftp, "MOV", 2026, 7, str(tmp_path)) is None
+    assert ftp.cmds == ["RETR /pdet/microdados/NOVO CAGED/2026/202607/CAGEDMOV202607.7z"]
+    assert list(tmp_path.iterdir()) == []  # nada de .7z parcial deixado para trás

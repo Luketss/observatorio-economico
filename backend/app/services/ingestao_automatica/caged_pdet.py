@@ -233,7 +233,7 @@ FTP_HOST = "ftp.mtps.gov.br"
 FTP_DIR = "/pdet/microdados/NOVO CAGED/{ano}/{ano}{mes:02d}"
 
 
-def conectar_ftp() -> "FTP":
+def conectar_ftp() -> FTP:
     ftp = FTP(FTP_HOST, timeout=120)
     ftp.login()
     ftp.encoding = "latin-1"  # caminhos do PDET têm acento
@@ -242,19 +242,22 @@ def conectar_ftp() -> "FTP":
 
 def baixar_e_extrair(ftp, tipo: str, ano: int, mes: int, destino_dir: str) -> str | None:
     """RETR do CAGED{tipo}{AAAAMM}.7z para disco + extractall (py7zr 1.1 não
-    lê em memória). 550 = competência não publicada → None (aviso, não erro)."""
+    lê em memória). 550 = competência não publicada → None (aviso, não erro).
+    O .7z é removido em todos os caminhos (sucesso, 550, falha de extração)."""
     nome = f"CAGED{tipo}{ano}{mes:02d}"
     remoto = f"{FTP_DIR.format(ano=ano, mes=mes)}/{nome}.7z"
     caminho_7z = os.path.join(destino_dir, f"{nome}.7z")
     try:
         with open(caminho_7z, "wb") as f:
             ftp.retrbinary(f"RETR {remoto}", f.write)
+        with py7zr.SevenZipFile(caminho_7z) as z:
+            nomes = z.getnames()
+            z.extractall(destino_dir)
     except ftplib.error_perm as exc:
         if str(exc).startswith("550"):
             return None
         raise
-    with py7zr.SevenZipFile(caminho_7z) as z:
-        nomes = z.getnames()
-        z.extractall(destino_dir)
-    os.remove(caminho_7z)
+    finally:
+        if os.path.exists(caminho_7z):
+            os.remove(caminho_7z)
     return os.path.join(destino_dir, nomes[0])
