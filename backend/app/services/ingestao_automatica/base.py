@@ -46,6 +46,7 @@ ORDEM_EXECUCAO_TODAS = [
     "pe_de_meia",
     "inss",
     "arrecadacao",
+    "caged",
     "captacao_federal",
     "emendas",
 ]

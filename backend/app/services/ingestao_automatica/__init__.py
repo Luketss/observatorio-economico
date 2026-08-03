@@ -18,3 +18,4 @@ from app.services.ingestao_automatica import bolsa_familia_portal  # noqa: F401
 from app.services.ingestao_automatica import pe_de_meia_portal  # noqa: F401
 from app.services.ingestao_automatica import inss_emps  # noqa: F401
 from app.services.ingestao_automatica import arrecadacao_mg  # noqa: F401
+from app.services.ingestao_automatica import caged_pdet  # noqa: F401

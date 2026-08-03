@@ -21,12 +21,15 @@ EXCEÇÕES DELIBERADAS (não sofrem fallback):
 import csv
 import ftplib
 import os
+import tempfile
+from datetime import date
 from ftplib import FTP
 
 import py7zr
+from sqlalchemy import tuple_
 
 from app.services.ingestao_automatica.base import FonteAutomatica, ResumoIngestao, registrar
-from app.services.ingestao_automatica.util import parse_valor_br
+from app.services.ingestao_automatica.util import competencias_janela, parse_valor_br
 from ingestao.carregar_caged import CNAE_SECAO_DESC, _faixa_etaria
 
 SEXO_MAP = {"1": "Masculino", "3": "Feminino"}
@@ -261,3 +264,171 @@ def baixar_e_extrair(ftp, tipo: str, ano: int, mes: int, destino_dir: str) -> st
         if os.path.exists(caminho_7z):
             os.remove(caminho_7z)
     return os.path.join(destino_dir, nomes[0])
+
+
+def executar(db, municipios, anos=None, usuario_id=None, notificar=True, progresso=None) -> ResumoIngestao:
+    from app.models.caged import (
+        CagedIndicadoresContrato, CagedMovimentacao, CagedPorCnae,
+        CagedPorEscolaridade, CagedPorFaixaEtaria, CagedPorRaca, CagedPorSexo,
+        CagedPorTamanhoEstabelecimento, CagedPorTipoDeficiencia,
+        CagedPorTipoEmpregador, CagedPorTipoEstabelecimento,
+        CagedPorTipoMovimentacao, CagedSalario,
+    )
+    from app.services.ingestao_automatica.populacao_ibge import codigo_ibge_valido
+
+    resumo = ResumoIngestao(dataset="caged")
+    alvo: dict[str, int] = {}
+    for m in municipios:
+        if codigo_ibge_valido(m.codigo_ibge):
+            alvo[m.codigo_ibge.strip()[:6]] = m.id
+        else:
+            resumo.municipios_erro += 1
+            resumo.erros.append(f"{m.nome}/{m.estado}: codigo_ibge ausente/inválido")
+    if not alvo:
+        return resumo
+
+    competencias = competencias_janela(anos, inicio=(2020, 1))
+    if not competencias:
+        resumo.erros.append("CAGED: nenhuma competência na janela (fonte começa em 2020-01)")
+        return resumo
+
+    agg = novo_agregados()
+    meses_ok: set[tuple[int, int]] = set()
+    total_meses = len(competencias)
+
+    # Fase 1 — MOV mês a mês (pesado): baixa, extrai, agrega, apaga.
+    ftp = conectar_ftp()
+    try:
+        for i, (ano, mes) in enumerate(competencias, start=1):
+            if progresso:
+                progresso(i - 1, total_meses, f"MOV {ano}-{mes:02d}: baixando")
+            with tempfile.TemporaryDirectory(prefix="caged_") as tmp:
+                caminho = baixar_e_extrair(ftp, "MOV", ano, mes, tmp)
+                if caminho is None:
+                    resumo.erros.append(
+                        f"CAGED {ano}-{mes:02d}: competência ainda não publicada — mês pulado"
+                    )
+                    continue
+                if progresso:
+                    progresso(i, total_meses, f"MOV {ano}-{mes:02d}: agregando")
+                with open(caminho, newline="", encoding="utf-8-sig") as f:
+                    agregar_arquivo(f, alvo, {(ano, mes)}, agg, sinal=1)
+            meses_ok.add((ano, mes))
+
+        if not meses_ok:
+            return resumo
+
+        # Fase 2 — FOR (+1) e EXC (−1): pequenos, cobrem exclusões/atrasos
+        # publicados DEPOIS da competência; filtrados aos meses com MOV ok.
+        for j, (ano, mes) in enumerate(meses_forexc(competencias, date.today()), start=1):
+            if progresso:
+                progresso(total_meses, total_meses, f"ajustes {ano}-{mes:02d} (FOR/EXC)")
+            for tipo, sinal in (("FOR", 1), ("EXC", -1)):
+                with tempfile.TemporaryDirectory(prefix="caged_") as tmp:
+                    caminho = baixar_e_extrair(ftp, tipo, ano, mes, tmp)
+                    if caminho is None:
+                        continue  # ajuste do mês ainda não publicado — normal
+                    with open(caminho, newline="", encoding="utf-8-sig") as f:
+                        agregar_arquivo(f, alvo, meses_ok, agg, sinal=sinal)
+    finally:
+        try:
+            ftp.quit()
+        except Exception:  # noqa: BLE001 — conexão pode já ter caído
+            ftp.close()
+
+    ultimo_publicado = max(meses_ok)
+    anos_ind = anos_completos(meses_ok, ultimo_publicado)
+    for ano in sorted({a for (a, _m) in meses_ok if a not in anos_ind}):
+        resumo.erros.append(
+            f"CAGED {ano}: indicadores anuais preservados (janela não cobre o ano inteiro)"
+        )
+
+    # Fase 3 — REPLACE por (município, mês) nas 12 tabelas mensais.
+    def _linhas(d):
+        # d: chave (mid, ano, mes, *extras) → {"admissoes","desligamentos"}
+        for chave, tot in d.items():
+            yield chave, {
+                "admissoes": tot["admissoes"], "desligamentos": tot["desligamentos"],
+                "saldo": tot["admissoes"] - tot["desligamentos"],
+            }
+
+    mensais = [
+        (CagedMovimentacao, agg["mensal"], ()),
+        (CagedPorSexo, agg["por_sexo"], ("sexo",)),
+        (CagedPorRaca, agg["por_raca"], ("raca_cor",)),
+        (CagedPorEscolaridade, agg["por_escolaridade"], ("grau_instrucao",)),
+        (CagedPorFaixaEtaria, agg["por_faixa_etaria"], ("faixa_etaria",)),
+        (CagedPorTipoMovimentacao, agg["por_tipo_mov"], ("tipo_movimentacao",)),
+        (CagedPorTipoDeficiencia, agg["por_tipo_def"], ("tipo_deficiencia",)),
+        (CagedPorTamanhoEstabelecimento, agg["por_tamanho"], ("tamanho",)),
+        (CagedPorTipoEmpregador, agg["por_tipo_emp"], ("tipo_empregador",)),
+        (CagedPorTipoEstabelecimento, agg["por_tipo_estab"], ("tipo_estabelecimento",)),
+    ]
+
+    todos_mids = sorted(set(alvo.values()))
+    meses_lista = sorted(meses_ok)
+    for i, mid in enumerate(todos_mids, start=1):
+        if progresso:
+            progresso(i, len(todos_mids), "gravando municípios")
+        for model, _dados, _extras in mensais + [(CagedPorCnae, None, None), (CagedSalario, None, None)]:
+            db.query(model).filter(
+                model.municipio_id == mid,
+                tuple_(model.ano, model.mes).in_(meses_lista),
+            ).delete(synchronize_session=False)
+
+        for model, dados, extras in mensais:
+            for chave, valores in _linhas(dados):
+                if chave[0] != mid:
+                    continue
+                extra_vals = dict(zip(extras, chave[3:]))
+                db.add(model(municipio_id=mid, ano=chave[1], mes=chave[2], **extra_vals, **valores))
+                resumo.linhas += 1
+
+        for (m_id, ano, mes, secao, desc), tot in agg["por_cnae"].items():
+            if m_id != mid:
+                continue
+            db.add(CagedPorCnae(
+                municipio_id=mid, ano=ano, mes=mes, secao=secao, descricao_secao=desc,
+                admissoes=tot["admissoes"], desligamentos=tot["desligamentos"],
+                saldo=tot["admissoes"] - tot["desligamentos"],
+            ))
+            resumo.linhas += 1
+
+        for (m_id, ano, mes), s in agg["salario"].items():
+            if m_id != mid:
+                continue
+            db.add(CagedSalario(
+                municipio_id=mid, ano=ano, mes=mes,
+                salario_medio_admissoes=(s["sum_adm"] / s["cnt_adm"]) if s["cnt_adm"] > 0 else None,
+                salario_medio_desligamentos=(s["sum_des"] / s["cnt_des"]) if s["cnt_des"] > 0 else None,
+            ))
+            resumo.linhas += 1
+
+        if anos_ind:
+            db.query(CagedIndicadoresContrato).filter(
+                CagedIndicadoresContrato.municipio_id == mid,
+                CagedIndicadoresContrato.ano.in_(anos_ind),
+            ).delete(synchronize_session=False)
+            for (m_id, ano), ind in agg["indicadores"].items():
+                if m_id != mid or ano not in anos_ind:
+                    continue
+                db.add(CagedIndicadoresContrato(
+                    municipio_id=mid, ano=ano,
+                    total_movimentacoes=ind["total"], total_parcial=ind["parcial"],
+                    total_intermitente=ind["intermitente"], total_aprendiz=ind["aprendiz"],
+                    total_pcd=ind["pcd"], total_fora_prazo=ind["fora_prazo"],
+                ))
+                resumo.linhas += 1
+
+        db.commit()
+        resumo.municipios_ok += 1
+        # município sem linha = sem movimentação formal (zero é dado, não erro)
+    return resumo
+
+
+registrar(FonteAutomatica(
+    key="caged",
+    label="Emprego formal (Novo CAGED/MTE)",
+    fonte="MTE — Novo CAGED, microdados de movimentações (PDET/FTP), com ajustes",
+    executar=executar,
+))
