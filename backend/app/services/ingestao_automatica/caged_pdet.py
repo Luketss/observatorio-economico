@@ -195,3 +195,30 @@ def agregar_arquivo(linhas, ibge6_para_mid, competencias_alvo, agg, sinal: int =
         if col(row, "indicadordeforadoprazo") == "1":
             ind["fora_prazo"] += inc
     return agregadas
+
+
+def anos_completos(meses_ok: set, ultimo_publicado: tuple) -> list:
+    """Anos cujo total anual pode ser recomputado: todos os meses publicados
+    do ano (jan..dez, ou jan..último publicado para o ano corrente) foram
+    processados com sucesso nesta execução. Ano parcial preserva o valor
+    existente em caged_indicadores_contrato."""
+    anos = sorted({a for (a, _m) in meses_ok})
+    completos = []
+    for ano in anos:
+        fim = ultimo_publicado[1] if ano == ultimo_publicado[0] else 12
+        if all((ano, m) in meses_ok for m in range(1, fim + 1)):
+            completos.append(ano)
+    return completos
+
+
+def meses_forexc(competencias: list, hoje) -> list:
+    """FOR/EXC precisam ir do início da janela até o mês anterior a `hoje`:
+    exclusões/atrasos de uma competência antiga aparecem em arquivos de
+    meses posteriores (validado: linhas de 202001 no EXC de 202606)."""
+    ano, mes = min(competencias)
+    fim = (hoje.year, hoje.month - 1) if hoje.month > 1 else (hoje.year - 1, 12)
+    out = []
+    while (ano, mes) <= fim:
+        out.append((ano, mes))
+        ano, mes = (ano, mes + 1) if mes < 12 else (ano + 1, 1)
+    return out

@@ -4,10 +4,13 @@ Header real do PDET (validado 2026-08-02); saldomovimentação ±1 por linha;
 EXC entra com sinal -1 no MESMO lado (admissão excluída decrementa admissões,
 não vira desligamento)."""
 import io
+from datetime import date
 
 from app.services.ingestao_automatica.caged_pdet import (
     SEXO_MAP,
     agregar_arquivo,
+    anos_completos,
+    meses_forexc,
     novo_agregados,
 )
 
@@ -121,3 +124,22 @@ def test_nenhum_dado_descartado_nos_recortes():
     assert agg["por_tipo_estab"][(42, 2025, 6, "Não informado")]["admissoes"] == 1
     assert agg["por_cnae"][(42, 2025, 6, "Z", "Z")]["admissoes"] == 1
     assert agg["por_cnae"][(42, 2025, 6, "?", "Não informada")]["admissoes"] == 1
+
+
+def test_anos_completos_exige_todos_os_meses_publicados():
+    meses_2024 = {(2024, m) for m in range(1, 13)}
+    # 2024 completo; 2025 até o último publicado (2025-06) completo
+    ok = meses_2024 | {(2025, m) for m in range(1, 7)}
+    assert anos_completos(ok, (2025, 6)) == [2024, 2025]
+    # sem janeiro/2025, 2025 não é completo
+    assert anos_completos(ok - {(2025, 1)}, (2025, 6)) == [2024]
+    # janela parcial de 2024 (só dez) não recomputa 2024
+    assert anos_completos({(2024, 12)} | {(2025, m) for m in range(1, 7)}, (2025, 6)) == [2025]
+
+
+def test_meses_forexc_vai_da_janela_ate_o_mes_anterior_a_hoje():
+    # janela = ano fechado 2024; FOR/EXC de exclusões tardias vão até 2026-06
+    janela = [(2024, m) for m in range(1, 13)]
+    meses = meses_forexc(janela, hoje=date(2026, 7, 15))
+    assert meses[0] == (2024, 1) and meses[-1] == (2026, 6)
+    assert len(meses) == 30
