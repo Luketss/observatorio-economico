@@ -11,6 +11,7 @@ import DatasetFontesJobModal from "./DatasetFontesJobModal";
 import {
   DATASET_TODAS, duracaoJob, labelDataset, labelStatus, linhasJob, resumoTodas, textoResumoTodas,
 } from "../../utils/jobStatus";
+import { propsTituloClicavel } from "../../utils/cliqueAcessivel";
 
 const ESTADOS_UF = [
   "AC", "AL", "AP", "AM", "BA", "CE", "DF", "ES", "GO", "MA", "MT", "MS",
@@ -443,7 +444,7 @@ export default function DatasetFontesAdminPage() {
                   {historico.map((j) => (
                     <tr
                       key={j.id}
-                      onClick={() => setJobDetalhe(j)}
+                      {...propsTituloClicavel(() => setJobDetalhe(j))}
                       title="Ver detalhes"
                       className="border-b border-[var(--border)] last:border-0 align-top cursor-pointer hover:bg-[var(--panel-2)]"
                     >
