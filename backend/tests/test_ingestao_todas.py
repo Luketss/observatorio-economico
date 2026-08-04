@@ -1,6 +1,10 @@
 """Execução 'todas as fontes' (meta-job) — lógica pura, sem DB/rede."""
 from app.services.ingestao_automatica import FONTES_AUTOMATICAS  # noqa: F401 — importa o pacote e registra as fontes
-from app.services.ingestao_automatica.base import DATASET_TODAS, ORDEM_EXECUCAO_TODAS
+from app.services.ingestao_automatica.base import (
+    DATASET_TODAS,
+    FONTES_FORA_DO_TODAS,
+    ORDEM_EXECUCAO_TODAS,
+)
 
 
 def test_ordem_comeca_por_populacao():
@@ -9,10 +13,9 @@ def test_ordem_comeca_por_populacao():
 
 
 def test_ordem_cobre_o_registry_sem_sobras_nem_faltas():
-    # quebra se alguém registrar fonte nova e esquecer de incluí-la na ordem.
-    # "rais" é exceção deliberada (plano 2026-08-03-fonte-rais): fonte anual
-    # que roda por conta própria, fora da fila sequencial do meta-job "todas".
-    assert set(ORDEM_EXECUCAO_TODAS) == set(FONTES_AUTOMATICAS) - {"rais"}
+    # quebra se alguém registrar fonte nova e esquecer de incluí-la na ordem
+    # (ou de listá-la em FONTES_FORA_DO_TODAS, se for exceção deliberada).
+    assert set(ORDEM_EXECUCAO_TODAS) == set(FONTES_AUTOMATICAS) - FONTES_FORA_DO_TODAS
     assert len(ORDEM_EXECUCAO_TODAS) == len(set(ORDEM_EXECUCAO_TODAS))
 
 

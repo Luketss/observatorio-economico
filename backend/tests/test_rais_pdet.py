@@ -183,6 +183,12 @@ def test_ano_padrao_cai_para_parcial_quando_so_ha_parcial():
     assert ano_padrao(dirs) == (2024, True)
 
 
+def test_ano_padrao_sem_diretorios_numericos_e_erro_audivel():
+    import pytest
+    with pytest.raises(ValueError):
+        ano_padrao(["Layouts"])
+
+
 def test_dir_do_ano_escolhe_parcial_com_aviso():
     assert rais_pdet.dir_do_ano(2024, ["2024", "2024 Parcial"]) == ("2024", False)
     assert rais_pdet.dir_do_ano(2024, ["2024 Parcial"]) == ("2024 Parcial", True)

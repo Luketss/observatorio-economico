@@ -438,6 +438,8 @@ def ano_padrao(dirs: list[str]) -> tuple[int, bool]:
         base = d.replace(" Parcial", "")
         if base.isdigit():
             anos.add(int(base))
+    if not anos:
+        raise ValueError("FTP da RAIS sem diretórios de ano")
     ano = max(anos)
     _, parcial = dir_do_ano(ano, dirs)
     return ano, parcial
@@ -619,7 +621,11 @@ def executar(db, municipios, anos=None, usuario_id=None, notificar=True, progres
     if anos:
         anos_alvo = [int(a) for a in anos]
     else:
-        ano, parcial = ano_padrao(dirs)
+        try:
+            ano, parcial = ano_padrao(dirs)
+        except ValueError as exc:
+            resumo.erros.append(str(exc))
+            return resumo
         anos_alvo = [ano]
         if parcial:
             resumo.erros.append(f"ano {ano}: apenas dados parciais disponíveis")
