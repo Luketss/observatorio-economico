@@ -311,6 +311,14 @@ def _executar_job(job_id: int, ja_reivindicado: bool = False) -> None:
             logger.error("Job %s não encontrado ao iniciar a thread", job_id)
             return
         fonte = FONTES_AUTOMATICAS.get(job.dataset)  # None quando dataset == DATASET_TODAS
+        if fonte is None and job.dataset != DATASET_TODAS:
+            job.status = "erro"
+            job.erro = (f"fonte '{job.dataset}' não registrada neste executor — "
+                        "worker desatualizado? Reexecute após o deploy.")
+            job.finalizado_em = _agora()
+            job.atualizado_em = _agora()
+            db_job.commit()
+            return
         filtros = job.filtros or {}
         municipios = resolver_municipios(db, filtros)
 

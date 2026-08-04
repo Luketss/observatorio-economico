@@ -5,12 +5,13 @@ Arquivos reais: CSV ';' com aspas, latin-1, SEM header, posicionais
 Município nas linhas de Estabelecimentos = código TOM da RFB (não IBGE);
 match via mapa TOM->nome + UF da própria linha."""
 import io
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, patch
 
 import pytest
 
 from app.services.ingestao_automatica.cnpj_rfb import (
     COLS_ESTAB,
+    MAX_MUNICIPIOS_POR_EXECUCAO,
     carregar_mapa_tom,
     indexar_alvos,
     montar_linhas,
@@ -103,25 +104,52 @@ def test_validar_colunas_layout_mudou():
         validar_colunas(["a", "b"], COLS_ESTAB, "Estabelecimentos0")
 
 
+def _stats():
+    return {"tom_desconhecido": 0, "malformadas": 0}
+
+
 def test_processar_empresas_filtra_por_cnpj_e_parseia_capital():
-    dados = {}
+    dados, stats = {}, _stats()
     processar_empresas(
         _csv(['"12345678";"PADARIA X LTDA";"2062";"49";"1.000,50";"01";""',
               '"99999999";"OUTRA";"2062";"49";"5,00";"05";""']),
-        {"12345678"}, dados)
+        {"12345678"}, dados, stats)
     assert set(dados) == {"12345678"}
     assert dados["12345678"]["razao_social"] == "PADARIA X LTDA"
     assert dados["12345678"]["capital_social"] == 1000.5
     assert dados["12345678"]["porte"] == "01"
+    assert stats["malformadas"] == 0
+
+
+def test_processar_empresas_conta_malformada_apos_primeira():
+    dados, stats = {}, _stats()
+    processar_empresas(
+        _csv(['"12345678";"PADARIA X LTDA";"2062";"49";"1.000,50";"01";""',
+              '"so";"tres";"campos"',
+              '"99999999";"OUTRA";"2062";"49";"5,00";"05";""']),
+        {"12345678", "99999999"}, dados, stats)
+    assert stats["malformadas"] == 1
+    assert set(dados) == {"12345678", "99999999"}
 
 
 def test_processar_simples_flags():
-    dados = {}
+    dados, stats = {}, _stats()
     processar_simples(
         _csv(['"12345678";"S";"20200101";"";"20200101";"20200101";""']),
-        {"12345678"}, dados)
+        {"12345678"}, dados, stats)
     assert dados["12345678"]["opcao_simples"] is True
     assert dados["12345678"]["opcao_mei"] is True  # data AAAAMMDD vale como flag
+    assert stats["malformadas"] == 0
+
+
+def test_processar_simples_conta_malformada_apos_primeira():
+    dados, stats = {}, _stats()
+    processar_simples(
+        _csv(['"12345678";"S";"20200101";"";"20200101";"20200101";""',
+              '"so";"tres";"campos"']),
+        {"12345678"}, dados, stats)
+    assert stats["malformadas"] == 1
+    assert set(dados) == {"12345678"}
 
 
 def test_montar_linhas_junta_passadas_e_faz_fallback_de_razao():
@@ -185,3 +213,18 @@ def test_cnpj_registrado_fora_do_todas():
     assert "cnpj" in FONTES_AUTOMATICAS
     assert "cnpj" in FONTES_FORA_DO_TODAS
     assert "cnpj" not in ORDEM_EXECUCAO_TODAS
+
+
+def test_executar_recusa_selecao_grande_sem_chamada_de_rede():
+    """Seleção acima do limite (memória: todos os estabelecimentos dos alvos
+    ficam em RAM durante as passadas) é recusada audivelmente ANTES de
+    qualquer chamada de rede — nem listar_meses() é acionado."""
+    n = MAX_MUNICIPIOS_POR_EXECUCAO + 1
+    municipios = [_mun(i, f"Municipio{i}", f"E{i:02d}") for i in range(n)]
+    with patch.object(cnpj_rfb, "listar_meses") as listar_meses_mock:
+        resumo = cnpj_rfb.executar(MagicMock(), municipios)
+    listar_meses_mock.assert_not_called()
+    assert resumo.municipios_ok == 0 and resumo.linhas == 0
+    (erro,) = resumo.erros
+    assert f"{n} municípios" in erro
+    assert f"limite de {MAX_MUNICIPIOS_POR_EXECUCAO}" in erro

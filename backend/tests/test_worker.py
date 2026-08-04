@@ -172,3 +172,31 @@ def test_iniciar_job_sweep_rowcount_zero_trata_job_como_ativo():
     assert exc_info.value.status_code == 409
     assert "job 99" in exc_info.value.detail
     db.commit.assert_not_called()  # nunca chega a criar/commitar o job novo
+
+
+# --- N2: guarda de fonte desconhecida em _executar_job ------------------------
+
+def test_executar_job_fonte_desconhecida_marca_erro_sem_executar():
+    """Job com dataset que não está mais registrado em FONTES_AUTOMATICAS (ex.:
+    worker desatualizado após um deploy que removeu/renomeou a fonte) — e que
+    não é o meta-job 'todas'. O runner deve marcar 'erro' diretamente (sem
+    tentar o claim/transição de status nem o ticker) e jamais chamar
+    fonte.executar (que explodiria com AttributeError em None)."""
+    db_mock = MagicMock()
+    db_job_mock = MagicMock()
+    job = MagicMock()
+    job.dataset = "inexistente"
+    db_job_mock.get.return_value = job
+
+    with patch("app.db.session.SessionLocal", side_effect=[db_mock, db_job_mock]), \
+         patch("app.services.ingestao_automatica.runner.resolver_municipios") as resolver_mock, \
+         patch("app.services.ingestao_automatica.runner.FONTES_AUTOMATICAS", {}):
+        _executar_job(101, ja_reivindicado=False)
+
+    assert job.status == "erro"
+    assert "não registrada" in job.erro
+    resolver_mock.assert_not_called()
+    db_job_mock.query.assert_not_called()  # nunca chega ao claim/transição de status
+    db_job_mock.commit.assert_called_once()
+    db_mock.close.assert_called_once()
+    db_job_mock.close.assert_called_once()

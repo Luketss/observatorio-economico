@@ -50,6 +50,11 @@ COLS_EMPRESAS = 7
 COLS_SIMPLES = 7
 COLS_MUNICIPIOS = 2
 
+# As passadas mantêm em memória TODOS os estabelecimentos dos alvos (~1-1,5GB
+# para uma capital; UF inteira estoura o worker) — seleção grande é recusada
+# audivelmente; rode em lotes.
+MAX_MUNICIPIOS_POR_EXECUCAO = 20
+
 # Posições oficiais (metadados RFB) usadas em cada arquivo
 E_CNPJ, E_MATRIZ, E_FANTASIA, E_SITUACAO = 0, 3, 4, 5
 E_DATA_INICIO, E_CNAE, E_UF, E_TOM = 10, 11, 19, 20
@@ -165,7 +170,7 @@ def processar_estabelecimentos(fobj, mapa_tom, alvos, colhidas, stats) -> None:
         }
 
 
-def processar_empresas(fobj, cnpjs: set, dados: dict) -> None:
+def processar_empresas(fobj, cnpjs: set, dados: dict, stats: dict) -> None:
     """Passada 2a: razão social, capital e porte dos cnpjs colhidos."""
     primeira = True
     for row in _reader(fobj):
@@ -173,6 +178,7 @@ def processar_empresas(fobj, cnpjs: set, dados: dict) -> None:
             validar_colunas(row, COLS_EMPRESAS, "Empresas")
             primeira = False
         if len(row) != COLS_EMPRESAS:
+            stats["malformadas"] += 1
             continue
         cnpj = row[P_CNPJ].strip()
         if cnpj in cnpjs and cnpj not in dados:
@@ -183,7 +189,7 @@ def processar_empresas(fobj, cnpjs: set, dados: dict) -> None:
             }
 
 
-def processar_simples(fobj, cnpjs: set, dados: dict) -> None:
+def processar_simples(fobj, cnpjs: set, dados: dict, stats: dict) -> None:
     """Passada 2b: opções Simples/MEI dos cnpjs colhidos."""
     primeira = True
     for row in _reader(fobj):
@@ -191,6 +197,7 @@ def processar_simples(fobj, cnpjs: set, dados: dict) -> None:
             validar_colunas(row, COLS_SIMPLES, "Simples")
             primeira = False
         if len(row) != COLS_SIMPLES:
+            stats["malformadas"] += 1
             continue
         cnpj = row[S_CNPJ].strip()
         if cnpj in cnpjs and cnpj not in dados:
@@ -288,6 +295,11 @@ def executar(db, municipios, anos=None, usuario_id=None, notificar=True, progres
 
     resumo = ResumoIngestao(dataset="cnpj")
     alvos = indexar_alvos(municipios)
+    if len(alvos) > MAX_MUNICIPIOS_POR_EXECUCAO:
+        resumo.erros.append(
+            f"seleção com {len(alvos)} municípios excede o limite de "
+            f"{MAX_MUNICIPIOS_POR_EXECUCAO} da fonte cnpj — rode em lotes menores")
+        return resumo
     nomes_por_mid = {m.id: m.nome for m in municipios}
     if not alvos:
         return resumo
@@ -329,11 +341,11 @@ def executar(db, municipios, anos=None, usuario_id=None, notificar=True, progres
                     elif nome.startswith("Empresas"):
                         if not cnpjs:
                             cnpjs = {c for (_, c) in colhidas}
-                        processar_empresas(f, cnpjs, dados_emp)
+                        processar_empresas(f, cnpjs, dados_emp, stats)
                     else:  # Simples.zip
                         if not cnpjs:
                             cnpjs = {c for (_, c) in colhidas}
-                        processar_simples(f, cnpjs, dados_simples)
+                        processar_simples(f, cnpjs, dados_simples, stats)
             except (zipfile.BadZipFile, ValueError) as exc:
                 resumo.erros.append(f"{nome}: {exc}")
                 if nome.startswith(("Municipios", "Estabelecimentos")):
