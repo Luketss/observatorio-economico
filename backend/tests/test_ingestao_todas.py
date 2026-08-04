@@ -9,8 +9,10 @@ def test_ordem_comeca_por_populacao():
 
 
 def test_ordem_cobre_o_registry_sem_sobras_nem_faltas():
-    # quebra se alguém registrar fonte nova e esquecer de incluí-la na ordem
-    assert set(ORDEM_EXECUCAO_TODAS) == set(FONTES_AUTOMATICAS)
+    # quebra se alguém registrar fonte nova e esquecer de incluí-la na ordem.
+    # "rais" é exceção deliberada (plano 2026-08-03-fonte-rais): fonte anual
+    # que roda por conta própria, fora da fila sequencial do meta-job "todas".
+    assert set(ORDEM_EXECUCAO_TODAS) == set(FONTES_AUTOMATICAS) - {"rais"}
     assert len(ORDEM_EXECUCAO_TODAS) == len(set(ORDEM_EXECUCAO_TODAS))
 
 
