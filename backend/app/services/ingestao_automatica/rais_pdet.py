@@ -300,6 +300,10 @@ def agregar_arquivo(fobj, ano: int, alvo_por_cod6: dict, agg: dict) -> int:
         if nome in header:
             idx[papel] = header.index(nome)
 
+    faltando = [nome for papel, nome in COLUNAS.items() if papel not in idx]
+    if faltando:
+        raise ValueError(f"RAIS: colunas ausentes no header {faltando} — layout mudou?")
+
     def campo(row, papel):
         i = idx.get(papel)
         return row[i] if i is not None and i < len(row) else ""
@@ -616,15 +620,20 @@ def executar(db, municipios, anos=None, usuario_id=None, notificar=True, progres
         dirs = listar_dirs_rais(ftp)
     except ftplib.all_errors as exc:
         resumo.erros.append(f"FTP indisponível: {type(exc).__name__}: {exc}")
+        with contextlib.suppress(Exception):
+            if ftp is not None:
+                ftp.quit()
         return resumo
 
     if anos:
-        anos_alvo = [int(a) for a in anos]
+        anos_alvo = sorted({int(a) for a in anos})  # dedupe: anos repetidos dobrariam os agregados
     else:
         try:
             ano, parcial = ano_padrao(dirs)
         except ValueError as exc:
             resumo.erros.append(str(exc))
+            with contextlib.suppress(Exception):
+                ftp.quit()
             return resumo
         anos_alvo = [ano]
         if parcial:

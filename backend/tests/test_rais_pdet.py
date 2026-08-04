@@ -193,3 +193,10 @@ def test_dir_do_ano_escolhe_parcial_com_aviso():
     assert rais_pdet.dir_do_ano(2024, ["2024", "2024 Parcial"]) == ("2024", False)
     assert rais_pdet.dir_do_ano(2024, ["2024 Parcial"]) == ("2024 Parcial", True)
     assert rais_pdet.dir_do_ano(2021, ["2022"]) == (None, False)
+
+
+def test_header_sem_coluna_esperada_levanta_layout_mudou():
+    import pytest
+    f = io.StringIO('"Só uma coluna"\n"x"')
+    with pytest.raises(ValueError, match="layout mudou"):
+        agregar_arquivo(f, 2025, ALVO, novo_agregados())
