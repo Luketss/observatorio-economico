@@ -395,3 +395,302 @@ def agregar_arquivo(fobj, ano: int, alvo_por_cod6: dict, agg: dict) -> int:
             _cont(agg["por_motivo"], (mid, ano, _label(MOTIVO_DESLIGAMENTO_MAP, campo(row, "motivo"), "Outros / Não identificado")[:120]))
 
     return processadas
+
+
+# ── FTP / seleção de anos e regiões ─────────────────────────────────────────
+
+def conectar_ftp() -> FTP:
+    ftp = FTP(FTP_HOST, timeout=120)
+    ftp.login()
+    ftp.encoding = "latin-1"  # paths do PDET têm acento
+    return ftp
+
+
+def regioes_para(municipios, resumo: ResumoIngestao | None = None) -> list[str]:
+    """Regiões (ordenadas) que cobrem as UFs dos municípios-alvo; UF fora do
+    mapa vira erro audível no resumo (nunca silêncio)."""
+    regioes = []
+    for m in municipios:
+        reg = UF_REGIAO.get((m.estado or "").upper())
+        if reg is None:
+            if resumo is not None:
+                resumo.erros.append(f"UF desconhecida no mapa de regiões da RAIS: {m.estado}")
+            continue
+        if reg not in regioes:
+            regioes.append(reg)
+    return sorted(regioes)
+
+
+def dir_do_ano(ano: int, dirs: list[str]) -> tuple[str | None, bool]:
+    """Diretório do FTP para o ano: prefere o final; cai para 'X Parcial' com
+    flag de aviso; (None, False) se o ano não existe."""
+    if str(ano) in dirs:
+        return str(ano), False
+    if f"{ano} Parcial" in dirs:
+        return f"{ano} Parcial", True
+    return None, False
+
+
+def ano_padrao(dirs: list[str]) -> tuple[int, bool]:
+    """Ano default: o maior ano com diretório (final preferido; parcial conta)."""
+    anos = set()
+    for d in dirs:
+        base = d.replace(" Parcial", "")
+        if base.isdigit():
+            anos.add(int(base))
+    ano = max(anos)
+    _, parcial = dir_do_ano(ano, dirs)
+    return ano, parcial
+
+
+def listar_dirs_rais(ftp: FTP) -> list[str]:
+    return [d.rsplit("/", 1)[-1] for d in ftp.nlst(BASE_DIR)]
+
+
+def baixar_e_extrair(ftp: FTP, dir_ano: str, regiao: str, destino_dir: str) -> str | None:
+    """Baixa RAIS_VINC_PUB_{regiao}.7z para destino_dir e extrai; devolve o
+    caminho do arquivo extraído (o 7z contém 1 arquivo .COMT/.txt) ou None
+    quando o FTP responde 550 (não publicado). O .7z é removido sempre."""
+    remoto = f"{BASE_DIR}/{dir_ano}/RAIS_VINC_PUB_{regiao}.7z"
+    caminho_7z = os.path.join(destino_dir, f"{regiao}.7z")
+    try:
+        with open(caminho_7z, "wb") as f:
+            ftp.retrbinary(f"RETR {remoto}", f.write)
+        with py7zr.SevenZipFile(caminho_7z) as z:
+            nomes = z.getnames()
+            z.extractall(destino_dir)
+        return os.path.join(destino_dir, nomes[0])
+    except ftplib.error_perm as exc:
+        if "550" in str(exc):
+            return None
+        raise
+    finally:
+        with contextlib.suppress(OSError):
+            os.remove(caminho_7z)
+
+
+def baixar_tolerante(ftp, dir_ano: str, regiao: str, destino_dir: str):
+    """(ftp, caminho, erro): 1 reconexão em falha transitória; conexão morta
+    devolve ftp=None (o chamador reconecta na próxima região — nunca reusa
+    conexão zumbi). Padrão do caged_pdet."""
+    try:
+        if ftp is None:
+            ftp = conectar_ftp()
+        caminho = baixar_e_extrair(ftp, dir_ano, regiao, destino_dir)
+        return ftp, caminho, None if caminho else "nao_publicado"
+    except ftplib.all_errors as exc:
+        with contextlib.suppress(Exception):
+            ftp.close()
+        try:
+            ftp = conectar_ftp()
+            caminho = baixar_e_extrair(ftp, dir_ano, regiao, destino_dir)
+            return ftp, caminho, None if caminho else "nao_publicado"
+        except ftplib.all_errors as exc2:
+            with contextlib.suppress(Exception):
+                ftp.close()
+            return None, None, f"{type(exc2).__name__}: {exc2}"
+
+
+# ── Gravação (REPLACE por município/ano) ────────────────────────────────────
+
+def _linhas_do_municipio(agg: dict, mid: int, ano: int) -> dict[str, list[dict]]:
+    """Converte os dicts agregados em rows por tabela, só do município/ano."""
+    def rem_media(e):
+        return round(e["rem_soma"] / e["rem_cnt"], 2) if e["rem_cnt"] else None
+
+    out = {k: [] for k in (
+        "vinculos", "por_sexo", "por_raca", "por_cnae", "por_faixa_etaria",
+        "por_escolaridade", "por_faixa_rem", "por_faixa_tempo", "metricas",
+        "por_motivo", "por_tipo_admissao", "por_cbo", "por_tamanho",
+        "por_natureza", "turnover",
+    )}
+    v = agg["vinculos"].get((mid, ano))
+    if v:
+        out["vinculos"].append({"municipio_id": mid, "ano": ano,
+                                "total_vinculos": v["total"], "remuneracao_media": rem_media(v)})
+    for (m, a, label), e in agg["por_sexo"].items():
+        if (m, a) == (mid, ano):
+            out["por_sexo"].append({"municipio_id": mid, "ano": ano, "sexo": label[:30],
+                                    "total_vinculos": e["total"], "remuneracao_media": rem_media(e)})
+    for (m, a, label), e in agg["por_raca"].items():
+        if (m, a) == (mid, ano):
+            out["por_raca"].append({"municipio_id": mid, "ano": ano, "raca_cor": label[:50],
+                                    "total_vinculos": e["total"], "remuneracao_media": rem_media(e)})
+    for (m, a, secao), e in agg["por_cnae"].items():
+        if (m, a) == (mid, ano):
+            out["por_cnae"].append({"municipio_id": mid, "ano": ano, "secao": secao[:5],
+                                    "descricao_secao": (e.get("descricao") or "Não identificada")[:150],
+                                    "total_vinculos": e["total"], "remuneracao_media": rem_media(e)})
+    for (m, a, label), e in agg["por_faixa_etaria"].items():
+        if (m, a) == (mid, ano):
+            out["por_faixa_etaria"].append({"municipio_id": mid, "ano": ano, "faixa_etaria": label[:50],
+                                            "total_vinculos": e["total"], "remuneracao_media": rem_media(e)})
+    for (m, a, label), e in agg["por_escolaridade"].items():
+        if (m, a) == (mid, ano):
+            out["por_escolaridade"].append({"municipio_id": mid, "ano": ano, "grau_instrucao": label[:80],
+                                            "total_vinculos": e["total"], "remuneracao_media": rem_media(e)})
+    for (m, a, label), e in agg["por_faixa_rem"].items():
+        if (m, a) == (mid, ano):
+            out["por_faixa_rem"].append({"municipio_id": mid, "ano": ano,
+                                         "faixa_remuneracao_sm": label[:50], "total_vinculos": e["total"]})
+    for (m, a, label), e in agg["por_faixa_tempo"].items():
+        if (m, a) == (mid, ano):
+            out["por_faixa_tempo"].append({"municipio_id": mid, "ano": ano,
+                                           "faixa_tempo_emprego": label[:50], "total_vinculos": e["total"]})
+    met = agg["metricas"].get((mid, ano))
+    if met:
+        out["metricas"].append({
+            "municipio_id": mid, "ano": ano, "total_vinculos": met["total"],
+            "total_pcd": met["pcd"], "total_outro_municipio": met["outro_municipio"],
+            "media_dias_afastamento": round(met["afas_soma"] / met["afas_cnt"], 1) if met["afas_cnt"] else None,
+            "total_ativo_dezembro": met["ativo_dez"], "total_parcial": met["parcial"],
+            "total_intermitente": met["intermitente"], "total_simples": met["simples"],
+            "total_aprendiz_estimado": met["aprendiz"],
+        })
+    for (m, a, label), e in agg["por_motivo"].items():
+        if (m, a) == (mid, ano):
+            out["por_motivo"].append({"municipio_id": mid, "ano": ano, "motivo": label[:120],
+                                      "total_desligamentos": e["total"]})
+    for (m, a, label), e in agg["por_tipo_admissao"].items():
+        if (m, a) == (mid, ano):
+            out["por_tipo_admissao"].append({"municipio_id": mid, "ano": ano, "tipo": label[:120],
+                                             "total_admissoes": e["total"]})
+    for (m, a, fam), e in agg["por_cbo"].items():
+        if (m, a) == (mid, ano):
+            out["por_cbo"].append({"municipio_id": mid, "ano": ano, "cbo_familia": fam[:8],
+                                   "descricao": (e.get("descricao") or None),
+                                   "total_vinculos": e["total"], "remuneracao_media": rem_media(e)})
+    for (m, a, label), e in agg["por_tamanho"].items():
+        if (m, a) == (mid, ano):
+            out["por_tamanho"].append({"municipio_id": mid, "ano": ano, "tamanho": label[:60],
+                                       "total_vinculos": e["total"], "remuneracao_media": rem_media(e)})
+    for (m, a, label), e in agg["por_natureza"].items():
+        if (m, a) == (mid, ano):
+            out["por_natureza"].append({"municipio_id": mid, "ano": ano, "grupo": label[:80],
+                                        "total_vinculos": e["total"]})
+    for (m, a, mes), e in agg["turnover"].items():
+        if (m, a) == (mid, ano):
+            out["turnover"].append({"municipio_id": mid, "ano": ano, "mes": mes,
+                                    "total_admissoes": e["adm"], "total_desligamentos": e["des"]})
+    return out
+
+
+def executar(db, municipios, anos=None, usuario_id=None, notificar=True, progresso=None) -> ResumoIngestao:
+    """Executa a fonte RAIS. `notificar` é aceito e ignorado (fonte anual, sem
+    regra de notificação neste ciclo)."""
+    from app.models.rais import (
+        RaisMetricasAnuais, RaisPorCbo, RaisPorCnae, RaisPorEscolaridade,
+        RaisPorFaixaEtaria, RaisPorFaixaRemuneracao, RaisPorFaixaTempoEmprego,
+        RaisPorMotivoDesligamento, RaisPorNaturezaJuridica, RaisPorRaca,
+        RaisPorSexo, RaisPorTamanhoEstabelecimento, RaisPorTipoAdmissao,
+        RaisTurnoverMensal, RaisVinculo,
+    )
+
+    TABELAS = {
+        "vinculos": RaisVinculo, "por_sexo": RaisPorSexo, "por_raca": RaisPorRaca,
+        "por_cnae": RaisPorCnae, "por_faixa_etaria": RaisPorFaixaEtaria,
+        "por_escolaridade": RaisPorEscolaridade, "por_faixa_rem": RaisPorFaixaRemuneracao,
+        "por_faixa_tempo": RaisPorFaixaTempoEmprego, "metricas": RaisMetricasAnuais,
+        "por_motivo": RaisPorMotivoDesligamento, "por_tipo_admissao": RaisPorTipoAdmissao,
+        "por_cbo": RaisPorCbo, "por_tamanho": RaisPorTamanhoEstabelecimento,
+        "por_natureza": RaisPorNaturezaJuridica, "turnover": RaisTurnoverMensal,
+    }
+
+    resumo = ResumoIngestao(dataset="rais")
+    alvo_por_cod6 = {}
+    for m in municipios:
+        cod = (m.codigo_ibge or "").strip()
+        if len(cod) >= 6 and cod[:6].isdigit():
+            alvo_por_cod6[cod[:6]] = m.id
+        else:
+            resumo.municipios_erro += 1
+            resumo.erros.append(f"{m.nome}: codigo_ibge inválido para RAIS ({cod!r})")
+    if not alvo_por_cod6:
+        return resumo
+
+    ftp = None
+    try:
+        ftp = conectar_ftp()
+        dirs = listar_dirs_rais(ftp)
+    except ftplib.all_errors as exc:
+        resumo.erros.append(f"FTP indisponível: {type(exc).__name__}: {exc}")
+        return resumo
+
+    if anos:
+        anos_alvo = [int(a) for a in anos]
+    else:
+        ano, parcial = ano_padrao(dirs)
+        anos_alvo = [ano]
+        if parcial:
+            resumo.erros.append(f"ano {ano}: apenas dados parciais disponíveis")
+
+    regioes = regioes_para(municipios, resumo)
+    agg = novo_agregados()
+    anos_ok: set[int] = set()
+    total_etapas = max(len(anos_alvo) * len(regioes), 1)
+    etapa = 0
+    for ano in anos_alvo:
+        dir_ano, parcial = dir_do_ano(ano, dirs)
+        if dir_ano is None:
+            resumo.erros.append(f"ano {ano}: não existe no FTP da RAIS")
+            etapa += len(regioes)
+            continue
+        if parcial and anos:
+            resumo.erros.append(f"ano {ano}: apenas dados parciais disponíveis")
+        ano_teve_regiao = False
+        for regiao in regioes:
+            if progresso:
+                progresso(etapa, total_etapas, f"RAIS {ano}: baixando {regiao}")
+            with tempfile.TemporaryDirectory(prefix="rais_") as tmp:
+                ftp, caminho, erro = baixar_tolerante(ftp, dir_ano, regiao, tmp)
+                if erro:
+                    resumo.erros.append(f"ano {ano} {regiao}: {erro}")
+                    etapa += 1
+                    continue
+                if progresso:
+                    progresso(etapa, total_etapas, f"RAIS {ano}: processando {regiao}")
+                with open(caminho, encoding="latin-1", newline="") as f:
+                    agregar_arquivo(f, ano, alvo_por_cod6, agg)
+                ano_teve_regiao = True
+            etapa += 1
+        if ano_teve_regiao:
+            anos_ok.add(ano)
+    with contextlib.suppress(Exception):
+        if ftp is not None:
+            ftp.quit()
+
+    if agg["malformadas"]:
+        resumo.erros.append(f"{agg['malformadas']} linha(s) malformada(s) puladas")
+
+    # Gravação: REPLACE por (município, ano) — só anos que tiveram região lida
+    mids = sorted(set(alvo_por_cod6.values()))
+    for i, mid in enumerate(mids, start=1):
+        if progresso:
+            progresso(i, len(mids), "gravando municípios")
+        gravou_algo = False
+        for ano in sorted(anos_ok):
+            linhas = _linhas_do_municipio(agg, mid, ano)
+            if not any(linhas.values()):
+                nome = next((m.nome for m in municipios if m.id == mid), mid)
+                resumo.erros.append(
+                    f"{nome} ({ano}): sem vínculos no arquivo — dados anteriores mantidos")
+                continue
+            for chave, model in TABELAS.items():
+                db.query(model).filter(model.municipio_id == mid, model.ano == ano).delete(
+                    synchronize_session=False)
+                for row in linhas[chave]:
+                    db.add(model(**row))
+                    resumo.linhas += 1
+            gravou_algo = True
+        db.commit()
+        if gravou_algo:
+            resumo.municipios_ok += 1
+    return resumo
+
+
+registrar(FonteAutomatica(
+    key="rais",
+    label="RAIS (PDET)",
+    fonte="MTE — RAIS, microdados de vínculos (PDET/FTP)",
+    executar=executar,
+))

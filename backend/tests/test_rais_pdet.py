@@ -149,3 +149,41 @@ def test_rotulo_de_bucket_truncado_ao_limite_da_coluna():
     agg, _ = _agrega([_linha(tam="X" * 80)])
     (chave,) = [k for k in agg["por_tamanho"] if k[0] == 1]
     assert len(chave[2]) <= 60  # String(60) de RaisPorTamanhoEstabelecimento
+
+
+# ── Task 2: FTP/anos/regiões (fakes, sem rede) ───────────────────────────────
+from unittest.mock import MagicMock
+
+import app.services.ingestao_automatica.rais_pdet as rais_pdet
+from app.services.ingestao_automatica.rais_pdet import (
+    ano_padrao,
+    regioes_para,
+)
+
+
+def test_regioes_para_agrupa_ufs():
+    m1 = MagicMock(estado="MG"); m2 = MagicMock(estado="ES"); m3 = MagicMock(estado="SP")
+    assert regioes_para([m1, m2, m3]) == ["MG_ES_RJ", "SP"]
+
+
+def test_regioes_para_uf_desconhecida_e_erro_audivel():
+    m = MagicMock(estado="XX")
+    resumo = rais_pdet.ResumoIngestao(dataset="rais")
+    assert regioes_para([m], resumo) == []
+    assert any("XX" in e for e in resumo.erros)
+
+
+def test_ano_padrao_prefere_final_sobre_parcial():
+    dirs = ["2022", "2023", "2023 Parcial", "2024", "2024 Parcial", "2025", "Layouts"]
+    assert ano_padrao(dirs) == (2025, False)
+
+
+def test_ano_padrao_cai_para_parcial_quando_so_ha_parcial():
+    dirs = ["2023", "2024 Parcial", "Layouts"]
+    assert ano_padrao(dirs) == (2024, True)
+
+
+def test_dir_do_ano_escolhe_parcial_com_aviso():
+    assert rais_pdet.dir_do_ano(2024, ["2024", "2024 Parcial"]) == ("2024", False)
+    assert rais_pdet.dir_do_ano(2024, ["2024 Parcial"]) == ("2024 Parcial", True)
+    assert rais_pdet.dir_do_ano(2021, ["2022"]) == (None, False)
