@@ -336,11 +336,11 @@ def agregar_arquivo(fobj, ano: int, alvo_por_cod6: dict, agg: dict) -> int:
             secao, desc = "NI", "Não identificada"
         _cont_rem(agg["por_cnae"], (mid, ano, secao), rem, {"descricao": desc})
 
-        # CBO: família = 4 primeiros dígitos
+        # CBO: família = 4 primeiros dígitos; NI usa chave curta (coluna String(8))
         cbo = _limpo(campo(row, "cbo"))
-        familia = cbo[:4] if cbo.isdigit() and len(cbo) >= 4 else "Não identificado"
+        familia = cbo[:4] if cbo.isdigit() and len(cbo) >= 4 else "NI"
         _cont_rem(agg["por_cbo"], (mid, ano, familia[:8]), rem,
-                  {"descricao": CBO_FAMILIA_DESC.get(familia)})
+                  {"descricao": "Não identificado" if familia == "NI" else CBO_FAMILIA_DESC.get(familia)})
 
         _cont_rem(agg["por_tamanho"], (mid, ano, _label(TAMANHO_ESTAB_MAP, campo(row, "tamanho"), "Não identificado")[:60]), rem)
 

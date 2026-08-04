@@ -134,8 +134,8 @@ def test_turnover_admissoes_e_desligamentos_mensais():
 def test_cbo_familia_4_digitos_e_curto_vira_bucket():
     agg, _ = _agrega([_linha(cbo="717020"), _linha(cbo="99")])
     assert agg["por_cbo"][(1, 2025, "7170")]["total"] == 1
-    # familia[:8] no modulo trunca "Não identificado" (16 chars) em "Não iden".
-    assert agg["por_cbo"][(1, 2025, "Não iden")]["total"] == 1
+    # cbo_familia e String(8): bucket NI usa a chave curta "NI" com descricao legivel
+    assert agg["por_cbo"][(1, 2025, "NI")]["descricao"] == "Não identificado"
 
 
 def test_linha_malformada_contada_e_nao_derruba():
