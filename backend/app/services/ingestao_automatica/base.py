@@ -53,5 +53,5 @@ ORDEM_EXECUCAO_TODAS = [
 
 # Fontes registradas que NÃO entram no meta-job "todas" (pesadas/anuais —
 # rodam sob demanda). O teste de paridade referencia este set; o Ciclo C
-# (Empresas/CNPJ) adiciona a próxima.
-FONTES_FORA_DO_TODAS = frozenset({"rais"})
+# adicionou cnpj.
+FONTES_FORA_DO_TODAS = frozenset({"rais", "cnpj"})

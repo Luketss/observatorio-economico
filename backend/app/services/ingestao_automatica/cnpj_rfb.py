@@ -137,10 +137,12 @@ def processar_estabelecimentos(fobj, mapa_tom, alvos, colhidas, stats) -> None:
             stats["malformadas"] += 1
             continue
         tom = row[E_TOM].strip()
+        if not tom:
+            stats["malformadas"] += 1
+            continue
         nome = mapa_tom.get(tom)
         if nome is None:
-            if tom:
-                stats["tom_desconhecido"] += 1
+            stats["tom_desconhecido"] += 1
             continue
         mid = alvos.get((norm_nome_municipio(nome), row[E_UF].strip().upper()))
         if mid is None:
@@ -221,3 +223,159 @@ def montar_linhas(colhidas, dados_emp, dados_simples) -> dict:
             "opcao_mei": simp.get("opcao_mei", False),
         })
     return por_mid
+
+
+# ── Transporte (WebDAV público do share da RFB) ─────────────────────────────
+
+def extrair_meses(xml: str) -> list[str]:
+    import re
+    meses = sorted(set(re.findall(r"webdav/(\d{4}-\d{2})/", xml)))
+    if not meses:
+        raise ValueError("CNPJ: nenhum mês encontrado no share da RFB — layout mudou?")
+    return meses
+
+
+def listar_meses() -> list[str]:
+    r = requests.request(
+        "PROPFIND", WEBDAV + "/", auth=(SHARE_TOKEN, ""),
+        headers={"Depth": "1"}, timeout=60,
+    )
+    r.raise_for_status()
+    return extrair_meses(r.text)
+
+
+def nomes_zips() -> list[str]:
+    """Ordem de processamento: auxiliar -> Estabelecimentos -> Empresas -> Simples."""
+    return (["Municipios.zip"]
+            + [f"Estabelecimentos{i}.zip" for i in range(10)]
+            + [f"Empresas{i}.zip" for i in range(10)]
+            + ["Simples.zip"])
+
+
+def baixar_zip(mes: str, nome: str, destino_dir: str):
+    """(caminho, erro): download streaming com 1 re-tentativa em falha
+    transitória. Falha dupla devolve (None, mensagem)."""
+    destino = os.path.join(destino_dir, nome)
+    for tentativa in (1, 2):
+        try:
+            with requests.get(f"{WEBDAV}/{mes}/{nome}", auth=(SHARE_TOKEN, ""),
+                              stream=True, timeout=300) as r:
+                r.raise_for_status()
+                with open(destino, "wb") as f:
+                    for chunk in r.iter_content(chunk_size=1024 * 1024):
+                        f.write(chunk)
+            return destino, None
+        except requests.RequestException as exc:
+            if tentativa == 2:
+                return None, f"{type(exc).__name__}: {exc}"
+    return None, "inalcançável"
+
+
+@contextlib.contextmanager
+def iterar_arquivo_do_zip(caminho_zip: str):
+    """Abre o único arquivo interno do zip como texto latin-1, SEM extrair."""
+    with zipfile.ZipFile(caminho_zip) as z:
+        interno = z.namelist()[0]
+        with z.open(interno) as raw:
+            yield io.TextIOWrapper(raw, encoding="latin-1", newline="")
+
+
+# ── Orquestração ────────────────────────────────────────────────────────────
+
+def executar(db, municipios, anos=None, usuario_id=None, notificar=True, progresso=None) -> ResumoIngestao:
+    """`anos` e `notificar` aceitos e ignorados (snapshot corrente do cadastro)."""
+    from app.models.empresa import Empresa
+
+    resumo = ResumoIngestao(dataset="cnpj")
+    alvos = indexar_alvos(municipios)
+    nomes_por_mid = {m.id: m.nome for m in municipios}
+    if not alvos:
+        return resumo
+
+    try:
+        mes = listar_meses()[-1]
+    except (requests.RequestException, ValueError) as exc:
+        resumo.erros.append(f"share da RFB indisponível: {exc}")
+        return resumo
+
+    zips = nomes_zips()
+    total = len(zips)
+    mapa_tom: dict = {}
+    colhidas: dict = {}
+    dados_emp: dict = {}
+    dados_simples: dict = {}
+    stats = {"tom_desconhecido": 0, "malformadas": 0}
+    estab_falhou = False
+
+    cnpjs: set = set()
+    for i, nome in enumerate(zips, start=1):
+        if progresso:
+            progresso(i - 1, total, f"CNPJ {mes}: baixando {nome}")
+        with tempfile.TemporaryDirectory(prefix="cnpj_") as tmp:
+            caminho, erro = baixar_zip(mes, nome, tmp)
+            if erro:
+                resumo.erros.append(f"{nome}: {erro}")
+                if nome.startswith(("Municipios", "Estabelecimentos")):
+                    estab_falhou = True
+                continue
+            if progresso:
+                progresso(i - 1, total, f"CNPJ {mes}: processando {nome}")
+            try:
+                with iterar_arquivo_do_zip(caminho) as f:
+                    if nome == "Municipios.zip":
+                        mapa_tom = carregar_mapa_tom(f)
+                    elif nome.startswith("Estabelecimentos"):
+                        processar_estabelecimentos(f, mapa_tom, alvos, colhidas, stats)
+                    elif nome.startswith("Empresas"):
+                        if not cnpjs:
+                            cnpjs = {c for (_, c) in colhidas}
+                        processar_empresas(f, cnpjs, dados_emp)
+                    else:  # Simples.zip
+                        if not cnpjs:
+                            cnpjs = {c for (_, c) in colhidas}
+                        processar_simples(f, cnpjs, dados_simples)
+            except (zipfile.BadZipFile, ValueError) as exc:
+                resumo.erros.append(f"{nome}: {exc}")
+                if nome.startswith(("Municipios", "Estabelecimentos")):
+                    estab_falhou = True
+
+    if stats["tom_desconhecido"]:
+        resumo.erros.append(
+            f"{stats['tom_desconhecido']} linha(s) com código TOM fora do mapa de municípios da RFB")
+    if stats["malformadas"]:
+        resumo.erros.append(f"{stats['malformadas']} linha(s) malformada(s) puladas")
+
+    if estab_falhou:
+        resumo.erros.append(
+            "snapshot incompleto (Municípios/Estabelecimentos com falha) — NADA foi gravado")
+        return resumo
+
+    linhas_por_mid = montar_linhas(colhidas, dados_emp, dados_simples)
+    if not dados_emp and colhidas:
+        resumo.erros.append(
+            "passada de Empresas vazia — razão social/porte/capital em modo degradado")
+
+    mids = sorted(alvos.values())
+    for i, mid in enumerate(mids, start=1):
+        if progresso:
+            progresso(i, len(mids), "gravando municípios")
+        linhas = linhas_por_mid.get(mid, [])
+        if not linhas:
+            resumo.erros.append(
+                f"{nomes_por_mid.get(mid, mid)}: sem estabelecimentos no arquivo — dados anteriores mantidos")
+            continue
+        db.query(Empresa).filter(Empresa.municipio_id == mid).delete(synchronize_session=False)
+        for row in linhas:
+            db.add(Empresa(**row))
+        resumo.linhas += len(linhas)
+        db.commit()
+        resumo.municipios_ok += 1
+    return resumo
+
+
+registrar(FonteAutomatica(
+    key="cnpj",
+    label="Empresas (CNPJ/RFB)",
+    fonte="RFB — Cadastro Nacional da Pessoa Jurídica, dados abertos mensais",
+    executar=executar,
+))

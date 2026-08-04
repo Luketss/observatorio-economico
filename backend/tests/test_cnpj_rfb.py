@@ -147,3 +147,41 @@ def test_montar_linhas_com_passada_2_completa():
     (row,) = linhas[1]
     assert len(row["razao_social"]) == 150  # truncado ao String(150)
     assert row["porte"] == "05" and row["data_inicio"] is None
+
+
+def test_tom_vazio_conta_como_malformada():
+    colhidas, stats = _roda_estab([_estab(tom="")])
+    assert colhidas == {} and stats["malformadas"] == 1 and stats["tom_desconhecido"] == 0
+
+
+# ── Task 2: transporte/orquestração (fakes, sem rede) ────────────────────────
+import app.services.ingestao_automatica.cnpj_rfb as cnpj_rfb
+
+
+def test_extrair_meses_do_propfind():
+    xml = "<d:href>/public.php/webdav/2026-06/</d:href><d:href>/public.php/webdav/2026-07/</d:href>"
+    assert cnpj_rfb.extrair_meses(xml) == ["2026-06", "2026-07"]
+
+
+def test_extrair_meses_vazio_e_erro_audivel():
+    with pytest.raises(ValueError, match="nenhum mês"):
+        cnpj_rfb.extrair_meses("<xml/>")
+
+
+def test_nomes_dos_zips():
+    nomes = cnpj_rfb.nomes_zips()
+    assert nomes[0] == "Municipios.zip"
+    assert "Estabelecimentos9.zip" in nomes and "Empresas0.zip" in nomes
+    assert nomes[-1] == "Simples.zip" and len(nomes) == 22
+    assert "Socios0.zip" not in nomes
+
+
+def test_cnpj_registrado_fora_do_todas():
+    from app.services.ingestao_automatica.base import (
+        FONTES_AUTOMATICAS,
+        FONTES_FORA_DO_TODAS,
+        ORDEM_EXECUCAO_TODAS,
+    )
+    assert "cnpj" in FONTES_AUTOMATICAS
+    assert "cnpj" in FONTES_FORA_DO_TODAS
+    assert "cnpj" not in ORDEM_EXECUCAO_TODAS
