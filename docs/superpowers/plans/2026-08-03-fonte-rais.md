@@ -118,7 +118,7 @@ def test_fora_do_alvo_e_ignorado():
 
 
 def test_sexo_raca_labels_do_loader_manual():
-    agg, _ = _agrega([_linha(sexo="1"), _linha(sexo="2"), _linha(raca="8")])
+    agg, _ = _agrega([_linha(sexo="1"), _linha(sexo="2"), _linha(sexo="9", raca="8")])
     assert agg["por_sexo"][(1, 2025, "Masculino")]["total"] == 1
     assert agg["por_sexo"][(1, 2025, "Feminino")]["total"] == 1
     assert agg["por_raca"][(1, 2025, "Parda")]["total"] == 1
@@ -187,7 +187,8 @@ def test_turnover_admissoes_e_desligamentos_mensais():
 def test_cbo_familia_4_digitos_e_curto_vira_bucket():
     agg, _ = _agrega([_linha(cbo="717020"), _linha(cbo="99")])
     assert agg["por_cbo"][(1, 2025, "7170")]["total"] == 1
-    assert agg["por_cbo"][(1, 2025, "Não identificado")]["total"] == 1
+    # cbo_familia e String(8): bucket NI usa a chave curta "NI" com descricao legivel
+    assert agg["por_cbo"][(1, 2025, "NI")]["descricao"] == "Não identificado"
 
 
 def test_linha_malformada_contada_e_nao_derruba():
@@ -552,11 +553,11 @@ def agregar_arquivo(fobj, ano: int, alvo_por_cod6: dict, agg: dict) -> int:
             secao, desc = "NI", "Não identificada"
         _cont_rem(agg["por_cnae"], (mid, ano, secao), rem, {"descricao": desc})
 
-        # CBO: família = 4 primeiros dígitos
+        # CBO: família = 4 primeiros dígitos; NI usa chave curta (coluna String(8))
         cbo = _limpo(campo(row, "cbo"))
-        familia = cbo[:4] if cbo.isdigit() and len(cbo) >= 4 else "Não identificado"
+        familia = cbo[:4] if cbo.isdigit() and len(cbo) >= 4 else "NI"
         _cont_rem(agg["por_cbo"], (mid, ano, familia[:8]), rem,
-                  {"descricao": CBO_FAMILIA_DESC.get(familia)})
+                  {"descricao": "Não identificado" if familia == "NI" else CBO_FAMILIA_DESC.get(familia)})
 
         _cont_rem(agg["por_tamanho"], (mid, ano, _label(TAMANHO_ESTAB_MAP, campo(row, "tamanho"), "Não identificado")[:60]), rem)
 
