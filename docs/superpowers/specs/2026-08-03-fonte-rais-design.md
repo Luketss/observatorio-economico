@@ -16,10 +16,14 @@ Hoje a RAIS só entra por CSV manual (`backend/ingestao/carregar_rais.py`, 15 ta
   `RAIS_VINC_PUB_NORTE.7z` (212MB), `RAIS_VINC_PUB_SP.7z` (1.1GB),
   `RAIS_VINC_PUB_SUL.7z` (705MB). `RAIS_ESTAB_PUB.7z` (estabelecimentos) NÃO é usado —
   as 15 tabelas derivam só de vínculos.
-- Layout oficial em `Layouts/vínculos/RAIS_vinculos_layout2020.xls` (vale 2020+):
-  separador `;`, planilha "RAISD - layout" com nome/descrição/categorias de cada
-  variável; regra oficial: valores `-1` (com ou sem zeros à esquerda), `{ñ class}` ou
-  parte do texto = **ignorado**.
+- Layout oficial em `Layouts/vínculos/RAIS_vinculos_layout2020.xls` (categorias/labels
+  de cada variável; regra oficial: `-1`, `{ñ class}` = **ignorado**). PORÉM, o header
+  REAL validado no NI de 2025 (`RAIS_VINC_PUB_NI.COMT` dentro do 7z) difere do layout:
+  **CSV com VÍRGULA e aspas** (não `;`), decimal com PONTO (`1637.69`), campos com
+  espaços à esquerda (`" 41204"`), 62 colunas com sufixo `- Código` (ex.:
+  `Município - Código`, `Sexo - Código`, `CNAE 2.0 Subclasse - Codigo` — este sem
+  acento) e coluna extra `Categoria Trabalhador - Código` ausente do layout 2020.
+  Valores 999999/9999/999/99 = não identificado. O parse segue o header real.
 
 ## Decisões (validadas com o usuário)
 
