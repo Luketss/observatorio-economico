@@ -1,4 +1,4 @@
-﻿import { useEffect, useMemo, useState } from "react";
+﻿import { useEffect, useMemo, useRef, useState } from "react";
 import api from "../../services/api";
 import { motion } from "framer-motion";
 import InsightsPanel from "../../components/InsightsPanel";
@@ -6,6 +6,7 @@ import ReleasesPanel from "../../components/ReleasesPanel";
 import NidComparativoPanel from "../../components/nid/ComparativoPanel";
 import InfoTooltip from "../../components/InfoTooltip";
 import FilterBar, { describeFilter, clearFilter } from "../../components/FilterBar";
+import { janela12m } from "../../utils/periodoCards";
 import KpiCard from "../../components/KpiCard";
 import { NidPanel, NidPageHeader } from "../../components/nid/Panel";
 import { HBarChart, AreaLineChart, fmtMoneyShort } from "../../components/nid/charts";
@@ -32,15 +33,21 @@ export default function InssPage() {
   const needsMunicipio = user?.role === "ADMIN_GLOBAL" && viewAsId == null;
 
   const [rawSerie, setRawSerie] = useState([]);
-  const [resumo, setResumo] = useState(null);
   const [loading, setLoading] = useState(true);
   const [filters, setFilters] = useState({ yearFrom: "", yearTo: "" });
 
+  // Default "12m ancorado" = último ano com dado (série anual).
+  const filtroTocado = useRef(false);
+  const mudarFiltros = (v) => { filtroTocado.current = true; setFilters(v); };
+
   useEffect(() => {
-    Promise.all([api.get("/inss/serie"), api.get("/inss/resumo")])
-      .then(([serieRes, resumoRes]) => {
-        setRawSerie(serieRes.data || []);
-        setResumo(resumoRes.data);
+    api.get("/inss/serie")
+      .then((serieRes) => {
+        const raw = serieRes.data || [];
+        setRawSerie(raw);
+        if (!filtroTocado.current) {
+          setFilters(janela12m(raw, (d) => ({ ano: d.ano })));
+        }
       })
       .catch((err) => console.error("Erro ao carregar INSS:", err))
       .finally(() => setLoading(false));
@@ -85,19 +92,33 @@ export default function InssPage() {
     .sort((a, b) => (b.valor_anual ?? 0) - (a.valor_anual ?? 0))
     .slice(0, 50);
 
+  // Fluxo: somas da série filtrada (linhas anuais por categoria).
+  const totaisInss = useMemo(
+    () =>
+      serie.reduce(
+        (acc, d) => ({
+          beneficios: acc.beneficios + (d.quantidade_beneficios || 0),
+          valor: acc.valor + (d.valor_anual || 0),
+        }),
+        { beneficios: 0, valor: 0 }
+      ),
+    [serie]
+  );
+  const filtroLabel = describeFilter(filters);
+
   const cards = [
     {
       label: "Total Benefícios",
-      value: fmtNum(resumo?.total_beneficios),
-      sub: "No período",
+      value: serie.length ? fmtNum(totaisInss.beneficios) : "—",
+      sub: filtroLabel || "Toda a série",
       accent: "var(--accent-1)",
       dataset: "inss",
       indicadorKey: "total_beneficios",
     },
     {
       label: "Valor Total",
-      value: fmtBRL(resumo?.valor_total),
-      sub: "Pagamentos totais",
+      value: serie.length ? fmtBRL(totaisInss.valor) : "—",
+      sub: filtroLabel ? `Pagamentos · ${filtroLabel}` : "Pagamentos totais",
       accent: "var(--accent-5)",
       dataset: "inss",
       indicadorKey: "valor_total",
@@ -118,7 +139,7 @@ export default function InssPage() {
           label: describeFilter(filters),
           active: true,
           onClick: () => document.getElementById("filter-bar-inss")?.scrollIntoView({ block: "center", behavior: "smooth" }),
-          onClear: () => setFilters(clearFilter()),
+          onClear: () => mudarFiltros(clearFilter()),
         }] : null}
       />
 
@@ -126,7 +147,7 @@ export default function InssPage() {
         <SelecioneMunicipio />
       ) : (
       <>
-      <FilterBar id="filter-bar-inss" years={years} value={filters} onChange={setFilters} />
+      <FilterBar id="filter-bar-inss" years={years} value={filters} onChange={mudarFiltros} />
 
       {loading ? (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">

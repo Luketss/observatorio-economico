@@ -1,10 +1,11 @@
-﻿import { useEffect, useMemo, useState } from "react";
+﻿import { useEffect, useMemo, useRef, useState } from "react";
 import api from "../../services/api";
 import { motion } from "framer-motion";
 import InsightsPanel from "../../components/InsightsPanel";
 import ReleasesPanel from "../../components/ReleasesPanel";
 import InfoTooltip from "../../components/InfoTooltip";
-import FilterBar from "../../components/FilterBar";
+import FilterBar, { describeFilter, clearFilter } from "../../components/FilterBar";
+import { janela12m, dentroDoFiltro } from "../../utils/periodoCards";
 import KpiCard from "../../components/KpiCard";
 import { NidPageHeader, NidPanel, NidLegend } from "../../components/nid/Panel";
 import { AreaLineChart, MultiLineChart, HBarChart, DonutChart } from "../../components/nid/charts";
@@ -32,29 +33,33 @@ export default function PeDeMeiaPage() {
   const needsMunicipio = user?.role === "ADMIN_GLOBAL" && viewAsId == null;
 
   const [rawSerie, setRawSerie] = useState([]);
-  const [resumo, setResumo] = useState(null);
   const [porEtapa, setPorEtapa] = useState([]);
   const [porIncentivo, setPorIncentivo] = useState([]);
   const [loading, setLoading] = useState(true);
   const [filters, setFilters] = useState({ yearFrom: "", yearTo: "", monthFrom: "", monthTo: "" });
+
+  // Default "12m ancorado no último dado" (guard contra sobrescrever o usuário).
+  const filtroTocado = useRef(false);
+  const mudarFiltros = (v) => { filtroTocado.current = true; setFilters(v); };
   const [comparar, setComparar] = useState(false);
   const cmp = useMemo(() => comparePanelData(rawSerie, { valueKey: "total_estudantes" }), [rawSerie]);
 
   useEffect(() => {
     Promise.all([
       api.get("/pe_de_meia/serie"),
-      api.get("/pe_de_meia/resumo"),
       api.get("/pe_de_meia/por_etapa"),
       api.get("/pe_de_meia/por_incentivo"),
     ])
-      .then(([serieRes, resumoRes, etapaRes, incentivoRes]) => {
+      .then(([serieRes, etapaRes, incentivoRes]) => {
         const raw = (serieRes.data || []).map((item) => ({
           ...item,
           periodo: `${item.ano}-${String(item.mes).padStart(2, "0")}`,
         }));
         raw.sort((a, b) => a.periodo.localeCompare(b.periodo));
         setRawSerie(raw);
-        setResumo(resumoRes.data);
+        if (!filtroTocado.current) {
+          setFilters(janela12m(raw, (d) => ({ ano: d.ano, mes: d.mes })));
+        }
         setPorEtapa(
           (etapaRes.data || []).sort(
             (a, b) => b.total_estudantes - a.total_estudantes
@@ -74,30 +79,39 @@ export default function PeDeMeiaPage() {
 
   const years = useMemo(() => [...new Set(rawSerie.map((d) => d.ano))].sort(), [rawSerie]);
 
-  const serie = useMemo(() => {
-    const { yearFrom, yearTo, monthFrom, monthTo } = filters;
-    return rawSerie.filter((d) => {
-      if (yearFrom && d.ano < +yearFrom) return false;
-      if (yearTo && d.ano > +yearTo) return false;
-      if (monthFrom && d.mes < +monthFrom) return false;
-      if (monthTo && d.mes > +monthTo) return false;
-      return true;
-    });
-  }, [rawSerie, filters]);
+  const serie = useMemo(
+    () => rawSerie.filter((d) => dentroDoFiltro(d, filters, (x) => ({ ano: x.ano, mes: x.mes }))),
+    [rawSerie, filters]
+  );
+
+  // Fluxo: estudantes/mês = MÉDIA no período (somar duplicaria pessoas);
+  // valor = SOMA do período. Mesma série filtrada dos gráficos.
+  const totaisPeriodo = useMemo(() => {
+    if (!serie.length) return null;
+    const soma = serie.reduce(
+      (acc, d) => ({
+        estudantes: acc.estudantes + (d.total_estudantes || 0),
+        valor: acc.valor + (d.valor_total || 0),
+      }),
+      { estudantes: 0, valor: 0 }
+    );
+    return { mediaEstudantes: soma.estudantes / serie.length, valorTotal: soma.valor };
+  }, [serie]);
+  const filtroLabel = describeFilter(filters);
 
   const cards = [
     {
-      label: "Total Estudantes",
-      value: fmtNum(resumo?.total_estudantes),
-      sub: "No período",
+      label: "Estudantes por Mês",
+      value: totaisPeriodo ? fmtNum(Math.round(totaisPeriodo.mediaEstudantes)) : "—",
+      sub: filtroLabel ? `Média mensal · ${filtroLabel}` : "Média mensal · toda a série",
       accent: "var(--accent-1)",
       dataset: "pe_de_meia",
       indicadorKey: "total_estudantes",
     },
     {
       label: "Valor Total",
-      value: fmtBRL(resumo?.valor_total),
-      sub: "Repasses totais",
+      value: totaisPeriodo ? fmtBRL(totaisPeriodo.valorTotal) : "—",
+      sub: filtroLabel ? `Repasses · ${filtroLabel}` : "Repasses totais",
       accent: "var(--accent-5)",
       dataset: "pe_de_meia",
       indicadorKey: "valor_total",
@@ -114,6 +128,12 @@ export default function PeDeMeiaPage() {
       <NidPageHeader
         title={<>Pé-de-Meia <InfoTooltip dataset="pe_de_meia" /></>}
         sub="Incentivos financeiros a estudantes do ensino médio público."
+        chips={describeFilter(filters) ? [{
+          label: describeFilter(filters),
+          active: true,
+          onClick: () => document.getElementById("filter-bar-pedemeia")?.scrollIntoView({ block: "center", behavior: "smooth" }),
+          onClear: () => mudarFiltros(clearFilter()),
+        }] : null}
       />
 
       {needsMunicipio ? (
@@ -124,7 +144,7 @@ export default function PeDeMeiaPage() {
         <CompareToggle active={comparar} onChange={setComparar} disabled={!cmp.temAnterior} />
       </div>
 
-      <FilterBar years={years} showMonths value={filters} onChange={setFilters} />
+      <FilterBar id="filter-bar-pedemeia" years={years} showMonths value={filters} onChange={mudarFiltros} />
 
       {loading ? (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">

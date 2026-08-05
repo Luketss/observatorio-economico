@@ -1,4 +1,4 @@
-﻿import { useEffect, useMemo, useState } from "react";
+﻿import { useEffect, useMemo, useRef, useState } from "react";
 import api from "../../services/api";
 import { motion } from "framer-motion";
 import InsightsPanel from "../../components/InsightsPanel";
@@ -6,6 +6,7 @@ import ReleasesPanel from "../../components/ReleasesPanel";
 import NidComparativoPanel from "../../components/nid/ComparativoPanel";
 import InfoTooltip from "../../components/InfoTooltip";
 import FilterBar, { describeFilter, clearFilter } from "../../components/FilterBar";
+import { janela12m, dentroDoFiltro } from "../../utils/periodoCards";
 import KpiCard from "../../components/KpiCard";
 import { NidPageHeader, NidPanel, NidLegend } from "../../components/nid/Panel";
 import { AreaLineChart, MultiLineChart, StackedBarChart } from "../../components/nid/charts";
@@ -32,25 +33,27 @@ export default function BolsaFamiliaPage() {
   const needsMunicipio = user?.role === "ADMIN_GLOBAL" && viewAsId == null;
 
   const [rawSerie, setRawSerie] = useState([]);
-  const [resumo, setResumo] = useState(null);
   const [loading, setLoading] = useState(true);
   const [filters, setFilters] = useState({ yearFrom: "", yearTo: "", monthFrom: "", monthTo: "" });
+
+  // Default "12m ancorado no último dado" (guard contra sobrescrever o usuário).
+  const filtroTocado = useRef(false);
+  const mudarFiltros = (v) => { filtroTocado.current = true; setFilters(v); };
   const [comparar, setComparar] = useState(false);
   const cmp = useMemo(() => comparePanelData(rawSerie, { valueKey: "total_beneficiarios" }), [rawSerie]);
 
   useEffect(() => {
-    Promise.all([
-      api.get("/bolsa_familia/serie"),
-      api.get("/bolsa_familia/resumo"),
-    ])
-      .then(([serieRes, resumoRes]) => {
+    api.get("/bolsa_familia/serie")
+      .then((serieRes) => {
         const raw = (serieRes.data || []).map((item) => ({
           ...item,
           periodo: `${item.ano}-${String(item.mes).padStart(2, "0")}`,
         }));
         raw.sort((a, b) => a.periodo.localeCompare(b.periodo));
         setRawSerie(raw);
-        setResumo(resumoRes.data);
+        if (!filtroTocado.current) {
+          setFilters(janela12m(raw, (d) => ({ ano: d.ano, mes: d.mes })));
+        }
       })
       .catch((err) => console.error("Erro ao carregar Bolsa Família:", err))
       .finally(() => setLoading(false));
@@ -58,38 +61,54 @@ export default function BolsaFamiliaPage() {
 
   const years = useMemo(() => [...new Set(rawSerie.map((d) => d.ano))].sort(), [rawSerie]);
 
-  const serie = useMemo(() => {
-    const { yearFrom, yearTo, monthFrom, monthTo } = filters;
-    return rawSerie.filter((d) => {
-      if (yearFrom && d.ano < +yearFrom) return false;
-      if (yearTo && d.ano > +yearTo) return false;
-      if (monthFrom && d.mes < +monthFrom) return false;
-      if (monthTo && d.mes > +monthTo) return false;
-      return true;
-    });
-  }, [rawSerie, filters]);
+  const serie = useMemo(
+    () => rawSerie.filter((d) => dentroDoFiltro(d, filters, (x) => ({ ano: x.ano, mes: x.mes }))),
+    [rawSerie, filters]
+  );
+
+  // Fluxo: contagens mensais viram MÉDIA no período (somar duplicaria famílias);
+  // valores em R$ são SOMA do período. Mesma série filtrada dos gráficos.
+  const totaisPeriodo = useMemo(() => {
+    if (!serie.length) return null;
+    const soma = serie.reduce(
+      (acc, d) => ({
+        benef: acc.benef + (d.total_beneficiarios || 0),
+        valor: acc.valor + (d.valor_total || 0),
+        pi: acc.pi + (d.beneficiarios_primeira_infancia || 0),
+      }),
+      { benef: 0, valor: 0, pi: 0 }
+    );
+    return {
+      mediaBenef: soma.benef / serie.length,
+      valorTotal: soma.valor,
+      mediaPi: soma.pi / serie.length,
+    };
+  }, [serie]);
+  const filtroLabel = describeFilter(filters);
 
   const cards = [
     {
-      label: "Total Beneficiários",
-      value: fmtNum(resumo?.total_beneficiarios),
-      sub: "No período",
+      label: "Beneficiários por Mês",
+      value: totaisPeriodo ? fmtNum(Math.round(totaisPeriodo.mediaBenef)) : "—",
+      sub: filtroLabel ? `Média mensal · ${filtroLabel}` : "Média mensal · toda a série",
       accent: "var(--accent-1)",
       dataset: "bolsa_familia",
       indicadorKey: "total_beneficiarios",
     },
     {
       label: "Valor Total",
-      value: fmtBRL(resumo?.valor_total),
-      sub: "Repasses totais",
+      value: totaisPeriodo ? fmtBRL(totaisPeriodo.valorTotal) : "—",
+      sub: filtroLabel ? `Repasses · ${filtroLabel}` : "Repasses de toda a série",
       accent: "var(--accent-5)",
       dataset: "bolsa_familia",
       indicadorKey: "valor_total",
     },
     {
       label: "Benef. Primeira Infância",
-      value: fmtNum(resumo?.beneficiarios_primeira_infancia),
-      sub: "Crianças até 7 anos",
+      value: totaisPeriodo ? fmtNum(Math.round(totaisPeriodo.mediaPi)) : "—",
+      sub: filtroLabel
+        ? `Crianças até 7 anos · média/mês · ${filtroLabel}`
+        : "Crianças até 7 anos · média/mês",
       accent: "var(--accent-3)",
       dataset: "bolsa_familia",
       indicadorKey: "media_por_beneficiario",
@@ -110,7 +129,7 @@ export default function BolsaFamiliaPage() {
           label: describeFilter(filters),
           active: true,
           onClick: () => document.getElementById("filter-bar-bolsafamilia")?.scrollIntoView({ block: "center", behavior: "smooth" }),
-          onClear: () => setFilters(clearFilter()),
+          onClear: () => mudarFiltros(clearFilter()),
         }] : null}
       />
 
@@ -122,7 +141,7 @@ export default function BolsaFamiliaPage() {
         <CompareToggle active={comparar} onChange={setComparar} disabled={!cmp.temAnterior} />
       </div>
 
-      <FilterBar id="filter-bar-bolsafamilia" years={years} showMonths value={filters} onChange={setFilters} />
+      <FilterBar id="filter-bar-bolsafamilia" years={years} showMonths value={filters} onChange={mudarFiltros} />
 
       {loading ? (
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">

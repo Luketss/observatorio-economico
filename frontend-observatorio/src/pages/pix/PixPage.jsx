@@ -1,4 +1,4 @@
-﻿import { useEffect, useMemo, useState } from "react";
+﻿import { useEffect, useMemo, useRef, useState } from "react";
 import api from "../../services/api";
 import { motion } from "framer-motion";
 import InsightsPanel from "../../components/InsightsPanel";
@@ -6,6 +6,7 @@ import ReleasesPanel from "../../components/ReleasesPanel";
 import NidComparativoPanel from "../../components/nid/ComparativoPanel";
 import InfoTooltip from "../../components/InfoTooltip";
 import FilterBar, { describeFilter, clearFilter } from "../../components/FilterBar";
+import { janela12m, dentroDoFiltro } from "../../utils/periodoCards";
 import KpiCard from "../../components/KpiCard";
 import PlanGate from "../../components/PlanGate";
 import { NidPageHeader, NidPanel, NidLegend } from "../../components/nid/Panel";
@@ -33,9 +34,12 @@ export default function PixPage() {
   const needsMunicipio = user?.role === "ADMIN_GLOBAL" && viewAsId == null;
 
   const [rawSerie, setRawSerie] = useState([]);
-  const [resumo, setResumo] = useState(null);
   const [loading, setLoading] = useState(true);
   const [filters, setFilters] = useState({ yearFrom: "", yearTo: "", monthFrom: "", monthTo: "" });
+
+  // Default "12m ancorado no último dado" (guard contra sobrescrever o usuário).
+  const filtroTocado = useRef(false);
+  const mudarFiltros = (v) => { filtroTocado.current = true; setFilters(v); };
   const [comparar, setComparar] = useState(false);
   const rawSerieCmp = useMemo(
     () => rawSerie.map((d) => ({ ...d, _v: (d.vl_pagador_pf || 0) + (d.vl_pagador_pj || 0) })),
@@ -44,10 +48,13 @@ export default function PixPage() {
   const cmp = useMemo(() => comparePanelData(rawSerieCmp, { valueKey: "_v" }), [rawSerieCmp]);
 
   useEffect(() => {
-    Promise.all([api.get("/pix/serie"), api.get("/pix/resumo")])
-      .then(([serieRes, resumoRes]) => {
-        setRawSerie(serieRes.data || []);
-        setResumo(resumoRes.data);
+    api.get("/pix/serie")
+      .then((serieRes) => {
+        const raw = serieRes.data || [];
+        setRawSerie(raw);
+        if (!filtroTocado.current) {
+          setFilters(janela12m(raw, (d) => ({ ano: d.ano, mes: d.mes })));
+        }
       })
       .catch((err) => console.error("Erro ao carregar PIX:", err))
       .finally(() => setLoading(false));
@@ -59,15 +66,8 @@ export default function PixPage() {
   }, [rawSerie]);
 
   const serie = useMemo(() => {
-    const { yearFrom, yearTo, monthFrom, monthTo } = filters;
     return rawSerie
-      .filter((d) => {
-        if (yearFrom && d.ano < +yearFrom) return false;
-        if (yearTo && d.ano > +yearTo) return false;
-        if (monthFrom && d.mes < +monthFrom) return false;
-        if (monthTo && d.mes > +monthTo) return false;
-        return true;
-      })
+      .filter((d) => dentroDoFiltro(d, filters, (x) => ({ ano: x.ano, mes: x.mes })))
       .map((d) => ({
         ...d,
         periodo: `${d.ano}-${String(d.mes).padStart(2, "0")}`,
@@ -75,27 +75,42 @@ export default function PixPage() {
       .sort((a, b) => a.periodo.localeCompare(b.periodo));
   }, [rawSerie, filters]);
 
+  // Fluxo: somas do período filtrado (mesma série dos gráficos).
+  const totais = useMemo(
+    () =>
+      serie.reduce(
+        (acc, d) => ({
+          pf: acc.pf + (d.vl_pagador_pf || 0),
+          pj: acc.pj + (d.vl_pagador_pj || 0),
+          qt: acc.qt + (d.qt_pagador_pf || 0) + (d.qt_pagador_pj || 0),
+        }),
+        { pf: 0, pj: 0, qt: 0 }
+      ),
+    [serie]
+  );
+  const filtroLabel = describeFilter(filters);
+
   const cards = [
     {
       label: "Volume PF (Pagamentos)",
-      value: resumo ? fmtBRL(resumo.volume_total_pf) : "—",
-      sub: "Total acumulado",
+      value: serie.length ? fmtBRL(totais.pf) : "—",
+      sub: filtroLabel || "Total acumulado",
       accent: "var(--accent-1)",
       dataset: "pix",
       indicadorKey: "volume_pf",
     },
     {
       label: "Volume PJ (Pagamentos)",
-      value: resumo ? fmtBRL(resumo.volume_total_pj) : "—",
-      sub: "Total acumulado",
+      value: serie.length ? fmtBRL(totais.pj) : "—",
+      sub: filtroLabel || "Total acumulado",
       accent: "var(--accent-5)",
       dataset: "pix",
       indicadorKey: "volume_pj",
     },
     {
       label: "Total de Transações",
-      value: resumo ? fmtNum(resumo.total_transacoes) : "—",
-      sub: "PF + PJ (pagadores)",
+      value: serie.length ? fmtNum(totais.qt) : "—",
+      sub: filtroLabel ? `PF + PJ (pagadores) · ${filtroLabel}` : "PF + PJ (pagadores)",
       accent: "var(--accent-3)",
       dataset: "pix",
       indicadorKey: "volume_total",
@@ -116,7 +131,7 @@ export default function PixPage() {
           label: describeFilter(filters),
           active: true,
           onClick: () => document.getElementById("filter-bar-pix")?.scrollIntoView({ block: "center", behavior: "smooth" }),
-          onClear: () => setFilters(clearFilter()),
+          onClear: () => mudarFiltros(clearFilter()),
         }] : null}
       />
 
@@ -128,7 +143,7 @@ export default function PixPage() {
         <CompareToggle active={comparar} onChange={setComparar} disabled={!cmp.temAnterior} />
       </div>
 
-      <FilterBar id="filter-bar-pix" years={years} showMonths value={filters} onChange={setFilters} />
+      <FilterBar id="filter-bar-pix" years={years} showMonths value={filters} onChange={mudarFiltros} />
 
       {loading ? (
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">

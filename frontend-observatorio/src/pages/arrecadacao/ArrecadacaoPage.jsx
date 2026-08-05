@@ -1,10 +1,11 @@
-﻿import { useEffect, useMemo, useState } from "react";
+﻿import { useEffect, useMemo, useRef, useState } from "react";
 import api from "../../services/api";
 import { motion } from "framer-motion";
 import InsightsPanel from "../../components/InsightsPanel";
 import ReleasesPanel from "../../components/ReleasesPanel";
 import InfoTooltip from "../../components/InfoTooltip";
 import FilterBar, { describeFilter, clearFilter } from "../../components/FilterBar";
+import { janela12mAnos } from "../../utils/periodoCards";
 import KpiCard from "../../components/KpiCard";
 import { NidPanel, NidPageHeader, NidLegend } from "../../components/nid/Panel";
 import KpiSkeleton from "../../components/nid/KpiSkeleton";
@@ -34,11 +35,18 @@ export default function ArrecadacaoPage() {
   const [comparar, setComparar] = useState(false);
   const cmp = useMemo(() => comparePanelData(rawSerie, { valueKey: "total" }), [rawSerie]);
 
+  // Default "12m ancorado no último dado": aplicado UMA vez no primeiro fetch;
+  // interação do usuário que chegue antes (filtroTocado) tem prioridade.
+  const filtroTocado = useRef(false);
+  const mudarFiltros = (v) => { filtroTocado.current = true; setFilters(v); };
+
   useEffect(() => {
     Promise.all([api.get("/arrecadacao/serie"), api.get("/arrecadacao/resumo")])
       .then(([serieRes, resumoRes]) => {
-        setRawSerie(serieRes.data || []);
+        const raw = serieRes.data || [];
+        setRawSerie(raw);
         setResumo(resumoRes.data);
+        if (!filtroTocado.current) setFilters(janela12mAnos(raw, (d) => d.ano));
       })
       .catch((err) => console.error("Erro ao carregar arrecadação:", err))
       .finally(() => setLoading(false));
@@ -65,25 +73,32 @@ export default function ArrecadacaoPage() {
     [serie]
   );
 
+  // Fluxo: somas derivadas da MESMA série filtrada dos gráficos (linhas mensais).
+  const totalPeriodo = useMemo(
+    () => serie.reduce((s, d) => s + (d.total || 0), 0),
+    [serie]
+  );
+  const filtroLabel = describeFilter(filters);
+
   const cards = [
     {
       label: "Total Arrecadado",
-      value: resumo ? fmtBRL(resumo.total_geral) : "—",
-      sub: "Todos os períodos",
+      value: serie.length ? fmtBRL(totalPeriodo) : "—",
+      sub: filtroLabel || "Todos os períodos",
       dataset: "arrecadacao",
       indicadorKey: "total_arrecadado",
     },
     {
       label: "Último Ano",
       value: resumo ? fmtBRL(resumo.total_ultimo_ano) : "—",
-      sub: serie.length ? `Ano ${serie[serie.length - 1].ano}` : null,
+      sub: rawSerie.length ? `Ano ${rawSerie[rawSerie.length - 1].ano} · último da série` : null,
       dataset: "arrecadacao",
       indicadorKey: "ultimo_ano",
     },
     {
       label: "Média Mensal",
-      value: resumo ? fmtBRL(resumo.media_mensal) : "—",
-      sub: "Por mês no período",
+      value: serie.length ? fmtBRL(totalPeriodo / serie.length) : "—",
+      sub: filtroLabel ? `Por mês · ${filtroLabel}` : "Por mês em toda a série",
       dataset: "arrecadacao",
       indicadorKey: "media_mensal",
     },
@@ -93,7 +108,7 @@ export default function ArrecadacaoPage() {
         resumo?.crescimento_percentual != null
           ? `${resumo.crescimento_percentual > 0 ? "+" : ""}${resumo.crescimento_percentual.toFixed(1)}%`
           : "—",
-      sub: "vs ano anterior",
+      sub: "vs ano anterior · última variação da série",
       dataset: "arrecadacao",
       indicadorKey: "crescimento_anual",
     },
@@ -113,7 +128,7 @@ export default function ArrecadacaoPage() {
           label: describeFilter(filters),
           active: true,
           onClick: () => document.getElementById("filter-bar-arrecadacao")?.scrollIntoView({ block: "center", behavior: "smooth" }),
-          onClear: () => setFilters(clearFilter()),
+          onClear: () => mudarFiltros(clearFilter()),
         }] : null}
       />
 
@@ -125,7 +140,7 @@ export default function ArrecadacaoPage() {
         <CompareToggle active={comparar} onChange={setComparar} disabled={!cmp.temAnterior} />
       </div>
 
-      <FilterBar id="filter-bar-arrecadacao" years={years} value={filters} onChange={setFilters} />
+      <FilterBar id="filter-bar-arrecadacao" years={years} value={filters} onChange={mudarFiltros} />
 
       {loading ? (
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6">
