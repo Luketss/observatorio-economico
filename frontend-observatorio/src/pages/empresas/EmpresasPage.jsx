@@ -1,9 +1,11 @@
-﻿import { useEffect, useState } from "react";
+﻿import { useEffect, useMemo, useState } from "react";
 import api from "../../services/api";
 import { motion } from "framer-motion";
 import InsightsPanel from "../../components/InsightsPanel";
 import ReleasesPanel from "../../components/ReleasesPanel";
 import InfoTooltip from "../../components/InfoTooltip";
+import FilterBar, { describeFilter, clearFilter } from "../../components/FilterBar";
+import { janela12mCalendario, intervaloISO } from "../../utils/periodoCards";
 import KpiCard from "../../components/KpiCard";
 import PlanGate from "../../components/PlanGate";
 import { NidPageHeader, NidPanel } from "../../components/nid/Panel";
@@ -38,18 +40,35 @@ export default function EmpresasPage() {
   const [capitalPorPorte, setCapitalPorPorte] = useState([]);
   const [loading, setLoading] = useState(true);
   const [detalhe, setDetalhe] = useState(null);
+  // Cadastro corrente: default = 12 meses de CALENDÁRIO (aqui a âncora certa).
+  const [filters, setFilters] = useState(() => janela12mCalendario());
+
+  // Não há série para derivar anos: FilterBar recebe anos de calendário (30).
+  const anosEmpresas = useMemo(() => {
+    const atual = new Date().getFullYear();
+    return Array.from({ length: 30 }, (_, i) => atual - 29 + i);
+  }, []);
+
+  // Resumo reage ao período (abertas_de/ate); demais painéis são cadastrais.
+  useEffect(() => {
+    const { de, ate } = intervaloISO(filters);
+    const params = {};
+    if (de) params.abertas_de = de;
+    if (ate) params.abertas_ate = ate;
+    api.get("/empresas/resumo", { params })
+      .then((res) => setResumo(res.data))
+      .catch((err) => console.error("Erro ao carregar resumo de empresas:", err));
+  }, [filters]);
 
   useEffect(() => {
     Promise.all([
-      api.get("/empresas/resumo"),
       api.get("/empresas/por_porte"),
       api.get("/empresas/por_situacao"),
       api.get("/empresas/situacao_por_porte"),
       api.get("/empresas/por_cnae_secao"),
       api.get("/empresas/capital_por_porte"),
     ])
-      .then(([resumoRes, porteRes, situacaoRes, situPorteRes, cnaeSecaoRes, capitalRes]) => {
-        setResumo(resumoRes.data);
+      .then(([porteRes, situacaoRes, situPorteRes, cnaeSecaoRes, capitalRes]) => {
         setPorPorte(
           (porteRes.data || []).map((d) => ({ name: d.porte, value: d.total }))
         );
@@ -65,11 +84,23 @@ export default function EmpresasPage() {
       .finally(() => setLoading(false));
   }, []);
 
+  const filtroLabel = describeFilter(filters);
+
   const cards = [
+    {
+      label: "Abertas no Período",
+      value: fmtNum(resumo?.abertas_periodo),
+      sub: filtroLabel
+        ? `Por data de abertura · ${filtroLabel}`
+        : "Por data de abertura · todo o histórico",
+      accent: "var(--accent-2)",
+      dataset: "empresas",
+      indicadorKey: "abertas_periodo",
+    },
     {
       label: "Total Empresas",
       value: fmtNum(resumo?.total_empresas),
-      sub: "Cadastradas",
+      sub: "Cadastro atual",
       accent: "var(--accent-1)",
       dataset: "empresas",
       indicadorKey: "total_empresas",
@@ -77,7 +108,7 @@ export default function EmpresasPage() {
     {
       label: "Empresas Ativas",
       value: fmtNum(resumo?.total_ativas),
-      sub: fmtPct(resumo?.total_ativas, resumo?.total_empresas) + " do total",
+      sub: fmtPct(resumo?.total_ativas, resumo?.total_empresas) + " do total · cadastro atual",
       accent: "var(--accent-5)",
       dataset: "empresas",
       indicadorKey: "ativas",
@@ -85,7 +116,7 @@ export default function EmpresasPage() {
     {
       label: "MEI",
       value: fmtNum(resumo?.total_mei),
-      sub: fmtPct(resumo?.total_mei, resumo?.total_empresas) + " do total",
+      sub: fmtPct(resumo?.total_mei, resumo?.total_empresas) + " do total · cadastro atual",
       accent: "var(--accent-3)",
       dataset: "empresas",
       indicadorKey: "mei",
@@ -93,7 +124,7 @@ export default function EmpresasPage() {
     {
       label: "Simples Nacional",
       value: fmtNum(resumo?.total_simples),
-      sub: fmtPct(resumo?.total_simples, resumo?.total_empresas) + " do total",
+      sub: fmtPct(resumo?.total_simples, resumo?.total_empresas) + " do total · cadastro atual",
       accent: "var(--accent-4)",
       dataset: "empresas",
       indicadorKey: "simples",
@@ -110,16 +141,24 @@ export default function EmpresasPage() {
       <NidPageHeader
         title={<>Empresas — CNPJ <InfoTooltip dataset="empresas" /></>}
         sub="Perfil e composição do tecido empresarial local."
+        chips={describeFilter(filters) ? [{
+          label: describeFilter(filters),
+          active: true,
+          onClick: () => document.getElementById("filter-bar-empresas")?.scrollIntoView({ block: "center", behavior: "smooth" }),
+          onClear: () => setFilters(clearFilter()),
+        }] : null}
       />
 
       {needsMunicipio ? (
         <SelecioneMunicipio />
       ) : (
       <>
+      <FilterBar id="filter-bar-empresas" years={anosEmpresas} showMonths value={filters} onChange={setFilters} />
+
       {/* KPI Cards */}
       {loading ? (
         <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-          {[...Array(4)].map((_, i) => <KpiSkeleton key={i} />)}
+          {[...Array(5)].map((_, i) => <KpiSkeleton key={i} />)}
         </div>
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-6">

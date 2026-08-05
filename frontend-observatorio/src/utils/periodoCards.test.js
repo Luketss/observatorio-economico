@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { janela12m, janela12mAnos, dentroDoFiltro } from "./periodoCards";
+import { janela12m, janela12mAnos, dentroDoFiltro, janela12mCalendario, intervaloISO } from "./periodoCards";
 import { describeFilter, detectPreset } from "../components/FilterBar";
 
 const mensal = (d) => ({ ano: d.ano, mes: d.mes });
@@ -140,5 +140,30 @@ describe("FilterBar — detectPreset/describeFilter com a janela ancorada", () =
   it("describeFilter sem meses continua igual", () => {
     expect(describeFilter({ yearFrom: "2023", yearTo: "2024" })).toBe("2023–2024");
     expect(describeFilter({ yearFrom: "", yearTo: "" })).toBe(null);
+  });
+});
+
+describe("janela12mCalendario (Empresas — cadastro corrente)", () => {
+  it("12 meses de calendário terminando no mês corrente", () => {
+    expect(janela12mCalendario(new Date(2026, 7, 5))).toEqual({
+      yearFrom: "2025", monthFrom: "9", yearTo: "2026", monthTo: "8",
+    });
+  });
+  it("vira o ano corretamente em janeiro", () => {
+    expect(janela12mCalendario(new Date(2026, 0, 15))).toEqual({
+      yearFrom: "2025", monthFrom: "2", yearTo: "2026", monthTo: "1",
+    });
+  });
+});
+
+describe("intervaloISO", () => {
+  it("primeiro dia do mês inicial e último dia do mês final", () => {
+    expect(intervaloISO({ yearFrom: "2025", monthFrom: "9", yearTo: "2026", monthTo: "2" }))
+      .toEqual({ de: "2025-09-01", ate: "2026-02-28" });
+  });
+  it("sem meses assume ano inteiro; filtro vazio → {}", () => {
+    expect(intervaloISO({ yearFrom: "2024", yearTo: "2024", monthFrom: "", monthTo: "" }))
+      .toEqual({ de: "2024-01-01", ate: "2024-12-31" });
+    expect(intervaloISO({ yearFrom: "", yearTo: "", monthFrom: "", monthTo: "" })).toEqual({});
   });
 });

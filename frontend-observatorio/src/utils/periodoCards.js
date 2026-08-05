@@ -96,3 +96,39 @@ export function dentroDoFiltro(item, filtro, extrair) {
   if (!yearTo && monthTo && mes != null && mes > +monthTo) return false;
   return true;
 }
+
+/**
+ * 12 meses de CALENDÁRIO terminando no mês corrente — SÓ para cadastros
+ * correntes (Empresas), onde o calendário é a âncora correta. `hoje` é
+ * injetável para teste.
+ */
+export function janela12mCalendario(hoje = new Date()) {
+  const fim = chaveMes(hoje.getFullYear(), hoje.getMonth() + 1);
+  const inicio = fim - 11;
+  return {
+    yearFrom: String(Math.floor(inicio / 12)),
+    monthFrom: String((inicio % 12) + 1),
+    yearTo: String(Math.floor(fim / 12)),
+    monthTo: String((fim % 12) + 1),
+  };
+}
+
+/**
+ * Converte o filtro da FilterBar em intervalo ISO de datas completas:
+ * de = 1º dia de (yearFrom, monthFrom||Jan); ate = último dia de
+ * (yearTo, monthTo||Dez). Lado sem ano fica ausente (objeto vazio = "Tudo").
+ */
+export function intervaloISO(filtro) {
+  const { yearFrom = "", monthFrom = "", yearTo = "", monthTo = "" } = filtro || {};
+  const out = {};
+  if (yearFrom) {
+    const m = monthFrom ? +monthFrom : 1;
+    out.de = `${yearFrom}-${String(m).padStart(2, "0")}-01`;
+  }
+  if (yearTo) {
+    const m = monthTo ? +monthTo : 12;
+    const ultimoDia = new Date(+yearTo, m, 0).getDate();
+    out.ate = `${yearTo}-${String(m).padStart(2, "0")}-${String(ultimoDia).padStart(2, "0")}`;
+  }
+  return out;
+}

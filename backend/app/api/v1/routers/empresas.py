@@ -1,9 +1,10 @@
+from datetime import date
 from typing import List
 
 from app.api.deps import get_current_user, get_db, scoped_modulo
 from app.models.empresa import Empresa
 from app.schemas.empresa import EmpresaResumo, EmpresaPorPorteItem, EmpresaPorCnaeItem
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Query
 from sqlalchemy import func, case
 from sqlalchemy.orm import Session
 
@@ -86,9 +87,22 @@ router = APIRouter(prefix="/empresas", tags=["Empresas"])
 
 
 @router.get("/resumo", response_model=EmpresaResumo)
-def resumo_empresas(mid: int | None = Depends(scoped_modulo("empresas")), db: Session = Depends(get_db)):
+def resumo_empresas(
+    abertas_de: date | None = Query(None, description="Início do período de abertura (data_inicio >=)"),
+    abertas_ate: date | None = Query(None, description="Fim do período de abertura (data_inicio <=)"),
+    mid: int | None = Depends(scoped_modulo("empresas")),
+    db: Session = Depends(get_db),
+):
+    """Resumo do cadastro. `abertas_periodo` = COUNT de empresas com
+    `data_inicio` dentro de [abertas_de, abertas_ate] (sem datas: todo o
+    histórico). Empresas com `data_inicio` NULL ficam FORA dessa contagem —
+    cadastro legado, não há como situá-las no tempo (decisão de produto;
+    contagem audível não se aplica). Demais campos seguem contando tudo."""
     if mid is None:
-        return EmpresaResumo(total_empresas=0, total_ativas=0, total_mei=0, total_simples=0)
+        return EmpresaResumo(
+            total_empresas=0, total_ativas=0, total_mei=0, total_simples=0,
+            abertas_periodo=0,
+        )
     row = (
         db.query(
             func.count(Empresa.id),
@@ -99,11 +113,20 @@ def resumo_empresas(mid: int | None = Depends(scoped_modulo("empresas")), db: Se
         .filter(Empresa.municipio_id == mid)
         .one()
     )
+    abertas_q = db.query(func.count(Empresa.id)).filter(
+        Empresa.municipio_id == mid,
+        Empresa.data_inicio.isnot(None),
+    )
+    if abertas_de is not None:
+        abertas_q = abertas_q.filter(Empresa.data_inicio >= abertas_de)
+    if abertas_ate is not None:
+        abertas_q = abertas_q.filter(Empresa.data_inicio <= abertas_ate)
     return EmpresaResumo(
         total_empresas=row[0] or 0,
         total_ativas=int(row[1] or 0),
         total_mei=int(row[2] or 0),
         total_simples=int(row[3] or 0),
+        abertas_periodo=int(abertas_q.scalar() or 0),
     )
 
 

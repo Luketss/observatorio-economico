@@ -21,6 +21,11 @@ class EmpresaResumo(BaseModel):
     total_ativas: int
     total_mei: int
     total_simples: int
+    # COUNT de empresas com data_inicio dentro de [abertas_de, abertas_ate]
+    # (sem datas: todo o histórico). data_inicio NULL fica fora — cadastro
+    # legado sem como situar no tempo. None só em payloads antigos
+    # (retrocompatibilidade do schema).
+    abertas_periodo: Optional[int] = None
 
 
 class EmpresaPorPorteItem(BaseModel):
