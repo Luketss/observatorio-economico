@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import api from "../../services/api";
 import { motion } from "framer-motion";
 import InsightsPanel from "../../components/InsightsPanel";
@@ -6,6 +6,7 @@ import ReleasesPanel from "../../components/ReleasesPanel";
 import NidComparativoPanel from "../../components/nid/ComparativoPanel";
 import InfoTooltip from "../../components/InfoTooltip";
 import FilterBar, { describeFilter, clearFilter } from "../../components/FilterBar";
+import { janela12m } from "../../utils/periodoCards";
 import KpiCard from "../../components/KpiCard";
 import PlanGate from "../../components/PlanGate";
 import { NidPanel, NidLegend, NidPageHeader } from "../../components/nid/Panel";
@@ -42,6 +43,10 @@ export default function PibPage() {
   const [loading, setLoading] = useState(true);
   const [filters, setFilters] = useState({ yearFrom: "", yearTo: "" });
 
+  // Default "12m" de série anual = último ano com dado (guard p/ o usuário).
+  const filtroTocado = useRef(false);
+  const mudarFiltros = (v) => { filtroTocado.current = true; setFilters(v); };
+
   useEffect(() => {
     Promise.all([
       api.get("/pib/serie"),
@@ -49,9 +54,13 @@ export default function PibPage() {
       api.get("/pib/comparativo"),
     ])
       .then(([serieRes, resumoRes, compRes]) => {
-        setRawSerie(serieRes.data || []);
+        const raw = serieRes.data || [];
+        setRawSerie(raw);
         setResumo(resumoRes.data);
         setComparativo(compRes.data || []);
+        if (!filtroTocado.current) {
+          setFilters(janela12m(raw, (d) => ({ ano: d.ano })));
+        }
       })
       .catch((err) => console.error("Erro ao carregar PIB:", err))
       .finally(() => setLoading(false));
@@ -127,7 +136,7 @@ export default function PibPage() {
     {
       label: "PIB Último Ano",
       value: resumo ? fmtBRL(resumo.pib_ultimo_ano) : "—",
-      sub: resumo?.ultimo_ano ? `Ano ${resumo.ultimo_ano}` : null,
+      sub: resumo?.ultimo_ano ? `Ano ${resumo.ultimo_ano} · último da série` : null,
       dataset: "pib",
       indicadorKey: "ultimo_ano",
     },
@@ -137,7 +146,7 @@ export default function PibPage() {
         resumo?.crescimento_percentual != null
           ? `${resumo.crescimento_percentual > 0 ? "+" : ""}${resumo.crescimento_percentual.toFixed(1)}%`
           : "—",
-      sub: "Variação vs ano anterior",
+      sub: "Variação vs ano anterior · última da série",
       dataset: "pib",
       indicadorKey: "crescimento",
     },
@@ -167,7 +176,7 @@ export default function PibPage() {
           label: describeFilter(filters),
           active: true,
           onClick: () => document.getElementById("filter-bar-pib")?.scrollIntoView({ block: "center", behavior: "smooth" }),
-          onClear: () => setFilters(clearFilter()),
+          onClear: () => mudarFiltros(clearFilter()),
         }] : null}
       />
 
@@ -175,7 +184,7 @@ export default function PibPage() {
         <SelecioneMunicipio />
       ) : (
       <>
-      <FilterBar id="filter-bar-pib" years={years} value={filters} onChange={setFilters} />
+      <FilterBar id="filter-bar-pib" years={years} value={filters} onChange={mudarFiltros} />
 
       {loading ? (
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">

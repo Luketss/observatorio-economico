@@ -1,4 +1,4 @@
-﻿import { useEffect, useState, useMemo } from "react";
+﻿import { useEffect, useState, useMemo, useRef } from "react";
 import api from "../../services/api";
 import { motion } from "framer-motion";
 import InsightsPanel from "../../components/InsightsPanel";
@@ -6,6 +6,7 @@ import ReleasesPanel from "../../components/ReleasesPanel";
 import NidComparativoPanel from "../../components/nid/ComparativoPanel";
 import InfoTooltip from "../../components/InfoTooltip";
 import FilterBar, { describeFilter, clearFilter } from "../../components/FilterBar";
+import { janela12m, dentroDoFiltro } from "../../utils/periodoCards";
 import KpiCard from "../../components/KpiCard";
 import PlanGate from "../../components/PlanGate";
 import { NidPageHeader, NidPanel, NidLegend } from "../../components/nid/Panel";
@@ -53,7 +54,6 @@ export default function ComexPage() {
   const needsMunicipio = user?.role === "ADMIN_GLOBAL" && viewAsId == null;
 
   const [serie, setSerie] = useState([]);
-  const [resumo, setResumo] = useState(null);
   const [porProduto, setPorProduto] = useState([]);
   const [porPais, setPorPais] = useState([]);
   const [anoSelecionado, setAnoSelecionado] = useState("");
@@ -61,6 +61,10 @@ export default function ComexPage() {
   const [loadingFilters, setLoadingFilters] = useState(false);
   const [filters, setFilters] = useState({ yearFrom: "", yearTo: "", monthFrom: "", monthTo: "" });
   const [comparar, setComparar] = useState(false);
+
+  // Default "12m ancorado no último dado" (guard contra sobrescrever o usuário).
+  const filtroTocado = useRef(false);
+  const mudarFiltros = (v) => { filtroTocado.current = true; setFilters(v); };
   const rawComexSaldo = useMemo(
     () => groupComexByPeriod(serie).map((d) => ({ ano: d.ano, mes: d.mes, _v: d.saldo })),
     [serie]
@@ -73,13 +77,15 @@ export default function ComexPage() {
     return [...set].sort((a, b) => b - a);
   }, [serie]);
 
-  // Initial load: serie + resumo
+  // Initial load: serie (cards de fluxo derivam dela — /comex/resumo não é mais usado)
   useEffect(() => {
-    Promise.all([api.get("/comex/serie"), api.get("/comex/resumo")])
-      .then(([serieRes, resumoRes]) => {
+    api.get("/comex/serie")
+      .then((serieRes) => {
         const raw = serieRes.data || [];
         setSerie(raw);
-        setResumo(resumoRes.data);
+        if (!filtroTocado.current) {
+          setFilters(janela12m(raw, (d) => ({ ano: d.ano, mes: d.mes })));
+        }
         // Set default year to most recent
         const years = [...new Set(raw.map((d) => d.ano))].sort((a, b) => b - a);
         if (years.length > 0) setAnoSelecionado(String(years[0]));
@@ -112,13 +118,9 @@ export default function ComexPage() {
 
   // Build time series: group by period, separate exports and imports (value + weight)
   const chartSerie = useMemo(() => {
-    const { yearFrom, yearTo, monthFrom, monthTo } = filters;
     const map = {};
     serie.forEach((item) => {
-      if (yearFrom && item.ano < +yearFrom) return;
-      if (yearTo && item.ano > +yearTo) return;
-      if (monthFrom && item.mes < +monthFrom) return;
-      if (monthTo && item.mes > +monthTo) return;
+      if (!dentroDoFiltro(item, filters, (x) => ({ ano: x.ano, mes: x.mes }))) return;
       const key = `${item.ano}-${String(item.mes).padStart(2, "0")}`;
       if (!map[key]) map[key] = { periodo: key, exportacoes: 0, importacoes: 0, peso_export: 0, peso_import: 0 };
       const tipo = item.tipo_operacao?.toLowerCase();
@@ -135,29 +137,40 @@ export default function ComexPage() {
       .map((d) => ({ ...d, saldo: d.exportacoes - d.importacoes }));
   }, [serie, filters]);
 
-  const balancaPositiva = (resumo?.balanca_comercial ?? 0) >= 0;
+  // Fluxo: totais do período filtrado (mesma agregação dos gráficos) — o sub
+  // describeFilter agora descreve o VALOR de verdade.
+  const totaisComex = useMemo(
+    () =>
+      chartSerie.reduce(
+        (acc, d) => ({ exp: acc.exp + d.exportacoes, imp: acc.imp + d.importacoes }),
+        { exp: 0, imp: 0 }
+      ),
+    [chartSerie]
+  );
+  const balancaPositiva = totaisComex.exp - totaisComex.imp >= 0;
+  const filtroLabel = describeFilter(filters);
 
   const cards = [
     {
       label: "Total Exportado",
-      value: fmtUSD(resumo?.total_exportado_usd),
-      sub: describeFilter(filters) || "Todo o período",
+      value: chartSerie.length ? fmtUSD(totaisComex.exp) : "—",
+      sub: filtroLabel || "Todo o período",
       accent: "var(--accent-5)",
       dataset: "comex",
       indicadorKey: "exportacoes",
     },
     {
       label: "Total Importado",
-      value: fmtUSD(resumo?.total_importado_usd),
-      sub: describeFilter(filters) || "Todo o período",
+      value: chartSerie.length ? fmtUSD(totaisComex.imp) : "—",
+      sub: filtroLabel || "Todo o período",
       accent: "var(--accent-4)",
       dataset: "comex",
       indicadorKey: "importacoes",
     },
     {
       label: "Balança Comercial",
-      value: fmtUSD(resumo?.balanca_comercial),
-      sub: "Exportações − Importações",
+      value: chartSerie.length ? fmtUSD(totaisComex.exp - totaisComex.imp) : "—",
+      sub: filtroLabel ? `Exportações − Importações · ${filtroLabel}` : "Exportações − Importações",
       accent: balancaPositiva ? "var(--accent-5)" : "var(--accent-2)",
       dataset: "comex",
       indicadorKey: "saldo",
@@ -179,7 +192,7 @@ export default function ComexPage() {
             label: describeFilter(filters),
             active: true,
             onClick: () => document.getElementById("filter-bar-comex")?.scrollIntoView({ block: "center", behavior: "smooth" }),
-            onClear: () => setFilters(clearFilter()),
+            onClear: () => mudarFiltros(clearFilter()),
           } : null,
         ].filter(Boolean)}
       />
@@ -203,7 +216,7 @@ export default function ComexPage() {
         <CompareToggle active={comparar} onChange={setComparar} disabled={!cmp.temAnterior} />
       </div>
 
-      <FilterBar id="filter-bar-comex" years={anos.slice().sort()} showMonths value={filters} onChange={setFilters} />
+      <FilterBar id="filter-bar-comex" years={anos.slice().sort()} showMonths value={filters} onChange={mudarFiltros} />
 
       {loading ? (
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">

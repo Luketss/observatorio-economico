@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import api from "../../services/api";
 import { motion } from "framer-motion";
 import InsightsPanel from "../../components/InsightsPanel";
@@ -6,6 +6,7 @@ import ReleasesPanel from "../../components/ReleasesPanel";
 import NidComparativoPanel from "../../components/nid/ComparativoPanel";
 import InfoTooltip from "../../components/InfoTooltip";
 import FilterBar, { describeFilter, clearFilter } from "../../components/FilterBar";
+import { janela12m } from "../../utils/periodoCards";
 import KpiCard from "../../components/KpiCard";
 import { NidPanel, NidLegend, NidPageHeader } from "../../components/nid/Panel";
 import { useAuth } from "../../context/AuthContext";
@@ -45,6 +46,10 @@ export default function VafPage() {
   const [loading, setLoading] = useState(true);
   const [filters, setFilters] = useState({ yearFrom: "", yearTo: "" });
 
+  // Default "12m" de série anual = último ano-base com dado (guard p/ usuário).
+  const filtroTocado = useRef(false);
+  const mudarFiltros = (v) => { filtroTocado.current = true; setFilters(v); };
+
   useEffect(() => {
     Promise.all([
       api.get("/vaf/serie"),
@@ -53,10 +58,14 @@ export default function VafPage() {
       api.get("/vaf/icms_projetado").catch(() => ({ data: [] })),
     ])
       .then(([serieRes, resumoRes, compRes, icmsRes]) => {
-        setRawSerie(serieRes.data || []);
+        const raw = serieRes.data || [];
+        setRawSerie(raw);
         setResumo(resumoRes.data);
         setComparativo(compRes.data || []);
         setIcmsProj(icmsRes.data || []);
+        if (!filtroTocado.current) {
+          setFilters(janela12m(raw, (d) => ({ ano: d.ano_base })));
+        }
       })
       .catch((err) => console.error("Erro ao carregar VAF:", err))
       .finally(() => setLoading(false));
@@ -145,7 +154,7 @@ export default function VafPage() {
     {
       label: "IPM Último Ano",
       value: resumo ? fmtIndice(resumo.ipm_ultimo_ano) : "—",
-      sub: resumo?.ultimo_ano ? `Ano-base ${resumo.ultimo_ano}` : null,
+      sub: resumo?.ultimo_ano ? `Ano-base ${resumo.ultimo_ano} · último da série` : null,
       dataset: "vaf",
       indicadorKey: "ipm_ultimo_ano",
     },
@@ -155,7 +164,7 @@ export default function VafPage() {
         resumo?.variacao_ipm_percentual != null
           ? fmtPct(resumo.variacao_ipm_percentual)
           : "—",
-      sub: "Variação vs ano anterior",
+      sub: "Variação vs ano anterior · última da série",
       dataset: "vaf",
       indicadorKey: "variacao_ipm",
     },
@@ -185,7 +194,7 @@ export default function VafPage() {
           label: describeFilter(filters),
           active: true,
           onClick: () => document.getElementById("filter-bar-vaf")?.scrollIntoView({ block: "center", behavior: "smooth" }),
-          onClear: () => setFilters(clearFilter()),
+          onClear: () => mudarFiltros(clearFilter()),
         }] : null}
       />
 
@@ -193,7 +202,7 @@ export default function VafPage() {
         <SelecioneMunicipio />
       ) : (
       <>
-      <FilterBar id="filter-bar-vaf" years={years} value={filters} onChange={setFilters} />
+      <FilterBar id="filter-bar-vaf" years={years} value={filters} onChange={mudarFiltros} />
 
       {loading ? (
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">

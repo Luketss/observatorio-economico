@@ -53,7 +53,6 @@ export default function RaisPage() {
   const needsMunicipio = user?.role === "ADMIN_GLOBAL" && viewAsId == null;
 
   const [serie, setSerie] = useState([]);
-  const [resumo, setResumo] = useState(null);
   const [porSexo, setPorSexo] = useState([]);
   const [porRaca, setPorRaca] = useState([]);
   const [porCnae, setPorCnae] = useState([]);
@@ -78,7 +77,6 @@ export default function RaisPage() {
     const safe = (url) => api.get(url).then((r) => r.data).catch(() => []);
     Promise.all([
       safe("/rais/serie"),
-      api.get("/rais/resumo").then((r) => r.data).catch(() => null),
       safe("/rais/por_sexo"),
       safe("/rais/por_raca"),
       safe("/rais/por_cnae"),
@@ -94,12 +92,12 @@ export default function RaisPage() {
       safe("/rais/por_natureza_juridica"),
       safe("/rais/turnover_mensal"),
     ]).then(([
-      serieRes, resumoRes, sexoRes, racaRes, cnaeRes,
+      serieRes, sexoRes, racaRes, cnaeRes,
       feRes, escRes, frRes, teRes, metRes,
       motRes, tipoRes, cboRes, tamRes, natRes, turnRes,
     ]) => {
       if (!alive) return;
-      setSerie(serieRes); setResumo(resumoRes);
+      setSerie(serieRes);
       setPorSexo(sexoRes); setPorRaca(racaRes); setPorCnae(cnaeRes);
       setPorFaixaEtaria(feRes); setPorEscolaridade(escRes);
       setPorFaixaRem(frRes); setPorTempoEmprego(teRes); setMetricas(metRes);
@@ -140,6 +138,15 @@ export default function RaisPage() {
       .sort(([a], [b]) => a - b)
       .map(([, vals]) => vals.reduce((s, v) => s + v, 0) / vals.length);
   }, [serie]);
+
+  // Remuneração média do ANO ATIVO — mesma agregação do sparkRem, só o ano
+  // selecionado (substitui o avg plurianual do /rais/resumo).
+  const remAnoAtivo = useMemo(() => {
+    const vals = serie
+      .filter((d) => d.ano === anoAtivo && d.remuneracao_media)
+      .map((d) => d.remuneracao_media);
+    return vals.length ? vals.reduce((s, v) => s + v, 0) / vals.length : null;
+  }, [serie, anoAtivo]);
 
   const metricasAtual = metricas.find((m) => m.ano === anoAtivo) || metricas.slice(-1)[0] || null;
   const sparkPCD = useMemo(() => metricas.map((m) => m.total_pcd), [metricas]);
@@ -345,11 +352,11 @@ export default function RaisPage() {
           />
           <NidKpiHero
             label="Remuneração Média"
-            badge="anual"
-            value={fmtCurrency(resumo?.remuneracao_media)}
+            badge={anoAtivo ? String(anoAtivo) : null}
+            value={fmtCurrency(remAnoAtivo)}
             unit=""
             delta={null}
-            foot="média do período"
+            foot="no ano selecionado"
             color={A3}
             sparkData={sparkRem}
           />

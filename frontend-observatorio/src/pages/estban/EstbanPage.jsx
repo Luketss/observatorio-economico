@@ -1,4 +1,4 @@
-﻿import { useEffect, useMemo, useState } from "react";
+﻿import { useEffect, useMemo, useRef, useState } from "react";
 import api from "../../services/api";
 import { motion } from "framer-motion";
 import InsightsPanel from "../../components/InsightsPanel";
@@ -6,6 +6,7 @@ import ReleasesPanel from "../../components/ReleasesPanel";
 import NidComparativoPanel from "../../components/nid/ComparativoPanel";
 import InfoTooltip from "../../components/InfoTooltip";
 import FilterBar, { describeFilter, clearFilter } from "../../components/FilterBar";
+import { janela12mAnos } from "../../utils/periodoCards";
 import KpiCard from "../../components/KpiCard";
 import PlanGate from "../../components/PlanGate";
 import { NidPageHeader, NidPanel, NidLegend } from "../../components/nid/Panel";
@@ -42,6 +43,11 @@ export default function EstbanPage() {
   const [loading, setLoading] = useState(true);
   const [filters, setFilters] = useState({ yearFrom: "", yearTo: "" });
   const [comparar, setComparar] = useState(false);
+
+  // Default "12m" = últimos 2 anos com dado (FilterBar só de ano; mesma
+  // semântica do botão 12m). Guard contra sobrescrever o usuário.
+  const filtroTocado = useRef(false);
+  const mudarFiltros = (v) => { filtroTocado.current = true; setFilters(v); };
   const rawSerieCmp = useMemo(
     () => rawSerie.map((d) => {
       const dt = new Date(d.data_referencia);
@@ -64,6 +70,9 @@ export default function EstbanPage() {
           String(a.data_referencia).localeCompare(String(b.data_referencia))
         );
         setRawSerie(raw);
+        if (!filtroTocado.current) {
+          setFilters(janela12mAnos(raw, (d) => parseInt(String(d.data_referencia).substring(0, 4))));
+        }
         setRawCaptacao((captRes.data || []).sort((a, b) =>
           String(a.data_referencia).localeCompare(String(b.data_referencia))
         ));
@@ -98,11 +107,12 @@ export default function EstbanPage() {
   const captacao = useMemo(() => rawCaptacao.filter(applyYearFilter), [rawCaptacao, filters]);
   const composicao = useMemo(() => rawComposicao.filter(applyYearFilter), [rawComposicao, filters]);
 
+  // Snapshot: saldos do último mês publicado — NÃO reagem ao filtro (o sub diz).
   const cards = [
     {
       label: "Agências",
       value: fmtNum(resumo?.qtd_agencias),
-      sub: "Unidades ativas",
+      sub: "Unidades ativas · último mês da série",
       accent: "var(--accent-1)",
       dataset: "estban",
       indicadorKey: "agencias",
@@ -110,7 +120,7 @@ export default function EstbanPage() {
     {
       label: "Operações de Crédito",
       value: fmtBRL(resumo?.total_operacoes_credito),
-      sub: "Saldo total",
+      sub: "Saldo no último mês da série",
       accent: "var(--accent-5)",
       dataset: "estban",
       indicadorKey: "credito_total",
@@ -118,7 +128,7 @@ export default function EstbanPage() {
     {
       label: "Total Depósitos",
       value: fmtBRL(resumo?.total_depositos),
-      sub: "Vista + Poupança + Prazo",
+      sub: "Vista + Poupança + Prazo · último mês da série",
       accent: "var(--accent-3)",
       dataset: "estban",
       indicadorKey: "depositos_total",
@@ -139,7 +149,7 @@ export default function EstbanPage() {
           label: describeFilter(filters),
           active: true,
           onClick: () => document.getElementById("filter-bar-estban")?.scrollIntoView({ block: "center", behavior: "smooth" }),
-          onClear: () => setFilters(clearFilter()),
+          onClear: () => mudarFiltros(clearFilter()),
         }] : null}
       />
 
@@ -151,7 +161,7 @@ export default function EstbanPage() {
         <CompareToggle active={comparar} onChange={setComparar} disabled={!cmp.temAnterior} />
       </div>
 
-      <FilterBar id="filter-bar-estban" years={years} value={filters} onChange={setFilters} />
+      <FilterBar id="filter-bar-estban" years={years} value={filters} onChange={mudarFiltros} />
 
       {loading ? (
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
