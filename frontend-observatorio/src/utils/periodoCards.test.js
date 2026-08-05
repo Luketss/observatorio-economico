@@ -107,6 +107,11 @@ describe("dentroDoFiltro", () => {
     const vazio = { yearFrom: "", yearTo: "", monthFrom: "", monthTo: "" };
     expect(dentroDoFiltro({ ano: 1999, mes: 1 }, vazio, mensal)).toBe(true);
   });
+
+  it("item sem mes com janela completa cai no criterio de anos", () => {
+    expect(dentroDoFiltro({ ano: 2024 }, f, mensal)).toBe(true);
+    expect(dentroDoFiltro({ ano: 2022 }, f, mensal)).toBe(false);
+  });
 });
 
 describe("FilterBar — detectPreset/describeFilter com a janela ancorada", () => {
