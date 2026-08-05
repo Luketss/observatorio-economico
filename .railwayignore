@@ -1,0 +1,7 @@
+dados/
+node_modules/
+frontend-observatorio/node_modules/
+frontend-observatorio/dist/
+.superpowers/
+venv/
+.git/
