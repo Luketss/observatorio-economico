@@ -5,7 +5,7 @@
  */
 export function describeFilter(filter) {
   if (!filter) return null;
-  const { yearFrom, yearTo, _preset } = filter;
+  const { yearFrom, yearTo, monthFrom, monthTo, _preset } = filter;
 
   // Named presets take priority for the chip label
   if (_preset === "12m") return "Últimos 12 meses";
@@ -13,7 +13,17 @@ export function describeFilter(filter) {
   if (_preset === "10a") return "Últimos 10 anos";
   if (_preset === "tudo") return null; // no chip when "Tudo" is active
 
+  // Janela completa ano+mês (default "12m ancorado"): "Ago/2023 – Jul/2024".
+  // MONTHS é declarado mais abaixo no módulo, mas só é lido em runtime
+  // (describeFilter é chamada depois da avaliação do módulo).
+  if (yearFrom && yearTo && monthFrom && monthTo) {
+    const de = MONTHS[+monthFrom - 1]?.label ?? monthFrom;
+    const ate = MONTHS[+monthTo - 1]?.label ?? monthTo;
+    return `${de}/${yearFrom} – ${ate}/${yearTo}`;
+  }
+
   if (!yearFrom && !yearTo) return null;
+  if (yearFrom && yearTo && yearFrom === yearTo) return `Ano ${yearFrom}`;
   if (yearFrom && yearTo) return `${yearFrom}–${yearTo}`;
   if (yearFrom) return `desde ${yearFrom}`;
   return `até ${yearTo}`;
@@ -53,7 +63,7 @@ function presetRange(key, maxYear) {
  * Derive the active preset key from current yearFrom / yearTo values.
  * Returns "tudo" | "12m" | "5a" | "10a" | "personalizar".
  */
-function detectPreset(yearFrom, yearTo, maxYear) {
+export function detectPreset(yearFrom, yearTo, maxYear) {
   const cy = maxYear;
   if (!yearFrom && !yearTo) return "tudo";
   if (!yearFrom || !yearTo) return "personalizar";
@@ -61,6 +71,10 @@ function detectPreset(yearFrom, yearTo, maxYear) {
   const to   = Number(yearTo);
   if (to === cy) {
     const span = to - from + 1;
+    // span 1 terminando no último ano com dado = janela "12m" ancorada
+    // (jan..dez do último ano, ou série anual reduzida ao último ano).
+    // Sem isso o default cairia em "personalizar" e abriria os selects.
+    if (span === 1)  return "12m";
     if (span === 2)  return "12m";
     if (span === 5)  return "5a";
     if (span === 10) return "10a";
