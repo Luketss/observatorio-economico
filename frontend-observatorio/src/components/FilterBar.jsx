@@ -1,3 +1,5 @@
+import { useEffect, useState } from "react";
+
 /**
  * Returns a human-readable period label from a filter object.
  * Returns null when no year filter is set (no chip should be shown).
@@ -200,10 +202,28 @@ const S = {
 export default function FilterBar({ years = [], showMonths = false, value, onChange, id }) {
   const { yearFrom = "", yearTo = "", monthFrom = "", monthTo = "" } = value || {};
 
+  // "Personalizar" forces the custom pickers open even when the current
+  // yearFrom/yearTo still resolve to a named preset (e.g. the default "12m"
+  // ancorado span). Without this, clicking "Personalizar" from the default
+  // state is a dead click: detectPreset keeps returning "12m" and the
+  // selects never appear.
+  const [forceCustom, setForceCustom] = useState(false);
+
+  // If the value is cleared from outside (chip "Limpar" / onClear prop),
+  // drop the forced custom state so the selects don't stay open with
+  // phantom state. Runs before the years.length early return so hook order
+  // stays stable across renders regardless of `years`.
+  useEffect(() => {
+    if (!yearFrom && !yearTo) {
+      setForceCustom(false);
+    }
+  }, [yearFrom, yearTo]);
+
   if (years.length === 0) return null;
 
   const maxYear = years[years.length - 1];
-  const activePreset = detectPreset(yearFrom, yearTo, maxYear);
+  const detectedPreset = detectPreset(yearFrom, yearTo, maxYear);
+  const activePreset = forceCustom ? "personalizar" : detectedPreset;
 
   const set = (key, v) => onChange({ ...value, [key]: v });
 
@@ -211,11 +231,13 @@ export default function FilterBar({ years = [], showMonths = false, value, onCha
 
   const handlePreset = (key) => {
     if (key === "personalizar") {
+      setForceCustom(true);
       // Reveal custom pickers; keep current range or reset to full span
       const from = yearFrom || String(years[0]);
       const to   = yearTo   || String(maxYear);
       onChange({ ...value, yearFrom: from, yearTo: to });
     } else {
+      setForceCustom(false);
       const range = presetRange(key, maxYear);
       // Clear month fields when switching to a preset
       onChange({ yearFrom: range.yearFrom, yearTo: range.yearTo, monthFrom: "", monthTo: "" });
