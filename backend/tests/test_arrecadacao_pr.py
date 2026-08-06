@@ -217,3 +217,37 @@ def test_executar_pr_janela_default_e_36_meses(monkeypatch):
     monkeypatch.setattr(arrecadacao_pr, "_baixar_html", fake)
     executar_pr(_db_vazio(), [MagicMock(nome="Abatiá", estado="PR", id=7)])
     assert len(meses) == 36 and len(set(meses)) == 36
+
+
+def test_get_retry_nao_re_tenta_http_error(monkeypatch):
+    # F2 do code review da Task 3 (mesmo idioma de retry do RS): status HTTP
+    # de servidor legado é determinístico — re-tentar HTTPError só duplica
+    # tráfego. Só falha de rede (timeout/conexão) justifica o retry.
+    import requests
+    chamadas = []
+
+    def fake_get(url, **kw):
+        chamadas.append(url)
+        resp = MagicMock(status_code=500)
+        resp.raise_for_status.side_effect = requests.HTTPError(response=resp)
+        return resp
+    monkeypatch.setattr(arrecadacao_pr.requests, "get", fake_get)
+    with pytest.raises(requests.HTTPError):
+        arrecadacao_pr._get_retry("http://x")
+    assert len(chamadas) == 1
+
+
+def test_get_retry_re_tenta_falha_de_rede(monkeypatch):
+    import requests
+    chamadas = []
+
+    def fake_get(url, **kw):
+        chamadas.append(url)
+        if len(chamadas) == 1:
+            raise requests.ConnectionError("timeout")
+        resp = MagicMock(status_code=200)
+        resp.raise_for_status.return_value = None
+        return resp
+    monkeypatch.setattr(arrecadacao_pr.requests, "get", fake_get)
+    resp = arrecadacao_pr._get_retry("http://x")
+    assert len(chamadas) == 2 and resp.status_code == 200

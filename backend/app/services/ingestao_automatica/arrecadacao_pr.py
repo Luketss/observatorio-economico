@@ -179,14 +179,18 @@ def parse_html_mensal(html: str, ano: int, mes: int) -> tuple[dict[str, tuple[fl
 # ── HTTP + execução (parte 2) ────────────────────────────────────────────────
 
 def _get_retry(url: str) -> requests.Response:
-    """GET com 1 retry (padrão HTTP das fontes; JSP legado sem SLA).
-    verify=ca_bundle_gov(): superconjunto do certifi que fecha cadeias
-    gov.br com intermediário faltando."""
+    """GET com 1 retry, mas só em falha de rede (timeout/conexão) — o status
+    HTTP de um servidor legado é determinístico, então re-tentar HTTPError só
+    duplica tráfego sem chance de resultado diferente. HTTPError propaga
+    direto, sem retry. verify=ca_bundle_gov(): superconjunto do certifi que
+    fecha cadeias gov.br com intermediário faltando."""
     try:
         resp = requests.get(url, timeout=(30, 120),
                             headers={"User-Agent": "Mozilla/5.0"}, verify=ca_bundle_gov())
         resp.raise_for_status()
         return resp
+    except requests.HTTPError:
+        raise
     except requests.RequestException:
         resp = requests.get(url, timeout=(30, 120),
                             headers={"User-Agent": "Mozilla/5.0"}, verify=ca_bundle_gov())

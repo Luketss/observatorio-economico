@@ -205,10 +205,11 @@ import app.services.ingestao_automatica.arrecadacao_rs as arrecadacao_rs
 from app.services.ingestao_automatica.arrecadacao_rs import executar_rs
 
 
-def test_baixar_matriz_nao_publicado_em_status_diferente_de_404(monkeypatch):
+def test_baixar_matriz_nao_publicado_com_500_sem_ole2(monkeypatch):
     # sondagem real de 2026-08-06: mês ainda não publicado responde 500 (não
-    # 404) com página HTML "Nenhum registro encontrado na consulta." — a
-    # assinatura OLE2 ausente é que discrimina, não o status HTTP.
+    # 404) com página HTML "Nenhum registro encontrado na consulta." — 500 é
+    # reconhecido explicitamente (junto com 404) como não-publicado quando o
+    # corpo não tem assinatura OLE2.
     resp = MagicMock(status_code=500, content=b"<html>Nenhum registro encontrado</html>")
     erro = requests.HTTPError(response=resp)
 
@@ -217,6 +218,21 @@ def test_baixar_matriz_nao_publicado_em_status_diferente_de_404(monkeypatch):
     monkeypatch.setattr(arrecadacao_rs, "_get_retry", fake_get_retry)
     matriz, motivo = arrecadacao_rs._baixar_matriz("l_icms_rep_202606")
     assert matriz is None and "não publicado" in motivo and "500" in motivo
+
+
+def test_baixar_matriz_status_nao_reconhecido_propaga_indisponibilidade(monkeypatch):
+    # F1 do code review: só 404/500 têm significado de "não publicado"
+    # confirmado; qualquer OUTRO status (403/502/503/...) é indisponibilidade
+    # real da Sefaz-RS e deve propagar (o executar aborta a UF, audível) —
+    # nunca virar silenciosamente um "aguardando publicação".
+    resp = MagicMock(status_code=503, content=b"<html>Service Unavailable</html>")
+    erro = requests.HTTPError(response=resp)
+
+    def fake_get_retry(url):
+        raise erro
+    monkeypatch.setattr(arrecadacao_rs, "_get_retry", fake_get_retry)
+    with pytest.raises(requests.HTTPError):
+        arrecadacao_rs._baixar_matriz("l_icms_rep_202606")
 
 
 def test_baixar_matriz_propaga_falha_de_rede_sem_resposta(monkeypatch):
@@ -228,6 +244,38 @@ def test_baixar_matriz_propaga_falha_de_rede_sem_resposta(monkeypatch):
         assert False, "deveria propagar"
     except requests.ConnectionError:
         pass
+
+
+def test_get_retry_nao_re_tenta_http_error(monkeypatch):
+    # F2 do code review: status HTTP de servidor legado é determinístico —
+    # re-tentar HTTPError só duplica tráfego. Só falha de rede (timeout/
+    # conexão) justifica o retry.
+    chamadas = []
+
+    def fake_get(url, **kw):
+        chamadas.append(url)
+        resp = MagicMock(status_code=500)
+        resp.raise_for_status.side_effect = requests.HTTPError(response=resp)
+        return resp
+    monkeypatch.setattr(arrecadacao_rs.requests, "get", fake_get)
+    with pytest.raises(requests.HTTPError):
+        arrecadacao_rs._get_retry("http://x")
+    assert len(chamadas) == 1
+
+
+def test_get_retry_re_tenta_falha_de_rede(monkeypatch):
+    chamadas = []
+
+    def fake_get(url, **kw):
+        chamadas.append(url)
+        if len(chamadas) == 1:
+            raise requests.ConnectionError("timeout")
+        resp = MagicMock(status_code=200)
+        resp.raise_for_status.return_value = None
+        return resp
+    monkeypatch.setattr(arrecadacao_rs.requests, "get", fake_get)
+    resp = arrecadacao_rs._get_retry("http://x")
+    assert len(chamadas) == 2 and resp.status_code == 200
 
 # IPVA sintético de JANEIRO/2026 (serial 46032 = 2026-01-10) para casar com
 # MATRIZ_ICMS (TOTAL JANEIRO/2026)

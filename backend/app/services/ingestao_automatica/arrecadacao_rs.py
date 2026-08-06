@@ -204,12 +204,17 @@ def extrair_matriz(conteudo: bytes) -> list[list]:
 # ── HTTP + execução (parte 2) ────────────────────────────────────────────────
 
 def _get_retry(url: str) -> requests.Response:
-    """GET com 1 retry (padrão HTTP das fontes; ASP legado sem SLA)."""
+    """GET com 1 retry, mas só em falha de rede (timeout/conexão) — o status
+    HTTP de um servidor legado é determinístico (o mesmo 500/404 se repete),
+    então re-tentar HTTPError só duplica tráfego no caminho rotineiro dos
+    meses ainda não publicados. HTTPError propaga direto, sem retry."""
     try:
         resp = requests.get(url, timeout=(30, 120),
                             headers={"User-Agent": "Mozilla/5.0"}, verify=ca_bundle_gov())
         resp.raise_for_status()
         return resp
+    except requests.HTTPError:
+        raise
     except requests.RequestException:
         resp = requests.get(url, timeout=(30, 120),
                             headers={"User-Agent": "Mozilla/5.0"}, verify=ca_bundle_gov())
@@ -218,19 +223,18 @@ def _get_retry(url: str) -> requests.Response:
 
 
 def _baixar_matriz(al: str) -> tuple[list[list] | None, str | None]:
-    """(matriz, None) ou (None, motivo-não-publicado). Não-publicado = corpo
-    que não é OLE2/BIFF, em QUALQUER status HTTP — verificado ao vivo em
-    2026-08-06: meses recentes ainda não publicados respondem 500 com página
-    HTML "Nenhum registro encontrado na consulta." (não 404, como a sondagem
-    original previa; 404 continua possível para `al` inválido e também
-    tratado aqui). Só propaga HTTPError/RequestException quando não há corpo
-    para inspecionar (falha de rede real) — nesse caso o executar aborta a
-    UF, audível."""
+    """(matriz, None) ou (None, motivo-não-publicado). Não-publicado = status
+    404 OU 500 com corpo que não é OLE2/BIFF — os dois casos confirmados ao
+    vivo em 2026-08-06 (meses ainda não publicados respondem 500 com página
+    HTML "Nenhum registro encontrado na consulta."; 404 é o caso de `al`
+    inválido). QUALQUER outro status HTTP (403/502/503/...) propaga como
+    indisponibilidade real da Sefaz-RS — o executar aborta a UF, audível."""
     try:
         resp = _get_retry(URL_ARQUIVO.format(al=al))
     except requests.HTTPError as exc:
         resp = exc.response
-        if resp is not None and not resp.content.startswith(_MAGIC_OLE2):
+        if resp is not None and resp.status_code in (404, 500) \
+                and not resp.content.startswith(_MAGIC_OLE2):
             return None, f"não publicado (HTTP {resp.status_code})"
         raise
     if not resp.content.startswith(_MAGIC_OLE2):
