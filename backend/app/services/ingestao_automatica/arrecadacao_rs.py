@@ -18,8 +18,13 @@ Layout IPVA (amostra 01/2025, sheet "Repasses"): linha 0 = "NOME DO
 MUNICÍPIO" + um serial de data POR DIA de repasse (quantidade varia) +
 "Total Mês" + "Total Ano"; dados direto da linha 1 (sem sub-cabeçalho);
 última linha "TOTAIS" (pulada). A coluna "Total Mês" é localizada pelo texto
-e o mês do arquivo é validado pelo primeiro serial (epoch 1899-12-30,
-datemode 0 confirmado nas amostras).
+e o mês do arquivo é validado pela primeira data da linha 0 (epoch
+1899-12-30, datemode 0 confirmado nas amostras) — a Sefaz-RS alterna entre
+serial BIFF numérico e texto "DD/MM/AAAA" para essas células (visto ao vivo:
+IPVA 10/2025 veio em texto; os demais meses de 2025 sondados vieram em
+serial); `_data_cabecalho` aceita as duas formas com a mesma semântica
+(dado válido da origem, não mudança de layout — decisão do controlador de
+2026-08-06, registrada no ledger).
 
 valor_icms = LÍQUIDO total do mês; valor_ipva = Total Mês; valor_ipi = 0.0
 (o RS NÃO publica a cota do IPI-Exportação em fonte dedicada — documentado
@@ -80,6 +85,32 @@ def _numero(v) -> float | None:
     return float(v)
 
 
+_RE_DATA_TXT = re.compile(r"^\s*(\d{2})/(\d{2})/(\d{4})\s*$")
+
+
+def _data_cabecalho(v) -> date | None:
+    """Data efetiva de uma célula de cabeçalho de repasse (linha 0 do IPVA):
+    aceita serial BIFF numérico (formato usual) OU string 'DD/MM/AAAA' — a
+    Sefaz-RS alterna os dois formatos entre arquivos (visto ao vivo: IPVA
+    10/2025 veio em texto; os demais meses de 2025 sondados vieram em
+    serial — dado válido da origem, não mudança de layout). Mesma semântica
+    nos dois casos: devolve a data do repasse daquela coluna, ou None se a
+    célula não é nenhuma das duas formas (inclui texto com data
+    calendarmente inválida, ex. 31/02)."""
+    n = _numero(v)
+    if n is not None:
+        return _EPOCH_XLS + timedelta(days=int(n))
+    if isinstance(v, str):
+        m = _RE_DATA_TXT.match(v)
+        if m:
+            dia, mes_txt, ano_txt = (int(x) for x in m.groups())
+            try:
+                return date(ano_txt, mes_txt, dia)
+            except ValueError:
+                return None
+    return None
+
+
 def interpretar_matriz_icms(matriz, ano: int, mes: int) -> tuple[dict[str, float], list[str]]:
     """Matriz do .xls de ICMS → ({nome: líquido_total_do_mês}, ignoradas)."""
     if not matriz or _norm_txt(matriz[0][0]) != "MUNICIPIO":
@@ -127,11 +158,12 @@ def interpretar_matriz_ipva(matriz, ano: int, mes: int) -> tuple[dict[str, float
     if col is None:
         raise ValueError(
             f"RS IPVA {mes:02d}/{ano}: coluna 'Total Mês' ausente da linha 0 — layout mudou?")
-    serial = next((_numero(c) for c in matriz[0][1:] if _numero(c) is not None), None)
-    if serial is None:
+    datas = (_data_cabecalho(c) for c in matriz[0][1:])
+    d = next((x for x in datas if x is not None), None)
+    if d is None:
         raise ValueError(
-            f"RS IPVA {mes:02d}/{ano}: nenhum serial de data na linha 0 — layout mudou?")
-    d = _EPOCH_XLS + timedelta(days=int(serial))
+            f"RS IPVA {mes:02d}/{ano}: nenhuma data (serial ou texto DD/MM/AAAA) "
+            "na linha 0 — layout mudou?")
     if (d.year, d.month) != (ano, mes):
         raise MesDivergente(f"arquivo traz repasses de {d.month:02d}/{d.year}")
 

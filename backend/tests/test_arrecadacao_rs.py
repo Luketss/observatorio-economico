@@ -41,6 +41,18 @@ MATRIZ_IPVA = [
     ["TOTAIS", 89269281.24, 233715889.4, 19228229.27, 505523459.6, 505523459.57],
 ]
 
+# Mesmos dados de MATRIZ_IPVA, mas com as datas da linha 0 em texto
+# 'DD/MM/AAAA' em vez de serial BIFF numérico — visto ao vivo na Sefaz-RS
+# (IPVA 10/2025 veio assim; os demais meses sondados de 2025 vieram em
+# serial). 45659/45660/45663 = 2025-01-02/03/06.
+MATRIZ_IPVA_TXT = [
+    ["NOME DO MUNICÍPIO", "02/01/2025", "03/01/2025", "06/01/2025", "Total Mês", "Total Ano"],
+    ["ACEGUA", 33659.13, 117246.71, 17588.99, 279318.16, 279318.16],
+    ["AGUA SANTA", 36082.34, 139570.08, 7040.73, 219682.51, 219682.51],
+    ["XANGRI-LA", 123091.73, 501038.0, 46563.13, 1157990.51, 1157990.51],
+    ["TOTAIS", 89269281.24, 233715889.4, 19228229.27, 505523459.6, 505523459.57],
+]
+
 
 def _clona(matriz):
     return [list(linha) for linha in matriz]
@@ -157,6 +169,43 @@ def test_ipva_celula_nao_numerica_vira_ignorada():
     m[2][4] = "-"
     valores, ignoradas = interpretar_matriz_ipva(m, 2025, 1)
     assert ignoradas == ["AGUA SANTA"] and "AGUA SANTA" not in valores
+
+
+def test_ipva_aceita_data_em_texto_no_cabecalho():
+    # Fix round 1 — visto ao vivo em 10/2025: a Sefaz-RS às vezes publica as
+    # datas da linha 0 como texto 'DD/MM/AAAA' em vez de serial BIFF
+    # numérico. É dado válido da origem (não mudança de layout); mesmo
+    # resultado da variante numérica.
+    valores, ignoradas = interpretar_matriz_ipva(MATRIZ_IPVA_TXT, 2025, 1)
+    assert valores == {"ACEGUA": 279318.16, "AGUA SANTA": 219682.51,
+                       "XANGRI-LA": 1157990.51}
+    assert ignoradas == []
+
+
+def test_ipva_mes_divergente_pela_data_em_texto():
+    # a guarda de MesDivergente também funciona com a data em texto
+    with pytest.raises(MesDivergente):
+        interpretar_matriz_ipva(MATRIZ_IPVA_TXT, 2025, 2)
+
+
+def test_ipva_data_texto_invalida_nao_e_confundida_com_data_valida():
+    # '31/02/2025' não existe — não pode ser aceita como data válida (nem
+    # travar o parser); a guarda continua olhando as próximas células
+    m = _clona(MATRIZ_IPVA_TXT)
+    m[0][1] = "31/02/2025"  # data inválida
+    valores, _ = interpretar_matriz_ipva(m, 2025, 1)
+    # ainda acha a data válida em m[0][2] ('03/01/2025') e segue normalmente
+    assert valores["ACEGUA"] == 279318.16
+
+
+def test_ipva_sem_serial_e_sem_data_texto_e_layout_hard_stop():
+    # guarda intacta: linha 0 sem NENHUMA data (nem serial, nem texto
+    # DD/MM/AAAA) continua sendo hard-stop audível — só o formato aceito
+    # mudou, a exigência de ter uma data continua.
+    m = _clona(MATRIZ_IPVA)
+    m[0][1], m[0][2], m[0][3] = "", "", ""  # remove os 3 seriais, mantém 'Total Mês'
+    with pytest.raises(ValueError, match="layout"):
+        interpretar_matriz_ipva(m, 2025, 1)
 
 
 # ── Junção ICMS+IPVA (anti-meio-registro) ────────────────────────────────────
