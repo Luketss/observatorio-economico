@@ -154,3 +154,66 @@ def test_decodificar_utf8_e_fallback_cp1252():
     # amostra real de 2026-08-05 veio em UTF-8 (spec previa cp1252)
     assert decodificar("Referência: Março".encode("utf-8")) == "Referência: Março"
     assert decodificar("Referência: Março".encode("cp1252")) == "Referência: Março"
+
+
+# ── Task 3: executar_pr (HTTP e DB falsos) ───────────────────────────────────
+from unittest.mock import MagicMock
+
+import app.services.ingestao_automatica.arrecadacao_pr as arrecadacao_pr
+from app.services.ingestao_automatica.arrecadacao_pr import executar_pr
+
+
+def _db_vazio():
+    db = MagicMock()
+    db.query.return_value.filter.return_value.all.return_value = []
+    return db
+
+
+def test_executar_pr_grava_mes_publicado_e_avisa_os_demais(monkeypatch):
+    # fixture é Junho/2024: nos outros meses de 2024 o parser levanta
+    # MesDivergente → aviso 'ainda não publicado', sem hard-stop
+    monkeypatch.setattr(arrecadacao_pr, "_baixar_html", lambda ano, mes: FIXTURE_PR)
+    db = _db_vazio()
+    mun = MagicMock(nome="Abatiá", estado="PR", id=7)
+    resumo = executar_pr(db, [mun], anos=[2024])
+    assert db.add.call_count == 1
+    reg = db.add.call_args[0][0]
+    assert reg.municipio_id == 7 and reg.ano == 2024 and reg.mes == 6
+    assert reg.valor_icms == 468247.98 and reg.valor_ipi == 8122.05
+    assert reg.valor_ipva == 40789.94
+    assert reg.valor_total == round(468247.98 + 8122.05 + 40789.94, 2)
+    assert resumo.municipios_ok == 1 and resumo.linhas == 1
+    assert sum("ainda não publicado" in e for e in resumo.erros) == 11
+
+
+def test_executar_pr_layout_mudou_hard_stop_sem_gravar(monkeypatch):
+    quebrado = FIXTURE_PR.replace("<b>IPVA<sup>4</sup></b>", "<b>Frota</b>")
+    monkeypatch.setattr(arrecadacao_pr, "_baixar_html", lambda ano, mes: quebrado)
+    db = _db_vazio()
+    resumo = executar_pr(db, [MagicMock(nome="Abatiá", estado="PR", id=7)], anos=[2024])
+    db.add.assert_not_called()
+    assert any("layout mudou" in e and "abortados" in e for e in resumo.erros)
+    assert resumo.municipios_ok == 0 and resumo.municipios_erro == 1
+
+
+def test_executar_pr_alvo_fora_da_uf_e_avisado_sem_http(monkeypatch):
+    def explode(ano, mes):
+        raise AssertionError("não deveria baixar nada")
+    monkeypatch.setattr(arrecadacao_pr, "_baixar_html", explode)
+    resumo = executar_pr(_db_vazio(), [MagicMock(nome="Santos", estado="SP", id=1)])
+    assert resumo.municipios_erro == 1
+    assert any("outra UF" in e for e in resumo.erros)
+
+
+def test_executar_pr_janela_default_e_36_meses(monkeypatch):
+    # sem `anos`: últimas 36 competências (decisão do usuário de 2026-08-06;
+    # backfill histórico só via `anos` explícitos)
+    meses = []
+
+    def fake(ano, mes):
+        meses.append((ano, mes))
+        return FIXTURE_PR  # meses fora de 06/2024 viram MesDivergente (aviso)
+
+    monkeypatch.setattr(arrecadacao_pr, "_baixar_html", fake)
+    executar_pr(_db_vazio(), [MagicMock(nome="Abatiá", estado="PR", id=7)])
+    assert len(meses) == 36 and len(set(meses)) == 36

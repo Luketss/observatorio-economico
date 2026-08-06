@@ -16,4 +16,5 @@ tqdm==4.66.4
 requests==2.32.3
 certifi>=2024.2.2  # importado direto em util.ca_bundle_gov (bundle gov.br)
 openpyxl==3.1.5
+xlrd==2.0.2  # .xls BIFF legado da Sefaz-RS — só a fonte arrecadacao (conector RS) usa
 py7zr==1.1.3

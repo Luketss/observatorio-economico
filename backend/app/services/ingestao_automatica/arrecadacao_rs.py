@@ -199,3 +199,133 @@ def extrair_matriz(conteudo: bytes) -> list[list]:
         if sh.nrows:
             return [sh.row_values(r) for r in range(sh.nrows)]
     return []
+
+
+# ── HTTP + execução (parte 2) ────────────────────────────────────────────────
+
+def _get_retry(url: str) -> requests.Response:
+    """GET com 1 retry (padrão HTTP das fontes; ASP legado sem SLA)."""
+    try:
+        resp = requests.get(url, timeout=(30, 120),
+                            headers={"User-Agent": "Mozilla/5.0"}, verify=ca_bundle_gov())
+        resp.raise_for_status()
+        return resp
+    except requests.RequestException:
+        resp = requests.get(url, timeout=(30, 120),
+                            headers={"User-Agent": "Mozilla/5.0"}, verify=ca_bundle_gov())
+        resp.raise_for_status()
+        return resp
+
+
+def _baixar_matriz(al: str) -> tuple[list[list] | None, str | None]:
+    """(matriz, None) ou (None, motivo-não-publicado). Não-publicado = corpo
+    que não é OLE2/BIFF, em QUALQUER status HTTP — verificado ao vivo em
+    2026-08-06: meses recentes ainda não publicados respondem 500 com página
+    HTML "Nenhum registro encontrado na consulta." (não 404, como a sondagem
+    original previa; 404 continua possível para `al` inválido e também
+    tratado aqui). Só propaga HTTPError/RequestException quando não há corpo
+    para inspecionar (falha de rede real) — nesse caso o executar aborta a
+    UF, audível."""
+    try:
+        resp = _get_retry(URL_ARQUIVO.format(al=al))
+    except requests.HTTPError as exc:
+        resp = exc.response
+        if resp is not None and not resp.content.startswith(_MAGIC_OLE2):
+            return None, f"não publicado (HTTP {resp.status_code})"
+        raise
+    if not resp.content.startswith(_MAGIC_OLE2):
+        return None, "não publicado (resposta não é .xls)"
+    return extrair_matriz(resp.content), None
+
+
+def _upsert_mensal(db, regs: list[dict], resumo: ResumoIngestao, mids_ok: set) -> None:
+    """Idêntico ao do conector PR (idioma do MG; módulos autocontidos como o
+    próprio MG — duplicação deliberada de ~20 linhas)."""
+    from app.models.arrecadacao import ArrecadacaoMensal
+
+    if not regs:
+        return
+    mids = {r["municipio_id"] for r in regs}
+    existentes = {
+        (r.municipio_id, r.ano, r.mes): r
+        for r in db.query(ArrecadacaoMensal).filter(
+            ArrecadacaoMensal.municipio_id.in_(mids),
+            ArrecadacaoMensal.ano == regs[0]["ano"],
+            ArrecadacaoMensal.mes == regs[0]["mes"]).all()
+    }
+    for r in regs:
+        reg = existentes.get((r["municipio_id"], r["ano"], r["mes"]))
+        if reg:
+            for coluna, valor in r.items():
+                setattr(reg, coluna, valor)
+        else:
+            db.add(ArrecadacaoMensal(**r))
+        resumo.linhas += 1
+        mids_ok.add(r["municipio_id"])
+    db.commit()
+
+
+def executar_rs(db, municipios, anos=None, usuario_id=None, notificar=True, progresso=None) -> ResumoIngestao:
+    """Conector RS. Janela default: últimas 36 competências (idioma das
+    demais fontes mensais do repo); com `anos`, todos os meses desses anos,
+    clampados entre INICIO_SERIE (2007-01) e o mês anterior — backfill
+    histórico = `anos` explícitos. Um mês só é gravado com ICMS E IPVA
+    válidos (anti-meio-mês — ver docstring do módulo). `notificar` aceito e
+    ignorado."""
+    resumo = ResumoIngestao(dataset="arrecadacao")
+    de_rs = [m for m in municipios if (m.estado or "").upper() == "RS"]
+    fora = len(municipios) - len(de_rs)
+    if fora:
+        resumo.erros.append(
+            f"conector RS cobre apenas municípios do RS — {fora} município(s) de outra UF ignorado(s)")
+        resumo.municipios_erro += fora
+    alvo = {norm_nome_municipio(m.nome): m.id for m in de_rs}
+    if not alvo:
+        return resumo
+
+    competencias = competencias_janela(anos=anos, inicio=INICIO_SERIE, meses_default=36)
+    mids_ok: set[int] = set()
+    sem_match_meses: dict[str, int] = {}
+    for i, (ano, mes) in enumerate(competencias):
+        if progresso:
+            progresso(i, len(competencias), f"repasses RS {mes:02d}/{ano}")
+        anomes = f"{ano}{mes:02d}"
+        try:
+            matriz_icms, motivo_icms = _baixar_matriz(f"l_icms_rep_{anomes}")
+            matriz_ipva, motivo_ipva = _baixar_matriz(f"l_ipva_rep_{anomes}")
+        except requests.RequestException as exc:
+            resumo.erros.append(
+                f"{mes:02d}/{ano}: Sefaz-RS indisponível ({exc}) — meses restantes abortados")
+            break
+        if matriz_icms is None or matriz_ipva is None:
+            faltas = [f"{rot} {mot}" for rot, mtz, mot in
+                      (("ICMS", matriz_icms, motivo_icms), ("IPVA", matriz_ipva, motivo_ipva))
+                      if mtz is None]
+            resumo.erros.append(
+                f"{mes:02d}/{ano}: aguardando publicação completa — {'; '.join(faltas)}")
+            continue
+        try:
+            valores_icms, ign_icms = interpretar_matriz_icms(matriz_icms, ano, mes)
+            valores_ipva, ign_ipva = interpretar_matriz_ipva(matriz_ipva, ano, mes)
+        except MesDivergente as exc:
+            resumo.erros.append(f"{mes:02d}/{ano}: ainda não publicado ({exc})")
+            continue
+        except ValueError as exc:
+            resumo.erros.append(f"{exc} — nenhuma linha do mês gravada; meses restantes abortados")
+            break
+        if ign_icms or ign_ipva:
+            resumo.erros.append(
+                f"{mes:02d}/{ano}: linha(s) ilegível(is) ignorada(s) — ICMS {len(ign_icms)}, IPVA {len(ign_ipva)}")
+        regs, sem_match = montar_registros_rs(valores_icms, valores_ipva, alvo, ano, mes)
+        for s in sem_match:
+            sem_match_meses[s] = sem_match_meses.get(s, 0) + 1
+        _upsert_mensal(db, regs, resumo, mids_ok)
+
+    for s, n in sorted(sem_match_meses.items()):
+        resumo.erros.append(f"{s} em {n} mês(es)")
+    resumo.municipios_ok = len(mids_ok)
+    faltantes = set(alvo.values()) - mids_ok
+    resumo.municipios_erro += len(faltantes)
+    if progresso:
+        progresso(len(competencias), len(competencias), "repasses RS gravados")
+    return resumo

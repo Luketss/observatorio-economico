@@ -194,3 +194,95 @@ def test_montar_municipio_nao_alvo_e_ignorado():
         {"ACEGUA": 1.0, "AGUA SANTA": 2.0}, {"ACEGUA": 3.0, "AGUA SANTA": 4.0},
         ALVO, 2026, 1)
     assert len(regs) == 1 and regs[0]["municipio_id"] == 9 and sem_match == []
+
+
+# ── Task 3: executar_rs (HTTP e DB falsos) ───────────────────────────────────
+from unittest.mock import MagicMock
+
+import requests
+
+import app.services.ingestao_automatica.arrecadacao_rs as arrecadacao_rs
+from app.services.ingestao_automatica.arrecadacao_rs import executar_rs
+
+
+def test_baixar_matriz_nao_publicado_em_status_diferente_de_404(monkeypatch):
+    # sondagem real de 2026-08-06: mês ainda não publicado responde 500 (não
+    # 404) com página HTML "Nenhum registro encontrado na consulta." — a
+    # assinatura OLE2 ausente é que discrimina, não o status HTTP.
+    resp = MagicMock(status_code=500, content=b"<html>Nenhum registro encontrado</html>")
+    erro = requests.HTTPError(response=resp)
+
+    def fake_get_retry(url):
+        raise erro
+    monkeypatch.setattr(arrecadacao_rs, "_get_retry", fake_get_retry)
+    matriz, motivo = arrecadacao_rs._baixar_matriz("l_icms_rep_202606")
+    assert matriz is None and "não publicado" in motivo and "500" in motivo
+
+
+def test_baixar_matriz_propaga_falha_de_rede_sem_resposta(monkeypatch):
+    def fake_get_retry(url):
+        raise requests.ConnectionError("timeout")
+    monkeypatch.setattr(arrecadacao_rs, "_get_retry", fake_get_retry)
+    try:
+        arrecadacao_rs._baixar_matriz("l_icms_rep_202606")
+        assert False, "deveria propagar"
+    except requests.ConnectionError:
+        pass
+
+# IPVA sintético de JANEIRO/2026 (serial 46032 = 2026-01-10) para casar com
+# MATRIZ_ICMS (TOTAL JANEIRO/2026)
+MATRIZ_IPVA_JAN26 = [
+    ["NOME DO MUNICÍPIO", 46032.0, 46033.0, "Total Mês", "Total Ano"],
+    ["ACEGUA", 100.0, 50.0, 279318.16, 279318.16],
+    ["TOTAIS", 100.0, 50.0, 279318.16, 279318.16],
+]
+
+
+def _db_vazio():
+    db = MagicMock()
+    db.query.return_value.filter.return_value.all.return_value = []
+    return db
+
+
+def test_executar_rs_grava_mes_com_os_dois_arquivos(monkeypatch):
+    def fake_baixar(al):
+        if al == "l_icms_rep_202601":
+            return MATRIZ_ICMS, None
+        if al == "l_ipva_rep_202601":
+            return MATRIZ_IPVA_JAN26, None
+        return None, "não publicado (404)"
+    monkeypatch.setattr(arrecadacao_rs, "_baixar_matriz", fake_baixar)
+    db = _db_vazio()
+    resumo = executar_rs(db, [MagicMock(nome="Aceguá", estado="RS", id=9)], anos=[2026])
+    assert db.add.call_count == 1
+    reg = db.add.call_args[0][0]
+    assert reg.municipio_id == 9 and reg.ano == 2026 and reg.mes == 1
+    assert reg.valor_icms == 1273563.64 and reg.valor_ipva == 279318.16
+    assert reg.valor_ipi == 0.0
+    assert resumo.municipios_ok == 1 and resumo.linhas == 1
+
+
+def test_executar_rs_anti_meio_mes_nao_grava_so_com_icms(monkeypatch):
+    def fake_baixar(al):
+        if al == "l_icms_rep_202601":
+            return MATRIZ_ICMS, None
+        return None, "não publicado (404)"
+    monkeypatch.setattr(arrecadacao_rs, "_baixar_matriz", fake_baixar)
+    db = _db_vazio()
+    resumo = executar_rs(db, [MagicMock(nome="Aceguá", estado="RS", id=9)], anos=[2026])
+    db.add.assert_not_called()
+    assert any("aguardando publicação completa" in e and "IPVA" in e for e in resumo.erros)
+    assert resumo.municipios_ok == 0 and resumo.municipios_erro == 1
+
+
+def test_executar_rs_janela_default_e_36_meses(monkeypatch):
+    # sem `anos`: últimas 36 competências × 2 arquivos (ICMS+IPVA) por mês
+    als = []
+
+    def fake(al):
+        als.append(al)
+        return None, "não publicado (404)"
+
+    monkeypatch.setattr(arrecadacao_rs, "_baixar_matriz", fake)
+    executar_rs(_db_vazio(), [MagicMock(nome="Aceguá", estado="RS", id=9)])
+    assert len(als) == 72 and len(set(als)) == 72

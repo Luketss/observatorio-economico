@@ -174,3 +174,119 @@ def parse_html_mensal(html: str, ano: int, mes: int) -> tuple[dict[str, tuple[fl
             continue
         valores[celulas[0]] = (icms, fundo, ipva)
     return valores, ignoradas
+
+
+# ── HTTP + execução (parte 2) ────────────────────────────────────────────────
+
+def _get_retry(url: str) -> requests.Response:
+    """GET com 1 retry (padrão HTTP das fontes; JSP legado sem SLA).
+    verify=ca_bundle_gov(): superconjunto do certifi que fecha cadeias
+    gov.br com intermediário faltando."""
+    try:
+        resp = requests.get(url, timeout=(30, 120),
+                            headers={"User-Agent": "Mozilla/5.0"}, verify=ca_bundle_gov())
+        resp.raise_for_status()
+        return resp
+    except requests.RequestException:
+        resp = requests.get(url, timeout=(30, 120),
+                            headers={"User-Agent": "Mozilla/5.0"}, verify=ca_bundle_gov())
+        resp.raise_for_status()
+        return resp
+
+
+def _baixar_html(ano: int, mes: int) -> str:
+    return decodificar(_get_retry(URL_MENSAL.format(ano=ano, mes=mes)).content)
+
+
+def _upsert_mensal(db, regs: list[dict], resumo: ResumoIngestao, mids_ok: set) -> None:
+    """Upsert-com-UPDATE por (municipio_id, ano, mes) no idioma REAL do
+    conector MG (query dos existentes + setattr/add), commit por mês. Todos
+    os regs de uma chamada são do MESMO (ano, mes)."""
+    from app.models.arrecadacao import ArrecadacaoMensal
+
+    if not regs:
+        return
+    mids = {r["municipio_id"] for r in regs}
+    existentes = {
+        (r.municipio_id, r.ano, r.mes): r
+        for r in db.query(ArrecadacaoMensal).filter(
+            ArrecadacaoMensal.municipio_id.in_(mids),
+            ArrecadacaoMensal.ano == regs[0]["ano"],
+            ArrecadacaoMensal.mes == regs[0]["mes"]).all()
+    }
+    for r in regs:
+        reg = existentes.get((r["municipio_id"], r["ano"], r["mes"]))
+        if reg:
+            for coluna, valor in r.items():
+                setattr(reg, coluna, valor)
+        else:
+            db.add(ArrecadacaoMensal(**r))
+        resumo.linhas += 1
+        mids_ok.add(r["municipio_id"])
+    db.commit()
+
+
+def executar_pr(db, municipios, anos=None, usuario_id=None, notificar=True, progresso=None) -> ResumoIngestao:
+    """Conector PR. Janela default: últimas 36 competências (idioma das
+    demais fontes mensais do repo — pix/estban); com `anos`, todos os meses
+    desses anos, clampados pela competencias_janela entre INICIO_SERIE
+    (2003-01) e o mês anterior. Backfill histórico = `anos` explícitos.
+    `notificar` aceito e ignorado (a fonte arrecadação não tem regra de
+    notificação)."""
+    resumo = ResumoIngestao(dataset="arrecadacao")
+    de_pr = [m for m in municipios if (m.estado or "").upper() == "PR"]
+    fora = len(municipios) - len(de_pr)
+    if fora:
+        resumo.erros.append(
+            f"conector PR cobre apenas municípios do PR — {fora} município(s) de outra UF ignorado(s)")
+        resumo.municipios_erro += fora
+    alvo = {norm_nome_municipio(m.nome): m.id for m in de_pr}
+    if not alvo:
+        return resumo
+
+    competencias = competencias_janela(anos=anos, inicio=INICIO_SERIE, meses_default=36)
+    mids_ok: set[int] = set()
+    for i, (ano, mes) in enumerate(competencias):
+        if progresso:
+            progresso(i, len(competencias), f"repasses PR {mes:02d}/{ano}")
+        try:
+            html = _baixar_html(ano, mes)
+        except requests.RequestException as exc:
+            resumo.erros.append(
+                f"{mes:02d}/{ano}: SEFA-PR indisponível ({exc}) — meses restantes abortados")
+            break
+        try:
+            valores, ignoradas = parse_html_mensal(html, ano, mes)
+        except MesDivergente as exc:
+            resumo.erros.append(f"{mes:02d}/{ano}: ainda não publicado ({exc})")
+            continue
+        except ValueError as exc:
+            resumo.erros.append(f"{exc} — nenhuma linha do mês gravada; meses restantes abortados")
+            break
+        if ignoradas:
+            resumo.erros.append(
+                f"{mes:02d}/{ano}: {len(ignoradas)} linha(s) ilegível(is) ignorada(s): "
+                + ", ".join(sorted(ignoradas)[:5]))
+        regs = []
+        for nome, (icms, fundo, ipva) in valores.items():
+            mid = alvo.get(norm_nome_municipio(nome))
+            if mid is None:
+                continue  # município do PR que não é alvo desta execução
+            regs.append({
+                "municipio_id": mid, "ano": ano, "mes": mes,
+                "nome_mes": NOME_MESES[mes - 1], "data_base": date(ano, mes, 1),
+                "valor_icms": icms, "valor_ipva": ipva, "valor_ipi": fundo,
+                "valor_total": round(icms + ipva + fundo, 2),
+            })
+        _upsert_mensal(db, regs, resumo, mids_ok)
+
+    resumo.municipios_ok = len(mids_ok)
+    faltantes = set(alvo.values()) - mids_ok
+    resumo.municipios_erro += len(faltantes)
+    nomes = {m.id: f"{m.nome}/PR" for m in de_pr}
+    for mid in sorted(faltantes):
+        resumo.erros.append(
+            f"{nomes.get(mid, mid)}: não encontrado nos repasses da SEFA-PR (grafia divergente?)")
+    if progresso:
+        progresso(len(competencias), len(competencias), "repasses PR gravados")
+    return resumo

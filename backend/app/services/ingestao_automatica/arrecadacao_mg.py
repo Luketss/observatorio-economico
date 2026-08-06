@@ -7,7 +7,8 @@ Transparência-MG): fato ft_repasse_mun (~3,6 MB gz, 2007→mês corrente) +
 dimensões dm_tempo_mensal e dm_municipio. CSVs gzip UTF-8 BOM ';'. Match por
 código IBGE; territórios (códigos curtos) descartados. Upsert por
 (município, ano, mês) — o Estado corrige o fato retroativamente. Fonte
-MG-only: alvos de outra UF geram um aviso único."""
+MG-only: alvos de outra UF geram um aviso único. Registrada pelo roteador
+arrecadacao.py (como executar_mg); não se registra mais sozinha."""
 import csv
 import gzip
 import logging
@@ -15,7 +16,7 @@ from datetime import date
 
 import requests
 
-from app.services.ingestao_automatica.base import FonteAutomatica, ResumoIngestao, registrar
+from app.services.ingestao_automatica.base import ResumoIngestao
 
 logger = logging.getLogger(__name__)
 
@@ -112,7 +113,7 @@ def _baixar_gz_linhas(url: str) -> list[str]:
     return gzip.decompress(resp.content).decode("utf-8-sig").splitlines()
 
 
-def executar(db, municipios, anos=None, usuario_id=None, notificar=True, progresso=None) -> ResumoIngestao:
+def executar_mg(db, municipios, anos=None, usuario_id=None, notificar=True, progresso=None) -> ResumoIngestao:
     from app.models.arrecadacao import ArrecadacaoMensal
 
     resumo = ResumoIngestao(dataset="arrecadacao")
@@ -174,11 +175,3 @@ def executar(db, municipios, anos=None, usuario_id=None, notificar=True, progres
     if progresso:
         progresso(len(mids), len(alvo), "repasses gravados")
     return resumo
-
-
-registrar(FonteAutomatica(
-    key="arrecadacao",
-    label="Arrecadação (repasses MG)",
-    fonte="SEF-MG via dados.mg.gov.br — repasses mensais de ICMS, IPVA e IPI aos municípios (consulta oficial da Transparência-MG)",
-    executar=executar,
-))
