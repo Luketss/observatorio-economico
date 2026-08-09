@@ -20,6 +20,13 @@ VIZINHA = MunicipioRef(id=5, nome="Vizinha", estado="MG", populacao=25_000, codi
 DISTANTE = MunicipioRef(id=6, nome="Distante", estado="MG", populacao=5_000, codigo_ibge="3100004")
 BH = MunicipioRef(id=7, nome="Belo Horizonte", estado="MG", populacao=2_300_000, codigo_ibge="3106200")
 SP = MunicipioRef(id=8, nome="São Paulo", estado="SP", populacao=11_400_000, codigo_ibge="3550308")
+# Capital com código IBGE real (Boa Vista/RR) mas população fictícia, escolhida
+# para cair na mesma faixa FPM do FOCO: isola o filtro "não é capital" do
+# filtro de faixa — sem isso BH já seria descartado por faixa (índice 17 vs 3),
+# e o teste passaria mesmo sem excluir capitais do pool de município comum.
+CAPITAL_NA_FAIXA_DO_FOCO = MunicipioRef(
+    id=13, nome="Boa Vista", estado="RR", populacao=20_400, codigo_ibge="1400100"
+)
 
 
 def test_capital_e_faixa():
@@ -72,7 +79,7 @@ def test_capital_recebe_capitais_como_pares():
 
 
 def test_capital_nao_entra_como_par_de_municipio_comum():
-    r = selecionar_pares(FOCO, [BH, PERTO])
+    r = selecionar_pares(FOCO, [CAPITAL_NA_FAIXA_DO_FOCO, PERTO])
     assert [p.id for p in r.pares] == [2]
 
 
