@@ -118,3 +118,100 @@ def selecionar_pares(
     if not pares:
         return ResultadoPares(motivo="sem_pares")
     return ResultadoPares(pares, " + ".join(rotulos))
+
+
+# ── camada DB (fina) e helpers de endpoint ───────────────────────────────────
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:  # pragma: no cover
+    from sqlalchemy.orm import Session
+
+MAX_FIXADOS = 3
+
+
+@dataclass(frozen=True)
+class GrupoComparativo:
+    foco: MunicipioRef | None = None
+    pares: list[MunicipioRef] = field(default_factory=list)
+    fixados: list[MunicipioRef] = field(default_factory=list)
+    criterio: str | None = None
+    motivo: str | None = None    # sem_municipio | sem_populacao | sem_pares
+
+
+def carregar_refs(db: "Session") -> dict[int, MunicipioRef]:
+    """Município ativo → ref com a população mais recente. Uma query.
+
+    `outerjoin` de propósito: município sem população cadastrada continua
+    aparecendo (com `populacao=None`) para poder ser FOCO e receber o motivo
+    "sem_populacao" — some-lo aqui viraria um "sem_municipio" enganoso.
+    """
+    from app.models.municipio import Municipio
+    from app.models.populacao import PopulacaoMunicipio
+
+    linhas = (
+        db.query(
+            Municipio.id, Municipio.nome, Municipio.estado,
+            Municipio.codigo_ibge, Municipio.is_demo,
+            PopulacaoMunicipio.ano, PopulacaoMunicipio.populacao,
+        )
+        .outerjoin(PopulacaoMunicipio, PopulacaoMunicipio.municipio_id == Municipio.id)
+        .filter(Municipio.ativo.is_(True))
+        .all()
+    )
+    refs: dict[int, MunicipioRef] = {}
+    ano_de: dict[int, int | None] = {}
+    for mid, nome, uf, ibge, demo, ano, pop in linhas:
+        anterior = ano_de.get(mid)
+        if mid in refs and (ano is None or (anterior is not None and ano <= anterior)):
+            continue
+        refs[mid] = MunicipioRef(id=mid, nome=nome, estado=uf, populacao=pop,
+                                 codigo_ibge=ibge, is_demo=bool(demo))
+        ano_de[mid] = ano
+    return refs
+
+
+def parse_fixados(bruto: str | None) -> list[int]:
+    """"12, 7,99,4" → [12, 7, 99]. Máx. MAX_FIXADOS, sem repetição, ignora lixo.
+    O excedente não é erro: a resposta devolve os aceitos e a página redesenha
+    os chips a partir dela, então o usuário vê o que entrou."""
+    if not bruto:
+        return []
+    ids: list[int] = []
+    for pedaco in bruto.split(","):
+        pedaco = pedaco.strip()
+        if pedaco.isdigit() and int(pedaco) not in ids:
+            ids.append(int(pedaco))
+    return ids[:MAX_FIXADOS]
+
+
+def elegiveis_por_cobertura(linhas: list[tuple[int, int]], anos_foco: set[int]) -> set[int]:
+    """Ids com dado em TODOS os anos do foco. `linhas` = pares (municipio_id, ano).
+
+    Sem isso, um par de série curta entraria no gráfico e o ano faltante viraria
+    zero, desenhando um tombo que não existe."""
+    if not anos_foco:
+        return set()
+    por_mid: dict[int, set[int]] = {}
+    for mid, ano in linhas:
+        por_mid.setdefault(mid, set()).add(ano)
+    return {mid for mid, anos in por_mid.items() if anos_foco <= anos}
+
+
+def resolver_grupo(
+    refs: dict[int, MunicipioRef],
+    mid: int,
+    elegiveis: set[int],
+    fixados_ids: list[int],
+    limite: int = LIMITE_PADRAO,
+) -> GrupoComparativo:
+    """Puro de propósito: o router faz a query (`carregar_refs`) e passa `refs`."""
+    foco = refs.get(mid)
+    if foco is None:
+        return GrupoComparativo(motivo="sem_municipio")
+    candidatos = [r for r in refs.values() if r.id in elegiveis]
+    res = selecionar_pares(foco, candidatos, limite=limite)
+    ids_pares = {p.id for p in res.pares}
+    fixados = [refs[i] for i in fixados_ids
+               if i in refs and i != mid and i not in ids_pares]
+    return GrupoComparativo(foco=foco, pares=res.pares, fixados=fixados,
+                            criterio=res.criterio, motivo=res.motivo)

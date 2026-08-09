@@ -97,3 +97,69 @@ def test_limite_respeitado():
     ]
     assert len(selecionar_pares(FOCO, muitos).pares) == LIMITE_PADRAO
     assert len(selecionar_pares(FOCO, muitos, limite=2).pares) == 2
+
+
+# ── helpers de endpoint (puros) ──────────────────────────────────────────────
+from app.services.pares_service import (  # noqa: E402
+    MAX_FIXADOS,
+    elegiveis_por_cobertura,
+    parse_fixados,
+    resolver_grupo,
+)
+
+REFS = {r.id: r for r in [FOCO, PERTO, LONGE, OUTRA_UF, VIZINHA, BH]}
+
+
+def test_parse_fixados_apara_e_higieniza():
+    assert parse_fixados("12, 7,99") == [12, 7, 99]
+    assert parse_fixados("1,2,3,4,5") == [1, 2, 3]          # MAX_FIXADOS
+    assert parse_fixados("1,1,2") == [1, 2]                 # sem repetição
+    assert parse_fixados("1,abc,,3") == [1, 3]              # ignora lixo
+    assert parse_fixados(None) == [] and parse_fixados("") == []
+    assert MAX_FIXADOS == 3
+
+
+def test_elegiveis_por_cobertura_exige_todos_os_anos_do_foco():
+    linhas = [(1, 2020), (1, 2021), (2, 2020), (2, 2021), (3, 2021)]
+    assert elegiveis_por_cobertura(linhas, {2020, 2021}) == {1, 2}
+    assert elegiveis_por_cobertura(linhas, {2021}) == {1, 2, 3}
+    assert elegiveis_por_cobertura(linhas, set()) == set()
+
+
+def test_resolver_grupo_monta_foco_pares_e_fixados():
+    g = resolver_grupo(REFS, mid=1, elegiveis={2, 3, 4}, fixados_ids=[5, 1, 2], limite=2)
+    assert g.foco.id == 1
+    assert [p.id for p in g.pares] == [2, 3]
+    # 1 é o próprio foco e 2 já é par — só 5 sobrevive como fixado.
+    assert [f.id for f in g.fixados] == [5]
+    assert g.motivo is None
+
+
+def test_resolver_grupo_sem_municipio_conhecido():
+    g = resolver_grupo(REFS, mid=999, elegiveis={2}, fixados_ids=[])
+    assert g.motivo == "sem_municipio"
+    assert g.foco is None and g.pares == []
+
+
+def test_resolver_grupo_propaga_motivo_de_sem_pares():
+    g = resolver_grupo(REFS, mid=1, elegiveis=set(), fixados_ids=[5])
+    assert g.foco.id == 1
+    assert g.pares == []
+    assert g.motivo == "sem_pares"
+    assert [f.id for f in g.fixados] == [5]    # fixado sobrevive mesmo sem pares
+
+
+# ── captação continua com a mesma semântica após a refatoração ───────────────
+def test_pares_de_captacao_mantem_grupos_ilimitados():
+    from app.services.captacao_federal_service import _pares_de
+
+    refs = {r.id: r for r in [FOCO, PERTO, LONGE, OUTRA_UF, VIZINHA, BH,
+                              MunicipioRef(id=20, nome="D", estado="MG",
+                                           populacao=20_300, is_demo=True)]}
+    meta, pares, nacional = _pares_de(1, refs)
+    assert meta["uf"] == "MG"
+    assert meta["faixa"].indice == 3
+    assert pares == {2, 3}              # mesma UF + mesma faixa, sem limite
+    assert nacional == {2, 3, 4}        # mesma faixa, qualquer UF
+    # capital, demo, faixa diferente e o próprio ficam fora dos dois grupos
+    assert 7 not in nacional and 20 not in nacional and 5 not in nacional
