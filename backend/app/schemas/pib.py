@@ -1,6 +1,7 @@
 from typing import List
 
 from pydantic import BaseModel
+from app.schemas.pares import ParesMeta
 
 
 class PibItem(BaseModel):
@@ -11,12 +12,17 @@ class PibItem(BaseModel):
 
 class PibComparativoItem(BaseModel):
     ano: int
+    municipio_id: int
     cidade: str
     pib_total: float
     va_agropecuaria: float | None = None
     va_governo: float | None = None
     va_industria: float | None = None
     va_servicos: float | None = None
+
+
+class PibComparativoOut(ParesMeta):
+    itens: list[PibComparativoItem] = []
 
 
 class PibResumo(BaseModel):
