@@ -11,6 +11,7 @@ from app.schemas.pib import (
     PibResumo,
 )
 from app.services.pares_service import (
+    MunicipioRef,
     carregar_refs,
     elegiveis_por_cobertura,
     parse_fixados,
@@ -95,7 +96,7 @@ def resumo_pib(
 # ==============================
 # Comparativo — foco + pares comparáveis
 # ==============================
-def _ref_out(r) -> MunicipioRefOut:
+def _ref_out(r: MunicipioRef) -> MunicipioRefOut:
     return MunicipioRefOut(municipio_id=r.id, nome=r.nome, estado=r.estado)
 
 
@@ -117,7 +118,11 @@ def comparativo_pib(
         a for (a,) in db.query(PibAnual.ano).filter(PibAnual.municipio_id == mid).all()
     }
     if not anos_foco:
-        return PibComparativoOut(motivo="sem_municipio")
+        # Distinto do "sem_municipio" acima: aqui HÁ município (e view-as, se
+        # for o caso), só falta série dele. Motivo próprio para o front não
+        # confundir "selecione um município" com "este município ainda não
+        # tem dado".
+        return PibComparativoOut(motivo="sem_serie")
 
     cobertura = (
         db.query(PibAnual.municipio_id, PibAnual.ano)

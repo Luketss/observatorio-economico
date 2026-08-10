@@ -16,4 +16,4 @@ class ParesMeta(BaseModel):
     pares: list[MunicipioRefOut] = []
     fixados: list[MunicipioRefOut] = []
     criterio_pares: str | None = None
-    motivo: str | None = None      # sem_municipio | sem_populacao | sem_pares
+    motivo: str | None = None      # sem_municipio | sem_serie | sem_populacao | sem_pares
