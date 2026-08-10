@@ -29,8 +29,8 @@ const abrir = async (user) => {
 describe("MunicipioPicker", () => {
   // Este teste NÃO reproduz o bug real: no Chromium, digitar espaço com o
   // input focado dentro de um <button> dispara também um click sintético
-  // (detail=0) no botão ancestral — foi reproduzido fora do jsdom com
-  // Playwright, ver .superpowers/sdd/2026-08-09-comparativo-pares-e-picker/repro.html.
+  // (detail=0) no botão ancestral — reproduzido fora do jsdom com Playwright;
+  // ver docs/browser-repro/municipio-picker-espaco/.
   // O jsdom + @testing-library/user-event não emula esse borbulhamento
   // nativo (só simula clique quando o próprio alvo do evento é clicável),
   // então ele passa mesmo com o bug presente. Ele fica como guarda de

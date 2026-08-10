@@ -1,0 +1,17 @@
+<!doctype html><meta charset="utf-8">
+<body>
+<div id="log"></div>
+<button id="btn" type="button">
+  <span>rotulo</span>
+  <input id="inp" type="text">
+</button>
+<script>
+  let cliques = 0;
+  const log = document.getElementById('log');
+  document.getElementById('btn').addEventListener('click', (e) => {
+    cliques++;
+    log.textContent = 'cliques=' + cliques + ' target=' + e.target.id + ' detail=' + e.detail;
+  });
+  window.resultado = () => ({ cliques, valor: document.getElementById('inp').value });
+</script>
+</body>
