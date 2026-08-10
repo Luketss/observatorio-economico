@@ -24,6 +24,8 @@ import {
   fmtMoneyFull,
 } from "../../components/nid/charts";
 import DataTable from "../../components/nid/DataTable";
+import { montarComparativo, descreverPares } from "../../utils/seriesComparativo";
+import ComparadorMunicipios from "../../components/nid/ComparadorMunicipios";
 
 const fmtBRL = (v) =>
   `R$ ${Number(v).toLocaleString("pt-BR", { maximumFractionDigits: 0 })}`;
@@ -31,15 +33,16 @@ const fmtBRL = (v) =>
 export default function PibPage() {
   const { user } = useAuth();
   const { viewAsId } = useViewAs();
-  const ownCity = user?.municipio?.nome;
   // ADMIN_GLOBAL precisa de um município selecionado (view-as) para escopar os
   // gráficos do dashboard; sem seleção, pedimos para escolher em vez de
   // sobrepor todos os municípios no mesmo gráfico.
   const needsMunicipio = user?.role === "ADMIN_GLOBAL" && viewAsId == null;
 
+  const VAZIO = { foco: null, pares: [], fixados: [], criterio_pares: null, motivo: null, itens: [] };
   const [rawSerie, setRawSerie] = useState([]);
   const [resumo, setResumo] = useState(null);
-  const [comparativo, setComparativo] = useState([]);
+  const [comp, setComp] = useState(VAZIO);
+  const [fixadosIds, setFixadosIds] = useState([]);
   const [loading, setLoading] = useState(true);
   const [filters, setFilters] = useState({ yearFrom: "", yearTo: "" });
 
@@ -51,29 +54,33 @@ export default function PibPage() {
     Promise.all([
       api.get("/pib/serie"),
       api.get("/pib/resumo"),
-      api.get("/pib/comparativo"),
+      api.get("/pib/comparativo", {
+        params: fixadosIds.length ? { fixados: fixadosIds.join(",") } : undefined,
+      }),
     ])
       .then(([serieRes, resumoRes, compRes]) => {
         const raw = serieRes.data || [];
         setRawSerie(raw);
         setResumo(resumoRes.data);
-        setComparativo(compRes.data || []);
+        setComp(compRes.data || VAZIO);
         if (!filtroTocado.current) {
           setFilters(janela12m(raw, (d) => ({ ano: d.ano })));
         }
       })
       .catch((err) => console.error("Erro ao carregar PIB:", err))
       .finally(() => setLoading(false));
-  }, []);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [fixadosIds]);
 
   const years = useMemo(() => rawSerie.map((d) => d.ano).sort(), [rawSerie]);
 
-  // VA breakdown per year (own city only — first unique city in comparativo)
+  // VA por setor é do município em FOCO — antes o código pegava "a primeira
+  // cidade do comparativo", que virou uma cidade qualquer quando a rota passou
+  // a devolver a base inteira.
   const vaData = useMemo(() => {
-    if (!comparativo.length) return [];
-    const cidades = [...new Set(comparativo.map((d) => d.cidade))];
-    const propia = comparativo.filter((d) => d.cidade === cidades[0]);
-    return propia
+    if (!comp.foco) return [];
+    return (comp.itens || [])
+      .filter((d) => d.municipio_id === comp.foco.municipio_id)
       .filter((d) => {
         const { yearFrom, yearTo } = filters;
         if (yearFrom && d.ano < +yearFrom) return false;
@@ -81,21 +88,22 @@ export default function PibPage() {
         return true;
       })
       .sort((a, b) => a.ano - b.ano);
-  }, [comparativo, filters]);
+  }, [comp, filters]);
 
-  // Comparativo by city — pivot to {ano, cityA, cityB, ...}
-  const comparativoChart = useMemo(() => {
-    const anos = [...new Set(comparativo.map((d) => d.ano))].sort();
-    return anos.map((ano) => {
-      const obj = { ano };
-      comparativo.filter((d) => d.ano === ano).forEach((d) => {
-        obj[d.cidade] = d.pib_total;
-      });
-      return obj;
-    });
-  }, [comparativo]);
-
-  const cidades = useMemo(() => [...new Set(comparativo.map((d) => d.cidade))], [comparativo]);
+  // Foco + pares comparáveis já vêm pivotados pelo util — o backend manda o
+  // envelope, o util decide domínio de anos (o do foco) e rótulos (homônimos
+  // entre UFs).
+  const cmp = useMemo(
+    () => montarComparativo({
+      itens: comp.itens, foco: comp.foco, pares: comp.pares, fixados: comp.fixados,
+      anoKey: "ano", valorKey: "pib_total",
+    }),
+    [comp]
+  );
+  const seriesComp = useMemo(
+    () => (cmp.focusSeries ? [cmp.focusSeries, ...cmp.peerSeries, ...cmp.pinnedSeries] : []),
+    [cmp]
+  );
 
   const serie = useMemo(() => {
     const { yearFrom, yearTo } = filters;
@@ -123,11 +131,6 @@ export default function PibPage() {
         "Governo": d.va_governo,
       })),
     [vaData]
-  );
-
-  const compData = useMemo(
-    () => comparativoChart.map((row) => ({ label: String(row.ano), ...row })),
-    [comparativoChart]
   );
 
   // ── KPI cards ──────────────────────────────────────────────────────────────
@@ -243,17 +246,20 @@ export default function PibPage() {
         </PlanGate>
       )}
 
-      {/* PIB Comparativo — Municípios */}
-      {comparativoChart.length > 0 && cidades.length > 1 && (
-        <NidPanel title="PIB Comparativo — Municípios" sub="evolução comparativa entre municípios">
+      {/* PIB Comparativo — foco + pares comparáveis */}
+      {cmp.focusSeries && (
+        <NidPanel title="PIB Comparativo — Municípios" sub={descreverPares(comp)}>
+          <ComparadorMunicipios fixados={comp.fixados} onChange={setFixadosIds} />
           <MultiLineChart
-            data={compData}
-            series={cidades}
-            colors={cidades.map((_, i) => `var(--accent-${(i % 5) + 1})`)}
+            data={cmp.data}
+            series={seriesComp}
+            colors={seriesComp.map((_, i) => `var(--accent-${(i % 5) + 1})`)}
             height={280}
             yFmt={fmtMoneyShort}
             tipFmt={fmtMoneyFull}
-            focusSeries={ownCity}
+            focusSeries={cmp.focusSeries}
+            pinnedSeries={cmp.pinnedSeries}
+            peerCount={cmp.peerSeries.length}
             showMedian
             showBand
             legend
