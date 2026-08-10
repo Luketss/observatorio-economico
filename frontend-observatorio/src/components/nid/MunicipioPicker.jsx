@@ -151,7 +151,20 @@ export default function MunicipioPicker({
               <XMarkIcon style={{ width: 14, height: 14 }} />
             </button>
           )}
-          <ChevronDownIcon className="nid-municipio-picker__chevron" />
+          {/* Duplica no mouse a ação que o "__campo" já oferece ao teclado e
+              ao leitor de tela — sem isso o chevron vira zona morta (era
+              clicável quando fazia parte do <button> único de antes).
+              tabIndex/aria-hidden evitam um segundo ponto de tabulação e um
+              nome acessível repetido. */}
+          <button
+            type="button"
+            tabIndex={-1}
+            aria-hidden="true"
+            className="nid-municipio-picker__chevron-btn"
+            onClick={openAndFocus}
+          >
+            <ChevronDownIcon className="nid-municipio-picker__chevron" />
+          </button>
         </div>
       )}
 

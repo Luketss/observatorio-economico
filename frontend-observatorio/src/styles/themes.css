@@ -2408,6 +2408,18 @@ body.theme-light .nid-filterbar [aria-pressed="true"] {
   font-family: inherit;
   color: inherit;
 }
+/* Duplica no mouse a acao do __campo: o chevron e a affordance de "abre aqui",
+   e ficaria inerte se fosse so decoracao ao lado do botao. */
+.nid-municipio-picker__chevron-btn {
+  background: transparent;
+  border: none;
+  padding: 0;
+  margin: 0;
+  display: inline-flex;
+  align-items: center;
+  cursor: pointer;
+  flex-shrink: 0;
+}
 .nid-municipio-picker__icon {
   width: 16px; height: 16px;
   color: var(--text-mute);

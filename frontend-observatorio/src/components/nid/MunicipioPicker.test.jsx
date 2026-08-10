@@ -80,4 +80,17 @@ describe("MunicipioPicker", () => {
     expect(onChange).toHaveBeenCalledWith("");
     expect(screen.queryByRole("listbox")).toBeNull();
   });
+
+  it("clicar no chevron com a lista fechada tambem abre o seletor", async () => {
+    montar();
+    // O botao do chevron é aria-hidden (duplica no mouse a ação que o
+    // "__campo" já oferece ao teclado/leitor de tela), então não aparece em
+    // getByRole — precisa ser localizado via seletor CSS mesmo.
+    const chevronBtn = document.querySelector(".nid-municipio-picker__chevron-btn");
+    expect(chevronBtn).toBeTruthy();
+
+    await userEvent.setup().click(chevronBtn);
+
+    expect(screen.getByRole("listbox")).toBeTruthy();
+  });
 });
