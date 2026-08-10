@@ -69,6 +69,23 @@ const smoothPath = (pts) => {
   return d;
 };
 
+// Quebra a série em trechos contíguos: `null` é ano sem dado, não zero. Sem
+// isso a linha desceria até o eixo e desenharia um tombo que não aconteceu.
+// Exportado pra testar puro (sem DOM) — mesmo padrão de fmtMoneyShort e
+// companhia logo abaixo, por isso o mesmo eslint-disable delas se aplicaria
+// aqui; como elas não o usam, mantemos consistência silenciando só esta linha.
+// eslint-disable-next-line react-refresh/only-export-components
+export const trechos = (pts) => {
+  const out = [];
+  let atual = [];
+  for (const p of pts) {
+    if (p) atual.push(p);
+    else if (atual.length) { out.push(atual); atual = []; }
+  }
+  if (atual.length) out.push(atual);
+  return out;
+};
+
 export const fmtMoneyShort = (v) => {
   const a = Math.abs(v);
   if (a >= 1e9) return `R$ ${(v / 1e9).toFixed(1)}B`;
@@ -460,9 +477,20 @@ const opacityScale = (i) => {
   return stops[i] ?? 0.10;
 };
 
-// Legenda inline simples (swatch + nome) para gráficos multi-série.
-function InlineLegend({ items }) {
+// Legenda inline (swatch + nome) para gráficos multi-série. `max` recorta a
+// lista pra um tamanho fixo — restrição do projeto: cortar dado sem avisar é
+// descarte silencioso, então o corte vem com um chip "+N séries".
+function InlineLegend({ items, max }) {
   if (!items || items.length === 0) return null;
+  const mostrados = max ? items.slice(0, max) : items;
+  const ocultos = items.length - mostrados.length;
+  const swatch = (it) => {
+    if (it.kind === "dash")
+      return { width: 14, height: 0, borderTop: `2px dashed ${it.color}`, borderRadius: 0 };
+    if (it.kind === "band")
+      return { width: 14, height: 10, background: it.color, borderRadius: 2, opacity: 0.5 };
+    return { width: 10, height: 10, background: it.color, borderRadius: 3 };
+  };
   return (
     <ul
       style={{
@@ -470,12 +498,18 @@ function InlineLegend({ items }) {
         display: "flex", flexWrap: "wrap", gap: "6px 16px", justifyContent: "center",
       }}
     >
-      {items.map((it, i) => (
+      {mostrados.map((it, i) => (
         <li key={i} style={{ display: "flex", alignItems: "center", gap: 7, fontSize: 12, color: "var(--text-dim)" }}>
-          <span style={{ width: 10, height: 10, borderRadius: 3, background: it.color, flexShrink: 0 }} />
+          <span style={{ ...swatch(it), flexShrink: 0 }} />
           <span style={{ whiteSpace: "nowrap" }}>{it.name}</span>
         </li>
       ))}
+      {/* Truncar sim, truncar calado não. */}
+      {ocultos > 0 && (
+        <li style={{ fontSize: 12, color: "var(--text-mute)", whiteSpace: "nowrap" }}>
+          +{ocultos} séries
+        </li>
+      )}
     </ul>
   );
 }
@@ -657,6 +691,9 @@ export function MultiLineChart({
   showMedian,   // boolean — draw dashed peer-median line
   showBand,     // boolean — draw peer min/max band
   legend = false, // render an inline series legend below the chart
+  pinnedSeries = [],   // séries que o usuário fixou: cor própria, não são "contexto"
+  legendMax = 8,       // teto da legenda fora do modo foco
+  peerCount,           // nº de pares por trás da mediana/faixa (default: séries de par)
   loading,
   emptyMessage,
   emptyAction,
@@ -701,16 +738,21 @@ export function MultiLineChart({
   const resolvedFocusColor = focusColor || "var(--accent-2)";
   // focusIdx may be -1 if focusSeries is not in series array — graceful fallback
   const focusIdx = focusMode ? series.indexOf(focusSeries) : -1;
+  // Séries que o usuário fixou (ex.: escolheu comparar com um par específico)
+  // ganham cor própria — não são "contexto esmaecido" como o resto dos pares.
+  const pinned = new Set(pinnedSeries || []);
 
   const colorFor = (si) => {
     if (!focusMode) return (colors || [])[si] || "var(--accent-1)";
     if (si === focusIdx) return resolvedFocusColor;
+    if (pinned.has(series[si])) return (colors || [])[si] || "var(--accent-1)";
     return "rgba(120,145,255,.28)";
   };
 
   const strokeFor = (si, isHovered) => {
     if (!focusMode) return 2;
     if (si === focusIdx) return 2.5;
+    if (pinned.has(series[si])) return 2;
     return isHovered ? 1.8 : 1.2;
   };
 
@@ -744,7 +786,7 @@ export function MultiLineChart({
   // ── Y scale (expand for benchmark / forecast; negativos estendem o
   // domínio para baixo — saldo CAGED cruza zero no modo comparação) ────
   const allVals = [
-    ...data.flatMap((d) => series.map((s) => d[s] || 0)),
+    ...data.flatMap((d) => series.map((s) => d[s]).filter((v) => v != null && !isNaN(v))),
     ...forecastValsBySeries.flat(),
     ...(resolvedBenchmark?.value != null ? [resolvedBenchmark.value] : []),
   ];
@@ -757,7 +799,10 @@ export function MultiLineChart({
   const sx = (i) => padL + (i / (totalPts - 1 || 1)) * innerW;
   const sy = (v) => padT + (1 - (v - yLo) / (yHi - yLo || 1)) * innerH;
   const ptsBySeries = series.map((s) =>
-    data.map((d, i) => ({ x: sx(i), y: sy(d[s] || 0), v: d[s] || 0 }))
+    data.map((d, i) => {
+      const v = d[s];
+      return v == null || isNaN(v) ? null : { x: sx(i), y: sy(v), v };
+    })
   );
   const fcPtsBySeries = forecastValsBySeries.map((fc) =>
     fc.map((v, i) => ({ x: sx(data.length + i), y: sy(v), v, isForecast: true }))
@@ -765,12 +810,17 @@ export function MultiLineChart({
 
   // ── Focused-series last point (for endpoint dot + label) ─────────────────
   const focusedPts = focusMode && focusIdx >= 0 ? ptsBySeries[focusIdx] : null;
-  const focusedLast = focusedPts ? focusedPts[focusedPts.length - 1] : null;
+  // Último ponto NÃO NULO — se o ano mais recente ficou sem dado, o rótulo
+  // de foco tem que ancorar no último valor real, não sumir ou apontar pro zero.
+  const focusedLast = focusedPts ? [...focusedPts].reverse().find(Boolean) || null : null;
+
+  // Séries de par para mediana/faixa: exclui o foco E os fixados — o que o
+  // usuário fixou é escolha dele, não amostra estatística dos pares.
+  const seriesDePar = series.filter((s) => s !== focusSeries && !pinned.has(s));
 
   // ── Peer median per x-tick ────────────────────────────────────────────────
   const medianAt = (i) => {
-    const peerVals = series
-      .filter((s) => s !== focusSeries)
+    const peerVals = seriesDePar
       .map((s) => data[i][s])
       .filter((v) => v != null && !isNaN(v))
       .sort((a, b) => a - b);
@@ -780,17 +830,20 @@ export function MultiLineChart({
       ? (peerVals[mid - 1] + peerVals[mid]) / 2
       : peerVals[mid];
   };
+  // null quando nenhum par tem dado nesse ano — mesma regra de buraco das
+  // séries: a mediana não pode "cair" pra zero por falta de amostra (achado
+  // na varredura do arquivo, fora da lista do brief, mas mesmo padrão).
   const medianPts = (focusMode && showMedian)
     ? data.map((_, i) => {
         const mv = medianAt(i);
-        return { x: sx(i), y: sy(mv != null ? mv : 0), v: mv };
+        return mv != null ? { x: sx(i), y: sy(mv), v: mv } : null;
       })
     : [];
 
   // ── Peer min/max band path ────────────────────────────────────────────────
   let bandPath = null;
   if (focusMode && showBand) {
-    const peerSeries = series.filter((s) => s !== focusSeries);
+    const peerSeries = seriesDePar;
     const peerMin = data.map((row) => {
       const vals = peerSeries.map((s) => row[s]).filter((v) => v != null && !isNaN(v) && isFinite(v));
       return vals.length ? Math.min(...vals) : null;
@@ -866,10 +919,12 @@ export function MultiLineChart({
           if (i0 < 0 || i1 < 0) return null;
           const fill   = a.kind === "negative" ? "rgba(255,61,146,.06)" : "rgba(0,229,255,.06)";
           const stroke = a.kind === "negative" ? "rgba(255,61,146,.15)" : "rgba(0,229,255,.15)";
+          // Posição direto na escala (não em ptsBySeries[0]): a primeira série
+          // pode estar com buraco (null) justo nesse índice.
           return (
             <rect key={`band-${i}`}
-              x={ptsBySeries[0][i0].x} y={padT}
-              width={ptsBySeries[0][i1].x - ptsBySeries[0][i0].x}
+              x={sx(i0)} y={padT}
+              width={sx(i1) - sx(i0)}
               height={innerH}
               fill={fill} stroke={stroke} />
           );
@@ -883,55 +938,90 @@ export function MultiLineChart({
         {/* ── Real series paths ── peer lines first, focused line last (on top) ── */}
         {focusMode ? (
           <>
-            {/* Peer lines */}
+            {/* Peer lines — por trecho: null é ano sem dado, a linha abre um
+                buraco em vez de descer até o eixo */}
             {ptsBySeries.map((pts, si) => {
-              if (si === focusIdx) return null; // drawn after
+              if (si === focusIdx || pinned.has(series[si])) return null; // depois
               const isHov = hoverSeries === si;
               return (
                 <g key={si}
                   onMouseEnter={() => setHoverSeries(si)}
                   onMouseLeave={() => setHoverSeries(null)}>
-                  <path
-                    d={smoothPath(pts)}
-                    stroke={isHov ? "var(--accent-1)" : colorFor(si)}
-                    strokeWidth={strokeFor(si, isHov)}
-                    fill="none" strokeLinecap="round"
-                    opacity={isHov ? 1 : 0.55}
-                    style={{ transition: "stroke 0.15s, opacity 0.15s" }}
-                  />
-                  {/* Invisible wider hit target for hover */}
-                  <path d={smoothPath(pts)} stroke="transparent" strokeWidth="12" fill="none" />
+                  {trechos(pts).map((seg, k) => (
+                    seg.length === 1
+                      ? <circle key={k} cx={seg[0].x} cy={seg[0].y} r="2"
+                          fill={isHov ? "var(--accent-1)" : colorFor(si)} opacity={isHov ? 1 : 0.55} />
+                      : <path key={k}
+                          d={smoothPath(seg)}
+                          stroke={isHov ? "var(--accent-1)" : colorFor(si)}
+                          strokeWidth={strokeFor(si, isHov)}
+                          fill="none" strokeLinecap="round"
+                          opacity={isHov ? 1 : 0.55}
+                          style={{ transition: "stroke 0.15s, opacity 0.15s" }} />
+                  ))}
+                  {/* Invisible wider hit target for hover — só onde há linha de verdade */}
+                  {trechos(pts).map((seg, k) => (
+                    seg.length > 1 &&
+                    <path key={`hit-${k}`} d={smoothPath(seg)} stroke="transparent" strokeWidth="12" fill="none" />
+                  ))}
                 </g>
               );
             })}
 
-            {/* Peer median dashed line */}
-            {showMedian && medianPts.length >= 2 && (
+            {/* Linhas fixadas pelo usuário — cor própria, espessura de linha
+                real (não são "contexto" esmaecido como os demais pares) */}
+            {ptsBySeries.map((pts, si) => {
+              if (!pinned.has(series[si]) || si === focusIdx) return null;
+              return (
+                <g key={`pin-${si}`}>
+                  {trechos(pts).map((seg, k) => (
+                    seg.length === 1
+                      ? <circle key={k} cx={seg[0].x} cy={seg[0].y} r="3" fill={colorFor(si)} />
+                      : <path key={k} d={smoothPath(seg)} stroke={colorFor(si)}
+                          strokeWidth={2} fill="none" strokeLinecap="round" />
+                  ))}
+                </g>
+              );
+            })}
+
+            {/* Peer median dashed line — por trecho, mesmo tratamento de
+                buraco: anos sem nenhum par com dado não viram um mergulho a 0 */}
+            {showMedian && medianPts.some(Boolean) && (
               <>
-                <path
-                  d={smoothPath(medianPts)}
-                  stroke="var(--text-dim)" strokeWidth="1.4"
-                  strokeDasharray="5 4" fill="none"
-                />
-                <text
-                  x={medianPts[medianPts.length - 1].x + 6}
-                  y={medianPts[medianPts.length - 1].y + 4}
-                  className="nid-axis-text"
-                  style={{ fill: "var(--text-dim)" }}>
-                  mediana
-                </text>
+                {trechos(medianPts).map((seg, k) => (
+                  seg.length === 1
+                    ? <circle key={k} cx={seg[0].x} cy={seg[0].y} r="2" fill="var(--text-dim)" />
+                    : <path key={k} d={smoothPath(seg)}
+                        stroke="var(--text-dim)" strokeWidth="1.4"
+                        strokeDasharray="5 4" fill="none" />
+                ))}
+                {(() => {
+                  const lastMedian = [...medianPts].reverse().find(Boolean);
+                  return lastMedian && (
+                    <text
+                      x={lastMedian.x + 6} y={lastMedian.y + 4}
+                      className="nid-axis-text"
+                      style={{ fill: "var(--text-dim)" }}>
+                      mediana
+                    </text>
+                  );
+                })()}
               </>
             )}
 
-            {/* Focused line — drawn last so it sits on top */}
+            {/* Focused line — drawn last so it sits on top; por trecho, mesmo
+                tratamento de buraco que as demais séries */}
             {focusIdx >= 0 && (
               <g>
-                <path
-                  d={smoothPath(ptsBySeries[focusIdx])}
-                  stroke={resolvedFocusColor}
-                  strokeWidth={2.5}
-                  fill="none" strokeLinecap="round"
-                />
+                {trechos(ptsBySeries[focusIdx]).map((seg, k) => (
+                  seg.length === 1
+                    ? <circle key={k} cx={seg[0].x} cy={seg[0].y} r="3.5" fill={resolvedFocusColor} />
+                    : <path key={k}
+                        d={smoothPath(seg)}
+                        stroke={resolvedFocusColor}
+                        strokeWidth={2.5}
+                        fill="none" strokeLinecap="round" />
+                ))}
               </g>
             )}
 
@@ -949,10 +1039,16 @@ export function MultiLineChart({
             )}
           </>
         ) : (
-          /* Legacy per-series-color rendering */
+          /* Legacy per-series-color rendering — por trecho, mesmo tratamento
+             de buraco (null é ano sem dado, não zero) */
           ptsBySeries.map((pts, si) => (
             <g key={si}>
-              <path d={smoothPath(pts)} stroke={(colors || [])[si] || "var(--accent-1)"} strokeWidth="2" fill="none" strokeLinecap="round" />
+              {trechos(pts).map((seg, k) => (
+                seg.length === 1
+                  ? <circle key={k} cx={seg[0].x} cy={seg[0].y} r="3" fill={(colors || [])[si] || "var(--accent-1)"} />
+                  : <path key={k} d={smoothPath(seg)} stroke={(colors || [])[si] || "var(--accent-1)"}
+                      strokeWidth="2" fill="none" strokeLinecap="round" />
+              ))}
             </g>
           ))
         )}
@@ -961,7 +1057,11 @@ export function MultiLineChart({
         {hasForecast && ptsBySeries.map((pts, si) => {
           const fc = fcPtsBySeries[si];
           if (!fc.length) return null;
-          const lastReal = pts[pts.length - 1];
+          // Ancora no último ponto NÃO NULO: se o ano mais recente ficou sem
+          // dado, a projeção continua do último valor real, não estoura em
+          // pts[pts.length-1] == null.
+          const lastReal = [...pts].reverse().find(Boolean);
+          if (!lastReal) return null;
           return (
             <path key={`fc-${si}`}
               d={`M ${lastReal.x} ${lastReal.y} L ${fc.map((p) => `${p.x} ${p.y}`).join(" L ")}`}
@@ -997,6 +1097,8 @@ export function MultiLineChart({
               strokeDasharray={isExternalHover ? "3 5" : "2 3"} />
             {/* Real series hover dots */}
             {!isHoverForecast && ptsBySeries.map((pts, si) => {
+              const p = pts[hover];
+              if (!p) return null; // sem dado neste ano — nada pra apontar
               const dotColor = focusMode ? colorFor(si) : ((colors || [])[si] || "var(--accent-1)");
               const glowFilter = focusMode && si === focusIdx
                 ? `url(#mglow-${id}-focus)`
@@ -1004,12 +1106,12 @@ export function MultiLineChart({
               return (
                 <g key={si}>
                   {glowHover && !focusMode && (
-                    <circle cx={pts[hover].x} cy={pts[hover].y} r="8" fill={dotColor} opacity="0.4" filter={glowFilter} />
+                    <circle cx={p.x} cy={p.y} r="8" fill={dotColor} opacity="0.4" filter={glowFilter} />
                   )}
                   {glowHover && focusMode && si === focusIdx && (
-                    <circle cx={pts[hover].x} cy={pts[hover].y} r="8" fill={resolvedFocusColor} opacity="0.4" filter={glowFilter} />
+                    <circle cx={p.x} cy={p.y} r="8" fill={resolvedFocusColor} opacity="0.4" filter={glowFilter} />
                   )}
-                  <circle cx={pts[hover].x} cy={pts[hover].y} r="4" fill="var(--bg)" stroke={dotColor} strokeWidth="2" />
+                  <circle cx={p.x} cy={p.y} r="4" fill="var(--bg)" stroke={dotColor} strokeWidth="2" />
                 </g>
               );
             })}
@@ -1030,8 +1132,9 @@ export function MultiLineChart({
         {allAnnotations.filter((a) => a.x != null).map((a, i) => {
           const idx = data.findIndex((d) => d.label === a.x);
           if (idx < 0) return null;
-          // Use first series for y position
-          const p = ptsBySeries[0][idx];
+          // Posição pela primeira série, mas ela pode estar com buraco (null)
+          // nesse índice — cai pro centro vertical do plot na escala direta.
+          const p = ptsBySeries[0][idx] || { x: sx(idx), y: padT + innerH / 2 };
           const fill = a.kind === "negative" ? "var(--accent-2)"
                      : a.kind === "positive" ? "var(--accent-5)"
                      : "var(--accent-1)";
@@ -1072,13 +1175,19 @@ export function MultiLineChart({
               </div>
             </>
           ) : focusMode ? (
-            /* Focus-mode tooltip: focused first (bold) → peers (dimmed) → median */
+            /* Focus-mode tooltip: focused first (bold) → peers (dimmed, mais
+               próximos do foco primeiro) → median */
             (() => {
-              const focusValue = focusIdx >= 0 ? (data[hover][focusSeries] || 0) : null;
+              const focusValue = focusIdx >= 0 ? (data[hover][focusSeries] ?? null) : null;
               const peers = series
                 .filter((s) => s !== focusSeries)
-                .map((s) => ({ name: s, value: data[hover][s] || 0 }))
-                .sort((a, b) => b.value - a.value);
+                .map((s) => ({ name: s, value: data[hover][s] }))
+                // Com até 9 linhas possíveis, as úteis são as que cercam o
+                // foco — não as maiores em valor absoluto.
+                .sort((a, b) =>
+                  Math.abs((a.value ?? 0) - (focusValue ?? 0)) -
+                  Math.abs((b.value ?? 0) - (focusValue ?? 0))
+                );
               const medianValue = medianAt(hover);
               return (
                 <>
@@ -1088,15 +1197,21 @@ export function MultiLineChart({
                         <span className="swatch" style={{ background: resolvedFocusColor }} />
                         {focusSeries}
                       </span>
-                      <span>{tipFmt(focusValue)}</span>
+                      <span>{focusValue == null ? "—" : tipFmt(focusValue)}</span>
                     </div>
                   )}
-                  {peers.map((p) => (
+                  {peers.slice(0, 8).map((p) => (
                     <div className="tip-row" key={p.name} style={{ opacity: 0.7 }}>
                       <span className="name">{p.name}</span>
-                      <span>{tipFmt(p.value)}</span>
+                      <span>{p.value == null ? "—" : tipFmt(p.value)}</span>
                     </div>
                   ))}
+                  {peers.length > 8 && (
+                    <div className="tip-row" style={{ opacity: 0.5, fontSize: 11 }}>
+                      <span className="name">… e mais {peers.length - 8}</span>
+                      <span />
+                    </div>
+                  )}
                   {showMedian && medianValue != null && (
                     <div className="tip-row" style={{ borderTop: "1px solid var(--border)", paddingTop: 4, marginTop: 2 }}>
                       <span className="name">mediana</span>
@@ -1110,15 +1225,28 @@ export function MultiLineChart({
             series.map((s, si) => (
               <div className="tip-row" key={s}>
                 <span className="name"><span className="swatch" style={{ background: (colors || [])[si] || "var(--accent-1)" }}></span>{s}</span>
-                <span>{tipFmt(data[hover][s] || 0)}</span>
+                <span>{data[hover][s] == null ? "—" : tipFmt(data[hover][s])}</span>
               </div>
             ))
           )}
         </div>
       )}
-      {legend && (
-        <InlineLegend items={series.map((s, si) => ({ name: s, color: (colors || [])[si] || "var(--accent-1)" }))} />
-      )}
+      {legend && (focusMode ? (
+        <InlineLegend items={[
+          { name: focusSeries, color: resolvedFocusColor },
+          ...(showMedian ? [{
+            name: `mediana (${peerCount ?? seriesDePar.length} pares)`,
+            color: "var(--text-dim)", kind: "dash",
+          }] : []),
+          ...(showBand ? [{ name: "faixa dos pares", color: "rgba(120,145,255,.6)", kind: "band" }] : []),
+          ...(pinnedSeries || []).map((s) => ({ name: s, color: colorFor(series.indexOf(s)) })),
+        ]} />
+      ) : (
+        <InlineLegend
+          items={series.map((s, si) => ({ name: s, color: (colors || [])[si] || "var(--accent-1)" }))}
+          max={legendMax}
+        />
+      ))}
     </div>
   );
 }
