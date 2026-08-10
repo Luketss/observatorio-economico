@@ -20,6 +20,8 @@ import {
   fmtMoneyFull,
 } from "../../components/nid/charts";
 import DataTable from "../../components/nid/DataTable";
+import { montarComparativo, descreverPares } from "../../utils/seriesComparativo";
+import ComparadorMunicipios from "../../components/nid/ComparadorMunicipios";
 
 // IPM e índices são valores decimais pequenos (ex.: 0,024115) — não R$.
 const fmtIndice = (v) =>
@@ -33,15 +35,16 @@ const fmtPct = (v) =>
 export default function VafPage() {
   const { user } = useAuth();
   const { viewAsId } = useViewAs();
-  const ownCity = user?.municipio?.nome;
   // ADMIN_GLOBAL precisa de um município selecionado (view-as) para escopar os
   // gráficos do dashboard; sem seleção, pedimos para escolher em vez de
   // sobrepor todos os municípios no mesmo gráfico.
   const needsMunicipio = user?.role === "ADMIN_GLOBAL" && viewAsId == null;
 
+  const VAZIO = { foco: null, pares: [], fixados: [], criterio_pares: null, motivo: null, itens: [] };
   const [rawSerie, setRawSerie] = useState([]);
   const [resumo, setResumo] = useState(null);
-  const [comparativo, setComparativo] = useState([]);
+  const [comp, setComp] = useState(VAZIO);
+  const [fixadosIds, setFixadosIds] = useState([]);
   const [icmsProj, setIcmsProj] = useState([]);
   const [loading, setLoading] = useState(true);
   const [filters, setFilters] = useState({ yearFrom: "", yearTo: "" });
@@ -54,14 +57,16 @@ export default function VafPage() {
     Promise.all([
       api.get("/vaf/serie"),
       api.get("/vaf/resumo"),
-      api.get("/vaf/comparativo"),
+      api.get("/vaf/comparativo", {
+        params: fixadosIds.length ? { fixados: fixadosIds.join(",") } : undefined,
+      }),
       api.get("/vaf/icms_projetado").catch(() => ({ data: [] })),
     ])
       .then(([serieRes, resumoRes, compRes, icmsRes]) => {
         const raw = serieRes.data || [];
         setRawSerie(raw);
         setResumo(resumoRes.data);
-        setComparativo(compRes.data || []);
+        setComp(compRes.data || VAZIO);
         setIcmsProj(icmsRes.data || []);
         if (!filtroTocado.current) {
           setFilters(janela12m(raw, (d) => ({ ano: d.ano_base })));
@@ -69,7 +74,8 @@ export default function VafPage() {
       })
       .catch((err) => console.error("Erro ao carregar VAF:", err))
       .finally(() => setLoading(false));
-  }, []);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [fixadosIds]);
 
   // ICMS projetado a partir do IPM (ancorado no ICMS realizado)
   const icmsChart = useMemo(
@@ -93,23 +99,19 @@ export default function VafPage() {
     });
   }, [rawSerie, filters]);
 
-  // Comparativo de IPM entre municípios — pivot para {ano, cityA, cityB, ...}
-  const comparativoChart = useMemo(() => {
-    const anos = [...new Set(comparativo.map((d) => d.ano_base))].sort();
-    return anos.map((ano) => {
-      const obj = { ano };
-      comparativo
-        .filter((d) => d.ano_base === ano)
-        .forEach((d) => {
-          obj[d.cidade] = d.indice_participacao_municipal;
-        });
-      return obj;
-    });
-  }, [comparativo]);
-
-  const cidades = useMemo(
-    () => [...new Set(comparativo.map((d) => d.cidade))],
-    [comparativo]
+  // Foco + pares comparáveis já vêm pivotados pelo util — o backend manda o
+  // envelope, o util decide domínio de anos (o do foco) e rótulos (homônimos
+  // entre UFs).
+  const cmp = useMemo(
+    () => montarComparativo({
+      itens: comp.itens, foco: comp.foco, pares: comp.pares, fixados: comp.fixados,
+      anoKey: "ano_base", valorKey: "indice_participacao_municipal",
+    }),
+    [comp]
+  );
+  const seriesComp = useMemo(
+    () => (cmp.focusSeries ? [cmp.focusSeries, ...cmp.peerSeries, ...cmp.pinnedSeries] : []),
+    [cmp]
   );
 
   // ── NID chart data shapes ──────────────────────────────────────────────────
@@ -141,11 +143,6 @@ export default function VafPage() {
         "VAF do Estado": d.vaf_estado,
       })),
     [serie]
-  );
-
-  const compData = useMemo(
-    () => comparativoChart.map((row) => ({ label: String(row.ano), ...row })),
-    [comparativoChart]
   );
 
   // ── KPI cards ──────────────────────────────────────────────────────────────
@@ -274,17 +271,20 @@ export default function VafPage() {
         </NidPanel>
       )}
 
-      {/* IPM Comparativo — Municípios */}
-      {comparativoChart.length > 0 && cidades.length > 1 && (
-        <NidPanel title="IPM Comparativo — Municípios" sub="evolução comparativa do IPM entre municípios">
+      {/* IPM Comparativo — foco + pares comparáveis */}
+      {cmp.focusSeries && (
+        <NidPanel title="IPM Comparativo — Municípios" sub={descreverPares(comp)}>
+          <ComparadorMunicipios fixados={comp.fixados} onChange={setFixadosIds} />
           <MultiLineChart
-            data={compData}
-            series={cidades}
-            colors={cidades.map((_, i) => `var(--accent-${(i % 5) + 1})`)}
+            data={cmp.data}
+            series={seriesComp}
+            colors={seriesComp.map((_, i) => `var(--accent-${(i % 5) + 1})`)}
             height={280}
             yFmt={fmtIndice}
             tipFmt={fmtIndice}
-            focusSeries={ownCity}
+            focusSeries={cmp.focusSeries}
+            pinnedSeries={cmp.pinnedSeries}
+            peerCount={cmp.peerSeries.length}
             showMedian
             showBand
             legend
