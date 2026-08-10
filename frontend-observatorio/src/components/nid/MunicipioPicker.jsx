@@ -100,18 +100,14 @@ export default function MunicipioPicker({
   };
 
   return (
-    <div
-      className="nid-municipio-picker"
-      ref={wrapRef}
-      role="combobox"
-      aria-haspopup="listbox"
-      aria-expanded={open}
-      aria-controls="municipio-picker-list"
-      aria-activedescendant={open && filtered[activeIdx] ? `municipio-opt-${activeIdx}` : undefined}
-    >
+    <div className="nid-municipio-picker" ref={wrapRef}>
       {/* Fechado vira <button>, aberto vira <div> com o input. Os dois nunca
           coexistem: input dentro de button faz a barra de espaço ativar o botão
-          (e fechar a lista), além de ser marcação inválida. */}
+          (e fechar a lista), além de ser marcação inválida.
+          Os atributos ARIA de combobox (role, aria-expanded, aria-activedescendant)
+          vão no elemento que de fato recebe foco (input aberto / button fechado),
+          não neste <div> — leitor de tela só anuncia aria-activedescendant quando
+          ele está no próprio elemento focado, um ancestral não-focável não conta. */}
       {open ? (
         <div className="nid-municipio-picker__trigger is-open">
           <MagnifyingGlassIcon className="nid-municipio-picker__icon" />
@@ -123,8 +119,11 @@ export default function MunicipioPicker({
             onKeyDown={handleKeyDown}
             placeholder="Buscar município…"
             className="nid-municipio-picker__input"
-            aria-autocomplete="list"
+            role="combobox"
+            aria-expanded="true"
             aria-controls="municipio-picker-list"
+            aria-autocomplete="list"
+            aria-activedescendant={filtered[activeIdx] ? `municipio-opt-${activeIdx}` : undefined}
           />
           <ChevronDownIcon className="nid-municipio-picker__chevron" />
         </div>
@@ -135,6 +134,9 @@ export default function MunicipioPicker({
             className="nid-municipio-picker__campo"
             onClick={openAndFocus}
             aria-label={ariaLabel}
+            aria-haspopup="listbox"
+            aria-expanded="false"
+            aria-controls="municipio-picker-list"
           >
             <MagnifyingGlassIcon className="nid-municipio-picker__icon" />
             <span className={`nid-municipio-picker__display ${!selected ? "is-placeholder" : ""}`}>

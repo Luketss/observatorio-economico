@@ -20,7 +20,10 @@ function montar(props = {}) {
 
 const abrir = async (user) => {
   await user.click(screen.getByRole("button", { name: /selecionar município/i }));
-  return screen.getByRole("textbox");
+  // O input aberto tem role="combobox" explícito (ARIA 1.2 combobox pattern —
+  // ver correção de acessibilidade), o que sobrepõe o role implícito
+  // "textbox" de <input type="text">; por isso a busca é por "combobox".
+  return screen.getByRole("combobox");
 };
 
 describe("MunicipioPicker", () => {
@@ -92,5 +95,23 @@ describe("MunicipioPicker", () => {
     await userEvent.setup().click(chevronBtn);
 
     expect(screen.getByRole("listbox")).toBeTruthy();
+  });
+
+  it("aria-activedescendant mora no elemento com foco (o input) e aponta pro item destacado", async () => {
+    const { user } = montar();
+    const input = await abrir(user);
+
+    await user.type(input, "bom");
+    await user.keyboard("{ArrowDown}");
+
+    // Leitor de tela só anuncia aria-activedescendant quando ele está no
+    // elemento que TEM o foco — por isso a amarração precisa ser: foco no
+    // input, atributo NELE (não num ancestral), apontando pra <li> real.
+    expect(document.activeElement).toBe(input);
+    const activeId = input.getAttribute("aria-activedescendant");
+    expect(activeId).toBeTruthy();
+    const opcaoDestacada = document.getElementById(activeId);
+    expect(opcaoDestacada).toBeTruthy();
+    expect(opcaoDestacada.className).toContain("is-active");
   });
 });
