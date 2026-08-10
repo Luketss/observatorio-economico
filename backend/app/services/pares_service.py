@@ -208,10 +208,19 @@ def resolver_grupo(
     foco = refs.get(mid)
     if foco is None:
         return GrupoComparativo(motivo="sem_municipio")
-    candidatos = [r for r in refs.values() if r.id in elegiveis]
+    # Fixado tem precedência sobre par automático: tira os fixados do pool
+    # ANTES de escolher pares, senão um município que o usuário fixou podia
+    # ser justamente o que a cascata escolheria como par — o chip nunca
+    # nascia, o clique não fazia nada e nada avisava o usuário disso.
+    fixados_set = set(fixados_ids)
+    candidatos = [r for r in refs.values() if r.id in elegiveis and r.id not in fixados_set]
     res = selecionar_pares(foco, candidatos, limite=limite)
     ids_pares = {p.id for p in res.pares}
+    # `i not in ids_pares` agora é defesa redundante: a exclusão real já
+    # aconteceu acima, antes de `selecionar_pares` rodar. `not is_demo`:
+    # município demo é dado fabricado — não pode ser fixado como se fosse
+    # município real (mesma exclusão que o resto do comparativo já aplica).
     fixados = [refs[i] for i in fixados_ids
-               if i in refs and i != mid and i not in ids_pares]
+               if i in refs and i != mid and i not in ids_pares and not refs[i].is_demo]
     return GrupoComparativo(foco=foco, pares=res.pares, fixados=fixados,
                             criterio=res.criterio, motivo=res.motivo)
