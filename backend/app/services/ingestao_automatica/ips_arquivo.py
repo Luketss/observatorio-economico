@@ -46,7 +46,7 @@ def _ler_xlsx(conteudo: bytes) -> list[dict]:
     ws.reset_dimensions()
     linhas = ws.iter_rows(values_only=True)
     header = [str(h).strip() if h is not None else "" for h in next(linhas, [])]
-    return [dict(zip(header, row)) for row in linhas]
+    return [dict(zip(header, row)) for row in linhas if not all(v is None for v in row)]
 
 
 def _ler_csv(conteudo: bytes) -> list[dict]:
@@ -110,7 +110,10 @@ def executar(db, municipios, anos=None, usuario_id=None, notificar=True,
 
     if progresso:
         progresso(0, None, f"lendo {arq.nome}")
-    linhas = ler_linhas(arq.conteudo)
+    try:
+        linhas = ler_linhas(arq.conteudo)
+    except Exception as exc:
+        raise RuntimeError("arquivo inválido ou corrompido — baixe novamente do site e reenvie") from exc
     problema = validar_headers(linhas)
     if problema:
         raise RuntimeError(problema)

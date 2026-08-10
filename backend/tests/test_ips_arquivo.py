@@ -1,8 +1,12 @@
 """Parsing puro da fonte IPS (arquivo enviado pela tela) — sem DB/rede.
 XLSX gerado em memória; CSV com BOM e vírgula decimal, como os reais."""
 import io
+from unittest.mock import MagicMock
+
+import pytest
 
 from app.services.ingestao_automatica.ips_arquivo import (
+    executar,
     identificacao,
     ler_linhas,
     linha_para_kwargs,
@@ -106,3 +110,39 @@ def test_fonte_ips_registrada_com_arquivo_e_fora_do_todas():
     assert "ips" in FONTES_AUTOMATICAS
     assert FONTES_AUTOMATICAS["ips"].requer_arquivo is True
     assert "ips" in FONTES_FORA_DO_TODAS
+
+
+def test_ler_linhas_xlsx_skip_trailing_all_none_rows():
+    """XLSX com uma linha real + uma linha toda None → retorna só 1 linha."""
+    row_real = ["3122306", "Divinópolis (MG)", "MG", 708.1, 242328, 35000.5, 62.3, 70.15]
+    row_vazia = [None] * len(HEADER)
+    conteudo = _xlsx_bytes(rows=[row_real, row_vazia])
+    linhas = ler_linhas(conteudo)
+    assert len(linhas) == 1
+    assert linhas[0]["Código IBGE"] == "3122306"
+
+
+def test_executar_arquivo_zip_corrompido_erro_legivel():
+    """executar() com arquivo ZIP corrompido → RuntimeError com mensagem pt-BR 'corrompido'."""
+    db = MagicMock()
+    arq_mock = MagicMock()
+    arq_mock.nome = "ips_2025.xlsx"
+    arq_mock.conteudo = b"PK\x03\x04garbage not a valid zip"
+    db.get.return_value = arq_mock
+
+    with pytest.raises(RuntimeError) as exc_info:
+        executar(db, None, anos=[2025], arquivo_id=1)
+    assert "corrompido" in str(exc_info.value)
+
+
+def test_executar_arquivo_csv_utf8_invalido_erro_legivel():
+    """executar() com CSV em UTF-8 inválido → RuntimeError com mensagem pt-BR 'corrompido'."""
+    db = MagicMock()
+    arq_mock = MagicMock()
+    arq_mock.nome = "ips_2025.csv"
+    arq_mock.conteudo = b"\xff\xfe invalid utf8"
+    db.get.return_value = arq_mock
+
+    with pytest.raises(RuntimeError) as exc_info:
+        executar(db, None, anos=[2025], arquivo_id=1)
+    assert "corrompido" in str(exc_info.value)
