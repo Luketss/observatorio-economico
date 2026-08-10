@@ -381,10 +381,11 @@ def _executar_job(job_id: int, ja_reivindicado: bool = False) -> None:
             status_final = status_final_todas(itens)
             erro_final = mensagem_erro_todas(itens) if status_final == "erro" else None
         else:
+            extras = {"arquivo_id": filtros.get("arquivo_id")} if fonte.requer_arquivo else {}
             resumo = fonte.executar(
                 db=db, municipios=municipios, anos=filtros.get("anos"),
                 usuario_id=job.usuario_id, notificar=filtros.get("notificar", True),
-                progresso=progresso,
+                progresso=progresso, **extras,
             )
             record_ingestao_audit(
                 db,

@@ -18,6 +18,9 @@ class FonteAutomatica:
     label: str        # nome exibido no admin
     fonte: str        # texto default para DatasetInfo.fonte
     executar: Callable  # (db, municipios, anos=None, usuario_id=None, notificar=True, progresso=None) -> ResumoIngestao
+    # fonte que exige arquivo enviado pela tela (upload → ingestao_arquivo);
+    # o runner passa arquivo_id= e o /executar normal responde 400
+    requer_arquivo: bool = False
 
 
 FONTES_AUTOMATICAS: dict[str, FonteAutomatica] = {}

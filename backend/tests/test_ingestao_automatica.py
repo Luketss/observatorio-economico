@@ -339,3 +339,36 @@ def test_montar_repasses_valor_vazio_vira_zero():
     r = montar_repasses(fato, tempo, mun, {"3109501": 77})[0]
     assert r["valor_icms"] == 0.0 and r["valor_ipi"] == 0.0 and r["valor_ipva"] == 5.5
     assert r["valor_total"] == 5.5
+
+
+# ── Fontes com arquivo (requer_arquivo) ──────────────────────────────────────
+import pytest
+from fastapi import HTTPException
+from types import SimpleNamespace
+
+from app.services.ingestao_automatica.base import (
+    FONTES_AUTOMATICAS,
+    FonteAutomatica,
+    registrar,
+)
+
+
+def test_requer_arquivo_default_false():
+    f = FonteAutomatica(key="x", label="X", fonte="X", executar=lambda **kw: None)
+    assert f.requer_arquivo is False
+
+
+def test_executar_rejeita_fonte_que_requer_arquivo():
+    # guard roda antes de tocar db — db=object() prova que não há acesso
+    from app.api.v1.routers.ingestao_automatica import ExecutarIn, executar_fonte
+
+    registrar(FonteAutomatica(key="_teste_arq", label="T", fonte="T",
+                              executar=lambda **kw: None, requer_arquivo=True))
+    try:
+        with pytest.raises(HTTPException) as exc:
+            executar_fonte("_teste_arq", ExecutarIn(), db=object(),
+                           current_user=SimpleNamespace(id=1))
+        assert exc.value.status_code == 400
+        assert "arquivo" in exc.value.detail
+    finally:
+        FONTES_AUTOMATICAS.pop("_teste_arq", None)

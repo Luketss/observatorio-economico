@@ -73,6 +73,7 @@ def listar_fontes(
             "key": key,
             "label": fonte.label,
             "fonte": fonte.fonte,
+            "requer_arquivo": fonte.requer_arquivo,
             "ultima_execucao": None if ultimo_audit is None else {
                 "criado_em": ultimo_audit.criado_em,
                 "status": ultimo_audit.status,
@@ -91,6 +92,12 @@ def executar_fonte(
     db: Session = Depends(get_db),
     current_user=Depends(require_role("ADMIN_GLOBAL")),
 ):
+    fonte = FONTES_AUTOMATICAS.get(dataset_key)
+    if fonte is not None and fonte.requer_arquivo:
+        raise HTTPException(
+            status_code=400,
+            detail=f"A fonte '{dataset_key}' exige arquivo — use o envio de arquivo da tela de coletas.",
+        )
     filtros = {
         "estado": body.estado.upper() if body.estado else None,
         "municipio_ids": body.municipio_ids,
