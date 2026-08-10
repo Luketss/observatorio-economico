@@ -2389,11 +2389,14 @@ body.theme-light .nid-filterbar [aria-pressed="true"] {
   background: var(--panel-2);
   border: 1px solid var(--border);
   border-radius: 10px;
-  cursor: pointer;
   text-align: left;
   transition: border-color 0.15s, background 0.15s;
   font-family: var(--font-display);
 }
+/* Sem cursor:pointer aqui de propósito: virou <div>, e o padding/gap ao redor
+   dos botões internos (__campo, __clear, __chevron-btn — cada um já tem seu
+   próprio cursor:pointer) não abre nada; mãozinha ali prometeria clique onde
+   não há ação. */
 .nid-municipio-picker__trigger:hover,
 .nid-municipio-picker__trigger.is-open {
   border-color: color-mix(in oklab, var(--admin-accent) 35%, transparent);
