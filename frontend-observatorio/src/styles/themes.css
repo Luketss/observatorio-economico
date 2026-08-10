@@ -2389,6 +2389,25 @@ body.theme-light .nid-filterbar [aria-pressed="true"] {
   border-color: color-mix(in oklab, var(--admin-accent) 35%, transparent);
   background: var(--panel);
 }
+/* O gatilho virou <div> (input dentro de button faz a barra de espaço fechar a
+   lista); este é o botão interno que abre o seletor — some visualmente e ocupa
+   o espaço que o antigo <button> ocupava. */
+.nid-municipio-picker__campo {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 1;
+  min-width: 0;
+  background: transparent;
+  border: none;
+  padding: 0;
+  margin: 0;
+  height: 100%;
+  cursor: pointer;
+  text-align: left;
+  font-family: inherit;
+  color: inherit;
+}
 .nid-municipio-picker__icon {
   width: 16px; height: 16px;
   color: var(--text-mute);
