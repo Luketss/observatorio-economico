@@ -78,3 +78,9 @@ export function linhasJob(job) {
   }
   return job.resumo?.linhas ?? null;
 }
+
+/** Ano no padrão de nome do arquivo do IPS Brasil ("ips_brasil_municipios_2025.xlsx"). */
+export function anoDoNomeArquivo(nome) {
+  const m = /ips_brasil_municipios[_-](\d{4})/i.exec(nome || "");
+  return m ? m[1] : "";
+}

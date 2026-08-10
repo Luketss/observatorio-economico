@@ -9,7 +9,7 @@ import DataTable from "../../components/nid/DataTable";
 import NidModal from "../../components/nid/NidModal";
 import DatasetFontesJobModal from "./DatasetFontesJobModal";
 import {
-  DATASET_TODAS, duracaoJob, labelDataset, labelStatus, linhasJob, resumoTodas, textoResumoTodas,
+  anoDoNomeArquivo, DATASET_TODAS, duracaoJob, labelDataset, labelStatus, linhasJob, resumoTodas, textoResumoTodas,
 } from "../../utils/jobStatus";
 import { propsTituloClicavel } from "../../utils/cliqueAcessivel";
 
@@ -41,6 +41,10 @@ export default function DatasetFontesAdminPage() {
   const [jobDetalhe, setJobDetalhe] = useState(null);
   const [confirmTodas, setConfirmTodas] = useState(false);
   const [clearTarget, setClearTarget] = useState(null);
+  const [uploadFonte, setUploadFonte] = useState(null);   // fonte com requer_arquivo aguardando arquivo
+  const [uploadArquivo, setUploadArquivo] = useState(null);
+  const [uploadAno, setUploadAno] = useState("");
+  const [uploadEnviando, setUploadEnviando] = useState(false);
   const pollRef = useRef(null);
 
   const jobAtivo = job && JOB_ATIVO.includes(job.status);
@@ -121,6 +125,12 @@ export default function DatasetFontesAdminPage() {
   };
 
   const handleExecutar = async (fonte) => {
+    if (fonte.requer_arquivo) {
+      setUploadFonte(fonte);
+      setUploadArquivo(null);
+      setUploadAno("");
+      return;
+    }
     try {
       // municipio_ids tem precedência sobre estado: se há municípios
       // selecionados, o filtro de UF é ignorado (não reduz a seleção explícita).
@@ -137,6 +147,27 @@ export default function DatasetFontesAdminPage() {
       startPolling({ id: data.job_id, dataset: fonte.key, status: "pendente" });
     } catch (err) {
       addToast(err.response?.data?.detail || "Erro ao iniciar a execução.", "error");
+    }
+  };
+
+  const enviarArquivo = async () => {
+    if (!uploadArquivo || !uploadAno || uploadEnviando) return;
+    setUploadEnviando(true);
+    try {
+      const fd = new FormData();
+      fd.append("arquivo", uploadArquivo);
+      fd.append("ano", uploadAno);
+      fd.append("notificar", notificar);
+      const { data } = await api.post(
+        `/ingestao-automatica/${uploadFonte.key}/executar-arquivo`, fd
+      );
+      addToast(`${uploadFonte.label}: execução iniciada em segundo plano.`, "success");
+      startPolling({ id: data.job_id, dataset: uploadFonte.key, status: "pendente" });
+      setUploadFonte(null);
+    } catch (err) {
+      addToast(err.response?.data?.detail || "Erro ao enviar o arquivo.", "error");
+    } finally {
+      setUploadEnviando(false);
     }
   };
 
@@ -353,6 +384,11 @@ export default function DatasetFontesAdminPage() {
                     {f.key === "captacao_federal" && (
                       <p className="text-xs mt-0.5" style={{ color: "var(--accent-4)" }}>
                         Compara a UF inteira — prefira o filtro de estado.
+                      </p>
+                    )}
+                    {f.requer_arquivo && (
+                      <p className="text-xs mt-0.5" style={{ color: "var(--accent-4)" }}>
+                        Requer o arquivo anual do site — filtros de estado/município não se aplicam.
                       </p>
                     )}
                   </div>
@@ -621,6 +657,67 @@ export default function DatasetFontesAdminPage() {
           <b style={{ color: "var(--text)" }}>{clearTarget?.label}</b> deixarão de aparecer
           nos tooltips das páginas de dados.
         </p>
+      </NidModal>
+
+      <NidModal
+        open={Boolean(uploadFonte)}
+        onClose={() => setUploadFonte(null)}
+        eyebrow="Coleta com arquivo"
+        title={uploadFonte ? `Atualizar ${uploadFonte.label}` : ""}
+        size="md"
+        footer={
+          <>
+            <button
+              onClick={() => setUploadFonte(null)}
+              className="px-4 py-2 rounded-lg text-sm cursor-pointer"
+              style={{ background: "var(--panel-2)", border: "1px solid var(--border)", color: "var(--text-dim)" }}
+            >
+              Cancelar
+            </button>
+            <button
+              onClick={enviarArquivo}
+              disabled={!uploadArquivo || !uploadAno || uploadEnviando}
+              className="px-4 py-2 rounded-lg text-sm font-semibold cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+              style={{
+                background: "var(--admin-accent, #3b82f6)", color: "#fff",
+                border: "1px solid color-mix(in oklab, var(--admin-accent, #3b82f6) 70%, black)",
+              }}
+            >
+              {uploadEnviando ? "Enviando…" : "Enviar e executar"}
+            </button>
+          </>
+        }
+      >
+        <div className="space-y-3">
+          <p style={{ color: "var(--text-dim)" }}>
+            Baixe o arquivo anual em <b style={{ color: "var(--text)" }}>ipsbrasil.org.br</b> e
+            envie aqui (<code>.xlsx</code> do site ou <code>.csv</code> convertido). O arquivo é
+            nacional — filtros de estado/município não se aplicam.
+          </p>
+          <input
+            type="file"
+            accept=".xlsx,.csv"
+            aria-label="Arquivo do IPS"
+            onChange={(e) => {
+              const f = e.target.files?.[0] || null;
+              setUploadArquivo(f);
+              if (f) {
+                const ano = anoDoNomeArquivo(f.name);
+                if (ano) setUploadAno(ano);
+              }
+            }}
+            className="block w-full text-sm text-[var(--text)] rounded-lg border border-[var(--border)] bg-[var(--panel-2)] px-3 py-2"
+          />
+          <label className="flex items-center gap-2 text-sm text-[var(--text-dim)]">
+            Ano
+            <input
+              value={uploadAno}
+              onChange={(e) => setUploadAno(e.target.value.replace(/\D/g, "").slice(0, 4))}
+              placeholder="ex.: 2025"
+              className="w-24 rounded-lg border border-[var(--border)] bg-[var(--panel-2)] text-[var(--text)] px-3 py-2 text-sm"
+            />
+          </label>
+        </div>
       </NidModal>
     </motion.div>
   );

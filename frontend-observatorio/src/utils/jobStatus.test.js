@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
-  chipDoJob, duracaoJob, labelDataset, labelStatus, linhasJob,
+  anoDoNomeArquivo, chipDoJob, duracaoJob, labelDataset, labelStatus, linhasJob,
   resumoTodas, textoResumoTodas,
 } from "./jobStatus";
 
@@ -65,5 +65,16 @@ describe("duracaoJob / linhasJob / resumoTodas", () => {
     expect(agg.ok).toBe(1);
     expect(agg.erro).toBe(1);
     expect(textoResumoTodas(agg)).toBe("1 ok, 1 com erro (comex)");
+  });
+});
+
+describe("anoDoNomeArquivo", () => {
+  it("extrai o ano do nome padrão do site do IPS", () => {
+    expect(anoDoNomeArquivo("ips_brasil_municipios_2025.xlsx")).toBe("2025");
+    expect(anoDoNomeArquivo("IPS_Brasil_Municipios-2024.csv")).toBe("2024");
+  });
+  it("vazio quando não há match", () => {
+    expect(anoDoNomeArquivo("dados.xlsx")).toBe("");
+    expect(anoDoNomeArquivo()).toBe("");
   });
 });
