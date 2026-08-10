@@ -6,7 +6,7 @@
 // o teste de componente prova que o resultado visual (número de <path>)
 // distingue mesmo ausência de zero real.
 import { describe, it, expect, afterEach } from "vitest";
-import { render, cleanup } from "@testing-library/react";
+import { render, cleanup, fireEvent } from "@testing-library/react";
 import { trechos, MultiLineChart } from "./charts.jsx";
 
 afterEach(cleanup);
@@ -89,5 +89,45 @@ describe("MultiLineChart — buraco de série em vez de despencar até zero", ()
     // quebra.
     expect(pathsA.length).toBeGreaterThan(1);
     expect(pathsB.length).toBe(1);
+  });
+});
+
+describe("MultiLineChart — tooltip do modo foco não trunca série fixada junto com os pares", () => {
+  it("fixado aparece no tooltip mesmo com pares suficientes pra estourar o corte de 8", () => {
+    // Achado do code review (PIB com pinning real): o tooltip filtrava só
+    // `s !== focusSeries`, sem excluir pinnedSeries — o fixado entrava no
+    // mesmo balaio dos pares, ordenado por proximidade e cortado em 8. Aqui
+    // o fixado fica bem LONGE do valor do foco (distância 900) enquanto os
+    // 9 pares ficam bem PERTO (distância ≤5) — se o bug voltar, o fixado é
+    // o que sobra pro "... e mais N" (os pares próximos ocupam as 8 vagas).
+    const focusSeries = "Foco";
+    const pinnedSeries = ["Fixado1"];
+    const pares = Array.from({ length: 9 }, (_, i) => `Par${i + 1}`);
+    const series = [focusSeries, ...pinnedSeries, ...pares];
+
+    const row = { label: "2024", [focusSeries]: 100, Fixado1: 1000 };
+    pares.forEach((p, i) => { row[p] = 95 + i; }); // 95..103 — todos perto do foco
+
+    const { container } = render(
+      <MultiLineChart
+        data={[row, { ...row, label: "2025" }]}
+        series={series}
+        focusSeries={focusSeries}
+        pinnedSeries={pinnedSeries}
+        colors={series.map((_, i) => `#${(i + 1).toString(16).padStart(6, "0")}`)}
+      />
+    );
+
+    // getBoundingClientRect() no jsdom devolve tudo zerado → viewBoxXFromOverlay
+    // cai no fallback (padL) e nearestIndexByX acha o índice 0 (sx(0) == padL,
+    // distância 0) não importa o clientX — então o mouseMove abre o tooltip
+    // do primeiro ponto de forma determinística.
+    const overlay = container.querySelector('svg rect[fill="transparent"]');
+    expect(overlay).toBeTruthy();
+    fireEvent.mouseMove(overlay, { clientX: 100 });
+
+    const tip = container.querySelector(".nid-tip");
+    expect(tip).toBeTruthy();
+    expect(tip.textContent).toContain("Fixado1");
   });
 });

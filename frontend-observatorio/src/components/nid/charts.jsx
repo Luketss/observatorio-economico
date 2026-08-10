@@ -1175,12 +1175,22 @@ export function MultiLineChart({
               </div>
             </>
           ) : focusMode ? (
-            /* Focus-mode tooltip: focused first (bold) → peers (dimmed, mais
-               próximos do foco primeiro) → median */
+            /* Focus-mode tooltip: foco (bold) → fixados (cor própria, nunca
+               truncados — o usuário escolheu ver esses) → pares (esmaecidos,
+               ordenados por proximidade ao foco, cortados em 8) → mediana */
             (() => {
               const focusValue = focusIdx >= 0 ? (data[hover][focusSeries] ?? null) : null;
-              const peers = series
-                .filter((s) => s !== focusSeries)
+              // Fixados usam a MESMA cor da linha/legenda (colorFor) — sem
+              // isso o tooltip ficaria incoerente com o resto do gráfico
+              // (achado do code review: fixado aparecia esmaecido igual a
+              // um par comum e podia sumir no "e mais N").
+              const fixados = (pinnedSeries || [])
+                .filter((s) => s !== focusSeries && series.includes(s))
+                .map((s) => ({ name: s, value: data[hover][s], color: colorFor(series.indexOf(s)) }));
+              // seriesDePar já exclui foco E fixados (mesma lista usada pra
+              // mediana/faixa) — reusar em vez de refiltrar evita que os
+              // dois voltem a divergir.
+              const peers = seriesDePar
                 .map((s) => ({ name: s, value: data[hover][s] }))
                 // Com até 9 linhas possíveis, as úteis são as que cercam o
                 // foco — não as maiores em valor absoluto.
@@ -1200,6 +1210,15 @@ export function MultiLineChart({
                       <span>{focusValue == null ? "—" : tipFmt(focusValue)}</span>
                     </div>
                   )}
+                  {fixados.map((p) => (
+                    <div className="tip-row" key={p.name}>
+                      <span className="name">
+                        <span className="swatch" style={{ background: p.color }} />
+                        {p.name}
+                      </span>
+                      <span>{p.value == null ? "—" : tipFmt(p.value)}</span>
+                    </div>
+                  ))}
                   {peers.slice(0, 8).map((p) => (
                     <div className="tip-row" key={p.name} style={{ opacity: 0.7 }}>
                       <span className="name">{p.name}</span>
