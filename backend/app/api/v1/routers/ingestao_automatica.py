@@ -1,4 +1,7 @@
+from datetime import datetime, timedelta, timezone
+
 from app.api.deps import get_db, require_role
+from app.models.ingestao_arquivo import IngestaoArquivo
 from app.models.ingestao_audit import IngestaoAudit
 from app.models.ingestao_job import IngestaoJob
 from app.services.ingestao_automatica import FONTES_AUTOMATICAS
@@ -9,11 +12,14 @@ from app.services.ingestao_automatica.runner import (
     job_orfao,
     job_para_dict,
 )
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, File, Form, HTTPException, Query, UploadFile
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
 router = APIRouter(prefix="/ingestao-automatica", tags=["Ingestão Automática"])
+
+_LIMITE_UPLOAD_BYTES = 20 * 1024 * 1024  # XLSX do IPS tem ~5 MB; margem p/ anos futuros
+_SWEEP_ORFAOS_HORAS = 24
 
 
 class ExecutarIn(BaseModel):
@@ -104,6 +110,48 @@ def executar_fonte(
         "anos": body.anos,
         "notificar": body.notificar,
     }
+    job = iniciar_job(db, dataset_key, filtros, current_user.id)
+    return {"job_id": job.id}
+
+
+@router.post("/{dataset_key}/executar-arquivo", status_code=202)
+def executar_fonte_com_arquivo(
+    dataset_key: str,
+    arquivo: UploadFile = File(...),
+    ano: int = Form(...),
+    notificar: bool = Form(True),
+    db: Session = Depends(get_db),
+    current_user=Depends(require_role("ADMIN_GLOBAL")),
+):
+    """Variante multipart do /executar para fontes com requer_arquivo (IPS):
+    o blob vai para ingestao_arquivo e o job nasce no MESMO commit (dentro de
+    iniciar_job) — um 409 de job ativo descarta blob e job juntos."""
+    fonte = FONTES_AUTOMATICAS.get(dataset_key)
+    if fonte is None:
+        raise HTTPException(status_code=404, detail=f"Fonte automática '{dataset_key}' não existe.")
+    if not fonte.requer_arquivo:
+        raise HTTPException(
+            status_code=400,
+            detail=f"A fonte '{dataset_key}' não recebe arquivo — use o botão de execução normal.",
+        )
+    if not 2000 <= ano <= 2100:
+        raise HTTPException(status_code=400, detail="Ano inválido.")
+    conteudo = arquivo.file.read(_LIMITE_UPLOAD_BYTES + 1)
+    if len(conteudo) > _LIMITE_UPLOAD_BYTES:
+        raise HTTPException(status_code=400, detail="Arquivo maior que 20 MB.")
+    if not conteudo:
+        raise HTTPException(status_code=400, detail="Arquivo vazio.")
+
+    # blobs órfãos (job que falhou/abortou nunca deleta o arquivo) saem aqui
+    corte = datetime.now(timezone.utc) - timedelta(hours=_SWEEP_ORFAOS_HORAS)
+    db.query(IngestaoArquivo).filter(IngestaoArquivo.criado_em < corte).delete(
+        synchronize_session=False
+    )
+
+    arq = IngestaoArquivo(nome=(arquivo.filename or "arquivo")[:255], conteudo=conteudo)
+    db.add(arq)
+    db.flush()  # id do blob; o commit único acontece dentro de iniciar_job
+    filtros = {"arquivo_id": arq.id, "anos": [ano], "notificar": notificar}
     job = iniciar_job(db, dataset_key, filtros, current_user.id)
     return {"job_id": job.id}
 

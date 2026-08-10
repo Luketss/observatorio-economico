@@ -372,3 +372,64 @@ def test_executar_rejeita_fonte_que_requer_arquivo():
         assert "arquivo" in exc.value.detail
     finally:
         FONTES_AUTOMATICAS.pop("_teste_arq", None)
+
+
+# ── multipart endpoint executar-arquivo para fontes com requer_arquivo ───────
+def _upload_fake(conteudo: bytes = b"PK...", nome: str = "ips_brasil_municipios_2025.xlsx"):
+    import io
+    return SimpleNamespace(file=io.BytesIO(conteudo), filename=nome)
+
+
+def test_executar_arquivo_404_para_fonte_inexistente():
+    from app.api.v1.routers.ingestao_automatica import executar_fonte_com_arquivo
+
+    with pytest.raises(HTTPException) as exc:
+        executar_fonte_com_arquivo("nao_existe", arquivo=_upload_fake(), ano=2025,
+                                   notificar=True, db=object(),
+                                   current_user=SimpleNamespace(id=1))
+    assert exc.value.status_code == 404
+
+
+def test_executar_arquivo_400_para_fonte_sem_flag():
+    import app.services.ingestao_automatica  # noqa: F401 — registra 'populacao'
+    from app.api.v1.routers.ingestao_automatica import executar_fonte_com_arquivo
+
+    with pytest.raises(HTTPException) as exc:
+        executar_fonte_com_arquivo("populacao", arquivo=_upload_fake(), ano=2025,
+                                   notificar=True, db=object(),
+                                   current_user=SimpleNamespace(id=1))
+    assert exc.value.status_code == 400
+
+
+def test_executar_arquivo_400_para_ano_invalido_e_arquivo_grande():
+    from app.api.v1.routers.ingestao_automatica import (
+        _LIMITE_UPLOAD_BYTES,
+        executar_fonte_com_arquivo,
+    )
+
+    registrar(FonteAutomatica(key="_teste_arq2", label="T", fonte="T",
+                              executar=lambda **kw: None, requer_arquivo=True))
+    try:
+        with pytest.raises(HTTPException) as exc:
+            executar_fonte_com_arquivo("_teste_arq2", arquivo=_upload_fake(), ano=1889,
+                                       notificar=True, db=object(),
+                                       current_user=SimpleNamespace(id=1))
+        assert exc.value.status_code == 400
+
+        grande = _upload_fake(conteudo=b"x" * (_LIMITE_UPLOAD_BYTES + 1))
+        with pytest.raises(HTTPException) as exc:
+            executar_fonte_com_arquivo("_teste_arq2", arquivo=grande, ano=2025,
+                                       notificar=True, db=object(),
+                                       current_user=SimpleNamespace(id=1))
+        assert exc.value.status_code == 400
+        assert "20 MB" in exc.value.detail
+    finally:
+        FONTES_AUTOMATICAS.pop("_teste_arq2", None)
+
+
+def test_rota_executar_arquivo_e_multipart_no_openapi():
+    from app.main import app
+
+    schema = app.openapi()
+    op = schema["paths"]["/api/v1/ingestao-automatica/{dataset_key}/executar-arquivo"]["post"]
+    assert "multipart/form-data" in op["requestBody"]["content"]
