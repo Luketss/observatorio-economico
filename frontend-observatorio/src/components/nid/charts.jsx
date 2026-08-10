@@ -746,7 +746,10 @@ export function MultiLineChart({
     if (!focusMode) return (colors || [])[si] || "var(--accent-1)";
     if (si === focusIdx) return resolvedFocusColor;
     if (pinned.has(series[si])) return (colors || [])[si] || "var(--accent-1)";
-    return "rgba(120,145,255,.28)";
+    // Token de tema (não literal): o azul translúcido calibrado pro fundo
+    // escuro ficava quase invisível no tema claro (~15% de alfa efetivo
+    // depois da opacity 0.55 do render) — ver --serie-contexto em themes.css.
+    return "var(--serie-contexto)";
   };
 
   const strokeFor = (si, isHovered) => {
@@ -932,7 +935,7 @@ export function MultiLineChart({
 
         {/* ── Peer min/max band (behind all lines) ── */}
         {focusMode && showBand && bandPath && (
-          <path d={bandPath} fill="rgba(120,145,255,.06)" stroke="none" />
+          <path d={bandPath} fill="var(--serie-contexto-faixa)" stroke="none" />
         )}
 
         {/* ── Real series paths ── peer lines first, focused line last (on top) ── */}
@@ -1257,7 +1260,7 @@ export function MultiLineChart({
             name: `mediana (${peerCount ?? seriesDePar.length} pares)`,
             color: "var(--text-dim)", kind: "dash",
           }] : []),
-          ...(showBand ? [{ name: "faixa dos pares", color: "rgba(120,145,255,.6)", kind: "band" }] : []),
+          ...(showBand ? [{ name: "faixa dos pares", color: "var(--serie-contexto)", kind: "band" }] : []),
           ...(pinnedSeries || []).map((s) => ({ name: s, color: colorFor(series.indexOf(s)) })),
         ]} />
       ) : (
