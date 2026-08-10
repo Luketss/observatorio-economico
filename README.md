@@ -11,7 +11,7 @@ Multi-tenant economic dashboard SaaS for Brazilian municipalities. Centralizes a
 | Page | Dataset | Source |
 |------|---------|--------|
 | Dashboard Geral | KPIs across all datasets | Aggregated |
-| Arrecadação | Monthly tax revenue (ICMS, IPVA, IPI) | Secretaria da Fazenda MG |
+| Arrecadação | Monthly tax revenue (ICMS, IPVA, IPI) | Secretarias da Fazenda MG/PR/RS — automática |
 | PIB | Annual GDP per municipality | IBGE — automática |
 | VAF | Annual Fiscal Value Added + IPM (basis for ICMS distribution), with projected ICMS | Secretaria da Fazenda MG |
 | CAGED | Formal employment flows (admissions, dismissals, gender, race, salary, CNAE) | MTE |
@@ -266,6 +266,11 @@ PYTHONPATH=backend python -m ingestao.carregar_ips --ano 2024 2025
 PYTHONPATH=backend python -m ingestao.carregar_ips --ano 2024 --estado MG   # filter by state
 ```
 
+O IPS também pode ser carregado pela tela **/admin/fontes** (fonte "IPS — Índice
+de Progresso Social"): envie o `ips_brasil_municipios_{ano}.xlsx` baixado de
+ipsbrasil.org.br (ou o CSV convertido) — o job roda no worker e faz upsert por
+município/ano.
+
 ### Load to Railway (remote DB)
 
 Set Railway connection details in `.env.local`:
@@ -305,6 +310,7 @@ the dataset's "última atualização".
 | `pe_de_meia` | Portal da Transparência (ZIPs mensais nacionais) | Monthly students benefited, breakdown by school stage/incentive type | Same shape as Bolsa Família; series starts 2024-01 |
 | `rais` | MTE — RAIS, microdados de vínculos (PDET/FTP; ~4–6 GB decompressed per região) | Annual employment ties per município across 15 tables: total vínculos, sexo, raça, CNAE, faixa etária, escolaridade, faixa de remuneração, tempo de emprego, motivo de desligamento, tipo de admissão, CBO, tamanho do estabelecimento, natureza jurídica, turnover mensal | **Not part of the "todas" meta-job** (`FONTES_FORA_DO_TODAS` — heavy/annual, run on demand). **Replace-by-(município, ano)**, never a full wipe. Região file picked from the município's UF (`UF_REGIAO`); default year = latest published on the FTP (falls back to "`X` Parcial" with a warning). Strongly recommended with the separate worker (`INGESTAO_EXECUTOR=worker`) — one região download + parse can take tens of minutes |
 | `cnpj` | RFB — Cadastro Nacional da Pessoa Jurídica (share WebDAV público, snapshot mensal; ~7.6 GB downloaded per execution across 22 national files) | Company registry per município: razão social, nome fantasia, situação, CNAE, porte, capital social, opção Simples/MEI, data de início | **Not part of the "todas" meta-job** (`FONTES_FORA_DO_TODAS`) — the heaviest source in the pipeline. **Replace-by-município** (never a full wipe when the target has no matching estabelecimentos that run). Two passes: Estabelecimentos filters matched municípios by TOM code + UF (matriz preferred over filial); Empresas/Simples fill in razão social/porte/capital/opções for the collected CNPJs. If any Municípios/Estabelecimentos file fails, nothing is written (a partial snapshot would corrupt the replace) — only Empresas/Simples failures degrade gracefully (audible warning). Strongly recommended with the separate worker (`INGESTAO_EXECUTOR=worker`) — a full run takes 30-60+ minutes |
+| `ips` | IPS Brasil (ipsbrasil.org.br) — annual national file, no stable download URL | Annual Social Progress Index: 79 metrics across 3 dimensions / 12 components, per município | **Fonte com upload de arquivo — sem download automático.** The site is a SPA with no stable URL to fetch from; the admin downloads `ips_brasil_municipios_{ano}.xlsx` (or the converted CSV) from the site and sends it through `/admin/fontes` (`POST .../ips/executar-arquivo`, multipart; `requer_arquivo=True` — the plain `/executar` returns 400). **Upsert by (município, ano)**: resending the file corrects data, never duplicates. **Not part of the "todas" meta-job** (`FONTES_FORA_DO_TODAS`) |
 
 Operational tips:
 
