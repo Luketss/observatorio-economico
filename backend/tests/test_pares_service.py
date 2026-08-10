@@ -129,10 +129,31 @@ def test_elegiveis_por_cobertura_exige_todos_os_anos_do_foco():
 def test_resolver_grupo_monta_foco_pares_e_fixados():
     g = resolver_grupo(REFS, mid=1, elegiveis={2, 3, 4}, fixados_ids=[5, 1, 2], limite=2)
     assert g.foco.id == 1
-    assert [p.id for p in g.pares] == [2, 3]
-    # 1 é o próprio foco e 2 já é par — só 5 sobrevive como fixado.
-    assert [f.id for f in g.fixados] == [5]
+    # 2 (PERTO) foi tirado do pool de pares porque o usuário fixou — fixado
+    # tem precedência, então quem sobra pro card de "par automático" é 3 e 4.
+    assert [p.id for p in g.pares] == [3, 4]
+    # 1 é o próprio foco; 5 e 2 sobrevivem como fixados, na ordem pedida.
+    assert [f.id for f in g.fixados] == [5, 2]
     assert g.motivo is None
+
+
+def test_resolver_grupo_fixado_tem_precedencia_sobre_par_automatico():
+    # Antes da correção, um id fixado que caía no grupo que a cascata
+    # escolheria como par automático era descartado silenciosamente: não
+    # virava chip nem par, e o usuário via o seletor fechar sem nada mudar
+    # na tela. Agora o fixado sai do pool ANTES de `selecionar_pares` rodar.
+    g = resolver_grupo(REFS, mid=1, elegiveis={2, 3}, fixados_ids=[2], limite=6)
+    assert [p.id for p in g.pares] == [3]
+    assert [f.id for f in g.fixados] == [2]
+
+
+def test_resolver_grupo_fixado_demo_nao_entra():
+    # Município demo é dado fabricado — não pode ser fixado como se fosse
+    # município real (mesma exclusão que o resto do comparativo já aplica).
+    demo = MunicipioRef(id=21, nome="Demo", estado="MG", populacao=20_600, is_demo=True)
+    refs = {**REFS, 21: demo}
+    g = resolver_grupo(refs, mid=1, elegiveis={2, 3, 4}, fixados_ids=[21, 5], limite=2)
+    assert [f.id for f in g.fixados] == [5]
 
 
 def test_resolver_grupo_sem_municipio_conhecido():
@@ -163,3 +184,76 @@ def test_pares_de_captacao_mantem_grupos_ilimitados():
     assert nacional == {2, 3, 4}        # mesma faixa, qualquer UF
     # capital, demo, faixa diferente e o próprio ficam fora dos dois grupos
     assert 7 not in nacional and 20 not in nacional and 5 not in nacional
+
+
+def test_pares_de_captacao_nao_corta_em_seis_com_oito_candidatos():
+    """`test_pares_de_captacao_mantem_grupos_ilimitados` usa só 2 candidatos
+    elegíveis — passaria verde mesmo se alguém reintroduzisse um corte [:6] em
+    `_pares_de` (o limite do GRÁFICO de pares, que não deve vazar para a
+    amostra estatística de captação). Este teste usa 8 municípios na mesma
+    UF+faixa do foco e exige que os 8 sobrevivam, provando que não há corte."""
+    from app.services.captacao_federal_service import _pares_de
+
+    muitos = [
+        MunicipioRef(id=200 + i, nome=f"P{i}", estado="MG", populacao=20_000 + i,
+                     codigo_ibge=f"320{i:04d}")
+        for i in range(8)
+    ]
+    refs = {r.id: r for r in [FOCO, *muitos]}
+    _, pares, nacional = _pares_de(1, refs)
+    assert pares == {m.id for m in muitos}
+    assert nacional == {m.id for m in muitos}
+    assert len(pares) == 8   # > LIMITE_PADRAO (6): prova que não há corte de gráfico aqui
+
+
+# ── carregar_refs — sem banco, com duplo de Session ──────────────────────────
+class _DbFalso:
+    """Duplo mínimo de `Session`: implementa só a cadeia
+    `.query(...).outerjoin(...).filter(...).all()` que `carregar_refs` usa,
+    devolvendo as linhas (tuplas) que o teste controla. Nenhum banco real
+    entra na suíte — `linhas` já chega no formato
+    (id, nome, estado, codigo_ibge, is_demo, ano, populacao)."""
+
+    def __init__(self, linhas):
+        self._linhas = linhas
+
+    def query(self, *args, **kwargs):
+        return self
+
+    def outerjoin(self, *args, **kwargs):
+        return self
+
+    def filter(self, *args, **kwargs):
+        return self
+
+    def all(self):
+        return self._linhas
+
+
+def test_carregar_refs_ano_mais_recente_vence_mesmo_fora_de_ordem():
+    """Cobre a condição de três braços de `carregar_refs` (mid já visto? ano
+    veio nulo? ano é <= o melhor já visto?) que decide qual linha de
+    população vence quando o outerjoin devolve os anos fora de ordem —
+    exatamente o caminho que a refatoração também colocou no fluxo de
+    produção da captação, sem nenhum teste dedicado até aqui."""
+    from app.services.pares_service import carregar_refs
+
+    # Município 1: três anos de população chegando fora de ordem (ano do
+    # meio, depois o mais antigo, depois o mais recente) — o ano mais
+    # recente (2021) tem que vencer mesmo entrando por último na lista.
+    # Município 2 misturado na mesma lista, sem nenhuma linha de população
+    # (outerjoin sem PopulacaoMunicipio correspondente): aparece com
+    # populacao=None em vez de sumir da resposta.
+    linhas = [
+        (1, "Um", "MG", "3100000", False, 2020, 1_100),
+        (2, "Dois", "SP", "3500000", False, None, None),
+        (1, "Um", "MG", "3100000", False, 2019, 1_000),
+        (1, "Um", "MG", "3100000", False, 2021, 1_200),
+    ]
+    refs = carregar_refs(_DbFalso(linhas))
+
+    assert set(refs.keys()) == {1, 2}   # os dois municípios sobrevivem misturados na mesma lista
+    assert refs[1].populacao == 1_200   # o ano mais recente (2021) venceu, mesmo fora de ordem
+    assert refs[1].nome == "Um" and refs[1].estado == "MG" and refs[1].codigo_ibge == "3100000"
+    assert refs[2].populacao is None    # sem linha de população: aparece, não some
+    assert refs[2].is_demo is False
