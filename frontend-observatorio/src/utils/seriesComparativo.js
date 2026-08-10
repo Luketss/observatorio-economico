@@ -11,6 +11,7 @@
 
 const MOTIVOS = {
   sem_municipio: "selecione um município",
+  sem_serie: "ainda não há série histórica para este município",
   sem_populacao: "sem população cadastrada, não há como escolher pares",
   sem_pares: "nenhum município par encontrado",
 };

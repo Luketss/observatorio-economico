@@ -30,6 +30,10 @@ import ComparadorMunicipios from "../../components/nid/ComparadorMunicipios";
 const fmtBRL = (v) =>
   `R$ ${Number(v).toLocaleString("pt-BR", { maximumFractionDigits: 0 })}`;
 
+// Paleta dos municipios fixados pelo usuario. Fora de --accent-2 (cor do foco) e
+// de --accent-1 (cor de hover de par), senao o fixado se confunde com os dois.
+const CORES_FIXADOS = ["var(--accent-4)", "var(--accent-5)", "var(--accent-3)"];
+
 export default function PibPage() {
   const { user } = useAuth();
   const { viewAsId } = useViewAs();
@@ -103,6 +107,16 @@ export default function PibPage() {
   const seriesComp = useMemo(
     () => (cmp.focusSeries ? [cmp.focusSeries, ...cmp.peerSeries, ...cmp.pinnedSeries] : []),
     [cmp]
+  );
+  // Cor por posição (i % 5) colidia com o foco (--accent-2) ou com o hover de
+  // par (--accent-1) dependendo de quantos pares vinham na resposta. Fixado
+  // sempre pega uma cor da paleta dedicada, pela posição dele entre os fixados.
+  const coresComp = useMemo(
+    () => seriesComp.map((s) => {
+      const iFix = cmp.pinnedSeries.indexOf(s);
+      return iFix >= 0 ? CORES_FIXADOS[iFix % CORES_FIXADOS.length] : "var(--accent-1)";
+    }),
+    [seriesComp, cmp.pinnedSeries]
   );
 
   const serie = useMemo(() => {
@@ -246,14 +260,16 @@ export default function PibPage() {
         </PlanGate>
       )}
 
-      {/* PIB Comparativo — foco + pares comparáveis */}
-      {cmp.focusSeries && (
+      {/* PIB Comparativo — foco + pares comparáveis. Gate inclui `comp.motivo`
+          para o painel aparecer com a explicação (ex.: "ainda não há série
+          histórica") em vez de sumir quando não há foco. */}
+      {(cmp.focusSeries || comp.motivo) && (
         <NidPanel title="PIB Comparativo — Municípios" sub={descreverPares(comp)}>
           <ComparadorMunicipios fixados={comp.fixados} onChange={setFixadosIds} />
           <MultiLineChart
             data={cmp.data}
             series={seriesComp}
-            colors={seriesComp.map((_, i) => `var(--accent-${(i % 5) + 1})`)}
+            colors={coresComp}
             height={280}
             yFmt={fmtMoneyShort}
             tipFmt={fmtMoneyFull}
