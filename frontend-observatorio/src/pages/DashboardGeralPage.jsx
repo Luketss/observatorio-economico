@@ -26,6 +26,7 @@ import {
   fmtNumber,
 } from "../components/nid/charts";
 import { ChartHoverProvider } from "../components/nid/ChartHoverContext";
+import { montarComparativo, descreverPares } from "../utils/seriesComparativo";
 import {
   StarIcon, UserGroupIcon, HomeIcon, HeartIcon, AcademicCapIcon,
   TruckIcon, ChartBarIcon, BuildingOfficeIcon, BoltIcon, GlobeAltIcon,
@@ -74,7 +75,7 @@ export default function DashboardGeralPage() {
 
   const [pibResumo, setPibResumo] = useState(null);
   const [pibSerie, setPibSerie] = useState([]);
-  const [pibComparativo, setPibComparativo] = useState([]);
+  const [pibComp, setPibComp] = useState({ foco: null, pares: [], fixados: [], criterio_pares: null, motivo: null, itens: [] });
   const [arrecResumo, setArrecResumo] = useState(null);
   const [arrecPorTipo, setArrecPorTipo] = useState([]);
   const [cagedResumo, setCagedResumo] = useState(null);
@@ -107,7 +108,7 @@ export default function DashboardGeralPage() {
       if (!alive) return;
       setPibResumo(pibRes);
       setPibSerie(pibSerieRes || []);
-      setPibComparativo(pibCompRes || []);
+      setPibComp(pibCompRes || { foco: null, pares: [], fixados: [], criterio_pares: null, motivo: null, itens: [] });
       setArrecResumo(arrecRes);
       setArrecPorTipo(arrecTipoRes || []);
       setCagedResumo(cagedRes);
@@ -127,31 +128,38 @@ export default function DashboardGeralPage() {
   const pibSparkData = useMemo(() => pibChartData.map((d) => d.value), [pibChartData]);
 
   const vaSetorData = useMemo(() => {
-    // group /pib/comparativo by ano (current municipio rows already filtered server-side for non-global users)
+    // Decomposição do município em FOCO. Antes somava todos os municípios do
+    // payload, o que virou "o Brasil inteiro" quando a rota passou a devolver
+    // a base completa para ADMIN_GLOBAL.
+    if (!pibComp.foco) return [];
     const grouped = new Map();
-    pibComparativo.forEach((r) => {
-      if (!grouped.has(r.ano)) grouped.set(r.ano, { label: String(r.ano), Agropecuária: 0, Indústria: 0, Serviços: 0, Governo: 0 });
-      const row = grouped.get(r.ano);
-      row.Agropecuária += Number(r.va_agropecuaria) || 0;
-      row.Indústria   += Number(r.va_industria)   || 0;
-      row.Serviços    += Number(r.va_servicos)    || 0;
-      row.Governo     += Number(r.va_governo)     || 0;
-    });
+    (pibComp.itens || [])
+      .filter((r) => r.municipio_id === pibComp.foco.municipio_id)
+      .forEach((r) => {
+        if (!grouped.has(r.ano)) grouped.set(r.ano, { label: String(r.ano), Agropecuária: 0, Indústria: 0, Serviços: 0, Governo: 0 });
+        const row = grouped.get(r.ano);
+        row.Agropecuária += Number(r.va_agropecuaria) || 0;
+        row.Indústria   += Number(r.va_industria)   || 0;
+        row.Serviços    += Number(r.va_servicos)    || 0;
+        row.Governo     += Number(r.va_governo)     || 0;
+      });
     return Array.from(grouped.values()).sort((a, b) => Number(a.label) - Number(b.label));
-  }, [pibComparativo]);
+  }, [pibComp]);
 
-  const comparativoCidades = useMemo(() => {
-    if (!pibComparativo.length) return { data: [], series: [] };
-    const cities = Array.from(new Set(pibComparativo.map((r) => r.cidade))).slice(0, 4);
-    const byAno = new Map();
-    pibComparativo.forEach((r) => {
-      if (!cities.includes(r.cidade)) return;
-      if (!byAno.has(r.ano)) byAno.set(r.ano, { label: String(r.ano) });
-      byAno.get(r.ano)[r.cidade] = (byAno.get(r.ano)[r.cidade] || 0) + (Number(r.pib_total) || 0);
-    });
-    const data = Array.from(byAno.values()).sort((a, b) => Number(a.label) - Number(b.label));
-    return { data, series: cities };
-  }, [pibComparativo]);
+  // Foco + pares comparáveis já vêm pivotados pelo util — o backend manda o
+  // envelope, o util decide domínio de anos (o do foco) e rótulos (homônimos
+  // entre UFs).
+  const cmp = useMemo(
+    () => montarComparativo({
+      itens: pibComp.itens, foco: pibComp.foco, pares: pibComp.pares, fixados: pibComp.fixados,
+      anoKey: "ano", valorKey: "pib_total",
+    }),
+    [pibComp]
+  );
+  const seriesComp = useMemo(
+    () => (cmp.focusSeries ? [cmp.focusSeries, ...cmp.peerSeries, ...cmp.pinnedSeries] : []),
+    [cmp]
+  );
 
   const cagedTwinData = useMemo(() => {
     // /caged/serie returns per-month items: ano, mes, total_admissoes, total_desligamentos, saldo
@@ -376,23 +384,20 @@ export default function DashboardGeralPage() {
             ]} />
           </NidPanel>
 
-          <NidPanel
-            title="PIB Comparativo"
-            sub={comparativoCidades.series.length > 1
-              ? `${comparativoCidades.series.length} municípios`
-              : "Histórico do município"}
-          >
+          <NidPanel title="PIB Comparativo" sub={descreverPares(pibComp)}>
             <MultiLineChart
-              data={comparativoCidades.data}
-              series={comparativoCidades.series}
+              data={cmp.data}
+              series={seriesComp}
               colors={[A3, A1, A4, A2]}
               glow
               height={260}
               syncGroup="annual"
+              focusSeries={cmp.focusSeries}
+              peerCount={cmp.peerSeries.length}
+              showMedian
+              showBand
+              legend
             />
-            <NidLegend items={comparativoCidades.series.map((s, i) => ({
-              name: s, color: [A3, A1, A4, A2][i % 4],
-            }))} />
           </NidPanel>
         </div>
       </ChartHoverProvider>
