@@ -8,6 +8,11 @@
   --font-display: "Geist", "Inter", -apple-system, BlinkMacSystemFont, sans-serif;
   --font-body: "Geist", "Inter", -apple-system, BlinkMacSystemFont, sans-serif;
   --font-mono: "JetBrains Mono", "SF Mono", ui-monospace, Menlo, monospace;
+
+  /* Cor das series de contexto (pares) no modo foco do MultiLineChart.
+     Padrao calibrado para os temas escuros; o tema claro sobrescreve abaixo. */
+  --serie-contexto: rgba(120, 145, 255, 0.28);
+  --serie-contexto-faixa: rgba(120, 145, 255, 0.06);
 }
 
 /* ─── Theme: NEON CYBER (default dark) ─── */
@@ -177,6 +182,11 @@ body.theme-light {
   --shadow-card: 0 1px 0 rgba(15,23,42,0.04) inset,
                  0 12px 28px -16px rgba(15, 23, 42, 0.12),
                  0 4px 10px -6px rgba(15, 23, 42, 0.06);
+
+  /* Sobre fundo claro, o azul translucido do padrao some: as linhas de par
+     ficam com ~15% de alfa efetivo depois da opacity 0.55 da renderizacao. */
+  --serie-contexto: rgba(79, 95, 160, 0.62);
+  --serie-contexto-faixa: rgba(79, 95, 160, 0.12);
 }
 
 /* ── Themed body background (applies whenever a theme- class is present) ── */
@@ -2379,15 +2389,49 @@ body.theme-light .nid-filterbar [aria-pressed="true"] {
   background: var(--panel-2);
   border: 1px solid var(--border);
   border-radius: 10px;
-  cursor: pointer;
   text-align: left;
   transition: border-color 0.15s, background 0.15s;
   font-family: var(--font-display);
 }
+/* Sem cursor:pointer aqui de propósito: virou <div>, e o padding/gap ao redor
+   dos botões internos (__campo, __clear, __chevron-btn — cada um já tem seu
+   próprio cursor:pointer) não abre nada; mãozinha ali prometeria clique onde
+   não há ação. */
 .nid-municipio-picker__trigger:hover,
 .nid-municipio-picker__trigger.is-open {
   border-color: color-mix(in oklab, var(--admin-accent) 35%, transparent);
   background: var(--panel);
+}
+/* O gatilho virou <div> (input dentro de button faz a barra de espaço fechar a
+   lista); este é o botão interno que abre o seletor — some visualmente e ocupa
+   o espaço que o antigo <button> ocupava. */
+.nid-municipio-picker__campo {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 1;
+  min-width: 0;
+  background: transparent;
+  border: none;
+  padding: 0;
+  margin: 0;
+  height: 100%;
+  cursor: pointer;
+  text-align: left;
+  font-family: inherit;
+  color: inherit;
+}
+/* Duplica no mouse a acao do __campo: o chevron e a affordance de "abre aqui",
+   e ficaria inerte se fosse so decoracao ao lado do botao. */
+.nid-municipio-picker__chevron-btn {
+  background: transparent;
+  border: none;
+  padding: 0;
+  margin: 0;
+  display: inline-flex;
+  align-items: center;
+  cursor: pointer;
+  flex-shrink: 0;
 }
 .nid-municipio-picker__icon {
   width: 16px; height: 16px;

@@ -15,6 +15,7 @@ from app.schemas.municipio import (
     MunicipioDatasetSummary,
     MunicipioDeletedResult,
     MunicipioOut,
+    MunicipioSelecionavel,
     MunicipioUpdate,
     ReingestResult,
     SanidadeItem,
@@ -99,6 +100,26 @@ def listar_municipios(
         )
 
     return municipios
+
+
+# ==============================
+# Listar municípios selecionáveis (para comparativo)
+# ==============================
+@router.get("/selecionaveis", response_model=List[MunicipioSelecionavel])
+def listar_municipios_selecionaveis(
+    db: Session = Depends(get_db),
+    current_user=Depends(get_current_user),
+):
+    """Municípios que podem ser fixados num comparativo. Aberta a qualquer
+    autenticado de propósito: nome e UF são públicos (IBGE) e `/pib/ranking` já
+    expõe todos sem checagem de papel. `/municipios` não serve aqui — devolve só
+    o próprio município para não-admin."""
+    return (
+        db.query(Municipio)
+        .filter(Municipio.ativo.is_(True), Municipio.is_demo.is_(False))
+        .order_by(Municipio.estado, Municipio.nome)
+        .all()
+    )
 
 
 # ==============================

@@ -1,4 +1,5 @@
 from pydantic import BaseModel
+from app.schemas.pares import ParesMeta
 
 
 class VafItem(BaseModel):
@@ -17,7 +18,12 @@ class VafItem(BaseModel):
 
 
 class VafComparativoItem(VafItem):
+    municipio_id: int
     cidade: str
+
+
+class VafComparativoOut(ParesMeta):
+    itens: list[VafComparativoItem] = []
 
 
 class VafResumo(BaseModel):

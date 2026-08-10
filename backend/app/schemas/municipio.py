@@ -102,3 +102,12 @@ class ReingestResult(BaseModel):
     linhas_removidas: int
     linhas_inseridas: int
     detalhe: Optional[str] = None
+
+
+class MunicipioSelecionavel(BaseModel):
+    """Projeção mínima para seletores de comparação — sem campos administrativos."""
+    id: int
+    nome: str
+    estado: str
+
+    model_config = {"from_attributes": True}

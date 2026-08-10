@@ -85,24 +85,12 @@ from app.services.fpm_service import CAPITAIS_IBGE, faixa_para_populacao
 
 
 def _base_grupos(db: "Session"):
-    """2 queries batched: última população por município ativo (com UF, código
-    IBGE e flag demo) e todas as linhas de captação da janela."""
+    """2 queries batched: refs de município (com população mais recente) e todas
+    as linhas de captação da janela."""
     from app.models.captacao_federal import CaptacaoFederalAnual
-    from app.models.municipio import Municipio
-    from app.models.populacao import PopulacaoMunicipio
+    from app.services.pares_service import carregar_refs
 
-    pop_rows = (
-        db.query(PopulacaoMunicipio.municipio_id, PopulacaoMunicipio.ano,
-                 PopulacaoMunicipio.populacao, Municipio.estado,
-                 Municipio.codigo_ibge, Municipio.is_demo)
-        .join(Municipio, Municipio.id == PopulacaoMunicipio.municipio_id)
-        .filter(Municipio.ativo.is_(True))
-        .all()
-    )
-    ultimo: dict[int, tuple] = {}   # mid → (ano, pop, uf, ibge, is_demo)
-    for mid, ano, pop, uf, ibge, is_demo in pop_rows:
-        if mid not in ultimo or ano > ultimo[mid][0]:
-            ultimo[mid] = (ano, pop, uf, ibge, is_demo)
+    refs = carregar_refs(db)
 
     capt_rows = (
         db.query(CaptacaoFederalAnual)
@@ -115,24 +103,27 @@ def _base_grupos(db: "Session"):
             "firmado": float(r.valor_firmado), "via_emenda": float(r.valor_via_emenda),
             "desembolsado": float(r.valor_desembolsado), "qtd": r.qtd_convenios,
         }
-    return ultimo, capt
+    return refs, capt
 
 
-def _pares_de(municipio_id: int, ultimo: dict):
+def _pares_de(municipio_id: int, refs: dict):
     """(meta faixa/uf, pares mesma faixa+UF, nacional mesma faixa) — exclui o
-    próprio município, capitais e municípios demo dos grupos."""
-    _, pop, uf, _, _ = ultimo[municipio_id]
-    faixa = faixa_para_populacao(pop)
+    próprio município, capitais e municípios demo dos grupos. Grupos ILIMITADOS:
+    aqui eles são amostra estatística (média/posição), não linhas de gráfico."""
+    from app.services.pares_service import eh_capital, mesma_faixa
+
+    foco = refs[municipio_id]
+    faixa = faixa_para_populacao(foco.populacao)
     pares, nacional = set(), set()
-    for mid, (_, p, u, ibge, is_demo) in ultimo.items():
-        if mid == municipio_id or is_demo or (ibge or "") in CAPITAIS_IBGE:
+    for mid, ref in refs.items():
+        if mid == municipio_id or ref.is_demo or eh_capital(ref):
             continue
-        if faixa_para_populacao(p).indice != faixa.indice:
+        if not mesma_faixa(foco, ref):
             continue
         nacional.add(mid)
-        if u == uf:
+        if ref.estado == foco.estado:
             pares.add(mid)
-    return {"faixa": faixa, "uf": uf}, pares, nacional
+    return {"faixa": faixa, "uf": foco.estado}, pares, nacional
 
 
 def calcular_diagnostico(db: "Session", municipio_id: int) -> dict:
@@ -148,11 +139,11 @@ def calcular_diagnostico(db: "Session", municipio_id: int) -> dict:
     if municipio.codigo_ibge in CAPITAIS_IBGE:
         return {**_CAMPOS_VAZIOS, "motivo": "capital", "nao_aplicavel": True}
 
-    ultimo, capt = _base_grupos(db)
-    if municipio_id not in ultimo:
+    refs, capt = _base_grupos(db)
+    if municipio_id not in refs or refs[municipio_id].populacao is None:
         return {**_CAMPOS_VAZIOS, "motivo": "sem_populacao"}
 
-    meta, pares, nacional = _pares_de(municipio_id, ultimo)
+    meta, pares, nacional = _pares_de(municipio_id, refs)
     diag = montar_diagnostico(municipio_id, pares, nacional, capt, date.today().year)
     faixa = meta["faixa"]
     return {**diag, "uf": meta["uf"], "faixa_pop_min": faixa.pop_min,
@@ -182,6 +173,7 @@ def gerar_notificacoes_captacao(db: "Session", municipio_ids: list, usuario_id: 
     from datetime import date
 
     from app.models.notificacao import Notificacao
+    from app.services.pares_service import eh_capital
 
     existentes = db.query(Notificacao).filter(Notificacao.titulo.like("Captação%")).all()
     ja_notificados = {
@@ -189,15 +181,17 @@ def gerar_notificacoes_captacao(db: "Session", municipio_ids: list, usuario_id: 
         if n.municipio_ids and len(n.municipio_ids) == 1
     }
 
-    ultimo, capt = _base_grupos(db)
+    refs, capt = _base_grupos(db)
     ano_corrente = date.today().year
     criadas = 0
     for mid in municipio_ids:
-        if mid in ja_notificados or mid not in ultimo:
+        # mesmo guard de calcular_diagnostico: refs agora inclui município sem
+        # população (outerjoin), então a checagem precisa olhar o campo.
+        if mid in ja_notificados or mid not in refs or refs[mid].populacao is None:
             continue
-        if (ultimo[mid][3] or "") in CAPITAIS_IBGE:
+        if eh_capital(refs[mid]):
             continue
-        _, pares, nacional = _pares_de(mid, ultimo)
+        _, pares, nacional = _pares_de(mid, refs)
         diag = montar_diagnostico(mid, pares, nacional, capt, ano_corrente)
         if not diag["disponivel"] or diag["media_pares"] is None:
             continue

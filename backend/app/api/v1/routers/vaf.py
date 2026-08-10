@@ -4,8 +4,22 @@ from app.api.deps import get_current_user, get_db, scoped_modulo
 from app.models.arrecadacao import ArrecadacaoMensal
 from app.models.municipio import Municipio
 from app.models.vaf import VafAnual
-from app.schemas.vaf import IcmsProjetadoItem, VafComparativoItem, VafItem, VafResumo
-from fastapi import APIRouter, Depends
+from app.schemas.pares import MunicipioRefOut
+from app.schemas.vaf import (
+    IcmsProjetadoItem,
+    VafComparativoItem,
+    VafComparativoOut,
+    VafItem,
+    VafResumo,
+)
+from app.services.pares_service import (
+    MunicipioRef,
+    carregar_refs,
+    elegiveis_por_cobertura,
+    parse_fixados,
+    resolver_grupo,
+)
+from fastapi import APIRouter, Depends, Query
 from sqlalchemy import func
 from sqlalchemy.orm import Session
 
@@ -141,43 +155,65 @@ def icms_projetado_vaf(
 
 
 # ==============================
-# Comparativo entre Municípios (ADMIN_GLOBAL)
+# Comparativo — foco + pares comparáveis
 # ==============================
-@router.get("/comparativo", response_model=List[VafComparativoItem])
-def comparativo_vaf(
-    db: Session = Depends(get_db),
-    current_user=Depends(get_current_user),
-):
-    if current_user.role.nome != "ADMIN_GLOBAL":
-        municipio = (
-            db.query(Municipio)
-            .filter(Municipio.id == current_user.municipio_id)
-            .first()
-        )
-        registros = (
-            db.query(VafAnual)
-            .filter(VafAnual.municipio_id == current_user.municipio_id)
-            .order_by(VafAnual.ano_base)
-            .all()
-        )
-        nome = municipio.nome if municipio else ""
-        return [
-            VafComparativoItem(cidade=nome, **_to_item(r).model_dump())
-            for r in registros
-        ]
+def _ref_out(r: MunicipioRef) -> MunicipioRefOut:
+    return MunicipioRefOut(municipio_id=r.id, nome=r.nome, estado=r.estado)
 
-    # ADMIN_GLOBAL vê todos (exceto municípios demo)
+
+@router.get("/comparativo", response_model=VafComparativoOut)
+def comparativo_vaf(
+    mid: int | None = Depends(scoped_modulo("vaf")),
+    fixados: str | None = Query(default=None, description="ids separados por vírgula, máx. 3"),
+    db: Session = Depends(get_db),
+):
+    """IPM do município em foco + até 6 pares comparáveis (mesma UF + faixa
+    populacional do FPM), mais os fixados pelo usuário. Ver comentário gêmeo em
+    `routers/pib.py`: antes daqui a rota devolvia a base inteira."""
+    if mid is None:
+        return VafComparativoOut(motivo="sem_municipio")
+
+    anos_foco = {
+        a for (a,) in db.query(VafAnual.ano_base).filter(VafAnual.municipio_id == mid).all()
+    }
+    if not anos_foco:
+        # Distinto do "sem_municipio" acima: aqui HÁ município (e view-as, se
+        # for o caso), só falta série dele. Motivo próprio para o front não
+        # confundir "selecione um município" com "este município ainda não
+        # tem dado". Ver comentário gêmeo em routers/pib.py.
+        return VafComparativoOut(motivo="sem_serie")
+
+    cobertura = (
+        db.query(VafAnual.municipio_id, VafAnual.ano_base)
+        .join(Municipio, VafAnual.municipio_id == Municipio.id)
+        .filter(VafAnual.ano_base.in_(anos_foco), Municipio.is_demo.is_(False))
+        .all()
+    )
+    elegiveis = elegiveis_por_cobertura([(m, a) for m, a in cobertura], anos_foco)
+
+    grupo = resolver_grupo(carregar_refs(db), mid, elegiveis, parse_fixados(fixados))
+    if grupo.foco is None:
+        return VafComparativoOut(motivo=grupo.motivo or "sem_municipio")
+
+    ids = [grupo.foco.id] + [p.id for p in grupo.pares] + [f.id for f in grupo.fixados]
     registros = (
         db.query(VafAnual, Municipio.nome)
         .join(Municipio, VafAnual.municipio_id == Municipio.id)
-        .filter(Municipio.is_demo.is_(False))
+        .filter(VafAnual.municipio_id.in_(ids))
         .order_by(VafAnual.ano_base)
         .all()
     )
-    return [
-        VafComparativoItem(cidade=nome, **_to_item(r).model_dump())
-        for r, nome in registros
-    ]
+    return VafComparativoOut(
+        foco=_ref_out(grupo.foco),
+        pares=[_ref_out(p) for p in grupo.pares],
+        fixados=[_ref_out(f) for f in grupo.fixados],
+        criterio_pares=grupo.criterio,
+        motivo=grupo.motivo,
+        itens=[
+            VafComparativoItem(municipio_id=r.municipio_id, cidade=nome, **_to_item(r).model_dump())
+            for r, nome in registros
+        ],
+    )
 
 
 @router.get("/ranking")

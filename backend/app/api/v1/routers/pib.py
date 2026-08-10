@@ -3,8 +3,21 @@ from typing import List
 from app.api.deps import get_current_user, get_db, scoped_modulo
 from app.models.municipio import Municipio
 from app.models.pib import PibAnual
-from app.schemas.pib import PibComparativoItem, PibItem, PibResumo
-from fastapi import APIRouter, Depends
+from app.schemas.pares import MunicipioRefOut
+from app.schemas.pib import (
+    PibComparativoItem,
+    PibComparativoOut,
+    PibItem,
+    PibResumo,
+)
+from app.services.pares_service import (
+    MunicipioRef,
+    carregar_refs,
+    elegiveis_por_cobertura,
+    parse_fixados,
+    resolver_grupo,
+)
+from fastapi import APIRouter, Depends, Query
 from sqlalchemy.orm import Session
 
 router = APIRouter(prefix="/pib", tags=["PIB"])
@@ -81,57 +94,76 @@ def resumo_pib(
 
 
 # ==============================
-# Comparativo entre Municípios (ADMIN_GLOBAL)
+# Comparativo — foco + pares comparáveis
 # ==============================
-@router.get("/comparativo", response_model=List[PibComparativoItem])
+def _ref_out(r: MunicipioRef) -> MunicipioRefOut:
+    return MunicipioRefOut(municipio_id=r.id, nome=r.nome, estado=r.estado)
+
+
+@router.get("/comparativo", response_model=PibComparativoOut)
 def comparativo_pib(
+    mid: int | None = Depends(scoped_modulo("pib")),
+    fixados: str | None = Query(default=None, description="ids separados por vírgula, máx. 3"),
     db: Session = Depends(get_db),
-    current_user=Depends(get_current_user),
 ):
-    if current_user.role.nome != "ADMIN_GLOBAL":
-        municipio = (
-            db.query(Municipio)
-            .filter(Municipio.id == current_user.municipio_id)
-            .first()
-        )
-        registros = (
-            db.query(PibAnual)
-            .filter(PibAnual.municipio_id == current_user.municipio_id)
-            .all()
-        )
-        return [
+    """Série do município em foco + até 6 pares comparáveis (mesma UF + faixa
+    populacional do FPM), mais os municípios que o usuário fixou. Antes daqui
+    esta rota devolvia a base inteira para ADMIN_GLOBAL, o que tornava o gráfico
+    e a legenda ilegíveis assim que a ingestão passou a cobrir todo o país."""
+    if mid is None:
+        # ADMIN_GLOBAL sem município selecionado — front exibe "selecione um município".
+        return PibComparativoOut(motivo="sem_municipio")
+
+    anos_foco = {
+        a for (a,) in db.query(PibAnual.ano).filter(PibAnual.municipio_id == mid).all()
+    }
+    if not anos_foco:
+        # Distinto do "sem_municipio" acima: aqui HÁ município (e view-as, se
+        # for o caso), só falta série dele. Motivo próprio para o front não
+        # confundir "selecione um município" com "este município ainda não
+        # tem dado".
+        return PibComparativoOut(motivo="sem_serie")
+
+    cobertura = (
+        db.query(PibAnual.municipio_id, PibAnual.ano)
+        .join(Municipio, PibAnual.municipio_id == Municipio.id)
+        .filter(PibAnual.ano.in_(anos_foco), Municipio.is_demo.is_(False))
+        .all()
+    )
+    elegiveis = elegiveis_por_cobertura([(m, a) for m, a in cobertura], anos_foco)
+
+    grupo = resolver_grupo(carregar_refs(db), mid, elegiveis, parse_fixados(fixados))
+    if grupo.foco is None:
+        return PibComparativoOut(motivo=grupo.motivo or "sem_municipio")
+
+    ids = [grupo.foco.id] + [p.id for p in grupo.pares] + [f.id for f in grupo.fixados]
+    registros = (
+        db.query(PibAnual, Municipio.nome)
+        .join(Municipio, PibAnual.municipio_id == Municipio.id)
+        .filter(PibAnual.municipio_id.in_(ids))
+        .order_by(PibAnual.ano)
+        .all()
+    )
+    return PibComparativoOut(
+        foco=_ref_out(grupo.foco),
+        pares=[_ref_out(p) for p in grupo.pares],
+        fixados=[_ref_out(f) for f in grupo.fixados],
+        criterio_pares=grupo.criterio,
+        motivo=grupo.motivo,
+        itens=[
             PibComparativoItem(
                 ano=r.ano,
-                cidade=municipio.nome if municipio else "",
+                municipio_id=r.municipio_id,
+                cidade=nome,
                 pib_total=r.pib_total,
                 va_agropecuaria=r.va_agropecuaria,
                 va_governo=r.va_governo,
                 va_industria=r.va_industria,
                 va_servicos=r.va_servicos,
             )
-            for r in registros
-        ]
-
-    # ADMIN_GLOBAL vê todos (exceto municípios demo)
-    registros = (
-        db.query(PibAnual, Municipio.nome)
-        .join(Municipio, PibAnual.municipio_id == Municipio.id)
-        .filter(Municipio.is_demo.is_(False))
-        .order_by(PibAnual.ano)
-        .all()
+            for r, nome in registros
+        ],
     )
-    return [
-        PibComparativoItem(
-            ano=r.ano,
-            cidade=nome,
-            pib_total=r.pib_total,
-            va_agropecuaria=r.va_agropecuaria,
-            va_governo=r.va_governo,
-            va_industria=r.va_industria,
-            va_servicos=r.va_servicos,
-        )
-        for r, nome in registros
-    ]
 
 
 @router.get("/ranking")

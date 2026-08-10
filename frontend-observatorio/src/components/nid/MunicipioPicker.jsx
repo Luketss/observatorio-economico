@@ -80,6 +80,9 @@ export default function MunicipioPicker({
   };
 
   const handleKeyDown = (e) => {
+    // Cinto e suspensório: mesmo sem <button> ancestral, nenhuma tecla da busca
+    // deve disparar atalho de container acima.
+    e.stopPropagation();
     if (e.key === "ArrowDown") {
       e.preventDefault();
       setActiveIdx((i) => Math.min(filtered.length - 1, i + 1));
@@ -98,16 +101,16 @@ export default function MunicipioPicker({
 
   return (
     <div className="nid-municipio-picker" ref={wrapRef}>
-      <button
-        type="button"
-        className={`nid-municipio-picker__trigger ${open ? "is-open" : ""}`}
-        onClick={() => (open ? setOpen(false) : openAndFocus())}
-        aria-haspopup="listbox"
-        aria-expanded={open}
-        aria-label={ariaLabel}
-      >
-        <MagnifyingGlassIcon className="nid-municipio-picker__icon" />
-        {open ? (
+      {/* Fechado vira <button>, aberto vira <div> com o input. Os dois nunca
+          coexistem: input dentro de button faz a barra de espaço ativar o botão
+          (e fechar a lista), além de ser marcação inválida.
+          Os atributos ARIA de combobox (role, aria-expanded, aria-activedescendant)
+          vão no elemento que de fato recebe foco (input aberto / button fechado),
+          não neste <div> — leitor de tela só anuncia aria-activedescendant quando
+          ele está no próprio elemento focado, um ancestral não-focável não conta. */}
+      {open ? (
+        <div className="nid-municipio-picker__trigger is-open">
+          <MagnifyingGlassIcon className="nid-municipio-picker__icon" />
           <input
             ref={inputRef}
             type="text"
@@ -116,29 +119,56 @@ export default function MunicipioPicker({
             onKeyDown={handleKeyDown}
             placeholder="Buscar município…"
             className="nid-municipio-picker__input"
-            onClick={(e) => e.stopPropagation()}
-            aria-autocomplete="list"
+            role="combobox"
+            aria-expanded="true"
             aria-controls="municipio-picker-list"
+            aria-autocomplete="list"
+            aria-activedescendant={filtered[activeIdx] ? `municipio-opt-${activeIdx}` : undefined}
           />
-        ) : (
-          <span className={`nid-municipio-picker__display ${!selected ? "is-placeholder" : ""}`}>
-            {selected ? `${selected.nome} — ${selected.estado}` : placeholder}
-          </span>
-        )}
-        {selected && !open && (
-          <span
-            role="button"
-            tabIndex={0}
-            aria-label="Limpar seleção"
-            className="nid-municipio-picker__clear"
-            onClick={(e) => { e.stopPropagation(); onChange(""); }}
-            onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.stopPropagation(); onChange(""); } }}
+          <ChevronDownIcon className="nid-municipio-picker__chevron" />
+        </div>
+      ) : (
+        <div className="nid-municipio-picker__trigger">
+          <button
+            type="button"
+            className="nid-municipio-picker__campo"
+            onClick={openAndFocus}
+            aria-label={ariaLabel}
+            aria-haspopup="listbox"
+            aria-expanded="false"
+            aria-controls="municipio-picker-list"
           >
-            <XMarkIcon style={{ width: 14, height: 14 }} />
-          </span>
-        )}
-        <ChevronDownIcon className="nid-municipio-picker__chevron" />
-      </button>
+            <MagnifyingGlassIcon className="nid-municipio-picker__icon" />
+            <span className={`nid-municipio-picker__display ${!selected ? "is-placeholder" : ""}`}>
+              {selected ? `${selected.nome} — ${selected.estado}` : placeholder}
+            </span>
+          </button>
+          {selected && (
+            <button
+              type="button"
+              aria-label="Limpar seleção"
+              className="nid-municipio-picker__clear"
+              onClick={() => onChange("")}
+            >
+              <XMarkIcon style={{ width: 14, height: 14 }} />
+            </button>
+          )}
+          {/* Duplica no mouse a ação que o "__campo" já oferece ao teclado e
+              ao leitor de tela — sem isso o chevron vira zona morta (era
+              clicável quando fazia parte do <button> único de antes).
+              tabIndex/aria-hidden evitam um segundo ponto de tabulação e um
+              nome acessível repetido. */}
+          <button
+            type="button"
+            tabIndex={-1}
+            aria-hidden="true"
+            className="nid-municipio-picker__chevron-btn"
+            onClick={openAndFocus}
+          >
+            <ChevronDownIcon className="nid-municipio-picker__chevron" />
+          </button>
+        </div>
+      )}
 
       {open && (
         <ul
@@ -157,6 +187,7 @@ export default function MunicipioPicker({
             filtered.map((m, i) => (
               <li
                 key={m.id}
+                id={`municipio-opt-${i}`}
                 data-idx={i}
                 role="option"
                 aria-selected={String(m.id) === String(value)}
