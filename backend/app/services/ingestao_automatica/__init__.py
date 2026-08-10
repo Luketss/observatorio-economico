@@ -21,3 +21,4 @@ from app.services.ingestao_automatica import arrecadacao  # noqa: F401 — rotea
 from app.services.ingestao_automatica import caged_pdet  # noqa: F401
 from app.services.ingestao_automatica import cnpj_rfb  # noqa: F401
 from app.services.ingestao_automatica import rais_pdet  # noqa: F401
+from app.services.ingestao_automatica import ips_arquivo  # noqa: F401 — fonte com upload de arquivo

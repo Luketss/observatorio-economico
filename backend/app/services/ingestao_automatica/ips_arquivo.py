@@ -10,6 +10,7 @@ import csv
 import io
 
 from ingestao.carregar_ips import COLUMN_MAP
+from app.services.ingestao_automatica.base import FonteAutomatica, registrar
 
 COLUNAS_ESSENCIAIS = ("Código IBGE", "UF")
 
@@ -85,3 +86,67 @@ def linha_para_kwargs(row: dict, municipio_id: int, ano: int) -> dict:
         if coluna in row and campo not in kwargs:
             kwargs[campo] = _para_float(row[coluna])
     return kwargs
+
+
+def executar(db, municipios, anos=None, usuario_id=None, notificar=True,
+             progresso=None, arquivo_id=None):
+    """Carrega o arquivo IPS do blob para ips_municipio (upsert por
+    município/ano). `municipios` e `notificar` são ignorados: o arquivo é
+    nacional e a fonte não gera notificações. Falha dura = RuntimeError —
+    o runner marca o job como 'erro' com a mensagem."""
+    from sqlalchemy.dialects.postgresql import insert as pg_insert
+
+    from app.models.ingestao_arquivo import IngestaoArquivo
+    from app.models.ips import IpsMunicipio
+    from app.services.ingestao_automatica.base import ResumoIngestao
+    from ingestao.utils import obter_ou_criar_municipio
+
+    ano = (anos or [None])[0]
+    if not ano:
+        raise RuntimeError("ano não informado — reenvie o arquivo pela tela de coletas")
+    arq = db.get(IngestaoArquivo, arquivo_id) if arquivo_id else None
+    if arq is None:
+        raise RuntimeError("arquivo do upload não encontrado no banco — reenvie pela tela de coletas")
+
+    if progresso:
+        progresso(0, None, f"lendo {arq.nome}")
+    linhas = ler_linhas(arq.conteudo)
+    problema = validar_headers(linhas)
+    if problema:
+        raise RuntimeError(problema)
+
+    resumo = ResumoIngestao(dataset="ips")
+    total = len(linhas)
+    colunas_upsert = None
+    for i, row in enumerate(linhas, start=1):
+        codigo, nome, uf = identificacao(row)
+        if not nome or not uf:
+            resumo.erros.append(f"linha {i}: sem município/UF — ignorada")
+            continue
+        municipio = obter_ou_criar_municipio(db, nome, uf, codigo)
+        kwargs = linha_para_kwargs(row, municipio.id, ano)
+        if colunas_upsert is None:
+            colunas_upsert = [c for c in kwargs if c not in ("municipio_id", "ano")]
+        stmt = pg_insert(IpsMunicipio).values(**kwargs).on_conflict_do_update(
+            index_elements=["municipio_id", "ano"],
+            set_={c: kwargs.get(c) for c in colunas_upsert},
+        )
+        db.execute(stmt)
+        resumo.linhas += 1
+        resumo.municipios_ok += 1
+        if progresso and (i % 200 == 0 or i == total):
+            progresso(i, total, f"IPS {ano}: {i}/{total} municípios")
+    db.commit()
+
+    db.delete(arq)  # blob cumpriu o papel — só sai depois do commit dos dados
+    db.commit()
+    return resumo
+
+
+registrar(FonteAutomatica(
+    key="ips",
+    label="IPS — Índice de Progresso Social",
+    fonte="IPS Brasil (ipsbrasil.org.br) — arquivo anual enviado pela tela de coletas",
+    executar=executar,
+    requer_arquivo=True,
+))

@@ -94,3 +94,15 @@ def test_linha_para_kwargs_valor_vazio_vira_none():
     assert k["area_km2"] is None
     assert k["populacao"] is None
     assert k["ips_geral"] is None
+
+
+def test_fonte_ips_registrada_com_arquivo_e_fora_do_todas():
+    import app.services.ingestao_automatica  # noqa: F401 — popula o registry
+    from app.services.ingestao_automatica.base import (
+        FONTES_AUTOMATICAS,
+        FONTES_FORA_DO_TODAS,
+    )
+
+    assert "ips" in FONTES_AUTOMATICAS
+    assert FONTES_AUTOMATICAS["ips"].requer_arquivo is True
+    assert "ips" in FONTES_FORA_DO_TODAS
