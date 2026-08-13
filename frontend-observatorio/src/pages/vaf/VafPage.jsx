@@ -230,7 +230,7 @@ export default function VafPage() {
       <InsightsPanel dataset="vaf" />
 
       {/* Evolução do IPM */}
-      <NidPanel title="Evolução do IPM" sub="índice de participação municipal por ano-base">
+      <NidPanel title="Evolução do IPM" sub="índice de participação municipal por ano-base" dataset="vaf" indicadorKey="chart_evolucao_ipm">
         <AreaLineChart
           data={ipmData}
           height={280}
@@ -247,6 +247,8 @@ export default function VafPage() {
         <NidPanel
           title="ICMS Projetado a partir do IPM"
           sub="repasse estimado por ano de aplicação · escala o ICMS realizado pela razão do IPM"
+          dataset="vaf"
+          indicadorKey="chart_icms_projetado"
         >
           <NidLegend
             items={[
@@ -267,7 +269,7 @@ export default function VafPage() {
 
       {/* Índice vs Índice Médio */}
       {serie.length > 0 && (
-        <NidPanel title="Índice vs Índice Médio" sub="índice do VAF e sua média móvel por ano-base">
+        <NidPanel title="Índice vs Índice Médio" sub="índice do VAF e sua média móvel por ano-base" dataset="vaf" indicadorKey="chart_indice_vs_medio">
           <NidLegend
             items={[
               { name: "Índice", color: "var(--accent-1)" },
@@ -289,7 +291,7 @@ export default function VafPage() {
           para o painel aparecer com a explicação (ex.: "ainda não há série
           histórica") em vez de sumir quando não há foco. */}
       {(cmp.focusSeries || comp.motivo) && (
-        <NidPanel title="IPM Comparativo — Municípios" sub={descreverPares(comp)}>
+        <NidPanel title="IPM Comparativo — Municípios" sub={descreverPares(comp)} dataset="vaf" indicadorKey="chart_ipm_comparativo">
           <ComparadorMunicipios fixados={comp.fixados} onChange={setFixadosIds} />
           <MultiLineChart
             data={cmp.data}
@@ -310,7 +312,7 @@ export default function VafPage() {
 
       {/* VAF Individual × Estado */}
       {serie.length > 0 && (
-        <NidPanel title="VAF Individual × Estado" sub="valores monetários do VAF · R$">
+        <NidPanel title="VAF Individual × Estado" sub="valores monetários do VAF · R$" dataset="vaf" indicadorKey="chart_vaf_individual_estado">
           <NidLegend
             items={[
               { name: "VAF Individual", color: "var(--accent-1)" },
@@ -330,7 +332,7 @@ export default function VafPage() {
 
       {/* Série Anual table */}
       {serie.length > 0 && (
-        <NidPanel title="Série Anual" sub="histórico · índices, médias e IPM por ano-base">
+        <NidPanel title="Série Anual" sub="histórico · índices, médias e IPM por ano-base" dataset="vaf" indicadorKey="chart_serie_anual">
           <DataTable
             columns={[
               { key: "ano_base",                      label: "Ano-base",       width: 90 },
@@ -355,6 +357,8 @@ export default function VafPage() {
         metric="indice_participacao_municipal"
         fmt={fmtIndice}
         color="var(--accent-4)"
+        dataset="vaf"
+        indicadorKey="chart_comparativo_municipios"
       />
 
       <ReleasesPanel dataset="vaf" />

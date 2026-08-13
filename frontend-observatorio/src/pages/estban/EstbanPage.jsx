@@ -187,6 +187,8 @@ export default function EstbanPage() {
                 : "—"
             } no acumulado`
           : "operações de crédito, poupança e depósitos a prazo"}
+        dataset="estban"
+        indicadorKey="chart_evolucao_credito"
       >
         {comparar && cmp.temAnterior ? (
           <>
@@ -224,7 +226,7 @@ export default function EstbanPage() {
       </NidPanel>
 
       {/* Captação — Depósitos por Tipo */}
-      <NidPanel title="Evolução da Captação — Depósitos por Tipo">
+      <NidPanel title="Evolução da Captação — Depósitos por Tipo" dataset="estban" indicadorKey="chart_captacao_depositos">
         <MultiLineChart
           data={captacao.map((d) => ({
             label: String(d.data_referencia),
@@ -244,7 +246,7 @@ export default function EstbanPage() {
       </NidPanel>
 
       {/* Crédito vs. Captação Total */}
-      <NidPanel title="Crédito vs. Captação Total">
+      <NidPanel title="Crédito vs. Captação Total" dataset="estban" indicadorKey="chart_credito_vs_captacao">
         <MultiLineChart
           data={captacao.map((d) => ({
             label: String(d.data_referencia),
@@ -263,7 +265,7 @@ export default function EstbanPage() {
       </NidPanel>
 
       {/* Composição do Crédito */}
-      <NidPanel title="Composição das Operações de Crédito">
+      <NidPanel title="Composição das Operações de Crédito" dataset="estban" indicadorKey="chart_composicao_credito">
         <StackedBarChart
           data={composicao.map((d) => ({
             label: String(d.data_referencia),
@@ -288,7 +290,7 @@ export default function EstbanPage() {
 
       {/* Crédito por Instituição */}
       <PlanGate planKey="estban.por_instituicao">
-      <NidPanel title="Operações de Crédito por Instituição">
+      <NidPanel title="Operações de Crédito por Instituição" dataset="estban" indicadorKey="chart_credito_instituicao">
         <HBarChart
           data={porInstituicao.slice(0, 10).map((d) => ({ label: d.nome_instituicao, value: d.valor_operacoes_credito || 0 }))}
           color="var(--accent-1)"
@@ -300,7 +302,7 @@ export default function EstbanPage() {
 
       {/* Composição do Crédito por Instituição */}
       {!loading && porInstituicao.length > 0 && porInstituicao.some(r => r.financiamentos_gerais > 0 || r.emprestimos_titulos_descontados > 0) && (
-        <NidPanel title="Composição do Crédito por Instituição">
+        <NidPanel title="Composição do Crédito por Instituição" dataset="estban" indicadorKey="chart_composicao_credito_instituicao">
           <StackedBarChart
             data={porInstituicao.slice(0, 8).map((d) => ({
               label: d.nome_instituicao,
@@ -323,7 +325,7 @@ export default function EstbanPage() {
       )}
 
       {/* Tabela de Instituições — still inside PlanGate */}
-      <NidPanel title="Detalhamento por Instituição">
+      <NidPanel title="Detalhamento por Instituição" dataset="estban" indicadorKey="chart_detalhamento_instituicao">
         {loading ? (
           <div className="animate-pulse h-40 bg-[var(--panel-2)] rounded-xl" />
         ) : (
@@ -350,6 +352,8 @@ export default function EstbanPage() {
         metric="credito_total"
         fmt={(v) => `R$ ${Number(v).toLocaleString("pt-BR", { maximumFractionDigits: 0 })}`}
         color="var(--accent-1)"
+        dataset="estban"
+        indicadorKey="chart_comparativo_municipios"
       />
 
       <ReleasesPanel dataset="estban" />

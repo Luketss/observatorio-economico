@@ -334,7 +334,7 @@ export default function DashboardGeralPage() {
       {/* ChartHoverProvider syncs "annual" group: PIB Evolução ↔ PIB Comparativo */}
       <ChartHoverProvider>
         <div className="nid-grid-2">
-          <NidPanel title="Evolução do PIB" sub="Série anual · IBGE / SIDRA" tabs={["Anual"]}>
+          <NidPanel title="Evolução do PIB" sub="Série anual · IBGE / SIDRA" tabs={["Anual"]} dataset="geral" indicadorKey="chart_evolucao_pib">
             <AreaLineChart data={pibChartData} color={A1} glow height={280} label="PIB Total" syncGroup="annual" />
             <NidLegend items={[{ name: "PIB Total", color: A1 }]} />
           </NidPanel>
@@ -342,6 +342,8 @@ export default function DashboardGeralPage() {
           <NidPanel
             title="Receita por Tipo"
             sub={arrecResumo?.total_geral != null ? "Composição YTD" : "Sem dados"}
+            dataset="geral"
+            indicadorKey="chart_receita_por_tipo"
           >
             {arrecDonut.items.length > 0 ? (
               <>
@@ -368,7 +370,7 @@ export default function DashboardGeralPage() {
 
         {/* VA por Setor + Comparativo cidades */}
         <div className="nid-grid-1-1">
-          <NidPanel title="Valor Adicionado por Setor" sub="Decomposição setorial · R$ correntes">
+          <NidPanel title="Valor Adicionado por Setor" sub="Decomposição setorial · R$ correntes" dataset="geral" indicadorKey="chart_va_setor">
             <StackedBarChart
               data={vaSetorData}
               keys={["Agropecuária", "Indústria", "Serviços", "Governo"]}
@@ -384,7 +386,7 @@ export default function DashboardGeralPage() {
             ]} />
           </NidPanel>
 
-          <NidPanel title="PIB Comparativo" sub={descreverPares(pibComp)}>
+          <NidPanel title="PIB Comparativo" sub={descreverPares(pibComp)} dataset="geral" indicadorKey="chart_pib_comparativo">
             <MultiLineChart
               data={cmp.data}
               series={seriesComp}
@@ -404,7 +406,7 @@ export default function DashboardGeralPage() {
 
       {/* CAGED twin bars + Top setores */}
       <div className="nid-grid-1-1">
-        <NidPanel title="Saldo CAGED" sub="Admissões vs Desligamentos · Últimos 12 meses">
+        <NidPanel title="Saldo CAGED" sub="Admissões vs Desligamentos · Últimos 12 meses" dataset="geral" indicadorKey="chart_saldo_caged">
           <TwinBarChart data={cagedTwinData} glow colorUp={A5} colorDown={A2} height={260} />
           <NidLegend items={[
             { name: "Admissões", color: A5 },
@@ -412,7 +414,7 @@ export default function DashboardGeralPage() {
           ]} />
         </NidPanel>
 
-        <NidPanel title="Top Setores · VA" sub={vaSetorData.length ? `Maiores contribuições ${vaSetorData[vaSetorData.length - 1].label}` : "Sem dados"}>
+        <NidPanel title="Top Setores · VA" sub={vaSetorData.length ? `Maiores contribuições ${vaSetorData[vaSetorData.length - 1].label}` : "Sem dados"} dataset="geral" indicadorKey="chart_top_setores_va">
           <HBarChart data={topSetoresHBar} color={A1} glow height={240} fmt={fmtMoneyShort} />
         </NidPanel>
       </div>
