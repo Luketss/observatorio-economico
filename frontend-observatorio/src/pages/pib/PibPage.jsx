@@ -26,6 +26,8 @@ import {
 import DataTable from "../../components/nid/DataTable";
 import { montarComparativo, descreverPares } from "../../utils/seriesComparativo";
 import ComparadorMunicipios from "../../components/nid/ComparadorMunicipios";
+import PeriodoMenu from "../../components/nid/PeriodoMenu";
+import { resolverSeriePainel } from "../../utils/periodoGrafico";
 
 const fmtBRL = (v) =>
   `R$ ${Number(v).toLocaleString("pt-BR", { maximumFractionDigits: 0 })}`;
@@ -49,6 +51,14 @@ export default function PibPage() {
   const [fixadosIds, setFixadosIds] = useState([]);
   const [loading, setLoading] = useState(true);
   const [filters, setFilters] = useState({ yearFrom: "", yearTo: "" });
+
+  // Preset de período POR GRÁFICO — override do filtro da página, por painel.
+  const [periodosGrafico, setPeriodosGrafico] = useState({});
+  const setPeriodo = (chave) => (preset) =>
+    setPeriodosGrafico((prev) => ({ ...prev, [chave]: preset }));
+  const extrairAno = (d) => ({ ano: d.ano });
+  const seriePara = (chave, rawSerie, seriePagina, extrair) =>
+    resolverSeriePainel({ rawSerie, seriePagina, preset: periodosGrafico[chave], extrair });
 
   // Default "12m" de série anual = último ano com dado (guard p/ o usuário).
   const filtroTocado = useRef(false);
@@ -94,6 +104,15 @@ export default function PibPage() {
       .sort((a, b) => a.ano - b.ano);
   }, [comp, filters]);
 
+  // Cru do painel de VA por setor — mesmos itens do foco, SEM o filtro de ano
+  // da página (o preset por gráfico decide a janela quando houver override).
+  const vaRaw = useMemo(() => {
+    if (!comp.foco) return [];
+    return (comp.itens || [])
+      .filter((d) => d.municipio_id === comp.foco.municipio_id)
+      .sort((a, b) => a.ano - b.ano);
+  }, [comp]);
+
   // Foco + pares comparáveis já vêm pivotados pelo util — o backend manda o
   // envelope, o util decide domínio de anos (o do foco) e rótulos (homônimos
   // entre UFs).
@@ -130,22 +149,21 @@ export default function PibPage() {
 
   // ── NID chart data shapes ──────────────────────────────────────────────────
 
-  const areaData = useMemo(
-    () => serie.map((d) => ({ label: String(d.ano), value: d.pib_total })),
-    [serie]
-  );
+  const areaData = useMemo(() => {
+    const s = seriePara("chart_evolucao_anual", rawSerie, serie, extrairAno);
+    return s.map((d) => ({ label: String(d.ano), value: d.pib_total }));
+  }, [serie, rawSerie, periodosGrafico]);
 
-  const vaChartData = useMemo(
-    () =>
-      vaData.map((d) => ({
-        label: String(d.ano),
-        "Agropecuária": d.va_agropecuaria,
-        "Indústria": d.va_industria,
-        "Serviços": d.va_servicos,
-        "Governo": d.va_governo,
-      })),
-    [vaData]
-  );
+  const vaChartData = useMemo(() => {
+    const s = seriePara("chart_va_setor", vaRaw, vaData, extrairAno);
+    return s.map((d) => ({
+      label: String(d.ano),
+      "Agropecuária": d.va_agropecuaria,
+      "Indústria": d.va_industria,
+      "Serviços": d.va_servicos,
+      "Governo": d.va_governo,
+    }));
+  }, [vaData, vaRaw, periodosGrafico]);
 
   // ── KPI cards ──────────────────────────────────────────────────────────────
 
@@ -218,7 +236,18 @@ export default function PibPage() {
       <InsightsPanel dataset="pib" />
 
       {/* Evolução Anual do PIB */}
-      <NidPanel title="Evolução Anual do PIB" dataset="pib" indicadorKey="chart_evolucao_anual" sub="série histórica · R$ milhões">
+      <NidPanel
+        title="Evolução Anual do PIB"
+        dataset="pib"
+        indicadorKey="chart_evolucao_anual"
+        sub="série histórica · R$ milhões"
+        right={
+          <PeriodoMenu
+            value={periodosGrafico["chart_evolucao_anual"] || null}
+            onChange={setPeriodo("chart_evolucao_anual")}
+          />
+        }
+      >
         {/* demo: array-form (xRange band) + declarative child (point annotation) — both coexist */}
         <AreaLineChart
           data={areaData}
@@ -239,7 +268,18 @@ export default function PibPage() {
       {/* Valor Adicionado por Setor */}
       {vaData.length > 0 && (
         <PlanGate planKey="pib.por_setor">
-          <NidPanel title="Valor Adicionado por Setor" dataset="pib" indicadorKey="chart_va_setor" sub="composição por setor produtivo">
+          <NidPanel
+            title="Valor Adicionado por Setor"
+            dataset="pib"
+            indicadorKey="chart_va_setor"
+            sub="composição por setor produtivo"
+            right={
+              <PeriodoMenu
+                value={periodosGrafico["chart_va_setor"] || null}
+                onChange={setPeriodo("chart_va_setor")}
+              />
+            }
+          >
             <NidLegend
               items={[
                 { name: "Agropecuária", color: "var(--accent-1)" },

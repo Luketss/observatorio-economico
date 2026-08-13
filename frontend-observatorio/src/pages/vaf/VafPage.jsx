@@ -22,6 +22,8 @@ import {
 import DataTable from "../../components/nid/DataTable";
 import { montarComparativo, descreverPares } from "../../utils/seriesComparativo";
 import ComparadorMunicipios from "../../components/nid/ComparadorMunicipios";
+import PeriodoMenu from "../../components/nid/PeriodoMenu";
+import { resolverSeriePainel } from "../../utils/periodoGrafico";
 
 // IPM e índices são valores decimais pequenos (ex.: 0,024115) — não R$.
 const fmtIndice = (v) =>
@@ -53,6 +55,15 @@ export default function VafPage() {
   const [loading, setLoading] = useState(true);
   const [filters, setFilters] = useState({ yearFrom: "", yearTo: "" });
 
+  // Preset de período POR GRÁFICO — override do filtro da página, por painel.
+  const [periodosGrafico, setPeriodosGrafico] = useState({});
+  const setPeriodo = (chave) => (preset) =>
+    setPeriodosGrafico((prev) => ({ ...prev, [chave]: preset }));
+  const extrairAno = (d) => ({ ano: d.ano_base });
+  const extrairIcms = (d) => ({ ano: d.ano_aplicacao ?? d.ano_base });
+  const seriePara = (chave, rawSerie, seriePagina, extrair) =>
+    resolverSeriePainel({ rawSerie, seriePagina, preset: periodosGrafico[chave], extrair });
+
   // Default "12m" de série anual = último ano-base com dado (guard p/ usuário).
   const filtroTocado = useRef(false);
   const mudarFiltros = (v) => { filtroTocado.current = true; setFilters(v); };
@@ -81,16 +92,17 @@ export default function VafPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [fixadosIds]);
 
-  // ICMS projetado a partir do IPM (ancorado no ICMS realizado)
-  const icmsChart = useMemo(
-    () =>
-      icmsProj.map((d) => ({
-        label: String(d.ano_aplicacao ?? d.ano_base),
-        "Projetado": d.icms_projetado,
-        "Realizado": d.realizado,
-      })),
-    [icmsProj]
-  );
+  // ICMS projetado a partir do IPM (ancorado no ICMS realizado). Hoje a
+  // "série da página" deste painel É o cru (sem filtro de período aplicado
+  // antes) — sem override, o preset continua sendo o próprio icmsProj.
+  const icmsChart = useMemo(() => {
+    const s = seriePara("chart_icms_projetado", icmsProj, icmsProj, extrairIcms);
+    return s.map((d) => ({
+      label: String(d.ano_aplicacao ?? d.ano_base),
+      "Projetado": d.icms_projetado,
+      "Realizado": d.realizado,
+    }));
+  }, [icmsProj, periodosGrafico]);
 
   const years = useMemo(() => rawSerie.map((d) => d.ano_base).sort(), [rawSerie]);
 
@@ -130,34 +142,31 @@ export default function VafPage() {
 
   // ── NID chart data shapes ──────────────────────────────────────────────────
 
-  const ipmData = useMemo(
-    () =>
-      serie.map((d) => ({
-        label: String(d.ano_base),
-        value: d.indice_participacao_municipal,
-      })),
-    [serie]
-  );
+  const ipmData = useMemo(() => {
+    const s = seriePara("chart_evolucao_ipm", rawSerie, serie, extrairAno);
+    return s.map((d) => ({
+      label: String(d.ano_base),
+      value: d.indice_participacao_municipal,
+    }));
+  }, [serie, rawSerie, periodosGrafico]);
 
-  const indicesData = useMemo(
-    () =>
-      serie.map((d) => ({
-        label: String(d.ano_base),
-        "Índice": d.indice,
-        "Índice Médio": d.indice_medio,
-      })),
-    [serie]
-  );
+  const indicesData = useMemo(() => {
+    const s = seriePara("chart_indice_vs_medio", rawSerie, serie, extrairAno);
+    return s.map((d) => ({
+      label: String(d.ano_base),
+      "Índice": d.indice,
+      "Índice Médio": d.indice_medio,
+    }));
+  }, [serie, rawSerie, periodosGrafico]);
 
-  const vafData = useMemo(
-    () =>
-      serie.map((d) => ({
-        label: String(d.ano_base),
-        "VAF Individual": d.vaf_individual,
-        "VAF do Estado": d.vaf_estado,
-      })),
-    [serie]
-  );
+  const vafData = useMemo(() => {
+    const s = seriePara("chart_vaf_individual_estado", rawSerie, serie, extrairAno);
+    return s.map((d) => ({
+      label: String(d.ano_base),
+      "VAF Individual": d.vaf_individual,
+      "VAF do Estado": d.vaf_estado,
+    }));
+  }, [serie, rawSerie, periodosGrafico]);
 
   // ── KPI cards ──────────────────────────────────────────────────────────────
 
@@ -230,7 +239,18 @@ export default function VafPage() {
       <InsightsPanel dataset="vaf" />
 
       {/* Evolução do IPM */}
-      <NidPanel title="Evolução do IPM" sub="índice de participação municipal por ano-base" dataset="vaf" indicadorKey="chart_evolucao_ipm">
+      <NidPanel
+        title="Evolução do IPM"
+        sub="índice de participação municipal por ano-base"
+        dataset="vaf"
+        indicadorKey="chart_evolucao_ipm"
+        right={
+          <PeriodoMenu
+            value={periodosGrafico["chart_evolucao_ipm"] || null}
+            onChange={setPeriodo("chart_evolucao_ipm")}
+          />
+        }
+      >
         <AreaLineChart
           data={ipmData}
           height={280}
@@ -249,6 +269,12 @@ export default function VafPage() {
           sub="repasse estimado por ano de aplicação · escala o ICMS realizado pela razão do IPM"
           dataset="vaf"
           indicadorKey="chart_icms_projetado"
+          right={
+            <PeriodoMenu
+              value={periodosGrafico["chart_icms_projetado"] || null}
+              onChange={setPeriodo("chart_icms_projetado")}
+            />
+          }
         >
           <NidLegend
             items={[
@@ -269,7 +295,18 @@ export default function VafPage() {
 
       {/* Índice vs Índice Médio */}
       {serie.length > 0 && (
-        <NidPanel title="Índice vs Índice Médio" sub="índice do VAF e sua média móvel por ano-base" dataset="vaf" indicadorKey="chart_indice_vs_medio">
+        <NidPanel
+          title="Índice vs Índice Médio"
+          sub="índice do VAF e sua média móvel por ano-base"
+          dataset="vaf"
+          indicadorKey="chart_indice_vs_medio"
+          right={
+            <PeriodoMenu
+              value={periodosGrafico["chart_indice_vs_medio"] || null}
+              onChange={setPeriodo("chart_indice_vs_medio")}
+            />
+          }
+        >
           <NidLegend
             items={[
               { name: "Índice", color: "var(--accent-1)" },
@@ -312,7 +349,18 @@ export default function VafPage() {
 
       {/* VAF Individual × Estado */}
       {serie.length > 0 && (
-        <NidPanel title="VAF Individual × Estado" sub="valores monetários do VAF · R$" dataset="vaf" indicadorKey="chart_vaf_individual_estado">
+        <NidPanel
+          title="VAF Individual × Estado"
+          sub="valores monetários do VAF · R$"
+          dataset="vaf"
+          indicadorKey="chart_vaf_individual_estado"
+          right={
+            <PeriodoMenu
+              value={periodosGrafico["chart_vaf_individual_estado"] || null}
+              onChange={setPeriodo("chart_vaf_individual_estado")}
+            />
+          }
+        >
           <NidLegend
             items={[
               { name: "VAF Individual", color: "var(--accent-1)" },

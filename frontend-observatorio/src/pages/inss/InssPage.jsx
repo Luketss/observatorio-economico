@@ -15,6 +15,8 @@ import { useAuth } from "../../context/AuthContext";
 import { useViewAs } from "../../context/ViewAsContext";
 import KpiSkeleton from "../../components/nid/KpiSkeleton";
 import SelecioneMunicipio from "../../components/nid/SelecioneMunicipio";
+import PeriodoMenu from "../../components/nid/PeriodoMenu";
+import { resolverSeriePainel } from "../../utils/periodoGrafico";
 
 
 const fmtBRL = (v) =>
@@ -35,6 +37,14 @@ export default function InssPage() {
   const [rawSerie, setRawSerie] = useState([]);
   const [loading, setLoading] = useState(true);
   const [filters, setFilters] = useState({ yearFrom: "", yearTo: "" });
+
+  // Preset de período POR GRÁFICO — override do filtro da página, por painel.
+  const [periodosGrafico, setPeriodosGrafico] = useState({});
+  const setPeriodo = (chave) => (preset) =>
+    setPeriodosGrafico((prev) => ({ ...prev, [chave]: preset }));
+  const extrairAno = (d) => ({ ano: d.ano });
+  const seriePara = (chave, rawSerie, seriePagina, extrair) =>
+    resolverSeriePainel({ rawSerie, seriePagina, preset: periodosGrafico[chave], extrair });
 
   // Default "12m ancorado" = último ano com dado (série anual).
   const filtroTocado = useRef(false);
@@ -65,8 +75,11 @@ export default function InssPage() {
   }, [rawSerie, filters]);
 
   const topCategorias = useMemo(() => {
+    // Sem eixo de tempo neste painel — o preset muda a JANELA da agregação
+    // (top-10 do período escolhido), não um eixo x de anos.
+    const s = seriePara("chart_top_categorias", rawSerie, serie, extrairAno);
     const catMap = {};
-    serie.forEach((item) => {
+    s.forEach((item) => {
       if (!catMap[item.categoria]) {
         catMap[item.categoria] = { categoria: item.categoria, quantidade_beneficios: 0, valor_anual: 0 };
       }
@@ -76,16 +89,17 @@ export default function InssPage() {
     return Object.values(catMap)
       .sort((a, b) => b.quantidade_beneficios - a.quantidade_beneficios)
       .slice(0, 10);
-  }, [serie]);
+  }, [serie, rawSerie, periodosGrafico]);
 
   const evolucaoAnual = useMemo(() => {
+    const s = seriePara("chart_evolucao_anual", rawSerie, serie, extrairAno);
     const anoMap = {};
-    serie.forEach((item) => {
+    s.forEach((item) => {
       if (!anoMap[item.ano]) anoMap[item.ano] = { ano: item.ano, quantidade_beneficios: 0 };
       anoMap[item.ano].quantidade_beneficios += item.quantidade_beneficios ?? 0;
     });
     return Object.values(anoMap).sort((a, b) => a.ano - b.ano);
-  }, [serie]);
+  }, [serie, rawSerie, periodosGrafico]);
 
   // Table data: sorted by valor_anual desc
   const tableData = [...serie]
@@ -165,7 +179,17 @@ export default function InssPage() {
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Top Categorias */}
-        <NidPanel title="Top Categorias de Benefícios" dataset="inss" indicadorKey="chart_top_categorias">
+        <NidPanel
+          title="Top Categorias de Benefícios"
+          dataset="inss"
+          indicadorKey="chart_top_categorias"
+          right={
+            <PeriodoMenu
+              value={periodosGrafico["chart_top_categorias"] || null}
+              onChange={setPeriodo("chart_top_categorias")}
+            />
+          }
+        >
           <HBarChart
             data={topCategorias.map((d) => ({ label: d.categoria, value: d.quantidade_beneficios || 0 }))}
             color="var(--accent-3)"
@@ -176,7 +200,17 @@ export default function InssPage() {
         </NidPanel>
 
         {/* Evolução Anual */}
-        <NidPanel title="Evolução Anual de Benefícios" dataset="inss" indicadorKey="chart_evolucao_anual">
+        <NidPanel
+          title="Evolução Anual de Benefícios"
+          dataset="inss"
+          indicadorKey="chart_evolucao_anual"
+          right={
+            <PeriodoMenu
+              value={periodosGrafico["chart_evolucao_anual"] || null}
+              onChange={setPeriodo("chart_evolucao_anual")}
+            />
+          }
+        >
           <AreaLineChart
             data={evolucaoAnual.map((d) => ({ label: String(d.ano), value: d.quantidade_beneficios || 0 }))}
             height={280}
