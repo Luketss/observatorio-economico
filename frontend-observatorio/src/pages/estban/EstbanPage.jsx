@@ -18,6 +18,8 @@ import { useAuth } from "../../context/AuthContext";
 import { useViewAs } from "../../context/ViewAsContext";
 import KpiSkeleton from "../../components/nid/KpiSkeleton";
 import SelecioneMunicipio from "../../components/nid/SelecioneMunicipio";
+import PeriodoMenu from "../../components/nid/PeriodoMenu";
+import { resolverSeriePainel } from "../../utils/periodoGrafico";
 
 
 const fmtBRL = (v) =>
@@ -43,6 +45,18 @@ export default function EstbanPage() {
   const [loading, setLoading] = useState(true);
   const [filters, setFilters] = useState({ yearFrom: "", yearTo: "" });
   const [comparar, setComparar] = useState(false);
+
+  // Preset de período POR GRÁFICO — override do filtro da página, por painel.
+  const [periodosGrafico, setPeriodosGrafico] = useState({});
+  const setPeriodo = (chave) => (preset) =>
+    setPeriodosGrafico((prev) => ({ ...prev, [chave]: preset }));
+  // Série mensal de verdade (data_referencia) — o preset 12m ganha âncora mensal.
+  const extrairPeriodo = (d) => ({
+    ano: Number(String(d.data_referencia).slice(0, 4)),
+    mes: Number(String(d.data_referencia).slice(5, 7)),
+  });
+  const seriePara = (chave, rawSerieX, seriePagina) =>
+    resolverSeriePainel({ rawSerie: rawSerieX, seriePagina, preset: periodosGrafico[chave], extrair: extrairPeriodo });
 
   // Default "12m" = últimos 2 anos com dado (FilterBar só de ano; mesma
   // semântica do botão 12m). Guard contra sobrescrever o usuário.
@@ -106,6 +120,24 @@ export default function EstbanPage() {
   const serie = useMemo(() => rawSerie.filter(applyYearFilter), [rawSerie, filters]);
   const captacao = useMemo(() => rawCaptacao.filter(applyYearFilter), [rawCaptacao, filters]);
   const composicao = useMemo(() => rawComposicao.filter(applyYearFilter), [rawComposicao, filters]);
+
+  // Séries resolvidas por painel (preset override, se houver; senão a da página).
+  const serieEvolucaoCredito = useMemo(
+    () => seriePara("chart_evolucao_credito", rawSerie, serie),
+    [rawSerie, serie, periodosGrafico]
+  );
+  const serieCaptacaoDepositos = useMemo(
+    () => seriePara("chart_captacao_depositos", rawCaptacao, captacao),
+    [rawCaptacao, captacao, periodosGrafico]
+  );
+  const serieCreditoVsCaptacao = useMemo(
+    () => seriePara("chart_credito_vs_captacao", rawCaptacao, captacao),
+    [rawCaptacao, captacao, periodosGrafico]
+  );
+  const serieComposicaoCredito = useMemo(
+    () => seriePara("chart_composicao_credito", rawComposicao, composicao),
+    [rawComposicao, composicao, periodosGrafico]
+  );
 
   // Snapshot: saldos do último mês publicado — NÃO reagem ao filtro (o sub diz).
   const cards = [
@@ -189,6 +221,12 @@ export default function EstbanPage() {
           : "operações de crédito, poupança e depósitos a prazo"}
         dataset="estban"
         indicadorKey="chart_evolucao_credito"
+        right={!comparar ? (
+          <PeriodoMenu
+            value={periodosGrafico["chart_evolucao_credito"] || null}
+            onChange={setPeriodo("chart_evolucao_credito")}
+          />
+        ) : undefined}
       >
         {comparar && cmp.temAnterior ? (
           <>
@@ -207,7 +245,7 @@ export default function EstbanPage() {
           </>
         ) : (
           <MultiLineChart
-            data={serie.map((d) => ({
+            data={serieEvolucaoCredito.map((d) => ({
               label: String(d.data_referencia),
               "Operações de Crédito": d.valor_operacoes_credito || 0,
               "Poupança": d.valor_poupanca || 0,
@@ -226,9 +264,19 @@ export default function EstbanPage() {
       </NidPanel>
 
       {/* Captação — Depósitos por Tipo */}
-      <NidPanel title="Evolução da Captação — Depósitos por Tipo" dataset="estban" indicadorKey="chart_captacao_depositos">
+      <NidPanel
+        title="Evolução da Captação — Depósitos por Tipo"
+        dataset="estban"
+        indicadorKey="chart_captacao_depositos"
+        right={
+          <PeriodoMenu
+            value={periodosGrafico["chart_captacao_depositos"] || null}
+            onChange={setPeriodo("chart_captacao_depositos")}
+          />
+        }
+      >
         <MultiLineChart
-          data={captacao.map((d) => ({
+          data={serieCaptacaoDepositos.map((d) => ({
             label: String(d.data_referencia),
             "Depósitos à Vista": d.depositos_vista || 0,
             "Poupança": d.poupanca || 0,
@@ -246,9 +294,19 @@ export default function EstbanPage() {
       </NidPanel>
 
       {/* Crédito vs. Captação Total */}
-      <NidPanel title="Crédito vs. Captação Total" dataset="estban" indicadorKey="chart_credito_vs_captacao">
+      <NidPanel
+        title="Crédito vs. Captação Total"
+        dataset="estban"
+        indicadorKey="chart_credito_vs_captacao"
+        right={
+          <PeriodoMenu
+            value={periodosGrafico["chart_credito_vs_captacao"] || null}
+            onChange={setPeriodo("chart_credito_vs_captacao")}
+          />
+        }
+      >
         <MultiLineChart
-          data={captacao.map((d) => ({
+          data={serieCreditoVsCaptacao.map((d) => ({
             label: String(d.data_referencia),
             "Operações de Crédito": d.operacoes_credito || 0,
             "Total Captação": d.total_captacao || 0,
@@ -265,9 +323,19 @@ export default function EstbanPage() {
       </NidPanel>
 
       {/* Composição do Crédito */}
-      <NidPanel title="Composição das Operações de Crédito" dataset="estban" indicadorKey="chart_composicao_credito">
+      <NidPanel
+        title="Composição das Operações de Crédito"
+        dataset="estban"
+        indicadorKey="chart_composicao_credito"
+        right={
+          <PeriodoMenu
+            value={periodosGrafico["chart_composicao_credito"] || null}
+            onChange={setPeriodo("chart_composicao_credito")}
+          />
+        }
+      >
         <StackedBarChart
-          data={composicao.map((d) => ({
+          data={serieComposicaoCredito.map((d) => ({
             label: String(d.data_referencia),
             "Empréstimos/Títulos": d.emprestimos_titulos_descontados || 0,
             "Financiamentos Gerais": d.financiamentos_gerais || 0,

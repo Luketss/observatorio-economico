@@ -16,6 +16,8 @@ import { AreaLineChart, MultiLineChart, StackedBarChart, fmtMoneyShort, fmtMoney
 import CompareToggle from "../../components/nid/CompareToggle";
 import { comparePanelData } from "../../utils/periodos";
 import DataTable from "../../components/nid/DataTable";
+import PeriodoMenu from "../../components/nid/PeriodoMenu";
+import { resolverSeriePainel } from "../../utils/periodoGrafico";
 
 const fmtBRL = (v) =>
   `R$ ${Number(v).toLocaleString("pt-BR", { maximumFractionDigits: 0 })}`;
@@ -34,6 +36,16 @@ export default function ArrecadacaoPage() {
   const [filters, setFilters] = useState({ yearFrom: "", yearTo: "" });
   const [comparar, setComparar] = useState(false);
   const cmp = useMemo(() => comparePanelData(rawSerie, { valueKey: "total" }), [rawSerie]);
+
+  // Preset de período POR GRÁFICO — override do filtro da página, por painel.
+  // Itens mensais mas só com `ano` numérico no shape (sem `mes`); preset 12m
+  // vira "último ano com dado" — comportamento esperado para esta série.
+  const [periodosGrafico, setPeriodosGrafico] = useState({});
+  const setPeriodo = (chave) => (preset) =>
+    setPeriodosGrafico((prev) => ({ ...prev, [chave]: preset }));
+  const extrairAno = (d) => ({ ano: d.ano });
+  const seriePara = (chave, rawSerieX, seriePagina) =>
+    resolverSeriePainel({ rawSerie: rawSerieX, seriePagina, preset: periodosGrafico[chave], extrair: extrairAno });
 
   // Default "12m ancorado no último dado": aplicado UMA vez no primeiro fetch;
   // interação do usuário que chegue antes (filtroTocado) tem prioridade.
@@ -68,10 +80,23 @@ export default function ArrecadacaoPage() {
   }, [rawSerie, filters]);
 
   // NID chart shape for AreaLineChart
-  const areaData = useMemo(
-    () => serie.map((d) => ({ label: String(d.periodo), value: d.total || 0 })),
-    [serie]
-  );
+  const areaData = useMemo(() => {
+    const s = seriePara("chart_serie_mensal", rawSerie, serie);
+    return s.map((d) => ({ label: String(d.periodo), value: d.total || 0 }));
+  }, [serie, rawSerie, periodosGrafico]);
+
+  // Painel de composição por tipo: sem override, mantém `.slice(-24)` (janela
+  // fixa de hoje); com override, usa a série resolvida SEM slice — o preset
+  // já É o recorte que o usuário pediu.
+  const composicaoTipoData = useMemo(() => {
+    const s = seriePara("chart_composicao_tipo", rawSerie, serie.slice(-24));
+    return s.map((d) => ({
+      label: String(d.periodo),
+      icms: d.icms || 0,
+      ipva: d.ipva || 0,
+      ipi: d.ipi || 0,
+    }));
+  }, [serie, rawSerie, periodosGrafico]);
 
   // Fluxo: somas derivadas da MESMA série filtrada dos gráficos (linhas mensais).
   const totalPeriodo = useMemo(
@@ -167,6 +192,12 @@ export default function ArrecadacaoPage() {
                 : "—"
             } no acumulado`
           : "receita total por período"}
+        right={!comparar ? (
+          <PeriodoMenu
+            value={periodosGrafico["chart_serie_mensal"] || null}
+            onChange={setPeriodo("chart_serie_mensal")}
+          />
+        ) : undefined}
       >
         {comparar && cmp.temAnterior ? (
           <>
@@ -198,14 +229,19 @@ export default function ArrecadacaoPage() {
 
       {/* ICMS / IPVA / IPI Breakdown */}
       {serie.length > 0 && (
-        <NidPanel title="Composição por Tipo de Imposto (ICMS / IPVA / IPI)" dataset="arrecadacao" indicadorKey="chart_composicao_tipo">
+        <NidPanel
+          title="Composição por Tipo de Imposto (ICMS / IPVA / IPI)"
+          dataset="arrecadacao"
+          indicadorKey="chart_composicao_tipo"
+          right={
+            <PeriodoMenu
+              value={periodosGrafico["chart_composicao_tipo"] || null}
+              onChange={setPeriodo("chart_composicao_tipo")}
+            />
+          }
+        >
           <StackedBarChart
-            data={serie.slice(-24).map((d) => ({
-              label: String(d.periodo),
-              icms: d.icms || 0,
-              ipva: d.ipva || 0,
-              ipi: d.ipi || 0,
-            }))}
+            data={composicaoTipoData}
             keys={["icms", "ipva", "ipi"]}
             colors={["var(--accent-1)", "var(--accent-5)", "var(--accent-4)"]}
             height={280}
