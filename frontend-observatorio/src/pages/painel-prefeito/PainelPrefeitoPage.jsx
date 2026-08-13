@@ -13,6 +13,9 @@ import EmendasResumoCard from "../../components/EmendasResumoCard";
 import { fmtMoneyShort, fmtNumberShort } from "../../components/nid/charts";
 import KpiSkeleton from "../../components/nid/KpiSkeleton";
 import SelecioneMunicipio from "../../components/nid/SelecioneMunicipio";
+import FunilResumoCard from "../../components/FunilResumoCard";
+import ProjetosResumoCard from "../../components/ProjetosResumoCard";
+import { lerModo, persistirModo } from "../../utils/painelModo";
 import {
   BanknotesIcon,
   BuildingOffice2Icon,
@@ -114,6 +117,9 @@ const PANORAMA = [
   "arrecadacao", "pib", "vaf", "caged", "rais", "empresas",
   "estban", "comex", "pix", "bolsa_familia", "pe_de_meia", "inss", "ips",
 ];
+
+// Subconjunto macro do modo gerencial — mesmas entradas do METRICS.
+const PANORAMA_GERENCIAL = ["pib", "arrecadacao", "caged", "vaf"];
 
 // ── secretaria / área config (fixed, standard set) ──────────────────────────
 const AREAS = [
@@ -281,6 +287,8 @@ export default function PainelPrefeitoPage() {
   const [indicadores, setIndicadores] = useState([]);
   const [acoes, setAcoes] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [modo, setModo] = useState(lerModo);
+  useEffect(() => { persistirModo(modo); }, [modo]);
 
   useEffect(() => {
     if (needsMunicipio) {
@@ -353,7 +361,14 @@ export default function PainelPrefeitoPage() {
 
   return (
     <motion.div initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3 }}>
-      <NidPageHeader title="Painel do Prefeito" sub="Visão executiva de todas as áreas do município" />
+      <NidPageHeader
+        title="Painel do Prefeito"
+        sub="Visão executiva de todas as áreas do município"
+        chips={[
+          { label: "Gerencial", active: modo === "gerencial", onClick: () => setModo("gerencial") },
+          { label: "Detalhado", active: modo === "detalhado", onClick: () => setModo("detalhado") },
+        ]}
+      />
 
       {/* AI priorities */}
       <div className="mt-4 mb-7">
@@ -371,57 +386,89 @@ export default function PainelPrefeitoPage() {
         <EmendasResumoCard />
       </div>
 
-      {/* Panorama — all headline metrics */}
-      <SectionTitle>Panorama geral</SectionTitle>
-      {loading ? (
-        <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-4 mb-9">
-          {[...Array(8)].map((_, i) => <KpiSkeleton key={i} />)}
-        </div>
+      {modo === "gerencial" ? (
+        <>
+          <SectionTitle>Visão geral</SectionTitle>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-7">
+            {loading
+              ? Array.from({ length: 4 }).map((_, i) => <KpiSkeleton key={i} />)
+              : PANORAMA_GERENCIAL.map((key, i) => {
+                  const m = METRICS[key];
+                  const p = m.pick(resumo[key]);
+                  return (
+                    <Link key={key} to={m.route} className="block">
+                      <KpiCard
+                        label={m.label}
+                        value={p.value}
+                        unit={p.unit}
+                        delta={p.delta}
+                        sub={p.foot}
+                        delay={i * 0.03}
+                      />
+                    </Link>
+                  );
+                })}
+          </div>
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
+            <FunilResumoCard />
+            <ProjetosResumoCard />
+          </div>
+        </>
       ) : (
-        <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-4 mb-9">
-          {PANORAMA.map((key, i) => {
-            const m = METRICS[key];
-            const p = m.pick(resumo[key]);
-            return (
-              <Link key={key} to={m.route} className="block">
-                <KpiCard
-                  label={m.label}
-                  value={p.value}
-                  unit={p.unit}
-                  delta={p.delta}
-                  sub={p.foot}
-                  delay={i * 0.03}
-                />
-              </Link>
-            );
-          })}
-        </div>
+        <>
+          {/* Panorama — all headline metrics */}
+          <SectionTitle>Panorama geral</SectionTitle>
+          {loading ? (
+            <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-4 mb-9">
+              {[...Array(8)].map((_, i) => <KpiSkeleton key={i} />)}
+            </div>
+          ) : (
+            <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-4 mb-9">
+              {PANORAMA.map((key, i) => {
+                const m = METRICS[key];
+                const p = m.pick(resumo[key]);
+                return (
+                  <Link key={key} to={m.route} className="block">
+                    <KpiCard
+                      label={m.label}
+                      value={p.value}
+                      unit={p.unit}
+                      delta={p.delta}
+                      sub={p.foot}
+                      delay={i * 0.03}
+                    />
+                  </Link>
+                );
+              })}
+            </div>
+          )}
+
+          {/* Por secretaria / área */}
+          <SectionTitle>Por secretaria / área</SectionTitle>
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
+            {AREAS.map((area) => (
+              <AreaCard
+                key={area.key}
+                area={area}
+                resumo={resumo}
+                ips={ips}
+                indicadores={indByArea[area.key]}
+                acoes={planoByArea[area.key]}
+              />
+            ))}
+
+            {(outrasInds.length > 0 || outrasAcoes.length > 0) && (
+              <AreaCard
+                area={{ key: "outras", label: "Outras áreas", icon: Squares2X2Icon, datasets: [], ips: [], aliases: [] }}
+                resumo={resumo}
+                ips={ips}
+                indicadores={outrasInds}
+                acoes={outrasAcoes}
+              />
+            )}
+          </div>
+        </>
       )}
-
-      {/* Por secretaria / área */}
-      <SectionTitle>Por secretaria / área</SectionTitle>
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
-        {AREAS.map((area) => (
-          <AreaCard
-            key={area.key}
-            area={area}
-            resumo={resumo}
-            ips={ips}
-            indicadores={indByArea[area.key]}
-            acoes={planoByArea[area.key]}
-          />
-        ))}
-
-        {(outrasInds.length > 0 || outrasAcoes.length > 0) && (
-          <AreaCard
-            area={{ key: "outras", label: "Outras áreas", icon: Squares2X2Icon, datasets: [], ips: [], aliases: [] }}
-            resumo={resumo}
-            ips={ips}
-            indicadores={outrasInds}
-            acoes={outrasAcoes}
-          />
-        )}
-      </div>
     </motion.div>
   );
 }
