@@ -15,6 +15,8 @@ import { useAuth } from "../../context/AuthContext";
 import { useViewAs } from "../../context/ViewAsContext";
 import KpiSkeleton from "../../components/nid/KpiSkeleton";
 import SelecioneMunicipio from "../../components/nid/SelecioneMunicipio";
+import PeriodoMenu from "../../components/nid/PeriodoMenu";
+import { resolverSeriePainel } from "../../utils/periodoGrafico";
 
 
 const fmtBRL = (v) =>
@@ -83,6 +85,19 @@ export default function PeDeMeiaPage() {
     () => rawSerie.filter((d) => dentroDoFiltro(d, filters, (x) => ({ ano: x.ano, mes: x.mes }))),
     [rawSerie, filters]
   );
+
+  const [periodosGrafico, setPeriodosGrafico] = useState({});
+  const setPeriodo = (chave) => (preset) =>
+    setPeriodosGrafico((prev) => ({ ...prev, [chave]: preset }));
+  const seriePara = (chave) =>
+    resolverSeriePainel({
+      rawSerie,
+      seriePagina: serie,
+      preset: periodosGrafico[chave],
+      extrair: (d) => ({ ano: d.ano, mes: d.mes }),
+    });
+
+  const serieEvolucaoEstudantes = seriePara("chart_evolucao_estudantes");
 
   // Fluxo: estudantes/mês = MÉDIA no período (somar duplicaria pessoas);
   // valor = SOMA do período. Mesma série filtrada dos gráficos.
@@ -172,6 +187,12 @@ export default function PeDeMeiaPage() {
                 : "—"
             } no acumulado`
           : "total de estudantes beneficiados por mês"}
+        right={!comparar ? (
+          <PeriodoMenu
+            value={periodosGrafico["chart_evolucao_estudantes"] || null}
+            onChange={setPeriodo("chart_evolucao_estudantes")}
+          />
+        ) : undefined}
       >
         {comparar && cmp.temAnterior ? (
           <>
@@ -190,7 +211,7 @@ export default function PeDeMeiaPage() {
           </>
         ) : (
           <AreaLineChart
-            data={serie.map((d) => ({ label: d.periodo, value: d.total_estudantes || 0 }))}
+            data={serieEvolucaoEstudantes.map((d) => ({ label: d.periodo, value: d.total_estudantes || 0 }))}
             height={280}
             color="var(--accent-5)"
             label="Estudantes"

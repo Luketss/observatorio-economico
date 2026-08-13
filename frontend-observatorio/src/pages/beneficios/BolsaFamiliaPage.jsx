@@ -16,6 +16,8 @@ import { useAuth } from "../../context/AuthContext";
 import { useViewAs } from "../../context/ViewAsContext";
 import KpiSkeleton from "../../components/nid/KpiSkeleton";
 import SelecioneMunicipio from "../../components/nid/SelecioneMunicipio";
+import PeriodoMenu from "../../components/nid/PeriodoMenu";
+import { resolverSeriePainel } from "../../utils/periodoGrafico";
 
 const fmtBRL = (v) =>
   v != null
@@ -65,6 +67,21 @@ export default function BolsaFamiliaPage() {
     () => rawSerie.filter((d) => dentroDoFiltro(d, filters, (x) => ({ ano: x.ano, mes: x.mes }))),
     [rawSerie, filters]
   );
+
+  const [periodosGrafico, setPeriodosGrafico] = useState({});
+  const setPeriodo = (chave) => (preset) =>
+    setPeriodosGrafico((prev) => ({ ...prev, [chave]: preset }));
+  const seriePara = (chave) =>
+    resolverSeriePainel({
+      rawSerie,
+      seriePagina: serie,
+      preset: periodosGrafico[chave],
+      extrair: (d) => ({ ano: d.ano, mes: d.mes }),
+    });
+
+  const serieEvolucaoBeneficiarios = seriePara("chart_evolucao_beneficiarios");
+  const serieTotalVsPrimeiraInfancia = seriePara("chart_total_vs_primeira_infancia");
+  const serieRepasses = seriePara("chart_repasses");
 
   // Fluxo: contagens mensais viram MÉDIA no período (somar duplicaria famílias);
   // valores em R$ são SOMA do período. Mesma série filtrada dos gráficos.
@@ -169,6 +186,12 @@ export default function BolsaFamiliaPage() {
                 : "—"
             } no acumulado`
           : "total de beneficiários por mês"}
+        right={!comparar ? (
+          <PeriodoMenu
+            value={periodosGrafico["chart_evolucao_beneficiarios"] || null}
+            onChange={setPeriodo("chart_evolucao_beneficiarios")}
+          />
+        ) : undefined}
       >
         {comparar && cmp.temAnterior ? (
           <>
@@ -187,7 +210,7 @@ export default function BolsaFamiliaPage() {
           </>
         ) : (
           <AreaLineChart
-            data={serie.map((d) => ({ label: d.periodo, value: d.total_beneficiarios || 0 }))}
+            data={serieEvolucaoBeneficiarios.map((d) => ({ label: d.periodo, value: d.total_beneficiarios || 0 }))}
             height={280}
             color="var(--accent-1)"
             label="Beneficiários"
@@ -200,9 +223,19 @@ export default function BolsaFamiliaPage() {
       </NidPanel>
 
       {/* Beneficiários: Total vs Primeira Infância */}
-      <NidPanel title="Beneficiários: Total vs Primeira Infância" dataset="bolsa_familia" indicadorKey="chart_total_vs_primeira_infancia">
+      <NidPanel
+        title="Beneficiários: Total vs Primeira Infância"
+        dataset="bolsa_familia"
+        indicadorKey="chart_total_vs_primeira_infancia"
+        right={
+          <PeriodoMenu
+            value={periodosGrafico["chart_total_vs_primeira_infancia"] || null}
+            onChange={setPeriodo("chart_total_vs_primeira_infancia")}
+          />
+        }
+      >
         <MultiLineChart
-          data={serie.map((d) => ({
+          data={serieTotalVsPrimeiraInfancia.map((d) => ({
             label: d.periodo,
             "Total Beneficiários": d.total_beneficiarios || 0,
             "Primeira Infância": d.beneficiarios_primeira_infancia || 0,
@@ -219,9 +252,19 @@ export default function BolsaFamiliaPage() {
       </NidPanel>
 
       {/* Comparativo Bolsa vs Primeira Infância */}
-      <NidPanel title="Repasses: Bolsa Família vs Primeira Infância" dataset="bolsa_familia" indicadorKey="chart_repasses">
+      <NidPanel
+        title="Repasses: Bolsa Família vs Primeira Infância"
+        dataset="bolsa_familia"
+        indicadorKey="chart_repasses"
+        right={
+          <PeriodoMenu
+            value={periodosGrafico["chart_repasses"] || null}
+            onChange={setPeriodo("chart_repasses")}
+          />
+        }
+      >
         <StackedBarChart
-          data={serie.map((d) => ({
+          data={serieRepasses.map((d) => ({
             label: d.periodo,
             "Valor Bolsa": d.valor_bolsa || 0,
             "Primeira Infância": d.valor_primeira_infancia || 0,

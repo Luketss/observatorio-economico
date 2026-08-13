@@ -17,6 +17,8 @@ import { useAuth } from "../../context/AuthContext";
 import { useViewAs } from "../../context/ViewAsContext";
 import KpiSkeleton from "../../components/nid/KpiSkeleton";
 import SelecioneMunicipio from "../../components/nid/SelecioneMunicipio";
+import PeriodoMenu from "../../components/nid/PeriodoMenu";
+import { aplicarPresetSerie } from "../../utils/periodoGrafico";
 
 const fmtBRL = (v) =>
   v != null
@@ -24,6 +26,20 @@ const fmtBRL = (v) =>
     : "—";
 
 const fmtNum = (v) => (v != null ? Number(v).toLocaleString("pt-BR") : "—");
+
+const extrairPeriodo = (d) => ({ ano: d.ano, mes: d.mes });
+
+// Mesmo pós-processamento do memo `serie` (adiciona `periodo` + ordena),
+// reaplicado quando um painel tem override de período (série crua filtrada
+// pelo preset ainda não tem `periodo`).
+function prepara(arr) {
+  return arr
+    .map((d) => ({
+      ...d,
+      periodo: `${d.ano}-${String(d.mes).padStart(2, "0")}`,
+    }))
+    .sort((a, b) => a.periodo.localeCompare(b.periodo));
+}
 
 export default function PixPage() {
   const { user } = useAuth();
@@ -66,14 +82,22 @@ export default function PixPage() {
   }, [rawSerie]);
 
   const serie = useMemo(() => {
-    return rawSerie
-      .filter((d) => dentroDoFiltro(d, filters, (x) => ({ ano: x.ano, mes: x.mes })))
-      .map((d) => ({
-        ...d,
-        periodo: `${d.ano}-${String(d.mes).padStart(2, "0")}`,
-      }))
-      .sort((a, b) => a.periodo.localeCompare(b.periodo));
+    return prepara(rawSerie.filter((d) => dentroDoFiltro(d, filters, (x) => ({ ano: x.ano, mes: x.mes }))));
   }, [rawSerie, filters]);
+
+  const [periodosGrafico, setPeriodosGrafico] = useState({});
+  const setPeriodo = (chave) => (preset) =>
+    setPeriodosGrafico((prev) => ({ ...prev, [chave]: preset }));
+  const seriePara = (chave) =>
+    periodosGrafico[chave]
+      ? prepara(aplicarPresetSerie(rawSerie, periodosGrafico[chave], extrairPeriodo))
+      : serie;
+
+  const seriePagamentos = seriePara("chart_vol_pagamentos");
+  const serieRecebimentos = seriePara("chart_vol_recebimentos");
+  const serieTransacoes = seriePara("chart_qtd_transacoes");
+  const seriePagadores = seriePara("chart_pagadores_unicos");
+  const serieRecebedores = seriePara("chart_recebedores_unicos");
 
   // Fluxo: somas do período filtrado (mesma série dos gráficos).
   const totais = useMemo(
@@ -170,6 +194,12 @@ export default function PixPage() {
                 : "—"
             } no acumulado`
           : "volume mensal PF + PJ"}
+        right={!comparar ? (
+          <PeriodoMenu
+            value={periodosGrafico["chart_vol_pagamentos"] || null}
+            onChange={setPeriodo("chart_vol_pagamentos")}
+          />
+        ) : undefined}
       >
         {comparar && cmp.temAnterior ? (
           <>
@@ -188,7 +218,7 @@ export default function PixPage() {
           </>
         ) : (
           <MultiLineChart
-            data={serie.map((d) => ({ label: d.periodo, "Volume PF": d.vl_pagador_pf || 0, "Volume PJ": d.vl_pagador_pj || 0 }))}
+            data={seriePagamentos.map((d) => ({ label: d.periodo, "Volume PF": d.vl_pagador_pf || 0, "Volume PJ": d.vl_pagador_pj || 0 }))}
             series={["Volume PF", "Volume PJ"]}
             colors={["var(--accent-1)", "var(--accent-5)"]}
             height={280}
@@ -200,10 +230,20 @@ export default function PixPage() {
       </NidPanel>
 
       {/* Volume Recebimentos — PF vs PJ */}
-      <NidPanel title="Volume de Recebimentos — PF vs PJ" dataset="pix" indicadorKey="chart_vol_recebimentos">
+      <NidPanel
+        title="Volume de Recebimentos — PF vs PJ"
+        dataset="pix"
+        indicadorKey="chart_vol_recebimentos"
+        right={
+          <PeriodoMenu
+            value={periodosGrafico["chart_vol_recebimentos"] || null}
+            onChange={setPeriodo("chart_vol_recebimentos")}
+          />
+        }
+      >
         <MultiLineChart
           emptyMessage="Sem dados disponíveis"
-          data={serie.map((d) => ({ label: d.periodo, "Recebimento PF": d.vl_recebedor_pf || 0, "Recebimento PJ": d.vl_recebedor_pj || 0 }))}
+          data={serieRecebimentos.map((d) => ({ label: d.periodo, "Recebimento PF": d.vl_recebedor_pf || 0, "Recebimento PJ": d.vl_recebedor_pj || 0 }))}
           series={["Recebimento PF", "Recebimento PJ"]}
           colors={["var(--accent-3)", "var(--accent-4)"]}
           height={240}
@@ -214,10 +254,20 @@ export default function PixPage() {
       </NidPanel>
 
       {/* Quantidade de Transações */}
-      <NidPanel title="Quantidade de Transações (Pagadores)" dataset="pix" indicadorKey="chart_qtd_transacoes">
+      <NidPanel
+        title="Quantidade de Transações (Pagadores)"
+        dataset="pix"
+        indicadorKey="chart_qtd_transacoes"
+        right={
+          <PeriodoMenu
+            value={periodosGrafico["chart_qtd_transacoes"] || null}
+            onChange={setPeriodo("chart_qtd_transacoes")}
+          />
+        }
+      >
         <StackedBarChart
           emptyMessage="Sem dados disponíveis"
-          data={serie.map((d) => ({ label: d.periodo, "Transações PF": d.qt_pagador_pf || 0, "Transações PJ": d.qt_pagador_pj || 0 }))}
+          data={serieTransacoes.map((d) => ({ label: d.periodo, "Transações PF": d.qt_pagador_pf || 0, "Transações PJ": d.qt_pagador_pj || 0 }))}
           keys={["Transações PF", "Transações PJ"]}
           colors={["var(--accent-1)", "var(--accent-5)"]}
           height={240}
@@ -228,10 +278,20 @@ export default function PixPage() {
       </NidPanel>
 
       {/* Pessoas Únicas Pagadoras */}
-      <NidPanel title="Pessoas Únicas Pagadoras" dataset="pix" indicadorKey="chart_pagadores_unicos">
+      <NidPanel
+        title="Pessoas Únicas Pagadoras"
+        dataset="pix"
+        indicadorKey="chart_pagadores_unicos"
+        right={
+          <PeriodoMenu
+            value={periodosGrafico["chart_pagadores_unicos"] || null}
+            onChange={setPeriodo("chart_pagadores_unicos")}
+          />
+        }
+      >
         <MultiLineChart
           emptyMessage="Sem dados disponíveis"
-          data={serie.map((d) => ({ label: d.periodo, "Pessoas PF": d.qt_pes_pagador_pf || 0, "Pessoas PJ": d.qt_pes_pagador_pj || 0 }))}
+          data={seriePagadores.map((d) => ({ label: d.periodo, "Pessoas PF": d.qt_pes_pagador_pf || 0, "Pessoas PJ": d.qt_pes_pagador_pj || 0 }))}
           series={["Pessoas PF", "Pessoas PJ"]}
           colors={["var(--accent-3)", "var(--accent-4)"]}
           height={240}
@@ -242,10 +302,20 @@ export default function PixPage() {
       </NidPanel>
 
       {/* Pessoas Únicas Recebedoras */}
-      <NidPanel title="Pessoas Únicas Recebedoras" dataset="pix" indicadorKey="chart_recebedores_unicos">
+      <NidPanel
+        title="Pessoas Únicas Recebedoras"
+        dataset="pix"
+        indicadorKey="chart_recebedores_unicos"
+        right={
+          <PeriodoMenu
+            value={periodosGrafico["chart_recebedores_unicos"] || null}
+            onChange={setPeriodo("chart_recebedores_unicos")}
+          />
+        }
+      >
         <MultiLineChart
           emptyMessage="Sem dados disponíveis"
-          data={serie.map((d) => ({ label: d.periodo, "Recebedores PF": d.qt_pes_recebedor_pf || 0, "Recebedores PJ": d.qt_pes_recebedor_pj || 0 }))}
+          data={serieRecebedores.map((d) => ({ label: d.periodo, "Recebedores PF": d.qt_pes_recebedor_pf || 0, "Recebedores PJ": d.qt_pes_recebedor_pj || 0 }))}
           series={["Recebedores PF", "Recebedores PJ"]}
           colors={["var(--accent-7)", "var(--accent-2)"]}
           height={240}
