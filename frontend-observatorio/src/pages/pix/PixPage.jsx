@@ -161,6 +161,8 @@ export default function PixPage() {
       <PlanGate planKey="pix.detalhado">
       <NidPanel
         title="Volume de Pagamentos — PF vs PJ"
+        dataset="pix"
+        indicadorKey="chart_vol_pagamentos"
         sub={comparar && cmp.temAnterior
           ? `${cmp.series[0]} vs ${cmp.series[1]} · ${
               cmp.deltaPct != null
@@ -198,7 +200,7 @@ export default function PixPage() {
       </NidPanel>
 
       {/* Volume Recebimentos — PF vs PJ */}
-      <NidPanel title="Volume de Recebimentos — PF vs PJ">
+      <NidPanel title="Volume de Recebimentos — PF vs PJ" dataset="pix" indicadorKey="chart_vol_recebimentos">
         <MultiLineChart
           emptyMessage="Sem dados disponíveis"
           data={serie.map((d) => ({ label: d.periodo, "Recebimento PF": d.vl_recebedor_pf || 0, "Recebimento PJ": d.vl_recebedor_pj || 0 }))}
@@ -212,7 +214,7 @@ export default function PixPage() {
       </NidPanel>
 
       {/* Quantidade de Transações */}
-      <NidPanel title="Quantidade de Transações (Pagadores)">
+      <NidPanel title="Quantidade de Transações (Pagadores)" dataset="pix" indicadorKey="chart_qtd_transacoes">
         <StackedBarChart
           emptyMessage="Sem dados disponíveis"
           data={serie.map((d) => ({ label: d.periodo, "Transações PF": d.qt_pagador_pf || 0, "Transações PJ": d.qt_pagador_pj || 0 }))}
@@ -226,7 +228,7 @@ export default function PixPage() {
       </NidPanel>
 
       {/* Pessoas Únicas Pagadoras */}
-      <NidPanel title="Pessoas Únicas Pagadoras">
+      <NidPanel title="Pessoas Únicas Pagadoras" dataset="pix" indicadorKey="chart_pagadores_unicos">
         <MultiLineChart
           emptyMessage="Sem dados disponíveis"
           data={serie.map((d) => ({ label: d.periodo, "Pessoas PF": d.qt_pes_pagador_pf || 0, "Pessoas PJ": d.qt_pes_pagador_pj || 0 }))}
@@ -240,7 +242,7 @@ export default function PixPage() {
       </NidPanel>
 
       {/* Pessoas Únicas Recebedoras */}
-      <NidPanel title="Pessoas Únicas Recebedoras">
+      <NidPanel title="Pessoas Únicas Recebedoras" dataset="pix" indicadorKey="chart_recebedores_unicos">
         <MultiLineChart
           emptyMessage="Sem dados disponíveis"
           data={serie.map((d) => ({ label: d.periodo, "Recebedores PF": d.qt_pes_recebedor_pf || 0, "Recebedores PJ": d.qt_pes_recebedor_pj || 0 }))}
@@ -256,6 +258,8 @@ export default function PixPage() {
       <NidComparativoPanel
         title="Comparativo Municipal · PIX"
         sub="Ranking por volume total transacionado (PF + PJ pagador)"
+        dataset="pix"
+        indicadorKey="chart_comparativo_municipios"
         endpoint="/pix/comparativo"
         metric="volume_total"
         fmt={(v) => `R$ ${Number(v).toLocaleString("pt-BR", { maximumFractionDigits: 0 })}`}

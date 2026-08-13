@@ -304,7 +304,7 @@ export default function IpsPage() {
             ))}
           </div>
 
-          <NidPanel title="Perfil por Componente" sub="Score de cada componente · de 100">
+          <NidPanel title="Perfil por Componente" dataset="ips" indicadorKey="chart_perfil_componente" sub="Score de cada componente · de 100">
             <HBarChart
               data={perfilData}
               color="var(--accent-1)"
@@ -315,7 +315,7 @@ export default function IpsPage() {
 
           {destaques && (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <NidPanel title="Pontos Fortes" sub="Maiores diferenças positivas vs. média estadual">
+              <NidPanel title="Pontos Fortes" dataset="ips" indicadorKey="chart_pontos_fortes" sub="Maiores diferenças positivas vs. média estadual">
                 <div className="space-y-3">
                   {destaques.melhores.map((d) => (
                     <div key={d.campo} className="flex justify-between items-center">
@@ -328,7 +328,7 @@ export default function IpsPage() {
                   ))}
                 </div>
               </NidPanel>
-              <NidPanel title="Pontos a Melhorar" sub="Maiores diferenças negativas vs. média estadual">
+              <NidPanel title="Pontos a Melhorar" dataset="ips" indicadorKey="chart_pontos_melhorar" sub="Maiores diferenças negativas vs. média estadual">
                 <div className="space-y-3">
                   {destaques.piores.map((d) => (
                     <div key={d.campo} className="flex justify-between items-center">
@@ -401,7 +401,7 @@ export default function IpsPage() {
           </div>
 
           {evolucao.length > 0 && (
-            <NidPanel title="Evolução ao Longo do Tempo" sub="IPS geral e dimensões por ano">
+            <NidPanel title="Evolução ao Longo do Tempo" dataset="ips" indicadorKey="chart_evolucao_tempo" sub="IPS geral e dimensões por ano">
               <MultiLineChart
                 data={evolucao.map((d) => ({
                   label: String(d.ano),
@@ -431,7 +431,7 @@ export default function IpsPage() {
             </NidPanel>
           )}
 
-          <NidPanel title="Comparar com Outros Municípios" sub="Municípios semelhantes por PIB per capita">
+          <NidPanel title="Comparar com Outros Municípios" dataset="ips" indicadorKey="chart_comparar_municipios" sub="Municípios semelhantes por PIB per capita">
             <div className="space-y-4">
               {sugestoes.length > 0 && (
                 <div className="flex flex-wrap gap-2">

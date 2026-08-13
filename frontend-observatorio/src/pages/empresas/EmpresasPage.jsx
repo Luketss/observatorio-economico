@@ -174,7 +174,7 @@ export default function EmpresasPage() {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Pie — porte */}
         <PlanGate planKey="empresas.por_porte">
-        <NidPanel title="Distribuição por Porte">
+        <NidPanel title="Distribuição por Porte" dataset="empresas" indicadorKey="chart_porte">
           <DonutChart
             data={porPorte.map((d) => ({ label: d.name, value: d.value }))}
             colors={["var(--accent-1)", "var(--accent-3)", "var(--accent-5)", "var(--accent-4)", "var(--accent-2)"]}
@@ -189,7 +189,7 @@ export default function EmpresasPage() {
         </PlanGate>
 
         {/* Situação cadastral */}
-        <NidPanel title="Empresas por Situação Cadastral">
+        <NidPanel title="Empresas por Situação Cadastral" dataset="empresas" indicadorKey="chart_situacao_cadastral">
           <HBarChart
             data={porSituacao.map((d) => ({ label: d.label, value: d.total || 0 }))}
             color="var(--accent-1)"
@@ -201,7 +201,7 @@ export default function EmpresasPage() {
       </div>
 
       {/* Ativas vs Fechadas por Porte (Saldo) */}
-      <NidPanel title="Ativas vs. Fechadas por Porte">
+      <NidPanel title="Ativas vs. Fechadas por Porte" dataset="empresas" indicadorKey="chart_ativas_fechadas_porte">
         <StackedBarChart
           data={situacaoPorPorte.map((d) => ({
             label: d.porte,
@@ -221,7 +221,7 @@ export default function EmpresasPage() {
 
       {/* Empresas por Setor CNAE */}
       <PlanGate planKey="empresas.por_cnae">
-      <NidPanel title="Empresas por Setor de Atividade (CNAE — Seção)">
+      <NidPanel title="Empresas por Setor de Atividade (CNAE — Seção)" dataset="empresas" indicadorKey="chart_setor_cnae">
         <HBarChart
           data={porCnaeSecao.map((d) => ({ label: d.descricao, value: d.total_vinculos || 0 }))}
           color="var(--accent-1)"
@@ -237,6 +237,8 @@ export default function EmpresasPage() {
       {!loading && capitalPorPorte.length > 0 && (
         <NidPanel
           title="Capital Social por Porte de Empresa"
+          dataset="empresas"
+          indicadorKey="chart_capital_social_porte"
           sub="Capital médio declarado por empresas com registro ativo"
         >
           <HBarChart

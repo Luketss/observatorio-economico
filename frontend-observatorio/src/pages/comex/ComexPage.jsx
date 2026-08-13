@@ -233,7 +233,7 @@ export default function ComexPage() {
       <InsightsPanel dataset="comex" />
 
       {/* Exportações vs Importações ao longo do tempo */}
-      <NidPanel title="Exportações vs Importações">
+      <NidPanel title="Exportações vs Importações" dataset="comex" indicadorKey="chart_exp_vs_imp">
         <MultiLineChart
           data={chartSerie.map((d) => ({
             label: d.periodo,
@@ -255,6 +255,8 @@ export default function ComexPage() {
       {chartSerie.length > 0 && (
         <NidPanel
           title="Saldo da Balança Comercial (Mensal)"
+          dataset="comex"
+          indicadorKey="chart_saldo_mensal"
           sub={comparar && cmp.temAnterior
             ? `${cmp.series[0]} vs ${cmp.series[1]} · ${
                 cmp.deltaPct != null
@@ -293,7 +295,7 @@ export default function ComexPage() {
 
       {/* Peso Total por Período (kg) */}
       {chartSerie.length > 0 && (chartSerie.some(d => d.peso_export > 0 || d.peso_import > 0)) && (
-        <NidPanel title="Volume Físico — Peso Exportado vs Importado (kg)">
+        <NidPanel title="Volume Físico — Peso Exportado vs Importado (kg)" dataset="comex" indicadorKey="chart_volume_fisico">
           <MultiLineChart
             data={chartSerie.map((d) => ({
               label: d.periodo,
@@ -313,7 +315,7 @@ export default function ComexPage() {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Top Produtos */}
         <PlanGate planKey="comex.por_produto">
-        <NidPanel title="Top 10 Produtos" sub={<>Ano: {anoSelecionado}</>}>
+        <NidPanel title="Top 10 Produtos" dataset="comex" indicadorKey="chart_top_produtos" sub={<>Ano: {anoSelecionado}</>}>
           <HBarChart
             data={porProduto.map((d) => ({ label: d.produto, value: d.valor_usd || 0 }))}
             color="var(--accent-4)"
@@ -325,7 +327,7 @@ export default function ComexPage() {
 
         {/* Top Produtos por Peso */}
         {!loading && !loadingFilters && porProduto.length > 0 && porProduto.some(p => p.peso_kg > 0) && (
-          <NidPanel title="Top Produtos por Peso" sub={<>Ano: {anoSelecionado}</>}>
+          <NidPanel title="Top Produtos por Peso" dataset="comex" indicadorKey="chart_top_produtos_peso" sub={<>Ano: {anoSelecionado}</>}>
             <HBarChart
               data={[...porProduto].sort((a, b) => (b.peso_kg ?? 0) - (a.peso_kg ?? 0)).slice(0, 10).map((d) => ({ label: d.produto, value: d.peso_kg || 0 }))}
               color="var(--accent-4)"
@@ -337,7 +339,7 @@ export default function ComexPage() {
 
         {/* Top Países */}
         <PlanGate planKey="comex.por_pais">
-        <NidPanel title="Top 10 Países" sub={<>Ano: {anoSelecionado}</>}>
+        <NidPanel title="Top 10 Países" dataset="comex" indicadorKey="chart_top_paises" sub={<>Ano: {anoSelecionado}</>}>
           <HBarChart
             data={porPais.map((d) => ({ label: d.pais, value: d.valor_usd || 0 }))}
             color="var(--accent-4)"
@@ -351,6 +353,8 @@ export default function ComexPage() {
       <NidComparativoPanel
         title="Comparativo de Exportações"
         sub="Ranking municipal por valor exportado (USD)"
+        dataset="comex"
+        indicadorKey="chart_comparativo_municipios"
         endpoint="/comex/comparativo"
         metric="exportacoes"
         fmt={(v) => `US$ ${Number(v).toLocaleString("pt-BR", { maximumFractionDigits: 0 })}`}
