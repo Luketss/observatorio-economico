@@ -122,7 +122,7 @@ export default function DinheiroNaMesaPage() {
             <KpiCard label="Posição no grupo" value={diag.posicao != null ? `${diag.posicao}º` : "—"} sub={`de ${diag.total_grupo} municípios pares`} dataset="captacao_federal" indicadorKey="posicao" />
           </div>
 
-          <NidPanel title="Captação anual — você vs. média dos pares" sub="Repasse federal firmado por ano · * ano corrente (parcial)">
+          <NidPanel title="Captação anual — você vs. média dos pares" dataset="captacao_federal" indicadorKey="chart_captacao_anual" sub="Repasse federal firmado por ano · * ano corrente (parcial)">
             <MultiLineChart
               data={serieChart}
               series={["Você", "Média dos pares"]}
@@ -135,7 +135,7 @@ export default function DinheiroNaMesaPage() {
             />
           </NidPanel>
 
-          <NidPanel title="Detalhe anual" sub="Valores firmados, via emenda e desembolsados">
+          <NidPanel title="Detalhe anual" dataset="captacao_federal" indicadorKey="chart_detalhe_anual" sub="Valores firmados, via emenda e desembolsados">
             <DataTable
               columns={[
                 { key: "ano", label: "Ano", width: 80, render: (i) => `${i.ano}${i.parcial ? "*" : ""}` },

@@ -163,6 +163,8 @@ export default function PeDeMeiaPage() {
       {/* Evolução de Estudantes */}
       <NidPanel
         title="Evolução de Estudantes Beneficiados"
+        dataset="pe_de_meia"
+        indicadorKey="chart_evolucao_estudantes"
         sub={comparar && cmp.temAnterior
           ? `${cmp.series[0]} vs ${cmp.series[1]} · ${
               cmp.deltaPct != null
@@ -202,7 +204,7 @@ export default function PeDeMeiaPage() {
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Estudantes por Etapa de Ensino */}
-        <NidPanel title="Estudantes por Etapa de Ensino">
+        <NidPanel title="Estudantes por Etapa de Ensino" dataset="pe_de_meia" indicadorKey="chart_por_etapa">
           <HBarChart
             data={porEtapa.map((d) => ({ label: d.etapa_ensino, value: d.total_estudantes || 0 }))}
             color="var(--accent-5)"
@@ -213,7 +215,7 @@ export default function PeDeMeiaPage() {
         </NidPanel>
 
         {/* Breakdown por Tipo de Incentivo */}
-        <NidPanel title="Estudantes por Tipo de Incentivo">
+        <NidPanel title="Estudantes por Tipo de Incentivo" dataset="pe_de_meia" indicadorKey="chart_por_incentivo">
           <DonutChart
             data={porIncentivo.map((d) => ({ label: d.name, value: d.value }))}
             baseColor="var(--accent-5)"

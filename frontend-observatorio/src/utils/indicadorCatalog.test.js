@@ -65,3 +65,28 @@ describe("paridade fonte → catálogo", () => {
     expect(faltando, `chaves usadas no JSX sem entrada no catálogo: ${faltando.join(", ")}`).toEqual([]);
   });
 });
+
+// ── Paridade inversa: catálogo → fonte ───────────────────────────────────────
+// Toda entrada do catálogo deve estar plugada em alguma página — pega painel
+// esquecido. Exceções: chaves usadas dinamicamente (indicadorKey={d.key}).
+const USADAS_DINAMICAMENTE = new Set([
+  // IpsPage.jsx:302 — dimensões mapeadas de DIMENSIONS com indicadorKey={d.key}
+  "necessidades_humanas_basicas",
+  "fundamentos_bem_estar",
+  "oportunidades",
+]);
+
+describe("paridade catálogo → fonte", () => {
+  it("toda entrada do catálogo é usada literalmente no JSX (ou é dinâmica declarada)", () => {
+    const usadas = chavesLiteraisNoFonte();
+    const naoUsadas = [];
+    for (const [dataset, entries] of Object.entries(INDICADOR_CATALOG)) {
+      for (const e of entries) {
+        if (!usadas.has(e.key) && !USADAS_DINAMICAMENTE.has(e.key)) {
+          naoUsadas.push(`${dataset}.${e.key}`);
+        }
+      }
+    }
+    expect(naoUsadas, `entradas do catálogo sem uso no JSX: ${naoUsadas.join(", ")}`).toEqual([]);
+  });
+});

@@ -160,6 +160,8 @@ export default function BolsaFamiliaPage() {
       {/* Evolução de Beneficiários */}
       <NidPanel
         title="Evolução de Beneficiários"
+        dataset="bolsa_familia"
+        indicadorKey="chart_evolucao_beneficiarios"
         sub={comparar && cmp.temAnterior
           ? `${cmp.series[0]} vs ${cmp.series[1]} · ${
               cmp.deltaPct != null
@@ -198,7 +200,7 @@ export default function BolsaFamiliaPage() {
       </NidPanel>
 
       {/* Beneficiários: Total vs Primeira Infância */}
-      <NidPanel title="Beneficiários: Total vs Primeira Infância">
+      <NidPanel title="Beneficiários: Total vs Primeira Infância" dataset="bolsa_familia" indicadorKey="chart_total_vs_primeira_infancia">
         <MultiLineChart
           data={serie.map((d) => ({
             label: d.periodo,
@@ -217,7 +219,7 @@ export default function BolsaFamiliaPage() {
       </NidPanel>
 
       {/* Comparativo Bolsa vs Primeira Infância */}
-      <NidPanel title="Repasses: Bolsa Família vs Primeira Infância">
+      <NidPanel title="Repasses: Bolsa Família vs Primeira Infância" dataset="bolsa_familia" indicadorKey="chart_repasses">
         <StackedBarChart
           data={serie.map((d) => ({
             label: d.periodo,
@@ -237,6 +239,8 @@ export default function BolsaFamiliaPage() {
       <NidComparativoPanel
         title="Comparativo Municipal"
         sub="Ranking por valor total pago em Bolsa Família"
+        dataset="bolsa_familia"
+        indicadorKey="chart_comparativo_municipios"
         endpoint="/bolsa_familia/comparativo"
         metric="valor_total"
         fmt={(v) => `R$ ${Number(v).toLocaleString("pt-BR", { maximumFractionDigits: 0 })}`}

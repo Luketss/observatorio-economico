@@ -158,6 +158,8 @@ export default function ArrecadacaoPage() {
 
       <NidPanel
         title="Série Histórica Mensal"
+        dataset="arrecadacao"
+        indicadorKey="chart_serie_mensal"
         sub={comparar && cmp.temAnterior
           ? `${cmp.series[0]} vs ${cmp.series[1]} · ${
               cmp.deltaPct != null
@@ -196,7 +198,7 @@ export default function ArrecadacaoPage() {
 
       {/* ICMS / IPVA / IPI Breakdown */}
       {serie.length > 0 && (
-        <NidPanel title="Composição por Tipo de Imposto (ICMS / IPVA / IPI)">
+        <NidPanel title="Composição por Tipo de Imposto (ICMS / IPVA / IPI)" dataset="arrecadacao" indicadorKey="chart_composicao_tipo">
           <StackedBarChart
             data={serie.slice(-24).map((d) => ({
               label: String(d.periodo),
@@ -215,7 +217,7 @@ export default function ArrecadacaoPage() {
 
       {/* Breakdown table */}
       {serie.length > 0 && (
-        <NidPanel title="Detalhamento por Período" sub="arrecadação mensal">
+        <NidPanel title="Detalhamento por Período" dataset="arrecadacao" indicadorKey="chart_detalhamento_periodo" sub="arrecadação mensal">
           <DataTable
             columns={[
               { key: "periodo", label: "Período",    width: 100 },
