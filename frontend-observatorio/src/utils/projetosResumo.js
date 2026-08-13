@@ -10,6 +10,7 @@ export function resumoProjetos(projetos, hoje = new Date()) {
     .map((p) => ({
       id: p.id,
       titulo: p.titulo,
+      // progresso() retorna null para lista vazia; coerce para 0% (sem tarefas = 0% concluído)
       pct: progresso(p.tarefas || [])?.pct ?? 0,
       diasAtraso: diasAtraso(p, hoje),
     }))
