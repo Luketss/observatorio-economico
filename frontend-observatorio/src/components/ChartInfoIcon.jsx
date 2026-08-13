@@ -30,10 +30,15 @@ export default function ChartInfoIcon({ dataset, indicadorKey }) {
   const [editing, setEditing] = useState(false);
   const [form, setForm] = useState({ tooltip: "", descricao: "", fonte: "" });
   const [saving, setSaving] = useState(false);
+  const [erroSalvar, setErroSalvar] = useState("");
   const iconRef = useRef(null);
 
   useEscapeKey(useCallback(() => {
-    if (editing) { setEditing(false); return; }
+    if (editing) {
+      setEditing(false);
+      setErroSalvar("");
+      return;
+    }
     setModalOpen(false);
   }, [editing]), modalOpen);
 
@@ -58,10 +63,13 @@ export default function ChartInfoIcon({ dataset, indicadorKey }) {
 
   const handleSave = async () => {
     setSaving(true);
+    setErroSalvar("");
     try {
       const res = await api.put(`/indicadores/${dataset}/${indicadorKey}`, form);
       setInfo(res.data);
       setEditing(false);
+    } catch {
+      setErroSalvar("Não foi possível salvar — tente novamente.");
     } finally {
       setSaving(false);
     }
@@ -163,9 +171,15 @@ export default function ChartInfoIcon({ dataset, indicadorKey }) {
                       className="px-3 py-2 rounded-lg border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500"
                     />
                   </div>
+                  {erroSalvar && (
+                    <p className="text-xs text-red-500">{erroSalvar}</p>
+                  )}
                   <div className="flex gap-2 justify-end pt-1">
                     <button
-                      onClick={() => setEditing(false)}
+                      onClick={() => {
+                        setEditing(false);
+                        setErroSalvar("");
+                      }}
                       className="px-3 py-1.5 text-sm rounded-lg border border-slate-200 text-slate-600 hover:bg-slate-50 transition-colors"
                     >
                       Cancelar
@@ -196,7 +210,10 @@ export default function ChartInfoIcon({ dataset, indicadorKey }) {
                   )}
                   {isGlobal && (
                     <button
-                      onClick={() => setEditing(true)}
+                      onClick={() => {
+                        setEditing(true);
+                        setErroSalvar("");
+                      }}
                       className="flex items-center gap-1.5 text-xs text-teal-600 hover:text-teal-700 transition-colors"
                     >
                       <PencilIcon className="w-3.5 h-3.5" />

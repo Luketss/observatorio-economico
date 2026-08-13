@@ -13,5 +13,10 @@ import react from "@vitejs/plugin-react";
 export default defineConfig({
   plugins: [react()],
   esbuild: { jsx: "automatic" },
-  test: { environment: "node", include: ["src/**/*.test.{js,jsx}"] },
+  test: {
+    globals: true,
+    environment: "node",
+    include: ["src/**/*.test.{js,jsx}"],
+    setupFiles: ["./vitest.setup.js"],
+  },
 });

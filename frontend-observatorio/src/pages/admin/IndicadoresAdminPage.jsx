@@ -55,7 +55,8 @@ export default function IndicadoresAdminPage() {
       setEditando(null);
       carregar();
     } catch (err) {
-      addToast(err.response?.data?.detail || "Erro ao salvar.", "error");
+      const detail = err.response?.data?.detail;
+      addToast(typeof detail === "string" ? detail : "Erro ao salvar.", "error");
     } finally {
       setSalvando(false);
     }
