@@ -18,6 +18,8 @@ import { useViewAs } from "../../context/ViewAsContext";
 import NidSelect from "../../components/nid/NidSelect";
 import KpiSkeleton from "../../components/nid/KpiSkeleton";
 import SelecioneMunicipio from "../../components/nid/SelecioneMunicipio";
+import PeriodoMenu from "../../components/nid/PeriodoMenu";
+import { aplicarPresetSerie } from "../../utils/periodoGrafico";
 
 
 const fmtUSD = (v) =>
@@ -61,6 +63,12 @@ export default function ComexPage() {
   const [loadingFilters, setLoadingFilters] = useState(false);
   const [filters, setFilters] = useState({ yearFrom: "", yearTo: "", monthFrom: "", monthTo: "" });
   const [comparar, setComparar] = useState(false);
+
+  // Preset de período POR GRÁFICO — override do filtro da página, por painel.
+  const [periodosGrafico, setPeriodosGrafico] = useState({});
+  const setPeriodo = (chave) => (preset) =>
+    setPeriodosGrafico((prev) => ({ ...prev, [chave]: preset }));
+  const extrairPeriodo = (x) => ({ ano: x.ano, mes: x.mes });
 
   // Default "12m ancorado no último dado" (guard contra sobrescrever o usuário).
   const filtroTocado = useRef(false);
@@ -116,11 +124,12 @@ export default function ComexPage() {
       .finally(() => setLoadingFilters(false));
   }, [anoSelecionado]);
 
-  // Build time series: group by period, separate exports and imports (value + weight)
-  const chartSerie = useMemo(() => {
+  // Agrega linhas (já filtradas) por período: soma export/import (valor + peso).
+  // Mesma lógica que já existia inline em chartSerie — extraída para ser
+  // reaproveitada por painel (override de preset ignora o filtro da página).
+  const agregarComexPorPeriodo = (rows) => {
     const map = {};
-    serie.forEach((item) => {
-      if (!dentroDoFiltro(item, filters, (x) => ({ ano: x.ano, mes: x.mes }))) return;
+    rows.forEach((item) => {
       const key = `${item.ano}-${String(item.mes).padStart(2, "0")}`;
       if (!map[key]) map[key] = { periodo: key, exportacoes: 0, importacoes: 0, peso_export: 0, peso_import: 0 };
       const tipo = item.tipo_operacao?.toLowerCase();
@@ -135,7 +144,38 @@ export default function ComexPage() {
     return Object.values(map)
       .sort((a, b) => a.periodo.localeCompare(b.periodo))
       .map((d) => ({ ...d, saldo: d.exportacoes - d.importacoes }));
-  }, [serie, filters]);
+  };
+
+  // Filtra o cru pelo filtro da página (sem preset) OU por um preset de painel
+  // (aplicarPresetSerie, ancorado na própria série, ignorando o filtro da
+  // página) — depois agrega por período.
+  const montarChartSerie = (preset) => {
+    const filtrado = preset
+      ? aplicarPresetSerie(serie, preset, extrairPeriodo)
+      : serie.filter((item) => dentroDoFiltro(item, filters, extrairPeriodo));
+    return agregarComexPorPeriodo(filtrado);
+  };
+
+  // Build time series: group by period, separate exports and imports (value + weight)
+  const chartSerie = useMemo(() => montarChartSerie(null), [serie, filters]);
+
+  // Séries resolvidas por painel (preset override, se houver; senão chartSerie).
+  const seriePainelPara = (chave) => {
+    const preset = periodosGrafico[chave];
+    return preset ? montarChartSerie(preset) : chartSerie;
+  };
+  const chartSerieExpVsImp = useMemo(
+    () => seriePainelPara("chart_exp_vs_imp"),
+    [chartSerie, serie, periodosGrafico]
+  );
+  const chartSerieSaldoMensal = useMemo(
+    () => seriePainelPara("chart_saldo_mensal"),
+    [chartSerie, serie, periodosGrafico]
+  );
+  const chartSerieVolumeFisico = useMemo(
+    () => seriePainelPara("chart_volume_fisico"),
+    [chartSerie, serie, periodosGrafico]
+  );
 
   // Fluxo: totais do período filtrado (mesma agregação dos gráficos) — o sub
   // describeFilter agora descreve o VALOR de verdade.
@@ -233,9 +273,19 @@ export default function ComexPage() {
       <InsightsPanel dataset="comex" />
 
       {/* Exportações vs Importações ao longo do tempo */}
-      <NidPanel title="Exportações vs Importações" dataset="comex" indicadorKey="chart_exp_vs_imp">
+      <NidPanel
+        title="Exportações vs Importações"
+        dataset="comex"
+        indicadorKey="chart_exp_vs_imp"
+        right={
+          <PeriodoMenu
+            value={periodosGrafico["chart_exp_vs_imp"] || null}
+            onChange={setPeriodo("chart_exp_vs_imp")}
+          />
+        }
+      >
         <MultiLineChart
-          data={chartSerie.map((d) => ({
+          data={chartSerieExpVsImp.map((d) => ({
             label: d.periodo,
             "Exportações": d.exportacoes,
             "Importações": d.importacoes,
@@ -264,6 +314,12 @@ export default function ComexPage() {
                   : "—"
               } no acumulado`
             : "exportações − importações por mês"}
+          right={!comparar ? (
+            <PeriodoMenu
+              value={periodosGrafico["chart_saldo_mensal"] || null}
+              onChange={setPeriodo("chart_saldo_mensal")}
+            />
+          ) : undefined}
         >
           {comparar && cmp.temAnterior ? (
             <>
@@ -282,7 +338,7 @@ export default function ComexPage() {
             </>
           ) : (
             <MultiLineChart
-              data={chartSerie.map((d) => ({ label: d.periodo, "Saldo": d.saldo }))}
+              data={chartSerieSaldoMensal.map((d) => ({ label: d.periodo, "Saldo": d.saldo }))}
               series={["Saldo"]}
               colors={["var(--accent-3)"]}
               height={240}
@@ -295,9 +351,19 @@ export default function ComexPage() {
 
       {/* Peso Total por Período (kg) */}
       {chartSerie.length > 0 && (chartSerie.some(d => d.peso_export > 0 || d.peso_import > 0)) && (
-        <NidPanel title="Volume Físico — Peso Exportado vs Importado (kg)" dataset="comex" indicadorKey="chart_volume_fisico">
+        <NidPanel
+          title="Volume Físico — Peso Exportado vs Importado (kg)"
+          dataset="comex"
+          indicadorKey="chart_volume_fisico"
+          right={
+            <PeriodoMenu
+              value={periodosGrafico["chart_volume_fisico"] || null}
+              onChange={setPeriodo("chart_volume_fisico")}
+            />
+          }
+        >
           <MultiLineChart
-            data={chartSerie.map((d) => ({
+            data={chartSerieVolumeFisico.map((d) => ({
               label: d.periodo,
               "Peso Exportado": d.peso_export,
               "Peso Importado": d.peso_import,
