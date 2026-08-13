@@ -50,6 +50,32 @@ def get_indicador(
 
 
 # ==============================
+# List all indicator infos (ADMIN_GLOBAL — admin screen)
+# ==============================
+@router.get("/all", response_model=list[IndicadorInfoOut])
+def listar_indicadores(
+    db: Session = Depends(get_db),
+    current_user=Depends(require_role("ADMIN_GLOBAL")),
+):
+    rows = (
+        db.query(IndicadorInfo)
+        .order_by(IndicadorInfo.dataset, IndicadorInfo.indicador_key)
+        .all()
+    )
+    return [
+        IndicadorInfoOut(
+            dataset=r.dataset,
+            indicador_key=r.indicador_key,
+            tooltip=r.tooltip,
+            descricao=r.descricao,
+            fonte=r.fonte,
+            atualizado_em=r.atualizado_em,
+        )
+        for r in rows
+    ]
+
+
+# ==============================
 # Upsert indicator info (ADMIN_GLOBAL only)
 # ==============================
 @router.put("/{dataset}/{indicador_key}", response_model=IndicadorInfoOut)
