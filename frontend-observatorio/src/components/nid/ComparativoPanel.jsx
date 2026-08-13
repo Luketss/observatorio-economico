@@ -31,6 +31,8 @@ export default function NidComparativoPanel({
   limit = 10,
   filterByEstado = true,
   ano,
+  dataset,
+  indicadorKey,
 }) {
   const { user } = useAuth();
   const [rows, setRows] = useState([]);
@@ -68,6 +70,8 @@ export default function NidComparativoPanel({
     <NidPanel
       title={title}
       sub={sub}
+      dataset={dataset}
+      indicadorKey={indicadorKey}
       right={
         user?.estado && (
           <button

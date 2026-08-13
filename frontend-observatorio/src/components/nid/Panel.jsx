@@ -1,4 +1,5 @@
 import { useState } from "react";
+import ChartInfoIcon from "../ChartInfoIcon";
 import { Sparkline } from "./charts";
 
 export function NidPageHeader({ title, sub, badge, chips }) {
@@ -48,13 +49,20 @@ export function NidPageHeader({ title, sub, badge, chips }) {
   );
 }
 
-export function NidPanel({ title, sub, tabs, onTabChange, children, right }) {
+export function NidPanel({ title, sub, tabs, onTabChange, children, right, dataset, indicadorKey }) {
   const [active, setActive] = useState(0);
+  const comInfo = Boolean(dataset && indicadorKey);
   return (
     <div className="nid-panel">
       <div className="nid-panel-head">
         <div>
-          <h3 className="nid-panel-title">{title}</h3>
+          <h3
+            className="nid-panel-title"
+            style={comInfo ? { display: "flex", alignItems: "center", gap: 6 } : undefined}
+          >
+            {title}
+            {comInfo && <ChartInfoIcon dataset={dataset} indicadorKey={indicadorKey} />}
+          </h3>
           {sub && <div className="nid-panel-sub">{sub}</div>}
         </div>
         {tabs ? (
