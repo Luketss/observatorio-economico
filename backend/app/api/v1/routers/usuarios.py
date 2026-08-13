@@ -8,7 +8,11 @@ from app.core.exceptions import (
     ForbiddenException,
     NotFoundException,
 )
-from app.core.permissions import pode_gerenciar_usuario, valida_atribuicao
+from app.core.permissions import (
+    escopo_listagem_usuarios,
+    pode_gerenciar_usuario,
+    valida_atribuicao,
+)
 from app.models.role import Role
 from app.models.usuario import Usuario
 from app.schemas.usuario import UsuarioCreate, UsuarioOut, UsuarioUpdate
@@ -99,9 +103,10 @@ def listar_usuarios(
 ):
     service = UsuarioService(db)
 
-    # ADMIN_GLOBAL sees all; others are scoped to their municipality
-    municipio_filter = (
-        None if _is_global(current_user) else current_user.municipio_id
+    # Fail-closed: exige verbo na área 'usuarios' (ADMIN_GLOBAL bypass) e
+    # nega não-global sem município — NULL nunca degrada para "listar tudo".
+    municipio_filter = escopo_listagem_usuarios(
+        current_user.role, current_user.municipio_id
     )
 
     usuarios, total = service.list(skip=skip, limit=limit, municipio_id=municipio_filter)

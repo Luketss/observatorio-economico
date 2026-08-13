@@ -74,12 +74,33 @@ def pode_gerenciar_usuario(
     alvo_role_nome: str,
     alvo_municipio_id: int | None,
 ) -> bool:
-    """Guardas anti-escalação da delegação de usuários."""
+    """Guardas anti-escalação da delegação de usuários. Fail-closed: ator
+    não-global sem município não gerencia ninguém (NULL == NULL não autoriza)."""
     if ator_role_nome == "ADMIN_GLOBAL":
         return True
     if alvo_role_nome == "ADMIN_GLOBAL":
         return False
+    if ator_municipio_id is None:
+        return False
     return alvo_municipio_id == ator_municipio_id
+
+
+def escopo_listagem_usuarios(role, municipio_id: int | None) -> int | None:
+    """Escopo fail-closed do GET /usuarios: devolve o municipio_id a filtrar
+    (None = sem filtro, só ADMIN_GLOBAL). Nega quem não tem nenhum verbo na
+    área 'usuarios' e nega não-global sem município — municipio_id NULL nunca
+    pode degradar para "listar tudo"."""
+    from app.core.exceptions import ForbiddenException
+
+    if role is not None and role.nome == "ADMIN_GLOBAL":
+        return None
+    if not any(tem_permissao(role, "usuarios", verbo) for verbo in VERBOS):
+        raise ForbiddenException("Sem permissão para ver usuários.")
+    if municipio_id is None:
+        raise ForbiddenException(
+            "Usuário sem município vinculado não pode listar usuários."
+        )
+    return municipio_id
 
 
 def erros_permissoes(permissoes) -> list[str]:
