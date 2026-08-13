@@ -40,6 +40,7 @@ const ROUTE_LABELS = {
   "/admin/explorer":      "Explorador de Dados",
   "/admin/datasets":      "Datasets",
   "/admin/fontes":        "Fontes de Dados",
+  "/admin/indicadores":   "Indicadores & Tooltips",
   "/admin/notificacoes":  "Notificações",
   "/admin/projetos-eixos":"Eixos de Projetos",
   "/admin/mandato":       "Timeline do Mandato",
@@ -135,6 +136,7 @@ const DADOS_ITEMS = [
   { to: "/admin/explorer",       label: "Explorador de Dados", icon: CircleStackIcon },
   { to: "/admin/datasets",       label: "Datasets",            icon: TrashIcon },
   { to: "/admin/fontes",         label: "Fontes de Dados",     icon: DocumentTextIcon },
+  { to: "/admin/indicadores",    label: "Indicadores & Tooltips", icon: DocumentTextIcon },
   { to: "/admin/notificacoes",   label: "Notificações",        icon: BellIcon },
 ];
 

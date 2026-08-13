@@ -45,6 +45,7 @@ import EscritaTab from "../../pages/desenvolvimento-economico/EscritaTab";
 import PremiacoesTab from "../../pages/desenvolvimento-economico/PremiacoesTab";
 import IpsPage from "../../pages/ips/IpsPage";
 import ProjetosEixosAdminPage from "../../pages/admin/ProjetosEixosAdminPage";
+import IndicadoresAdminPage from "../../pages/admin/IndicadoresAdminPage";
 import IndicadoresInternosPage from "../../pages/dados-internos/IndicadoresInternosPage";
 import PlanoGovPage from "../../pages/dados-internos/PlanoGovPage";
 import CalendarioPage from "../../pages/dados-internos/CalendarioPage";
@@ -204,6 +205,10 @@ export default function AppRouter() {
           <Route
             path="fontes"
             element={<AdminRoute><DatasetFontesAdminPage /></AdminRoute>}
+          />
+          <Route
+            path="indicadores"
+            element={<AdminRoute><IndicadoresAdminPage /></AdminRoute>}
           />
           <Route
             path="notificacoes"
