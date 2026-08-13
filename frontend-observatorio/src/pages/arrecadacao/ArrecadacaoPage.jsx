@@ -38,14 +38,13 @@ export default function ArrecadacaoPage() {
   const cmp = useMemo(() => comparePanelData(rawSerie, { valueKey: "total" }), [rawSerie]);
 
   // Preset de período POR GRÁFICO — override do filtro da página, por painel.
-  // Itens mensais mas só com `ano` numérico no shape (sem `mes`); preset 12m
-  // vira "último ano com dado" — comportamento esperado para esta série.
+  // Extrai ano e mês do shape para permitir presentes como "12m" com âncora correta.
   const [periodosGrafico, setPeriodosGrafico] = useState({});
   const setPeriodo = (chave) => (preset) =>
     setPeriodosGrafico((prev) => ({ ...prev, [chave]: preset }));
-  const extrairAno = (d) => ({ ano: d.ano });
+  const extrairAnoMes = (d) => ({ ano: d.ano, mes: d.mes });
   const seriePara = (chave, rawSerieX, seriePagina) =>
-    resolverSeriePainel({ rawSerie: rawSerieX, seriePagina, preset: periodosGrafico[chave], extrair: extrairAno });
+    resolverSeriePainel({ rawSerie: rawSerieX, seriePagina, preset: periodosGrafico[chave], extrair: extrairAnoMes });
 
   // Default "12m ancorado no último dado": aplicado UMA vez no primeiro fetch;
   // interação do usuário que chegue antes (filtroTocado) tem prioridade.
