@@ -90,7 +90,7 @@ export default function EmendasPage() {
             <KpiCard label="Maior padrinho" value={k.top_autor || "—"} sub={k.top_autor_valor != null ? fmtMoneyShort(k.top_autor_valor) : ""} dataset="emendas" indicadorKey="top_autor" />
           </div>
 
-          <NidPanel title="Ranking por parlamentar" sub="Total destinado e execução — quem manda (e quem não manda) recurso">
+          <NidPanel title="Ranking por parlamentar" dataset="emendas" indicadorKey="chart_ranking_parlamentar" sub="Total destinado e execução — quem manda (e quem não manda) recurso">
             <DataTable
               columns={[
                 { key: "rank", label: "#", width: 50, sortable: false, render: (a) => <span className="muted">{a.rank}º</span> },
@@ -106,7 +106,7 @@ export default function EmendasPage() {
             />
           </NidPanel>
 
-          <NidPanel title="Destino por área" sub="Total empenhado por função orçamentária">
+          <NidPanel title="Destino por área" dataset="emendas" indicadorKey="chart_destino_area" sub="Total empenhado por função orçamentária">
             <HBarChart
               data={radar.por_funcao.map((f) => ({ label: f.funcao, value: f.empenhado }))}
               color="var(--accent-3)"
@@ -115,7 +115,7 @@ export default function EmendasPage() {
             />
           </NidPanel>
 
-          <NidPanel title="Emendas destinadas ao município" sub="Funil de execução: empenhado → liquidado → pago (inclui restos a pagar pagos)">
+          <NidPanel title="Emendas destinadas ao município" dataset="emendas" indicadorKey="chart_funil_execucao" sub="Funil de execução: empenhado → liquidado → pago (inclui restos a pagar pagos)">
             <DataTable
               columns={[
                 { key: "ano", label: "Ano", width: 70 },

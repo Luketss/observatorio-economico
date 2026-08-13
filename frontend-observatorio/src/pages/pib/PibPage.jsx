@@ -218,7 +218,7 @@ export default function PibPage() {
       <InsightsPanel dataset="pib" />
 
       {/* Evolução Anual do PIB */}
-      <NidPanel title="Evolução Anual do PIB" sub="série histórica · R$ milhões">
+      <NidPanel title="Evolução Anual do PIB" dataset="pib" indicadorKey="chart_evolucao_anual" sub="série histórica · R$ milhões">
         {/* demo: array-form (xRange band) + declarative child (point annotation) — both coexist */}
         <AreaLineChart
           data={areaData}
@@ -239,7 +239,7 @@ export default function PibPage() {
       {/* Valor Adicionado por Setor */}
       {vaData.length > 0 && (
         <PlanGate planKey="pib.por_setor">
-          <NidPanel title="Valor Adicionado por Setor" sub="composição por setor produtivo">
+          <NidPanel title="Valor Adicionado por Setor" dataset="pib" indicadorKey="chart_va_setor" sub="composição por setor produtivo">
             <NidLegend
               items={[
                 { name: "Agropecuária", color: "var(--accent-1)" },
@@ -264,7 +264,7 @@ export default function PibPage() {
           para o painel aparecer com a explicação (ex.: "ainda não há série
           histórica") em vez de sumir quando não há foco. */}
       {(cmp.focusSeries || comp.motivo) && (
-        <NidPanel title="PIB Comparativo — Municípios" sub={descreverPares(comp)}>
+        <NidPanel title="PIB Comparativo — Municípios" dataset="pib" indicadorKey="chart_pib_comparativo" sub={descreverPares(comp)}>
           <ComparadorMunicipios fixados={comp.fixados} onChange={setFixadosIds} />
           <MultiLineChart
             data={cmp.data}
@@ -285,7 +285,7 @@ export default function PibPage() {
 
       {/* Série Anual table */}
       {serie.length > 0 && (
-        <NidPanel title="Série Anual" sub="histórico · PIB total por ano">
+        <NidPanel title="Série Anual" dataset="pib" indicadorKey="chart_serie_anual" sub="histórico · PIB total por ano">
           <DataTable
             columns={[
               { key: "ano",       label: "Ano",          width: 80 },
@@ -303,6 +303,8 @@ export default function PibPage() {
       <NidComparativoPanel
         title="Ranking de PIB Municipal"
         sub="Posição do município no ranking nacional/estadual (último ano disponível)"
+        dataset="pib"
+        indicadorKey="chart_comparativo_municipios"
         endpoint="/pib/ranking"
         metric="pib_total"
         fmt={(v) => {

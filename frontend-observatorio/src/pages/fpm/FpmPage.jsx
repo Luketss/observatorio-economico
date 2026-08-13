@@ -194,7 +194,7 @@ export default function FpmPage() {
             <KpiCard label="População" period={alerta.ano_populacao ? String(alerta.ano_populacao) : undefined} value={fmtHab(alerta.populacao)} sub={alerta.fonte_populacao || ""} dataset="fpm" indicadorKey="populacao" />
           </div>
 
-          <NidPanel title="Repasses mensais do FPM" sub="Últimos 36 meses · valores brutos">
+          <NidPanel title="Repasses mensais do FPM" dataset="fpm" indicadorKey="chart_repasses_mensais" sub="Últimos 36 meses · valores brutos">
             <AreaLineChart
               data={mensalChart}
               height={280}
@@ -206,7 +206,7 @@ export default function FpmPage() {
             />
           </NidPanel>
 
-          <NidPanel title="População estimada por ano" sub="Estimativas do IBGE · limite da próxima faixa marcado">
+          <NidPanel title="População estimada por ano" dataset="fpm" indicadorKey="chart_populacao_anual" sub="Estimativas do IBGE · limite da próxima faixa marcado">
             <AreaLineChart
               data={populacaoChart}
               height={260}
@@ -219,7 +219,7 @@ export default function FpmPage() {
             />
           </NidPanel>
 
-          <NidPanel title="Total anual" sub="Soma dos repasses por ano">
+          <NidPanel title="Total anual" dataset="fpm" indicadorKey="chart_total_anual" sub="Soma dos repasses por ano">
             <DataTable
               columns={[
                 { key: "ano", label: "Ano", width: 80 },

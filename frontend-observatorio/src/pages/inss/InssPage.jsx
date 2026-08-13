@@ -165,7 +165,7 @@ export default function InssPage() {
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Top Categorias */}
-        <NidPanel title="Top Categorias de Benefícios">
+        <NidPanel title="Top Categorias de Benefícios" dataset="inss" indicadorKey="chart_top_categorias">
           <HBarChart
             data={topCategorias.map((d) => ({ label: d.categoria, value: d.quantidade_beneficios || 0 }))}
             color="var(--accent-3)"
@@ -176,7 +176,7 @@ export default function InssPage() {
         </NidPanel>
 
         {/* Evolução Anual */}
-        <NidPanel title="Evolução Anual de Benefícios">
+        <NidPanel title="Evolução Anual de Benefícios" dataset="inss" indicadorKey="chart_evolucao_anual">
           <AreaLineChart
             data={evolucaoAnual.map((d) => ({ label: String(d.ano), value: d.quantidade_beneficios || 0 }))}
             height={280}
@@ -192,7 +192,7 @@ export default function InssPage() {
 
       {/* Tabela detalhada */}
       {!loading && tableData.length > 0 && (
-        <NidPanel title="Detalhamento por Ano e Categoria" sub="top 50 · ordenado por valor anual">
+        <NidPanel title="Detalhamento por Ano e Categoria" dataset="inss" indicadorKey="chart_detalhamento_ano_categoria" sub="top 50 · ordenado por valor anual">
           <DataTable
             columns={[
               { key: "ano",                   label: "Ano",           width: 80 },
@@ -208,6 +208,8 @@ export default function InssPage() {
       <NidComparativoPanel
         title="Comparativo Municipal · INSS"
         sub="Ranking por valor anual de benefícios injetados"
+        dataset="inss"
+        indicadorKey="chart_comparativo_municipios"
         endpoint="/inss/comparativo"
         metric="valor_total"
         fmt={(v) => `R$ ${Number(v).toLocaleString("pt-BR", { maximumFractionDigits: 0 })}`}
