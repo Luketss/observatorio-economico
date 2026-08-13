@@ -26,7 +26,7 @@ export function NidPageHeader({ title, sub, badge, chips }) {
             onClick={c.onClick}
             role={c.onClick ? "button" : undefined}
             tabIndex={c.onClick ? 0 : undefined}
-            aria-label={c.onClick ? `Ir para filtros de período` : undefined}
+            aria-label={c.onClick ? (c.ariaLabel || (typeof c.label === "string" ? c.label : undefined)) : undefined}
             onKeyDown={c.onClick ? (e) => { if (e.key === "Enter" || e.key === " ") c.onClick(e); } : undefined}
           >
             {c.label}
