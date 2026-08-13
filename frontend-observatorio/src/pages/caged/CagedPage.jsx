@@ -440,6 +440,8 @@ export default function CagedPage() {
                   : "—"
               } no acumulado`
             : usarSaldoMensal ? "Empregos formais líquidos por mês" : "Empregos formais líquidos por ano"}
+          dataset="caged"
+          indicadorKey="chart_saldo"
         >
           {comparar && cmp.temAnterior ? (
             <>
@@ -480,6 +482,8 @@ export default function CagedPage() {
             : `admissões vs. desligamentos · ${anoAtivo || ""}`}
           tabs={["Saldo", "Bruto"]}
           onTabChange={(i) => setTurnoverMode(i === 0 ? "saldo" : "bruto")}
+          dataset="caged"
+          indicadorKey="chart_movimentacao"
         >
           <TwinBarChart
             data={turnoverMes}
@@ -507,7 +511,7 @@ export default function CagedPage() {
       {/* CNAE saldo + composition */}
       <div className="nid-grid-1-1">
         <PlanGate planKey="caged.por_cnae">
-          <NidPanel title="Setores · Saldo do Ano" sub={`${anoAtivo || ""} · admissões − desligamentos`}>
+          <NidPanel title="Setores · Saldo do Ano" sub={`${anoAtivo || ""} · admissões − desligamentos`} dataset="caged" indicadorKey="chart_setores_saldo">
             {cnaeRanking.length > 0 ? (
               <HBarChart
                 data={cnaeRanking.slice(0, 8).map((d) => ({ label: d.label, value: d.value }))}
@@ -534,7 +538,7 @@ export default function CagedPage() {
         </PlanGate>
 
         <PlanGate planKey="caged.por_cnae">
-          <NidPanel title="Composição Setorial" sub={`Admissões por setor · ${anoAtivo || ""}`}>
+          <NidPanel title="Composição Setorial" sub={`Admissões por setor · ${anoAtivo || ""}`} dataset="caged" indicadorKey="chart_composicao_setorial">
             {cnaeSaldoAno.length > 0 ? (
               <DonutChart
                 data={cnaeSaldoAno}
@@ -552,7 +556,7 @@ export default function CagedPage() {
 
       {/* NEW: Tamanho estab + PCD tipo deficiência */}
       <div className="nid-grid-1-1">
-        <NidPanel title="Por Tamanho de Estabelecimento" sub={`Saldo · ${anoAtivo || ""}`}>
+        <NidPanel title="Por Tamanho de Estabelecimento" sub={`Saldo · ${anoAtivo || ""}`} dataset="caged" indicadorKey="chart_tamanho_estabelecimento">
           {tamanhoAno.length > 0 ? (
             <HBarChart
               data={tamanhoAno}
@@ -564,7 +568,7 @@ export default function CagedPage() {
           ) : <EmptyMsg height={260} />}
         </NidPanel>
 
-        <NidPanel title="PCD por Tipo de Deficiência" sub={`Saldo · ${anoAtivo || ""}`}>
+        <NidPanel title="PCD por Tipo de Deficiência" sub={`Saldo · ${anoAtivo || ""}`} dataset="caged" indicadorKey="chart_pcd_deficiencia">
           {tipoDefAno.length > 0 ? (
             <HBarChart
               data={tipoDefAno}
@@ -579,7 +583,7 @@ export default function CagedPage() {
 
       {/* NEW: Tipo empregador + Tipo estabelecimento */}
       <div className="nid-grid-1-1">
-        <NidPanel title="Tipo de Empregador" sub={`Admissões · ${anoAtivo || ""}`}>
+        <NidPanel title="Tipo de Empregador" sub={`Admissões · ${anoAtivo || ""}`} dataset="caged" indicadorKey="chart_tipo_empregador">
           {tipoEmpAno.length > 0 ? (
             <DonutChart
               data={tipoEmpAno}
@@ -593,7 +597,7 @@ export default function CagedPage() {
           <NidLegend items={tipoEmpAno.map((d, i) => ({ name: d.name, color: palette[i % palette.length] }))} />
         </NidPanel>
 
-        <NidPanel title="Tipo de Estabelecimento" sub={`Admissões · ${anoAtivo || ""}`}>
+        <NidPanel title="Tipo de Estabelecimento" sub={`Admissões · ${anoAtivo || ""}`} dataset="caged" indicadorKey="chart_tipo_estabelecimento">
           {tipoEstabAno.length > 0 ? (
             <DonutChart
               data={tipoEstabAno}
@@ -612,7 +616,7 @@ export default function CagedPage() {
       {cnaeStacked.data.length > 0 && cnaeStacked.keys.length > 0 && (
         <PlanGate planKey="caged.por_cnae">
           <div style={{ marginBottom: 22 }}>
-            <NidPanel title="Movimentações por Setor · Histórico" sub="Top 5 setores · admissões + desligamentos por ano">
+            <NidPanel title="Movimentações por Setor · Histórico" sub="Top 5 setores · admissões + desligamentos por ano" dataset="caged" indicadorKey="chart_setores_historico">
               <StackedBarChart
                 data={cnaeStacked.data}
                 keys={cnaeStacked.keys}
@@ -631,7 +635,7 @@ export default function CagedPage() {
       {/* Sexo + Raça */}
       <div className="nid-grid-1-1">
         <PlanGate planKey="caged.por_sexo">
-          <NidPanel title="Admissões por Sexo" sub={`Distribuição · ${anoAtivo || ""}`}>
+          <NidPanel title="Admissões por Sexo" sub={`Distribuição · ${anoAtivo || ""}`} dataset="caged" indicadorKey="chart_admissoes_sexo">
             {sexoAno.length > 0 ? (
               <DonutChart data={sexoAno} colors={[A1, A2, A3]} glow height={210}
                 centerLabel={fmtNumberShort(sexoAno.reduce((s, d) => s + d.value, 0))}
@@ -642,7 +646,7 @@ export default function CagedPage() {
         </PlanGate>
 
         <PlanGate planKey="caged.por_raca">
-          <NidPanel title="Admissões por Raça/Cor" sub={`Distribuição · ${anoAtivo || ""}`}>
+          <NidPanel title="Admissões por Raça/Cor" sub={`Distribuição · ${anoAtivo || ""}`} dataset="caged" indicadorKey="chart_admissoes_raca">
             {racaAno.length > 0 ? (
               <DonutChart data={racaAno} colors={palette} legend glow height={210}
                 centerLabel={fmtNumberShort(racaAno.reduce((s, d) => s + d.value, 0))}
@@ -654,13 +658,13 @@ export default function CagedPage() {
 
       {/* Faixa etária + Escolaridade */}
       <div className="nid-grid-1-1">
-        <NidPanel title="Admissões por Faixa Etária" sub={`${anoAtivo || ""}`}>
+        <NidPanel title="Admissões por Faixa Etária" sub={`${anoAtivo || ""}`} dataset="caged" indicadorKey="chart_admissoes_faixa_etaria">
           {faixaEtariaAno.length > 0 ? (
             <HBarChart data={faixaEtariaAno} color={A3} glow height={260} fmt={fmtNumber} />
           ) : <EmptyMsg height={260} />}
         </NidPanel>
 
-        <NidPanel title="Admissões por Escolaridade" sub={`${anoAtivo || ""}`}>
+        <NidPanel title="Admissões por Escolaridade" sub={`${anoAtivo || ""}`} dataset="caged" indicadorKey="chart_admissoes_escolaridade">
           {escolaridadeAno.length > 0 ? (
             <HBarChart data={escolaridadeAno} color={A4} glow height={260} fmt={fmtNumber} />
           ) : <EmptyMsg height={260} />}
@@ -668,7 +672,7 @@ export default function CagedPage() {
       </div>
 
       <div style={{ marginBottom: 22 }}>
-        <NidPanel title="Tipo de Movimentação" sub={`Detalhamento · ${anoAtivo || ""}`}>
+        <NidPanel title="Tipo de Movimentação" sub={`Detalhamento · ${anoAtivo || ""}`} dataset="caged" indicadorKey="chart_tipo_movimentacao">
           {tipoMovAno.length > 0 ? (
             <HBarChart data={tipoMovAno} color={A1} glow height={260} fmt={fmtNumber} />
           ) : <EmptyMsg height={260} />}

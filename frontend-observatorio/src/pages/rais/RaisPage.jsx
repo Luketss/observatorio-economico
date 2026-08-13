@@ -406,7 +406,7 @@ export default function RaisPage() {
 
       {/* Evolution + CNAE composition */}
       <div className="nid-grid-2">
-        <NidPanel title="Evolução de Vínculos" sub="Estoque total por ano">
+        <NidPanel title="Evolução de Vínculos" sub="Estoque total por ano" dataset="rais" indicadorKey="chart_evolucao_vinculos">
           <AreaLineChart
             data={serieChart}
             color={A1}
@@ -420,7 +420,7 @@ export default function RaisPage() {
         </NidPanel>
 
         <PlanGate planKey="rais.por_cnae">
-          <NidPanel title="Top Setores (CNAE)" sub={`Composição ${anoAtivo || ""}`}>
+          <NidPanel title="Top Setores (CNAE)" sub={`Composição ${anoAtivo || ""}`} dataset="rais" indicadorKey="chart_top_setores">
             {porCnae.filter((d) => d.ano === anoAtivo).length > 0 ? (
               <DonutChart
                 data={aggregateByYear(porCnae.filter((d) => d.ano === anoAtivo), "descricao_secao").slice(0, 6).map((s) => ({ label: s.name, value: s.value }))}
@@ -456,7 +456,7 @@ export default function RaisPage() {
 
       {/* Turnover + Motivos de Desligamento (NEW) */}
       <div className="nid-grid-1-1">
-        <NidPanel title="Turnover Mensal" sub={`Admissões vs Desligamentos · ${anoAtivo || ""}`}>
+        <NidPanel title="Turnover Mensal" sub={`Admissões vs Desligamentos · ${anoAtivo || ""}`} dataset="rais" indicadorKey="chart_turnover_mensal">
           <TwinBarChart data={turnoverAno} glow colorUp={A5} colorDown={A2} height={260} />
           <NidLegend items={[
             { name: "Admissões", color: A5 },
@@ -464,7 +464,7 @@ export default function RaisPage() {
           ]} />
         </NidPanel>
 
-        <NidPanel title="Natureza Jurídica" sub={`Composição público / privado / outros · ${anoAtivo || ""}`}>
+        <NidPanel title="Natureza Jurídica" sub={`Composição público / privado / outros · ${anoAtivo || ""}`} dataset="rais" indicadorKey="chart_natureza_juridica">
           {naturezaAno.length > 0 ? (
             <DonutChart
               data={naturezaAno}
@@ -483,13 +483,13 @@ export default function RaisPage() {
 
       {/* Tipo Admissão + Tamanho Estab (NEW) */}
       <div className="nid-grid-1-1">
-        <NidPanel title="Tipo de Admissão" sub={`Como as pessoas foram contratadas · ${anoAtivo || ""}`}>
+        <NidPanel title="Tipo de Admissão" sub={`Como as pessoas foram contratadas · ${anoAtivo || ""}`} dataset="rais" indicadorKey="chart_tipo_admissao">
           {tipoAdmissaoAno.length > 0 ? (
             <HBarChart data={tipoAdmissaoAno} color={A5} glow height={240} fmt={fmtNumber} />
           ) : <EmptyMsg height={240} />}
         </NidPanel>
 
-        <NidPanel title="Por Tamanho de Estabelecimento" sub={`Onde estão os vínculos · ${anoAtivo || ""}`}>
+        <NidPanel title="Por Tamanho de Estabelecimento" sub={`Onde estão os vínculos · ${anoAtivo || ""}`} dataset="rais" indicadorKey="chart_tamanho_estabelecimento">
           {tamanhoAno.length > 0 ? (
             <DonutChart
               data={tamanhoAno}
@@ -510,7 +510,7 @@ export default function RaisPage() {
       {cnaeStacked.data.length > 0 && cnaeStacked.keys.length > 0 && (
         <PlanGate planKey="rais.por_cnae">
           <div style={{ marginBottom: 22 }}>
-            <NidPanel title="Evolução por Setor" sub="Top 5 setores · estoque por ano">
+            <NidPanel title="Evolução por Setor" sub="Top 5 setores · estoque por ano" dataset="rais" indicadorKey="chart_evolucao_setor">
               <StackedBarChart
                 data={cnaeStacked.data}
                 keys={cnaeStacked.keys}
@@ -531,7 +531,7 @@ export default function RaisPage() {
       {/* Demographic breakdowns: Sexo + Raça */}
       <div className="nid-grid-1-1">
         <PlanGate planKey="rais.por_sexo">
-          <NidPanel title="Vínculos por Sexo" sub={`Distribuição · ${anoAtivo || ""}`}>
+          <NidPanel title="Vínculos por Sexo" sub={`Distribuição · ${anoAtivo || ""}`} dataset="rais" indicadorKey="chart_vinculos_sexo">
             {sexoAno.length > 0 ? (
               <DonutChart data={sexoAno} colors={[A1, A2, A3]} glow height={210}
                 centerLabel={fmtNumberShort(sexoAno.reduce((s, d) => s + d.value, 0))}
@@ -542,7 +542,7 @@ export default function RaisPage() {
         </PlanGate>
 
         <PlanGate planKey="rais.por_raca">
-          <NidPanel title="Vínculos por Raça/Cor" sub={`Distribuição · ${anoAtivo || ""}`}>
+          <NidPanel title="Vínculos por Raça/Cor" sub={`Distribuição · ${anoAtivo || ""}`} dataset="rais" indicadorKey="chart_vinculos_raca">
             {racaAno.length > 0 ? (
               <DonutChart data={racaAno} colors={palette} glow height={210}
                 centerLabel={fmtNumberShort(racaAno.reduce((s, d) => s + d.value, 0))}
@@ -556,7 +556,7 @@ export default function RaisPage() {
       {/* Faixa etária + Escolaridade */}
       <div className="nid-grid-1-1">
         <PlanGate planKey="rais.por_faixa_etaria">
-          <NidPanel title="Faixa Etária" sub={`Distribuição · ${anoAtivo || ""}`}>
+          <NidPanel title="Faixa Etária" sub={`Distribuição · ${anoAtivo || ""}`} dataset="rais" indicadorKey="chart_faixa_etaria">
             {faixaEtariaAgg.length > 0 ? (
               <HBarChart data={faixaEtariaAgg} color={A3} glow height={260} fmt={fmtNumber} />
             ) : <EmptyMsg height={260} />}
@@ -564,7 +564,7 @@ export default function RaisPage() {
         </PlanGate>
 
         <PlanGate planKey="rais.por_escolaridade">
-          <NidPanel title="Grau de Instrução" sub={`Escolaridade · ${anoAtivo || ""}`}>
+          <NidPanel title="Grau de Instrução" sub={`Escolaridade · ${anoAtivo || ""}`} dataset="rais" indicadorKey="chart_grau_instrucao">
             {escolaridadeAgg.length > 0 ? (
               <HBarChart data={escolaridadeAgg.slice(0, 8)} color={A4} glow height={260} fmt={fmtNumber} />
             ) : <EmptyMsg height={260} />}
@@ -575,14 +575,14 @@ export default function RaisPage() {
       {/* Faixa salarial + Tempo emprego */}
       <div className="nid-grid-1-1">
         <PlanGate planKey="rais.por_remuneracao">
-          <NidPanel title="Faixa Salarial (Salários Mínimos)" sub={`Distribuição · ${anoAtivo || ""}`}>
+          <NidPanel title="Faixa Salarial (Salários Mínimos)" sub={`Distribuição · ${anoAtivo || ""}`} dataset="rais" indicadorKey="chart_faixa_salarial">
             {faixaRemAgg.length > 0 ? (
               <HBarChart data={faixaRemAgg.slice(0, 10)} color={A1} glow height={280} fmt={fmtNumber} />
             ) : <EmptyMsg height={280} />}
           </NidPanel>
         </PlanGate>
 
-        <NidPanel title="Tempo de Emprego" sub={`Permanência no vínculo · ${anoAtivo || ""}`}>
+        <NidPanel title="Tempo de Emprego" sub={`Permanência no vínculo · ${anoAtivo || ""}`} dataset="rais" indicadorKey="chart_tempo_emprego">
           {tempoEmpregoAgg.length > 0 ? (
             <HBarChart data={tempoEmpregoAgg} color={A5} glow height={280} fmt={fmtNumber} />
           ) : <EmptyMsg height={280} />}
@@ -629,13 +629,13 @@ export default function RaisPage() {
 
       {/* Motivos de Desligamento + Top 10 Ocupações (movidos para o final) */}
       <div className="nid-grid-1-1">
-        <NidPanel title="Motivos de Desligamento" sub={`Top causas · ${anoAtivo || ""}`}>
+        <NidPanel title="Motivos de Desligamento" sub={`Top causas · ${anoAtivo || ""}`} dataset="rais" indicadorKey="chart_motivos_desligamento">
           {motivoAno.length > 0 ? (
             <HBarChart data={motivoAno} color={A2} glow height={260} fmt={fmtNumber} />
           ) : <EmptyMsg height={260} />}
         </NidPanel>
 
-        <NidPanel title="Top 10 Ocupações (CBO 2002)" sub={`Família ocupacional · ${anoAtivo || ""}`}>
+        <NidPanel title="Top 10 Ocupações (CBO 2002)" sub={`Família ocupacional · ${anoAtivo || ""}`} dataset="rais" indicadorKey="chart_top_ocupacoes">
           <DataTable
             columns={[
               { key: "cbo_familia", label: "CBO", width: 70, mono: true },
