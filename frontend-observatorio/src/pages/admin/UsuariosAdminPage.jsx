@@ -217,18 +217,30 @@ export default function UsuariosAdminPage() {
         </div>
       </div>
 
-      {/* Create / Edit form */}
+      {/* Create / Edit form — modal: quem clica em editar no fim da lista
+          precisa ver o formulário abrir, não um painel fora da viewport */}
       <AnimatePresence>
         {showForm && (
           <motion.div
-            initial={{ opacity: 0, y: -8 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -8 }}
-            transition={{ duration: 0.2, ease: "easeOut" }}
-            className="bg-[var(--panel)] rounded-2xl shadow-sm border border-[var(--border)] p-6"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.18, ease: "easeOut" }}
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4"
+            onClick={(e) => { if (e.target === e.currentTarget) closeForm(); }}
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="usuario-form-titulo"
           >
+            <motion.div
+              initial={{ scale: 0.95, opacity: 0, y: 8 }}
+              animate={{ scale: 1, opacity: 1, y: 0 }}
+              exit={{ scale: 0.97, opacity: 0, y: 4 }}
+              transition={{ duration: 0.22, ease: "easeOut" }}
+              className="bg-[var(--panel)] rounded-2xl shadow-xl border border-[var(--border)] p-6 w-full max-w-2xl max-h-[90vh] overflow-y-auto"
+            >
             <div className="flex items-center justify-between mb-5">
-              <h3 className="text-base font-bold text-[var(--text)]">
+              <h3 id="usuario-form-titulo" className="text-base font-bold text-[var(--text)]">
                 {editingId ? "Editar Usuário" : "Criar Novo Usuário"}
               </h3>
               <button
@@ -368,6 +380,7 @@ export default function UsuariosAdminPage() {
                 </div>
               </div>
             </form>
+            </motion.div>
           </motion.div>
         )}
       </AnimatePresence>
