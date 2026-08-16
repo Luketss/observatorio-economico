@@ -4,6 +4,7 @@ from app.core.permissions import permissoes_efetivas
 from app.core.rate_limit import limiter
 from app.schemas.auth import AlterarSenhaPayload, AuthenticatedUser
 from app.services.auth_service import AuthService
+from app.services.audit_service import origem_do_request
 from fastapi import APIRouter, Body, Depends, Request
 from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy.orm import Session
@@ -21,13 +22,7 @@ def login(
 ):
     service = AuthService(db)
 
-    # Prefer the client IP forwarded by a reverse proxy, falling back to the
-    # direct socket peer.
-    fwd = request.headers.get("x-forwarded-for")
-    ip = fwd.split(",")[0].strip() if fwd else (
-        request.client.host if request.client else None
-    )
-    user_agent = request.headers.get("user-agent")
+    ip, user_agent = origem_do_request(request)
 
     return service.authenticate(
         email=form_data.username,
