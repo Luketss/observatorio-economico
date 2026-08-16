@@ -4,8 +4,10 @@ Regra de ouro (mesma do LoginAudit em auth_service): falha de auditoria
 NUNCA quebra a operação principal — logar, rollback e seguir.
 """
 import logging
+from datetime import datetime, timedelta, timezone
 
 from app.models.acao_audit import AcaoAudit
+from app.models.login_audit import LoginAudit
 
 logger = logging.getLogger("app.audit")
 
@@ -85,3 +87,49 @@ def registrar_acao(
             db.rollback()
         except Exception:
             pass
+
+
+def cortes_retencao(agora: datetime | None = None) -> tuple[datetime, datetime]:
+    """(corte_acessos, corte_acoes): registros ANTERIORES ao corte são
+    purgados. 12 meses ≈ 365 dias, 5 anos ≈ 5×365 — aproximação declarada
+    em docs/lgpd.md."""
+    agora = agora or datetime.now(timezone.utc)
+    return agora - timedelta(days=365), agora - timedelta(days=5 * 365)
+
+
+def purgar_auditoria(db, agora: datetime | None = None) -> dict:
+    """Aplica a retenção (RETENCAO_ACESSOS_MESES / RETENCAO_ACOES_ANOS).
+    Devolve contagens por classe; {} em falha (logada, nunca propaga)."""
+    try:
+        corte_acessos, corte_acoes = cortes_retencao(agora)
+        n_login = (
+            db.query(LoginAudit)
+            .filter(LoginAudit.criado_em < corte_acessos)
+            .delete(synchronize_session=False)
+        )
+        n_leituras = (
+            db.query(AcaoAudit)
+            .filter(AcaoAudit.categoria == "leitura",
+                    AcaoAudit.criado_em < corte_acessos)
+            .delete(synchronize_session=False)
+        )
+        n_acoes = (
+            db.query(AcaoAudit)
+            .filter(AcaoAudit.categoria == "acao",
+                    AcaoAudit.criado_em < corte_acoes)
+            .delete(synchronize_session=False)
+        )
+        db.commit()
+        if n_login or n_leituras or n_acoes:
+            logger.info(
+                "Purga de auditoria: login=%s leituras=%s acoes=%s",
+                n_login, n_leituras, n_acoes,
+            )
+        return {"login_audit": n_login, "leituras": n_leituras, "acoes": n_acoes}
+    except Exception:
+        logger.exception("Purga de auditoria falhou")
+        try:
+            db.rollback()
+        except Exception:
+            pass
+        return {}

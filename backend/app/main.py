@@ -1,3 +1,6 @@
+import logging
+from contextlib import asynccontextmanager
+
 import app.api.v1.routers.ips as ips
 import app.api.v1.routers.projetos as projetos
 import app.api.v1.routers.desenvolvimento_economico as desenvolvimento_economico
@@ -47,6 +50,27 @@ from slowapi.errors import RateLimitExceeded
 # Setup logging
 setup_logging()
 
+_logger = logging.getLogger("app.main")
+
+
+@asynccontextmanager
+async def lifespan(_app):
+    # Purga de retenção da auditoria (docs/lgpd.md). Railway redeploya a cada
+    # push, então "no startup" honra os prazos na prática. Nunca derruba o boot.
+    try:
+        from app.db.session import SessionLocal
+        from app.services.audit_service import purgar_auditoria
+
+        db = SessionLocal()
+        try:
+            purgar_auditoria(db)
+        finally:
+            db.close()
+    except Exception:
+        _logger.exception("Purga de auditoria indisponível no startup")
+    yield
+
+
 # In production, hide the interactive docs and the OpenAPI schema so the
 # full API surface (routes, table names) isn't publicly enumerable.
 _docs_kwargs = (
@@ -55,7 +79,10 @@ _docs_kwargs = (
     else {}
 )
 
-app = FastAPI(title="Observatório Econômico API", version="1.0.0", **_docs_kwargs)
+app = FastAPI(
+    title="Observatório Econômico API", version="1.0.0",
+    lifespan=lifespan, **_docs_kwargs,
+)
 
 # Rate limiting (slowapi) — see app/core/rate_limit.py
 app.state.limiter = limiter
