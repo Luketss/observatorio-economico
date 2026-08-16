@@ -59,8 +59,15 @@ def test_purga_respeita_os_dois_prazos(db):
     contagens = purgar_auditoria(db, agora=AGORA)
 
     assert contagens == {"login_audit": 1, "leituras": 1, "acoes": 1}
+    esperados = {
+        ("leitura", AGORA - timedelta(days=30 * 1)),
+        ("acao", AGORA - timedelta(days=30 * 13)),
+    }
     restantes = {(l.categoria, l.criado_em) for l in db.query(AcaoAudit).all()}
-    assert len(restantes) == 2
+    # SQLite may return naive datetimes; normalize both sides for comparison
+    restantes_norm = {(cat, dt.replace(tzinfo=None) if dt.tzinfo else dt) for cat, dt in restantes}
+    esperados_norm = {(cat, dt.replace(tzinfo=None) if dt.tzinfo else dt) for cat, dt in esperados}
+    assert restantes_norm == esperados_norm
     assert db.query(LoginAudit).count() == 0
 
 
