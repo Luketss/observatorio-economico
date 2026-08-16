@@ -16,8 +16,9 @@ from app.core.permissions import (
 from app.models.role import Role
 from app.models.usuario import Usuario
 from app.schemas.usuario import UsuarioCreate, UsuarioOut, UsuarioUpdate
+from app.services.audit_service import montar_detalhe_atualizacao, registrar_acao
 from app.services.usuario_service import UsuarioService
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Request
 from sqlalchemy.orm import Session
 
 router = APIRouter(prefix="/usuarios", tags=["Usuários"])
@@ -122,6 +123,7 @@ def listar_usuarios(
 @router.post("", response_model=SuccessResponse[UsuarioOut])
 def criar_usuario(
     data: UsuarioCreate,
+    request: Request,
     db: Session = Depends(get_db),
     current_user: Usuario = Depends(require_permissao("usuarios", "criar")),
 ):
@@ -144,6 +146,12 @@ def criar_usuario(
         )
 
     usuario = service.create(data)
+    registrar_acao(
+        db, categoria="acao", acao="usuario_criado",
+        ator=current_user, alvo=usuario,
+        detalhe=f"role: {usuario.role.nome} | municipio: {usuario.municipio_id}",
+        request=request,
+    )
     return SuccessResponse(data=_to_out(usuario))
 
 
@@ -151,12 +159,14 @@ def criar_usuario(
 def atualizar_usuario(
     user_id: int,
     data: UsuarioUpdate,
+    request: Request,
     db: Session = Depends(get_db),
     current_user: Usuario = Depends(require_permissao("usuarios", "editar")),
 ):
     service = UsuarioService(db)
     alvo = service.get_by_id(user_id)
     payload = data.model_dump(exclude_unset=True)
+    role_de, ativo_de = alvo.role.nome, alvo.ativo
 
     if _is_global(current_user):
         if "role_id" in payload or "municipio_id" in payload:
@@ -178,18 +188,38 @@ def atualizar_usuario(
             raise ForbiddenException(" ".join(erros))
 
     usuario = service.update(user_id, data)
+    registrar_acao(
+        db, categoria="acao", acao="usuario_atualizado",
+        ator=current_user, alvo=usuario,
+        detalhe=montar_detalhe_atualizacao(
+            list(payload.keys()),
+            role_de=role_de, role_para=usuario.role.nome,
+            ativo_de=ativo_de, ativo_para=usuario.ativo,
+        ),
+        request=request,
+    )
     return SuccessResponse(data=_to_out(usuario))
 
 
 @router.delete("/{user_id}")
 def deletar_usuario(
     user_id: int,
+    request: Request,
     db: Session = Depends(get_db),
     current_user: Usuario = Depends(require_permissao("usuarios", "excluir")),
 ):
     service = UsuarioService(db)
+    alvo = service.get_by_id(user_id)
     if not _is_global(current_user):
-        alvo = service.get_by_id(user_id)
         _exigir_gerencia(current_user, alvo)
+    alvo_email, alvo_mun, alvo_role = alvo.email, alvo.municipio_id, alvo.role.nome
     service.delete(user_id, current_user.id)
+    # alvo_usuario_id fica None de propósito: o usuário já não existe e a FK
+    # não pode apontar para ele — o vínculo sobrevive no snapshot + detalhe.
+    registrar_acao(
+        db, categoria="acao", acao="usuario_excluido",
+        ator=current_user, alvo_email=alvo_email, municipio_id=alvo_mun,
+        detalhe=f"usuario_id: {user_id} | role: {alvo_role}",
+        request=request,
+    )
     return {"ok": True}
