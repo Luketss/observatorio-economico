@@ -81,6 +81,30 @@ describe("ChartInfoIcon", () => {
     ).toBeInTheDocument();
   });
 
+  it("tooltip de hover escapa do card (portal no body) para não ficar atrás de outros gráficos", async () => {
+    mockApi.get.mockResolvedValue({
+      data: { tooltip: "PIB a preços correntes", descricao: "", fonte: "" },
+    });
+
+    const { container } = render(
+      <div className="nid-panel">
+        <ChartInfoIcon dataset="pib" indicadorKey="chart_evolucao_pib" />
+      </div>
+    );
+
+    await waitFor(() => {
+      expect(mockApi.get).toHaveBeenCalled();
+    });
+
+    const icon = container.querySelector('button[title="Ver descrição"]');
+    fireEvent.mouseEnter(icon);
+
+    const tip = await screen.findByText("PIB a preços correntes");
+    // O painel tem backdrop-filter (stacking context próprio); se o tooltip
+    // ficar dentro dele, painéis irmãos seguintes pintam por cima.
+    expect(tip.closest(".nid-panel")).toBeNull();
+  });
+
   it("deve fechar modal após salvar com sucesso", async () => {
     mockApi.put.mockResolvedValueOnce({
       data: { tooltip: "t", descricao: "d", fonte: "" },

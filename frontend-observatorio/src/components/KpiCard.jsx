@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   InformationCircleIcon,
@@ -76,7 +77,27 @@ export default function KpiCard({
   const [editing, setEditing] = useState(false);
   const [form, setForm] = useState({ tooltip: "", descricao: "", fonte: "" });
   const [saving, setSaving] = useState(false);
+  const [tipPos, setTipPos] = useState({ top: 0, right: 0 });
   const tooltipRef = useRef(null);
+
+  const showTooltip = () => {
+    if (!tooltipRef.current) return;
+    const rect = tooltipRef.current.getBoundingClientRect();
+    setTipPos({ top: rect.bottom + 8, right: window.innerWidth - rect.right });
+    setTooltipVisible(true);
+  };
+
+  // Posição é fixa no viewport; se a página rolar/redimensionar, esconde
+  useEffect(() => {
+    if (!tooltipVisible) return;
+    const hide = () => setTooltipVisible(false);
+    window.addEventListener("scroll", hide, true);
+    window.addEventListener("resize", hide);
+    return () => {
+      window.removeEventListener("scroll", hide, true);
+      window.removeEventListener("resize", hide);
+    };
+  }, [tooltipVisible]);
 
   // Fetch indicator info if dataset+key provided
   useEffect(() => {
@@ -150,7 +171,7 @@ export default function KpiCard({
             {showInfoIcon && (
               <div className="relative" ref={tooltipRef}>
                 <button
-                  onMouseEnter={() => hasContent && setTooltipVisible(true)}
+                  onMouseEnter={() => hasContent && showTooltip()}
                   onMouseLeave={() => setTooltipVisible(false)}
                   onClick={() => { setModalOpen(true); setEditing(false); }}
                   className="p-1 rounded-lg transition-colors"
@@ -162,22 +183,28 @@ export default function KpiCard({
                   <InformationCircleIcon className="w-4 h-4" />
                 </button>
 
-                {/* Hover tooltip */}
-                <AnimatePresence>
-                  {tooltipVisible && info?.tooltip && (
-                    <motion.div
-                      initial={{ opacity: 0, y: -4 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      exit={{ opacity: 0, y: -4 }}
-                      transition={{ duration: 0.12 }}
-                      className="absolute right-0 top-8 z-50 w-56 bg-[var(--panel)] border border-[var(--border)] text-[var(--text)] text-xs rounded-xl px-3 py-2 shadow-xl pointer-events-none"
-                    >
-                      {info.tooltip}
-                      {/* Arrow */}
-                      <div className="absolute -top-1.5 right-2 w-3 h-3 bg-[var(--panel)] rotate-45 rounded-sm" />
-                    </motion.div>
-                  )}
-                </AnimatePresence>
+                {/* Hover tooltip — portal no body: .nid-kpi tem overflow:hidden
+                    e backdrop-filter, que cortavam/escondiam o tooltip atrás
+                    dos painéis seguintes */}
+                {createPortal(
+                  <AnimatePresence>
+                    {tooltipVisible && info?.tooltip && (
+                      <motion.div
+                        initial={{ opacity: 0, y: -4 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, y: -4 }}
+                        transition={{ duration: 0.12 }}
+                        style={{ top: tipPos.top, right: tipPos.right }}
+                        className="fixed z-50 w-56 bg-[var(--panel)] border border-[var(--border)] text-[var(--text)] text-xs rounded-xl px-3 py-2 shadow-xl pointer-events-none"
+                      >
+                        {info.tooltip}
+                        {/* Arrow */}
+                        <div className="absolute -top-1.5 right-2 w-3 h-3 bg-[var(--panel)] rotate-45 rounded-sm" />
+                      </motion.div>
+                    )}
+                  </AnimatePresence>,
+                  document.body
+                )}
               </div>
             )}
           </div>
@@ -190,7 +217,9 @@ export default function KpiCard({
         )}
       </motion.div>
 
-      {/* Description Modal */}
+      {/* Description Modal — portal no body pelo mesmo motivo do tooltip:
+          backdrop-filter no card vira containing block de position:fixed */}
+      {createPortal(
       <AnimatePresence>
         {modalOpen && (
           <motion.div
@@ -330,7 +359,9 @@ export default function KpiCard({
             </motion.div>
           </motion.div>
         )}
-      </AnimatePresence>
+      </AnimatePresence>,
+      document.body
+      )}
     </>
   );
 }

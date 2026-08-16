@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState, useCallback } from "react";
+import { createPortal } from "react-dom";
 import { AnimatePresence, motion } from "framer-motion";
 import {
   InformationCircleIcon,
@@ -31,7 +32,33 @@ export default function ChartInfoIcon({ dataset, indicadorKey }) {
   const [form, setForm] = useState({ tooltip: "", descricao: "", fonte: "" });
   const [saving, setSaving] = useState(false);
   const [erroSalvar, setErroSalvar] = useState("");
+  const [tipPos, setTipPos] = useState({ bottom: 0, left: 0 });
   const iconRef = useRef(null);
+
+  const showTooltip = () => {
+    if (!info?.tooltip || !iconRef.current) return;
+    const rect = iconRef.current.getBoundingClientRect();
+    // w-56 = 224px — centraliza no ícone sem depender de transform
+    // (framer-motion controla o transform durante a animação);
+    // ancora pelo bottom porque a altura do tooltip é dinâmica
+    setTipPos({
+      bottom: window.innerHeight - rect.top + 8,
+      left: rect.left + rect.width / 2 - 112,
+    });
+    setTooltipVisible(true);
+  };
+
+  // Posição é fixa no viewport; se a página rolar/redimensionar, esconde
+  useEffect(() => {
+    if (!tooltipVisible) return;
+    const hide = () => setTooltipVisible(false);
+    window.addEventListener("scroll", hide, true);
+    window.addEventListener("resize", hide);
+    return () => {
+      window.removeEventListener("scroll", hide, true);
+      window.removeEventListener("resize", hide);
+    };
+  }, [tooltipVisible]);
 
   useEscapeKey(useCallback(() => {
     if (editing) {
@@ -80,7 +107,7 @@ export default function ChartInfoIcon({ dataset, indicadorKey }) {
       <div className="relative inline-flex items-center" ref={iconRef}>
         <button
           type="button"
-          onMouseEnter={() => info?.tooltip && setTooltipVisible(true)}
+          onMouseEnter={showTooltip}
           onMouseLeave={() => setTooltipVisible(false)}
           onClick={() => { setModalOpen(true); setEditing(false); }}
           className={`p-0.5 rounded transition-colors ${
@@ -93,23 +120,31 @@ export default function ChartInfoIcon({ dataset, indicadorKey }) {
           <InformationCircleIcon className="w-4 h-4" />
         </button>
 
-        {/* Hover tooltip */}
-        <AnimatePresence>
-          {tooltipVisible && info?.tooltip && (
-            <motion.div
-              initial={{ opacity: 0, y: 4 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: 4 }}
-              className="absolute left-1/2 -translate-x-1/2 bottom-full mb-2 z-50 w-56 bg-slate-800 text-white text-xs rounded-lg px-3 py-2 shadow-lg pointer-events-none"
-            >
-              {info.tooltip}
-              <div className="absolute left-1/2 -translate-x-1/2 top-full w-0 h-0 border-x-4 border-x-transparent border-t-4 border-t-slate-800" />
-            </motion.div>
-          )}
-        </AnimatePresence>
+        {/* Hover tooltip — portal no body: os cards têm backdrop-filter
+            (stacking context próprio), então um z-50 interno ficaria atrás
+            dos painéis irmãos seguintes */}
+        {createPortal(
+          <AnimatePresence>
+            {tooltipVisible && info?.tooltip && (
+              <motion.div
+                initial={{ opacity: 0, y: 4 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: 4 }}
+                style={{ bottom: tipPos.bottom, left: tipPos.left }}
+                className="fixed z-50 w-56 bg-slate-800 text-white text-xs rounded-lg px-3 py-2 shadow-lg pointer-events-none"
+              >
+                {info.tooltip}
+                <div className="absolute left-1/2 -translate-x-1/2 top-full w-0 h-0 border-x-4 border-x-transparent border-t-4 border-t-slate-800" />
+              </motion.div>
+            )}
+          </AnimatePresence>,
+          document.body
+        )}
       </div>
 
-      {/* Detail / edit modal */}
+      {/* Detail / edit modal — portal no body pelo mesmo motivo do tooltip:
+          backdrop-filter no card vira containing block de position:fixed */}
+      {createPortal(
       <AnimatePresence>
         {modalOpen && (
           <motion.div
@@ -225,7 +260,9 @@ export default function ChartInfoIcon({ dataset, indicadorKey }) {
             </motion.div>
           </motion.div>
         )}
-      </AnimatePresence>
+      </AnimatePresence>,
+      document.body
+      )}
     </>
   );
 }
