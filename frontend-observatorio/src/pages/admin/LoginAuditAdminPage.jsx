@@ -8,6 +8,7 @@ import {
   XCircleIcon,
 } from "@heroicons/react/24/outline";
 import api from "../../services/api";
+import AcoesAuditTab from "./AcoesAuditTab";
 
 const PAGE_SIZE = 25;
 
@@ -48,6 +49,7 @@ const FILTERS = [
 ];
 
 export default function LoginAuditAdminPage() {
+  const [tab, setTab] = useState("logins");
   const [summary, setSummary] = useState([]);
   const [rows, setRows] = useState([]);
   const [total, setTotal] = useState(0);
@@ -111,15 +113,37 @@ export default function LoginAuditAdminPage() {
       <div className="flex items-start justify-between flex-wrap gap-4">
         <div>
           <h1 className="text-2xl font-extrabold tracking-tight text-[var(--text)]">
-            Logins / Auditoria
+            Auditoria
           </h1>
           <p className="text-sm text-[var(--text-mute)] mt-1">
-            Atividade de login de todas as contas — últimos acessos e tentativas
-            de autenticação.
+            Logins, ações administrativas e leituras de dados pessoais — quem
+            fez o quê, quando.
           </p>
         </div>
       </div>
 
+      {/* Tabs */}
+      <div className="flex items-center gap-2">
+        {[
+          { value: "logins", label: "Logins" },
+          { value: "acoes", label: "Ações" },
+        ].map((t) => (
+          <button
+            key={t.value}
+            onClick={() => setTab(t.value)}
+            className={`text-xs font-semibold px-4 py-1.5 rounded-full border transition-colors ${
+              tab === t.value
+                ? "bg-blue-600 border-blue-600 text-white"
+                : "border-[var(--border)] text-[var(--text-dim)] hover:bg-[var(--panel-2)]"
+            }`}
+          >
+            {t.label}
+          </button>
+        ))}
+      </div>
+
+      {tab === "logins" && (
+        <>
       {/* Summary cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
         {summary.map((s) => (
@@ -312,6 +336,10 @@ export default function LoginAuditAdminPage() {
           )}
         </div>
       )}
+        </>
+      )}
+
+      {tab === "acoes" && <AcoesAuditTab />}
     </motion.div>
   );
 }
