@@ -10,7 +10,8 @@ class LoginAudit(Base):
     id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
     # null when the submitted email doesn't match any account
     usuario_id: Mapped[int | None] = mapped_column(
-        Integer, ForeignKey("usuarios.id"), nullable=True, index=True
+        Integer, ForeignKey("usuarios.id", ondelete="SET NULL"),
+        nullable=True, index=True,
     )
     email_tentado: Mapped[str] = mapped_column(String(150), nullable=False, index=True)
     sucesso: Mapped[bool] = mapped_column(Boolean, nullable=False)

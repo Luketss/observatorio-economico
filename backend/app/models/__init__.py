@@ -10,6 +10,7 @@ Do NOT import models inside db/base.py to avoid circular imports.
 
 from app.models.arrecadacao import ArrecadacaoMensal
 from app.models.login_audit import LoginAudit
+from app.models.acao_audit import AcaoAudit
 from app.models.ingestao_audit import IngestaoAudit
 from app.models.ingestao_job import IngestaoJob
 from app.models.ingestao_arquivo import IngestaoArquivo
@@ -88,6 +89,7 @@ __all__ = [
     "Notificacao",
     "NotificacaoLida",
     "LoginAudit",
+    "AcaoAudit",
     "IngestaoAudit",
     "IngestaoJob",
     "IngestaoArquivo",
