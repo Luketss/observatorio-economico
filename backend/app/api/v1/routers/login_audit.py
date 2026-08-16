@@ -3,19 +3,23 @@ from datetime import datetime, timedelta, timezone
 from app.api.deps import get_db, require_role
 from app.api.pagination import PaginatedResponse
 from app.api.response import SuccessResponse
+from app.models.acao_audit import AcaoAudit
 from app.models.login_audit import LoginAudit
 from app.models.role import Role
 from app.models.usuario import Usuario
+from app.schemas.acao_audit import AcaoAuditOut
 from app.schemas.login_audit import (
     AdminLoginSummary,
     AdminLoginSummaryItem,
     LoginAuditOut,
 )
-from fastapi import APIRouter, Depends
-from sqlalchemy import func, select
+from app.services.audit_service import registrar_acao
+from fastapi import APIRouter, Depends, Request
+from sqlalchemy import func, or_, select
 from sqlalchemy.orm import Session
 
 router = APIRouter(prefix="/admin/login-audit", tags=["Admin - Login Audit"])
+router_acoes = APIRouter(prefix="/admin/auditoria", tags=["Admin - Auditoria"])
 
 
 def _admin_global_users(db: Session) -> list[Usuario]:
@@ -29,6 +33,7 @@ def _admin_global_users(db: Session) -> list[Usuario]:
 
 @router.get("", response_model=PaginatedResponse[LoginAuditOut])
 def listar_login_audit(
+    request: Request,
     skip: int = 0,
     limit: int = 20,
     sucesso: bool | None = None,
@@ -78,6 +83,8 @@ def listar_login_audit(
         for la, nome, papel in rows
     ]
 
+    registrar_acao(db, categoria="leitura", acao="auditoria_consultada",
+                   ator=current_user, detalhe="logins", request=request)
     return PaginatedResponse(items=items, total=total, skip=skip, limit=limit)
 
 
@@ -112,3 +119,52 @@ def resumo_login_audit(
         )
 
     return SuccessResponse(data=AdminLoginSummary(items=items))
+
+
+@router_acoes.get("/acoes", response_model=PaginatedResponse[AcaoAuditOut])
+def listar_acoes_audit(
+    request: Request,
+    skip: int = 0,
+    limit: int = 20,
+    categoria: str | None = None,
+    acao: str | None = None,
+    email: str | None = None,
+    db: Session = Depends(get_db),
+    current_user: Usuario = Depends(require_role("ADMIN_GLOBAL")),
+):
+    query = (
+        db.query(AcaoAudit, Usuario.nome)
+        .outerjoin(Usuario, AcaoAudit.ator_id == Usuario.id)
+    )
+    if categoria:
+        query = query.filter(AcaoAudit.categoria == categoria)
+    if acao:
+        query = query.filter(AcaoAudit.acao == acao)
+    if email:
+        like = f"%{email}%"
+        query = query.filter(or_(
+            AcaoAudit.ator_email.ilike(like),
+            AcaoAudit.alvo_email.ilike(like),
+        ))
+
+    total = query.count()
+    rows = (
+        query.order_by(AcaoAudit.criado_em.desc())
+        .offset(skip)
+        .limit(limit)
+        .all()
+    )
+    items = [
+        AcaoAuditOut(
+            id=a.id, categoria=a.categoria, acao=a.acao,
+            ator_id=a.ator_id, ator_email=a.ator_email, ator_nome=nome,
+            alvo_usuario_id=a.alvo_usuario_id, alvo_email=a.alvo_email,
+            municipio_id=a.municipio_id, detalhe=a.detalhe, ip=a.ip,
+            criado_em=a.criado_em,
+        )
+        for a, nome in rows
+    ]
+
+    registrar_acao(db, categoria="leitura", acao="auditoria_consultada",
+                   ator=current_user, detalhe="acoes", request=request)
+    return PaginatedResponse(items=items, total=total, skip=skip, limit=limit)

@@ -97,6 +97,7 @@ def _validar_role_para_usuario(
 
 @router.get("", response_model=PaginatedResponse[UsuarioOut])
 def listar_usuarios(
+    request: Request,
     skip: int = 0,
     limit: int = 20,
     db: Session = Depends(get_db),
@@ -112,6 +113,11 @@ def listar_usuarios(
 
     usuarios, total = service.list(skip=skip, limit=limit, municipio_id=municipio_filter)
 
+    registrar_acao(
+        db, categoria="leitura", acao="usuarios_listados", ator=current_user,
+        detalhe=f"total: {total} | municipio_filter: {municipio_filter}",
+        request=request,
+    )
     return PaginatedResponse(
         items=[_to_out(u) for u in usuarios],
         total=total,
