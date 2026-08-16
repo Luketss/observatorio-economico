@@ -51,7 +51,7 @@ def test_filtros_categoria_e_email(db):
 
     admin = db.query(Usuario).one()
     db.add(AcaoAudit(categoria="acao", acao="usuario_criado",
-                     ator_email="admin@x.com", alvo_email="a@x.com"))
+                     ator_email="admin@x.com", alvo_email="somente-alvo@x.com"))
     db.add(AcaoAudit(categoria="leitura", acao="usuarios_listados",
                      ator_email="outro@x.com"))
     db.commit()
@@ -67,6 +67,16 @@ def test_filtros_categoria_e_email(db):
     )
     assert resp.total == 1
     assert resp.items[0].acao == "usuarios_listados"
+
+    # Só casa via alvo_email (substring ausente de qualquer ator_email) —
+    # prova que o filtro é OR(ator_email, alvo_email), não AND, e que a
+    # cláusula de alvo_email não foi derrubada.
+    resp = listar_acoes_audit(
+        _FakeRequest(), email="somente-alvo", db=db, current_user=admin,
+    )
+    assert resp.total == 1
+    assert resp.items[0].acao == "usuario_criado"
+    assert resp.items[0].alvo_email == "somente-alvo@x.com"
 
 
 def test_consulta_gera_evento_de_leitura(db):
