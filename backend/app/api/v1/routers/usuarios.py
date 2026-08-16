@@ -113,17 +113,15 @@ def listar_usuarios(
 
     usuarios, total = service.list(skip=skip, limit=limit, municipio_id=municipio_filter)
 
+    items = [_to_out(u) for u in usuarios]
+
     registrar_acao(
         db, categoria="leitura", acao="usuarios_listados", ator=current_user,
         detalhe=f"total: {total} | municipio_filter: {municipio_filter}",
         request=request,
     )
-    return PaginatedResponse(
-        items=[_to_out(u) for u in usuarios],
-        total=total,
-        skip=skip,
-        limit=limit,
-    )
+
+    return PaginatedResponse(items=items, total=total, skip=skip, limit=limit)
 
 
 @router.post("", response_model=SuccessResponse[UsuarioOut])
