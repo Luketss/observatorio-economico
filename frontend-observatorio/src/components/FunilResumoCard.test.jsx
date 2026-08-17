@@ -27,6 +27,19 @@ describe("FunilResumoCard", () => {
     expect(screen.getByRole("link", { name: /ver funil/i })).toBeTruthy();
   });
 
+  it("valor potencial usa formato compacto (não transborda a célula do grid)", async () => {
+    api.get.mockResolvedValueOnce({
+      data: {
+        por_estagio: { lead: 4, contato: 2, negociacao: 1, implantacao: 3 },
+        valor_total_estimado: 1500000,
+        taxa_conversao: 30.0,
+      },
+    });
+    montar();
+    await waitFor(() => expect(screen.getByText(/R\$\s?1,5\s?mi/)).toBeTruthy());
+    expect(screen.queryByText(/1\.500\.000/)).toBeNull();
+  });
+
   it("funil vazio mostra estado vazio (card não some)", async () => {
     api.get.mockResolvedValueOnce({
       data: { por_estagio: { lead: 0, contato: 0, negociacao: 0, implantacao: 0 }, valor_total_estimado: 0, taxa_conversao: 0 },

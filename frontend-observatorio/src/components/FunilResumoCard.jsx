@@ -3,8 +3,10 @@ import { Link } from "react-router-dom";
 import api from "../services/api";
 import { NidPanel } from "./nid/Panel";
 
+// Notação compacta ("R$ 1,5 mi") como nos demais cards de resumo: por extenso
+// o valor não tem ponto de quebra e transborda a célula do grid em telas pequenas.
 const fmtBRL = (v) =>
-  Number(v || 0).toLocaleString("pt-BR", { style: "currency", currency: "BRL", maximumFractionDigits: 0 });
+  new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL", notation: "compact", maximumFractionDigits: 1 }).format(Number(v || 0));
 
 /** Resumo do Funil de Investimentos para o modo gerencial do Painel do
  *  Prefeito. Fetch próprio; funil vazio ou erro viram estado vazio discreto
