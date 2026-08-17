@@ -178,7 +178,7 @@ export default function KpiCard({
                   style={{
                     color: hasContent ? "var(--accent-1)" : "var(--text-mute)",
                   }}
-                  title={hasContent ? "Ver descrição" : "Adicionar descrição (admin)"}
+                  aria-label={hasContent ? "Ver descrição" : "Adicionar descrição (admin)"}
                 >
                   <InformationCircleIcon className="w-4 h-4" />
                 </button>
@@ -195,11 +195,11 @@ export default function KpiCard({
                         exit={{ opacity: 0, y: -4 }}
                         transition={{ duration: 0.12 }}
                         style={{ top: tipPos.top, right: tipPos.right }}
-                        className="fixed z-50 w-56 bg-[var(--panel)] border border-[var(--border)] text-[var(--text)] text-xs rounded-xl px-3 py-2 shadow-xl pointer-events-none"
+                        className="fixed z-50 w-56 text-xs pointer-events-none nid-info-tip"
                       >
                         {info.tooltip}
                         {/* Arrow */}
-                        <div className="absolute -top-1.5 right-2 w-3 h-3 bg-[var(--panel)] rotate-45 rounded-sm" />
+                        <div className="absolute -top-1.5 right-2 w-3 h-3 nid-info-tip__arrow rotate-45 rounded-sm" />
                       </motion.div>
                     )}
                   </AnimatePresence>,

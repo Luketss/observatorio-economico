@@ -44,7 +44,7 @@ describe("ChartInfoIcon", () => {
     });
 
     // Click no ícone
-    const icon = container.querySelector('button[title="Adicionar descrição"]');
+    const icon = container.querySelector('button[aria-label="Adicionar descrição"]');
     fireEvent.click(icon);
 
     // Aguarda modal abrir
@@ -96,13 +96,47 @@ describe("ChartInfoIcon", () => {
       expect(mockApi.get).toHaveBeenCalled();
     });
 
-    const icon = container.querySelector('button[title="Ver descrição"]');
+    const icon = container.querySelector('button[aria-label="Ver descrição"]');
     fireEvent.mouseEnter(icon);
 
     const tip = await screen.findByText("PIB a preços correntes");
     // O painel tem backdrop-filter (stacking context próprio); se o tooltip
     // ficar dentro dele, painéis irmãos seguintes pintam por cima.
     expect(tip.closest(".nid-panel")).toBeNull();
+  });
+
+  it("bolha do tooltip segue o tema (.nid-info-tip) e não usa cor hardcoded (bg-slate-800)", async () => {
+    mockApi.get.mockResolvedValue({
+      data: { tooltip: "PIB a preços correntes", descricao: "", fonte: "" },
+    });
+
+    const { container } = render(
+      <ChartInfoIcon dataset="pib" indicadorKey="chart_evolucao_pib" />
+    );
+
+    await waitFor(() => {
+      expect(mockApi.get).toHaveBeenCalled();
+    });
+
+    const icon = container.querySelector('button[aria-label="Ver descrição"]');
+    fireEvent.mouseEnter(icon);
+
+    const tip = await screen.findByText("PIB a preços correntes");
+    expect(tip.className).toContain("nid-info-tip");
+    expect(tip.className).not.toContain("bg-slate-800");
+  });
+
+  it("botão de info não usa mais o atributo title nativo (tooltip custom cobre o hover)", async () => {
+    const { container } = render(
+      <ChartInfoIcon dataset="pib" indicadorKey="chart_evolucao_pib" />
+    );
+
+    await waitFor(() => {
+      expect(mockApi.get).toHaveBeenCalled();
+    });
+
+    const icon = container.querySelector('button[aria-label="Adicionar descrição"]');
+    expect(icon).not.toHaveAttribute("title");
   });
 
   it("deve fechar modal após salvar com sucesso", async () => {
@@ -119,7 +153,7 @@ describe("ChartInfoIcon", () => {
     });
 
     // Click no ícone
-    const icon = container.querySelector('button[title="Adicionar descrição"]');
+    const icon = container.querySelector('button[aria-label="Adicionar descrição"]');
     fireEvent.click(icon);
 
     await waitFor(() => {

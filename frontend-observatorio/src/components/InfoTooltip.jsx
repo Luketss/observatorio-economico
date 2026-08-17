@@ -54,9 +54,10 @@ export default function InfoTooltip({ dataset }) {
         onClick={() => { setOpen((v) => !v); setEditing(false); }}
         className={`p-1 rounded-lg transition-colors ${
           hasContent
-            ? "text-blue-500 hover:bg-[var(--panel-2)]"
+            ? "hover:bg-[var(--panel-2)]"
             : "text-[var(--text-mute)] hover:text-[var(--text-dim)] hover:bg-[var(--panel-2)]"
         }`}
+        style={hasContent ? { color: "var(--accent-1)" } : undefined}
         title="Informações sobre este dado"
       >
         <InformationCircleIcon className="w-5 h-5" />

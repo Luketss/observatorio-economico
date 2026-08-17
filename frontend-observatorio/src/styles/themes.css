@@ -773,6 +773,22 @@ body.theme-light .nid-tab.active {
 .nid-tip .tip-row .name { color: var(--text-dim); font-weight: 500; display: flex; align-items: center; gap: 6px; }
 .nid-tip .tip-row .swatch { width: 8px; height: 8px; border-radius: 2px; display: inline-block; }
 
+/* Info tooltip bubble (ⓘ) — fonte única de estilo compartilhada por
+   ChartInfoIcon e KpiCard, para não terem fundos de cores diferentes */
+.nid-info-tip {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  color: var(--text);
+  border-radius: 0.75rem;
+  padding: 0.5rem 0.75rem;
+  box-shadow: var(--shadow-card, 0 20px 40px -12px rgba(0,0,0,0.35));
+}
+.nid-info-tip__arrow {
+  background: var(--panel);
+  border-right: 1px solid var(--border);
+  border-bottom: 1px solid var(--border);
+}
+
 /* ── HBarChart grid layout ─────────────────────────────────────────── */
 .nid-hbar { display: flex; flex-direction: column; }
 .nid-hbar-row {

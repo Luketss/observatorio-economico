@@ -110,12 +110,9 @@ export default function ChartInfoIcon({ dataset, indicadorKey }) {
           onMouseEnter={showTooltip}
           onMouseLeave={() => setTooltipVisible(false)}
           onClick={() => { setModalOpen(true); setEditing(false); }}
-          className={`p-0.5 rounded transition-colors ${
-            hasContent
-              ? "text-teal-500 hover:text-teal-600"
-              : "text-slate-300 hover:text-slate-400"
-          }`}
-          title={hasContent ? "Ver descrição" : isGlobal ? "Adicionar descrição" : undefined}
+          className="p-0.5 rounded transition-colors"
+          style={{ color: hasContent ? "var(--accent-1)" : "var(--text-mute)" }}
+          aria-label={hasContent ? "Ver descrição" : isGlobal ? "Adicionar descrição" : undefined}
         >
           <InformationCircleIcon className="w-4 h-4" />
         </button>
@@ -131,10 +128,10 @@ export default function ChartInfoIcon({ dataset, indicadorKey }) {
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: 4 }}
                 style={{ bottom: tipPos.bottom, left: tipPos.left }}
-                className="fixed z-50 w-56 bg-slate-800 text-white text-xs rounded-lg px-3 py-2 shadow-lg pointer-events-none"
+                className="fixed z-50 w-56 text-xs pointer-events-none nid-info-tip"
               >
                 {info.tooltip}
-                <div className="absolute left-1/2 -translate-x-1/2 top-full w-0 h-0 border-x-4 border-x-transparent border-t-4 border-t-slate-800" />
+                <div className="absolute left-1/2 -translate-x-1/2 -bottom-1.5 w-3 h-3 nid-info-tip__arrow rotate-45 rounded-sm" />
               </motion.div>
             )}
           </AnimatePresence>,
