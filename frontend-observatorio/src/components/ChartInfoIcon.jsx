@@ -110,9 +110,10 @@ export default function ChartInfoIcon({ dataset, indicadorKey }) {
           onMouseEnter={showTooltip}
           onMouseLeave={() => setTooltipVisible(false)}
           onClick={() => { setModalOpen(true); setEditing(false); }}
-          className="p-0.5 rounded transition-colors"
+          className="p-0.5 rounded transition-colors nid-info-btn"
           style={{ color: hasContent ? "var(--accent-1)" : "var(--text-mute)" }}
           aria-label={hasContent ? "Ver descrição" : isGlobal ? "Adicionar descrição" : undefined}
+          title={hasContent ? undefined : "Adicionar descrição"}
         >
           <InformationCircleIcon className="w-4 h-4" />
         </button>
@@ -131,7 +132,7 @@ export default function ChartInfoIcon({ dataset, indicadorKey }) {
                 className="fixed z-50 w-56 text-xs pointer-events-none nid-info-tip"
               >
                 {info.tooltip}
-                <div className="absolute left-1/2 -translate-x-1/2 -bottom-1.5 w-3 h-3 nid-info-tip__arrow rotate-45 rounded-sm" />
+                <div className="absolute left-1/2 -translate-x-1/2 -bottom-1.5 w-3 h-3 nid-info-tip__arrow nid-info-tip__arrow--down rotate-45 rounded-sm" />
               </motion.div>
             )}
           </AnimatePresence>,

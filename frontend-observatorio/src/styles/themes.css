@@ -785,9 +785,21 @@ body.theme-light .nid-tab.active {
 }
 .nid-info-tip__arrow {
   background: var(--panel);
+}
+/* Bolha acima do ícone (ChartInfoIcon): notch aponta para baixo */
+.nid-info-tip__arrow--down {
   border-right: 1px solid var(--border);
   border-bottom: 1px solid var(--border);
 }
+/* Bolha abaixo do ícone (KpiCard): notch aponta para cima */
+.nid-info-tip__arrow--up {
+  border-top: 1px solid var(--border);
+  border-left: 1px solid var(--border);
+}
+
+/* Botão ⓘ — affordance de hover token-safe (sem cor hardcoded) */
+.nid-info-btn { transition: filter 0.15s; }
+.nid-info-btn:hover { filter: brightness(1.3); }
 
 /* ── HBarChart grid layout ─────────────────────────────────────────── */
 .nid-hbar { display: flex; flex-direction: column; }

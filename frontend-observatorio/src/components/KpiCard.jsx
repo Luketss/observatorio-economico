@@ -174,11 +174,12 @@ export default function KpiCard({
                   onMouseEnter={() => hasContent && showTooltip()}
                   onMouseLeave={() => setTooltipVisible(false)}
                   onClick={() => { setModalOpen(true); setEditing(false); }}
-                  className="p-1 rounded-lg transition-colors"
+                  className="p-1 rounded-lg transition-colors nid-info-btn"
                   style={{
                     color: hasContent ? "var(--accent-1)" : "var(--text-mute)",
                   }}
                   aria-label={hasContent ? "Ver descrição" : "Adicionar descrição (admin)"}
+                  title={hasContent ? undefined : "Adicionar descrição (admin)"}
                 >
                   <InformationCircleIcon className="w-4 h-4" />
                 </button>
@@ -199,7 +200,7 @@ export default function KpiCard({
                       >
                         {info.tooltip}
                         {/* Arrow */}
-                        <div className="absolute -top-1.5 right-2 w-3 h-3 nid-info-tip__arrow rotate-45 rounded-sm" />
+                        <div className="absolute -top-1.5 right-2 w-3 h-3 nid-info-tip__arrow nid-info-tip__arrow--up rotate-45 rounded-sm" />
                       </motion.div>
                     )}
                   </AnimatePresence>,

@@ -46,9 +46,11 @@ describe("KpiCard", () => {
     const tip = await screen.findByText("PIB a preços correntes");
     expect(tip.className).toContain("nid-info-tip");
     expect(tip.className).not.toContain("bg-[var(--panel)]");
+    // Bolha abaixo do ícone: notch aponta para cima (portal — busca a partir da própria bolha)
+    expect(tip.querySelector(".nid-info-tip__arrow--up")).not.toBeNull();
   });
 
-  it("botão de info não usa mais o atributo title nativo (tooltip custom cobre o hover)", async () => {
+  it("botão com conteúdo não duplica title (tooltip custom já cobre o hover)", async () => {
     render(
       <KpiCard
         label="PIB Último Ano"
@@ -64,5 +66,45 @@ describe("KpiCard", () => {
 
     const icon = screen.getByRole("button", { name: "Ver descrição" });
     expect(icon).not.toHaveAttribute("title");
+  });
+
+  it("botão sem conteúdo (admin, indicador ainda sem descrição) mantém title nativo — não há tooltip custom nesse branch", async () => {
+    mockApi.get.mockResolvedValue({
+      data: { tooltip: "", descricao: "", fonte: "" },
+    });
+
+    render(
+      <KpiCard
+        label="PIB Último Ano"
+        value="R$ 1,2 bi"
+        dataset="pib"
+        indicadorKey="ultimo_ano"
+      />
+    );
+
+    await waitFor(() => {
+      expect(mockApi.get).toHaveBeenCalled();
+    });
+
+    const icon = screen.getByRole("button", { name: "Adicionar descrição (admin)" });
+    expect(icon).toHaveAttribute("title", "Adicionar descrição (admin)");
+  });
+
+  it("botão ⓘ tem affordance de hover token-safe (nid-info-btn)", async () => {
+    render(
+      <KpiCard
+        label="PIB Último Ano"
+        value="R$ 1,2 bi"
+        dataset="pib"
+        indicadorKey="ultimo_ano"
+      />
+    );
+
+    await waitFor(() => {
+      expect(mockApi.get).toHaveBeenCalled();
+    });
+
+    const icon = screen.getByRole("button", { name: "Ver descrição" });
+    expect(icon.className).toContain("nid-info-btn");
   });
 });

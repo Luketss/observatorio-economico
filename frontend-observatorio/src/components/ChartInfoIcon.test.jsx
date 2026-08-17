@@ -124,9 +124,28 @@ describe("ChartInfoIcon", () => {
     const tip = await screen.findByText("PIB a preços correntes");
     expect(tip.className).toContain("nid-info-tip");
     expect(tip.className).not.toContain("bg-slate-800");
+    // Bolha acima do ícone: notch aponta para baixo (portal — busca a partir da própria bolha)
+    expect(tip.querySelector(".nid-info-tip__arrow--down")).not.toBeNull();
   });
 
-  it("botão de info não usa mais o atributo title nativo (tooltip custom cobre o hover)", async () => {
+  it("botão com conteúdo não duplica title (tooltip custom já cobre o hover)", async () => {
+    mockApi.get.mockResolvedValue({
+      data: { tooltip: "PIB a preços correntes", descricao: "", fonte: "" },
+    });
+
+    const { container } = render(
+      <ChartInfoIcon dataset="pib" indicadorKey="chart_evolucao_pib" />
+    );
+
+    await waitFor(() => {
+      expect(mockApi.get).toHaveBeenCalled();
+    });
+
+    const icon = container.querySelector('button[aria-label="Ver descrição"]');
+    expect(icon).not.toHaveAttribute("title");
+  });
+
+  it("botão sem conteúdo (admin, indicador ainda sem descrição) mantém title nativo — não há tooltip custom nesse branch", async () => {
     const { container } = render(
       <ChartInfoIcon dataset="pib" indicadorKey="chart_evolucao_pib" />
     );
@@ -136,7 +155,20 @@ describe("ChartInfoIcon", () => {
     });
 
     const icon = container.querySelector('button[aria-label="Adicionar descrição"]');
-    expect(icon).not.toHaveAttribute("title");
+    expect(icon).toHaveAttribute("title", "Adicionar descrição");
+  });
+
+  it("botão ⓘ tem affordance de hover token-safe (nid-info-btn)", async () => {
+    const { container } = render(
+      <ChartInfoIcon dataset="pib" indicadorKey="chart_evolucao_pib" />
+    );
+
+    await waitFor(() => {
+      expect(mockApi.get).toHaveBeenCalled();
+    });
+
+    const icon = container.querySelector('button[aria-label="Adicionar descrição"]');
+    expect(icon.className).toContain("nid-info-btn");
   });
 
   it("deve fechar modal após salvar com sucesso", async () => {
