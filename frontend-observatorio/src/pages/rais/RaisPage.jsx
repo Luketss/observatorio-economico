@@ -336,6 +336,8 @@ export default function RaisPage() {
             foot="vs ano anterior"
             color={A1}
             sparkData={sparkVinculos}
+            dataset="rais"
+            indicadorKey="kpi_total_vinculos"
           />
           <NidKpiHero
             label="Ativos em 31/12"
@@ -349,6 +351,8 @@ export default function RaisPage() {
             foot="estoque ao final do ano"
             color={A5}
             sparkData={metricas.map((m) => m.total_ativo_dezembro)}
+            dataset="rais"
+            indicadorKey="kpi_ativos_31_12"
           />
           <NidKpiHero
             label="Remuneração Média"
@@ -359,6 +363,8 @@ export default function RaisPage() {
             foot="no ano selecionado"
             color={A3}
             sparkData={sparkRem}
+            dataset="rais"
+            indicadorKey="kpi_remuneracao_media"
           />
           <NidKpiHero
             label="PCD (Pessoas com Deficiência)"
@@ -372,6 +378,8 @@ export default function RaisPage() {
             foot="participação no estoque"
             color={A4}
             sparkData={sparkPCD}
+            dataset="rais"
+            indicadorKey="kpi_pcd"
           />
         </div>
       )}
@@ -599,6 +607,8 @@ export default function RaisPage() {
             unit=""
             foot={pct(metricasAtual.total_parcial, metricasAtual.total_vinculos)}
             color={A3}
+            dataset="rais"
+            indicadorKey="kpi_trabalho_parcial"
           />
           <NidKpiHero
             label="Intermitente"
@@ -607,6 +617,8 @@ export default function RaisPage() {
             unit=""
             foot={pct(metricasAtual.total_intermitente, metricasAtual.total_vinculos)}
             color={A2}
+            dataset="rais"
+            indicadorKey="kpi_intermitente"
           />
           <NidKpiHero
             label="Empresa do Simples"
@@ -615,6 +627,8 @@ export default function RaisPage() {
             unit=""
             foot={pct(metricasAtual.total_simples, metricasAtual.total_vinculos)}
             color={A4}
+            dataset="rais"
+            indicadorKey="kpi_empresa_simples"
           />
           <NidKpiHero
             label="Aprendizes (estim.)"
@@ -623,6 +637,8 @@ export default function RaisPage() {
             unit=""
             foot={pct(metricasAtual.total_aprendiz_estimado, metricasAtual.total_vinculos)}
             color={A5}
+            dataset="rais"
+            indicadorKey="kpi_aprendizes"
           />
         </div>
       )}

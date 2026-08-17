@@ -373,6 +373,8 @@ export default function CagedPage() {
             } : null}
             foot="empregos formais líquidos"
             color={(resumo?.saldo_total ?? 0) >= 0 ? A5 : A2}
+            dataset="caged"
+            indicadorKey="kpi_saldo_acumulado"
           />
           <NidKpiHero
             label="Admissões"
@@ -382,6 +384,8 @@ export default function CagedPage() {
             foot={`${fmtBR(resumo?.total_admissoes)} no histórico`}
             color={A5}
             sparkData={admissoesSpark}
+            dataset="caged"
+            indicadorKey="kpi_admissoes"
           />
           <NidKpiHero
             label="Desligamentos"
@@ -391,6 +395,8 @@ export default function CagedPage() {
             foot={`${fmtBR(resumo?.total_desligamentos)} no histórico`}
             color={A2}
             sparkData={desligamentosSpark}
+            dataset="caged"
+            indicadorKey="kpi_desligamentos"
           />
           <NidKpiHero
             label="Salário Médio · Admissão"
@@ -400,6 +406,8 @@ export default function CagedPage() {
             foot="média ponderada do período"
             color={A3}
             sparkData={salarioSpark}
+            dataset="caged"
+            indicadorKey="kpi_salario_medio_admissao"
           />
         </div>
       )}
@@ -689,6 +697,8 @@ export default function CagedPage() {
             unit="mov."
             foot={pct(indAtual.total_parcial, indAtual.total_movimentacoes)}
             color={A3}
+            dataset="caged"
+            indicadorKey="kpi_trabalho_parcial"
           />
           <NidKpiHero
             label="Intermitente"
@@ -697,6 +707,8 @@ export default function CagedPage() {
             unit="mov."
             foot={pct(indAtual.total_intermitente, indAtual.total_movimentacoes)}
             color={A2}
+            dataset="caged"
+            indicadorKey="kpi_intermitente"
           />
           <NidKpiHero
             label="Aprendizes"
@@ -705,6 +717,8 @@ export default function CagedPage() {
             unit="mov."
             foot={pct(indAtual.total_aprendiz, indAtual.total_movimentacoes)}
             color={A5}
+            dataset="caged"
+            indicadorKey="kpi_aprendizes"
           />
           <NidKpiHero
             label="PCD"
@@ -713,6 +727,8 @@ export default function CagedPage() {
             unit="mov."
             foot={pct(indAtual.total_pcd, indAtual.total_movimentacoes)}
             color={A4}
+            dataset="caged"
+            indicadorKey="kpi_pcd"
           />
         </div>
       )}

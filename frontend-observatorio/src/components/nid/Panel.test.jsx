@@ -8,7 +8,7 @@ vi.mock("../ChartInfoIcon", () => ({
   ),
 }));
 
-import { NidPanel } from "./Panel";
+import { NidPanel, NidKpiHero } from "./Panel";
 
 describe("NidPanel + ChartInfoIcon", () => {
   afterEach(() => cleanup());
@@ -29,6 +29,35 @@ describe("NidPanel + ChartInfoIcon", () => {
 
   it("só uma das props não renderiza o ícone", () => {
     render(<NidPanel title="X" dataset="caged">x</NidPanel>);
+    expect(screen.queryByTestId("chart-info")).toBeNull();
+  });
+});
+
+describe("NidKpiHero + ChartInfoIcon", () => {
+  afterEach(() => cleanup());
+
+  it("sem dataset/indicadorKey não renderiza o ícone (comportamento atual preservado)", () => {
+    render(<NidKpiHero label="Saldo · Acumulado" value="123" />);
+    expect(screen.getByText("Saldo · Acumulado")).toBeTruthy();
+    expect(screen.queryByTestId("chart-info")).toBeNull();
+  });
+
+  it("com dataset e indicadorKey renderiza o ícone com as props", () => {
+    render(
+      <NidKpiHero
+        label="Saldo · Acumulado"
+        value="123"
+        dataset="caged"
+        indicadorKey="kpi_saldo_acumulado"
+      />
+    );
+    const icon = screen.getByTestId("chart-info");
+    expect(icon.getAttribute("data-dataset")).toBe("caged");
+    expect(icon.getAttribute("data-key")).toBe("kpi_saldo_acumulado");
+  });
+
+  it("só uma das props não renderiza o ícone", () => {
+    render(<NidKpiHero label="Saldo · Acumulado" value="123" dataset="caged" />);
     expect(screen.queryByTestId("chart-info")).toBeNull();
   });
 });

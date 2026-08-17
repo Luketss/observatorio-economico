@@ -113,7 +113,9 @@ export function NidInsight({ kind = "info", children }) {
  */
 export function NidKpiHero({
   label, badge, value, unit, delta, foot, color = "var(--accent-1)", sparkData, glow = true,
+  dataset, indicadorKey,
 }) {
+  const comInfo = Boolean(dataset && indicadorKey);
   return (
     <div
       className="nid-kpi"
@@ -121,6 +123,7 @@ export function NidKpiHero({
     >
       <div className="nid-kpi-label">
         <span>{label}</span>
+        {comInfo && <ChartInfoIcon dataset={dataset} indicadorKey={indicadorKey} />}
         {badge && <span className="nid-badge">{badge}</span>}
       </div>
       <div className="nid-kpi-value">
