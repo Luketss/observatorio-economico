@@ -6,10 +6,15 @@ import { describe, expect, it, vi } from "vitest";
 vi.mock("../services/api", () => ({
   default: { get: vi.fn() },
 }));
+vi.mock("./ChartInfoIcon", () => ({
+  default: ({ dataset, indicadorKey }) => (
+    <span data-testid="chart-info" data-dataset={dataset} data-key={indicadorKey} />
+  ),
+}));
 import api from "../services/api";
 import FunilResumoCard from "./FunilResumoCard";
 
-const montar = () => render(<MemoryRouter><FunilResumoCard /></MemoryRouter>);
+const montar = (props) => render(<MemoryRouter><FunilResumoCard {...props} /></MemoryRouter>);
 
 describe("FunilResumoCard", () => {
   it("mostra os números do resumo", async () => {
@@ -52,5 +57,24 @@ describe("FunilResumoCard", () => {
     api.get.mockRejectedValueOnce(new Error("falha"));
     montar();
     await waitFor(() => expect(screen.getByText(/nenhuma oportunidade/i)).toBeTruthy());
+  });
+
+  it("sem dataset/indicadorKey não renderiza o ⓘ (comportamento atual preservado)", async () => {
+    api.get.mockResolvedValueOnce({
+      data: { por_estagio: { lead: 1 }, valor_total_estimado: 100, taxa_conversao: 10 },
+    });
+    montar();
+    await waitFor(() => expect(screen.getByText("Funil de Investimentos")).toBeTruthy());
+    expect(screen.queryByTestId("chart-info")).toBeNull();
+  });
+
+  it("com dataset e indicadorKey renderiza o ⓘ ao lado do título", async () => {
+    api.get.mockResolvedValueOnce({
+      data: { por_estagio: { lead: 1 }, valor_total_estimado: 100, taxa_conversao: 10 },
+    });
+    montar({ dataset: "painel_prefeito", indicadorKey: "card_funil_investimentos" });
+    const icon = await screen.findByTestId("chart-info");
+    expect(icon.getAttribute("data-dataset")).toBe("painel_prefeito");
+    expect(icon.getAttribute("data-key")).toBe("card_funil_investimentos");
   });
 });

@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import { motion } from "framer-motion";
 import { BuildingLibraryIcon } from "@heroicons/react/24/outline";
 import api from "../services/api";
+import ChartInfoIcon from "./ChartInfoIcon";
 
 const fmtMi = (v) => {
   if (v == null) return null;
@@ -10,9 +11,14 @@ const fmtMi = (v) => {
   return `R$ ${(v / 1e3).toLocaleString("pt-BR", { maximumFractionDigits: 0 })} mil`;
 };
 
-/** Teaser livre do Radar de Emendas. Autossuficiente: fetch próprio, null sem dados. */
-export default function EmendasResumoCard() {
+/** Teaser livre do Radar de Emendas. Autossuficiente: fetch próprio, null sem dados.
+ *
+ * `dataset`/`indicadorKey` são opcionais: só o Painel do Prefeito passa os
+ * valores (ⓘ ao lado do título); se o card for reutilizado em outra tela
+ * sem essas props, o ⓘ não aparece. */
+export default function EmendasResumoCard({ dataset, indicadorKey } = {}) {
   const [resumo, setResumo] = useState(null);
+  const comInfo = Boolean(dataset && indicadorKey);
 
   useEffect(() => {
     api.get("/emendas/resumo").then((r) => setResumo(r.data)).catch(() => setResumo(null));
@@ -33,8 +39,13 @@ export default function EmendasResumoCard() {
             <BuildingLibraryIcon className="w-5 h-5 text-[var(--accent-1)]" />
           </div>
           <div className="min-w-0">
-            <p className="text-xs uppercase tracking-wider font-semibold text-[var(--text-mute)]">
+            <p className="text-xs uppercase tracking-wider font-semibold text-[var(--text-mute)] flex items-center gap-1.5">
               Radar de emendas parlamentares
+              {comInfo && (
+                <span onClick={(e) => e.stopPropagation()}>
+                  <ChartInfoIcon dataset={dataset} indicadorKey={indicadorKey} />
+                </span>
+              )}
             </p>
             <p className="text-sm md:text-base mt-1 text-[var(--text)] leading-snug">
               <b>{fmtMi(resumo.total_empenhado)}</b> em emendas destinadas ao município em {resumo.ano}

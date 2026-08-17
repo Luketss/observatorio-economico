@@ -382,8 +382,8 @@ export default function PainelPrefeitoPage() {
 
       {/* Captação federal + emendas (teasers livres) */}
       <div className="mb-7 space-y-4">
-        <DinheiroNaMesaCard />
-        <EmendasResumoCard />
+        <DinheiroNaMesaCard dataset="painel_prefeito" indicadorKey="card_dinheiro_na_mesa" />
+        <EmendasResumoCard dataset="painel_prefeito" indicadorKey="card_emendas" />
       </div>
 
       {modo === "gerencial" ? (
@@ -404,14 +404,16 @@ export default function PainelPrefeitoPage() {
                         delta={p.delta}
                         sub={p.foot}
                         delay={i * 0.03}
+                        dataset="painel_prefeito"
+                        indicadorKey={"kpi_" + key}
                       />
                     </Link>
                   );
                 })}
           </div>
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
-            <FunilResumoCard />
-            <ProjetosResumoCard />
+            <FunilResumoCard dataset="painel_prefeito" indicadorKey="card_funil_investimentos" />
+            <ProjetosResumoCard dataset="painel_prefeito" indicadorKey="card_projetos" />
           </div>
         </>
       ) : (
@@ -436,6 +438,8 @@ export default function PainelPrefeitoPage() {
                       delta={p.delta}
                       sub={p.foot}
                       delay={i * 0.03}
+                      dataset="painel_prefeito"
+                      indicadorKey={"kpi_" + key}
                     />
                   </Link>
                 );

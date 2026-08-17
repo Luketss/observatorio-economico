@@ -6,10 +6,15 @@ import { describe, expect, it, vi } from "vitest";
 vi.mock("../services/api", () => ({
   default: { get: vi.fn() },
 }));
+vi.mock("./ChartInfoIcon", () => ({
+  default: ({ dataset, indicadorKey }) => (
+    <span data-testid="chart-info" data-dataset={dataset} data-key={indicadorKey} />
+  ),
+}));
 import api from "../services/api";
 import ProjetosResumoCard from "./ProjetosResumoCard";
 
-const montar = () => render(<MemoryRouter><ProjetosResumoCard /></MemoryRouter>);
+const montar = (props) => render(<MemoryRouter><ProjetosResumoCard {...props} /></MemoryRouter>);
 
 describe("ProjetosResumoCard", () => {
   it("mostra contadores e o top de projetos em andamento", async () => {
@@ -34,5 +39,20 @@ describe("ProjetosResumoCard", () => {
     api.get.mockResolvedValueOnce({ data: [] });
     montar();
     await waitFor(() => expect(screen.getByText(/nenhum projeto/i)).toBeTruthy());
+  });
+
+  it("sem dataset/indicadorKey não renderiza o ⓘ (comportamento atual preservado)", async () => {
+    api.get.mockResolvedValueOnce({ data: [] });
+    montar();
+    await waitFor(() => expect(screen.getByText("Projetos")).toBeTruthy());
+    expect(screen.queryByTestId("chart-info")).toBeNull();
+  });
+
+  it("com dataset e indicadorKey renderiza o ⓘ ao lado do título", async () => {
+    api.get.mockResolvedValueOnce({ data: [] });
+    montar({ dataset: "painel_prefeito", indicadorKey: "card_projetos" });
+    const icon = await screen.findByTestId("chart-info");
+    expect(icon.getAttribute("data-dataset")).toBe("painel_prefeito");
+    expect(icon.getAttribute("data-key")).toBe("card_projetos");
   });
 });

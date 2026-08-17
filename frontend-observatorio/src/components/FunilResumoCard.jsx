@@ -10,8 +10,12 @@ const fmtBRL = (v) =>
 
 /** Resumo do Funil de Investimentos para o modo gerencial do Painel do
  *  Prefeito. Fetch próprio; funil vazio ou erro viram estado vazio discreto
- *  (o card não some — o prefeito deve saber que o funil existe). */
-export default function FunilResumoCard() {
+ *  (o card não some — o prefeito deve saber que o funil existe).
+ *
+ *  `dataset`/`indicadorKey` são opcionais: só o Painel do Prefeito passa os
+ *  valores (ⓘ ao lado do título); se o card for reutilizado em outra tela
+ *  sem essas props, o ⓘ não aparece. */
+export default function FunilResumoCard({ dataset, indicadorKey } = {}) {
   const [resumo, setResumo] = useState(null);
   const [carregando, setCarregando] = useState(true);
 
@@ -29,6 +33,8 @@ export default function FunilResumoCard() {
     <NidPanel
       title="Funil de Investimentos"
       sub="Oportunidades em captação"
+      dataset={dataset}
+      indicadorKey={indicadorKey}
       right={
         <Link to="/app/desenvolvimento-economico/funil" className="nid-pill nid-pill--inner" aria-label="Ver funil">
           Ver funil →

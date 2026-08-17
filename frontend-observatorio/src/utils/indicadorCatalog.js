@@ -1,6 +1,10 @@
 // Fonte única de verdade das chaves de indicador_info (KPIs e gráficos).
 // Consumida pelas páginas (via literais idênticos) e pela tela /admin/indicadores.
 // Convenção: gráficos usam prefixo chart_; KPIs mantêm as chaves históricas.
+// Exceção: os cards-resumo do Painel do Prefeito (dataset painel_prefeito) usam
+// prefixo card_ com tipo "chart" — o admin/catálogo só reconhece kpi/chart, e
+// esses cards não são nem um KPI nem um gráfico "chart_*" convencional, então
+// reusam o bucket "chart" (ChartInfoIcon) sob prefixo próprio.
 // Teste de paridade em indicadorCatalog.test.js garante JSX ⊆ catálogo.
 
 export const INDICADOR_CATALOG = {
@@ -203,6 +207,25 @@ export const INDICADOR_CATALOG = {
     { key: "chart_pagadores_unicos", label: "Pessoas Únicas Pagadoras", tipo: "chart" },
     { key: "chart_recebedores_unicos", label: "Pessoas Únicas Recebedoras", tipo: "chart" },
     { key: "chart_comparativo_municipios", label: "Comparativo com Municípios", tipo: "chart" },
+  ],
+  painel_prefeito: [
+    { key: "kpi_arrecadacao", label: "Arrecadação", tipo: "kpi" },
+    { key: "kpi_pib", label: "PIB", tipo: "kpi" },
+    { key: "kpi_vaf", label: "VAF · IPM", tipo: "kpi" },
+    { key: "kpi_caged", label: "Saldo CAGED", tipo: "kpi" },
+    { key: "kpi_rais", label: "Vínculos formais", tipo: "kpi" },
+    { key: "kpi_empresas", label: "Empresas ativas", tipo: "kpi" },
+    { key: "kpi_estban", label: "Crédito bancário", tipo: "kpi" },
+    { key: "kpi_comex", label: "Balança comercial", tipo: "kpi" },
+    { key: "kpi_pix", label: "Transações PIX", tipo: "kpi" },
+    { key: "kpi_bolsa_familia", label: "Bolsa Família", tipo: "kpi" },
+    { key: "kpi_pe_de_meia", label: "Pé-de-Meia", tipo: "kpi" },
+    { key: "kpi_inss", label: "Benefícios INSS", tipo: "kpi" },
+    { key: "kpi_ips", label: "IPS Geral", tipo: "kpi" },
+    { key: "card_funil_investimentos", label: "Funil de Investimentos", tipo: "chart" },
+    { key: "card_projetos", label: "Projetos", tipo: "chart" },
+    { key: "card_dinheiro_na_mesa", label: "Dinheiro na Mesa", tipo: "chart" },
+    { key: "card_emendas", label: "Emendas", tipo: "chart" },
   ],
 };
 

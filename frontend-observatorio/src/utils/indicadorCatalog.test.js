@@ -14,11 +14,14 @@ describe("invariantes do catálogo", () => {
     }
   });
 
-  it("tipo chart usa prefixo chart_; kpi não usa", () => {
+  it("tipo chart usa prefixo chart_ (ou card_ para os cards-resumo do Painel do Prefeito); kpi não usa", () => {
     for (const [dataset, entries] of Object.entries(INDICADOR_CATALOG)) {
       for (const e of entries) {
         if (e.tipo === "chart") {
-          expect(e.key, `${dataset}.${e.key}`).toMatch(/^chart_[a-z0-9_]+$/);
+          // card_ é a exceção documentada: cards-resumo (ChartInfoIcon) que não
+          // são nem KPI nem gráfico "chart_*" convencional — ver comentário no topo
+          // de indicadorCatalog.js.
+          expect(e.key, `${dataset}.${e.key}`).toMatch(/^(chart|card)_[a-z0-9_]+$/);
         } else {
           expect(e.tipo).toBe("kpi");
           expect(e.key).not.toMatch(/^chart_/);
@@ -74,6 +77,22 @@ const USADAS_DINAMICAMENTE = new Set([
   "necessidades_humanas_basicas",
   "fundamentos_bem_estar",
   "oportunidades",
+  // PainelPrefeitoPage.jsx — KpiCard do modo gerencial e do panorama detalhado
+  // geram indicadorKey por template: indicadorKey={"kpi_" + key}, a partir das
+  // chaves de PANORAMA_GERENCIAL/PANORAMA (subconjunto de METRICS).
+  "kpi_arrecadacao",
+  "kpi_pib",
+  "kpi_vaf",
+  "kpi_caged",
+  "kpi_rais",
+  "kpi_empresas",
+  "kpi_estban",
+  "kpi_comex",
+  "kpi_pix",
+  "kpi_bolsa_familia",
+  "kpi_pe_de_meia",
+  "kpi_inss",
+  "kpi_ips",
 ]);
 
 describe("paridade catálogo → fonte", () => {

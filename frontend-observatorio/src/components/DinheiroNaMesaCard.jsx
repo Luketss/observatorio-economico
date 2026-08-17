@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import { motion } from "framer-motion";
 import { BanknotesIcon, ArrowTrendingUpIcon } from "@heroicons/react/24/outline";
 import api from "../services/api";
+import ChartInfoIcon from "./ChartInfoIcon";
 
 const fmtMi = (v) => {
   if (v == null) return null;
@@ -11,9 +12,14 @@ const fmtMi = (v) => {
 };
 
 /** Teaser livre do Dinheiro na Mesa (decisão de produto: card livre, página
- * gateada). Autossuficiente: fetch próprio, null sem dados. */
-export default function DinheiroNaMesaCard() {
+ * gateada). Autossuficiente: fetch próprio, null sem dados.
+ *
+ * `dataset`/`indicadorKey` são opcionais: só o Painel do Prefeito passa os
+ * valores (ⓘ ao lado do título); se o card for reutilizado em outra tela
+ * sem essas props, o ⓘ não aparece. */
+export default function DinheiroNaMesaCard({ dataset, indicadorKey } = {}) {
   const [resumo, setResumo] = useState(null);
+  const comInfo = Boolean(dataset && indicadorKey);
 
   useEffect(() => {
     api.get("/captacao-federal/resumo").then((r) => setResumo(r.data)).catch(() => setResumo(null));
@@ -39,8 +45,13 @@ export default function DinheiroNaMesaCard() {
             <Icon className={`w-5 h-5 ${tom.iconCls}`} />
           </div>
           <div className="min-w-0">
-            <p className="text-xs uppercase tracking-wider font-semibold text-[var(--text-mute)]">
+            <p className="text-xs uppercase tracking-wider font-semibold text-[var(--text-mute)] flex items-center gap-1.5">
               Dinheiro na mesa — captação federal
+              {comInfo && (
+                <span onClick={(e) => e.stopPropagation()}>
+                  <ChartInfoIcon dataset={dataset} indicadorKey={indicadorKey} />
+                </span>
+              )}
             </p>
             <p className="text-sm md:text-base mt-1 text-[var(--text)] leading-snug">
               {abaixo ? (

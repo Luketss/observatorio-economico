@@ -5,8 +5,12 @@ import { resumoProjetos } from "../utils/projetosResumo";
 import { NidPanel } from "./nid/Panel";
 
 /** Resumo de Projetos para o modo gerencial: contadores + os 3 em andamento
- *  que mais precisam de atenção (atraso primeiro). Fetch próprio. */
-export default function ProjetosResumoCard() {
+ *  que mais precisam de atenção (atraso primeiro). Fetch próprio.
+ *
+ *  `dataset`/`indicadorKey` são opcionais: só o Painel do Prefeito passa os
+ *  valores (ⓘ ao lado do título); se o card for reutilizado em outra tela
+ *  sem essas props, o ⓘ não aparece. */
+export default function ProjetosResumoCard({ dataset, indicadorKey } = {}) {
   const [projetos, setProjetos] = useState(null);
   const [carregando, setCarregando] = useState(true);
 
@@ -24,6 +28,8 @@ export default function ProjetosResumoCard() {
     <NidPanel
       title="Projetos"
       sub="Ações em execução no município"
+      dataset={dataset}
+      indicadorKey={indicadorKey}
       right={
         <Link to="/app/projetos" className="nid-pill nid-pill--inner" aria-label="Ver projetos">
           Ver projetos →
