@@ -173,13 +173,18 @@ export default function KpiCard({
                 <button
                   onMouseEnter={() => hasContent && showTooltip()}
                   onMouseLeave={() => setTooltipVisible(false)}
-                  onClick={() => { setModalOpen(true); setEditing(false); }}
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    setModalOpen(true);
+                    setEditing(false);
+                  }}
                   className="p-1 rounded-lg transition-colors nid-info-btn"
                   style={{
                     color: hasContent ? "var(--accent-1)" : "var(--text-mute)",
                   }}
-                  aria-label={hasContent ? "Ver descrição" : "Adicionar descrição (admin)"}
-                  title={hasContent ? undefined : "Adicionar descrição (admin)"}
+                  aria-label={hasContent ? "Ver descrição" : "Adicionar descrição"}
+                  title={hasContent ? undefined : "Adicionar descrição"}
                 >
                   <InformationCircleIcon className="w-4 h-4" />
                 </button>
@@ -228,7 +233,10 @@ export default function KpiCard({
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm"
-            onClick={(e) => { if (e.target === e.currentTarget) { setModalOpen(false); setEditing(false); } }}
+            onClick={(e) => {
+              e.stopPropagation();
+              if (e.target === e.currentTarget) { setModalOpen(false); setEditing(false); }
+            }}
           >
             <motion.div
               initial={{ scale: 0.95, opacity: 0 }}

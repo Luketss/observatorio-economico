@@ -800,6 +800,8 @@ body.theme-light .nid-tab.active {
 /* Botão ⓘ — affordance de hover token-safe (sem cor hardcoded) */
 .nid-info-btn { transition: filter 0.15s; }
 .nid-info-btn:hover { filter: brightness(1.3); }
+/* theme-light: clarear reduziria contraste sobre painel claro — escurece */
+body.theme-light .nid-info-btn:hover { filter: brightness(0.8); }
 
 /* ── HBarChart grid layout ─────────────────────────────────────────── */
 .nid-hbar { display: flex; flex-direction: column; }

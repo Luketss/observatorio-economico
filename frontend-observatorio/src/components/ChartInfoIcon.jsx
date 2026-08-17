@@ -112,7 +112,7 @@ export default function ChartInfoIcon({ dataset, indicadorKey }) {
           onClick={() => { setModalOpen(true); setEditing(false); }}
           className="p-0.5 rounded transition-colors nid-info-btn"
           style={{ color: hasContent ? "var(--accent-1)" : "var(--text-mute)" }}
-          aria-label={hasContent ? "Ver descrição" : isGlobal ? "Adicionar descrição" : undefined}
+          aria-label={hasContent ? "Ver descrição" : "Adicionar descrição"}
           title={hasContent ? undefined : "Adicionar descrição"}
         >
           <InformationCircleIcon className="w-4 h-4" />
