@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { NavLink, useLocation } from "react-router-dom";
 import {
   ChevronDownIcon,
@@ -26,8 +26,13 @@ export default function SidebarNav({ user, modulos }) {
   const location = useLocation();
   const isGlobal = user?.role === "ADMIN_GLOBAL";
   const [openGroups, setOpenGroups] = useState(() => gruposAtivos(location.pathname));
+  const [trackedPathname, setTrackedPathname] = useState(location.pathname);
 
-  useEffect(() => {
+  // Ajusta o estado durante a renderização (sem useEffect) quando a rota
+  // muda, para reabrir o grupo do item ativo — ver "You Might Not Need an
+  // Effect" (react.dev). Evita o cascading render de setState em efeito.
+  if (location.pathname !== trackedPathname) {
+    setTrackedPathname(location.pathname);
     const ativos = gruposAtivos(location.pathname);
     setOpenGroups((prev) => {
       const faltantes = [...ativos].filter((label) => !prev.has(label));
@@ -36,7 +41,7 @@ export default function SidebarNav({ user, modulos }) {
       faltantes.forEach((label) => next.add(label));
       return next;
     });
-  }, [location.pathname]);
+  }
 
   // Itens fora do plano não somem — ficam visíveis com cadeado (teaser de
   // upgrade). Só hideForAdmin remove um item (Releases para ADMIN_GLOBAL).
