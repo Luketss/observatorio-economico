@@ -64,7 +64,7 @@ describe("FunilResumoCard", () => {
       data: { por_estagio: { lead: 1 }, valor_total_estimado: 100, taxa_conversao: 10 },
     });
     montar();
-    await waitFor(() => expect(screen.getByText("Funil de Investimentos")).toBeTruthy());
+    await waitFor(() => expect(screen.getByText("Atração de Investimentos")).toBeTruthy());
     expect(screen.queryByTestId("chart-info")).toBeNull();
   });
 

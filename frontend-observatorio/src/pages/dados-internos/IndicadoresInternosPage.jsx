@@ -302,7 +302,7 @@ export default function IndicadoresInternosPage() {
           <ChartPieIcon style={{ width: 28, height: 28, color: "var(--accent-1)" }} />
           <div>
             <h1 style={{ margin: 0, font: "800 22px/1.1 var(--font-display)", color: "var(--text)", letterSpacing: "-0.02em" }}>
-              Indicadores Internos
+              Indicadores & Cidade Inteligente
             </h1>
             <p style={{ margin: "4px 0 0", font: "400 13px/1 var(--font-display)", color: "var(--text-dim)" }}>
               Dados estratégicos do município por área temática.

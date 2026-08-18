@@ -208,7 +208,7 @@ export default function FunilTab() {
     <div className="flex items-center gap-3">
       <FunnelIcon className="w-7 h-7 text-blue-600" />
       <h1 className="text-2xl font-extrabold tracking-tight text-[var(--text)]">
-        Funil de Investimentos
+        Atração de Investimentos
       </h1>
     </div>
   );

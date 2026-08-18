@@ -31,7 +31,7 @@ export default function FunilResumoCard({ dataset, indicadorKey } = {}) {
 
   return (
     <NidPanel
-      title="Funil de Investimentos"
+      title="Atração de Investimentos"
       sub="Oportunidades em captação"
       dataset={dataset}
       indicadorKey={indicadorKey}

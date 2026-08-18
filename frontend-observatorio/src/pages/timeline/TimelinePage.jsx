@@ -29,7 +29,7 @@ export default function TimelinePage() {
               margin: 0,
             }}
           >
-            Timeline do Mandato
+            Memória Institucional
           </h1>
           <p
             style={{
