@@ -1,127 +1,24 @@
 import { useEffect, useRef, useState } from "react";
-import { NavLink, Outlet, useLocation } from "react-router-dom";
+import { Outlet, useLocation } from "react-router-dom";
 import logo from "../../assets/logo_uaizi.png";
 import { PlanContext } from "../../context/PlanContext";
 import { ToastProvider } from "../../context/ToastContext";
 import { useAuth } from "../../context/AuthContext";
 import { useTheme, THEMES } from "../../context/ThemeContext";
-import { temPermissaoAdmin } from "../../hooks/usePermissao";
 import api from "../../services/api";
 import NotificationBell from "../../components/NotificationBell";
 import ViewAsBanner from "../../components/ViewAsBanner";
 import PlanLockedView from "../../components/PlanLockedView";
 import AlterarSenhaModal from "../../components/AlterarSenhaModal";
 import {
-  HomeIcon,
-  ChartBarIcon,
-  BanknotesIcon,
-  BriefcaseIcon,
-  BuildingLibraryIcon,
   PowerIcon,
   KeyIcon,
-  HeartIcon,
-  AcademicCapIcon,
-  ShieldCheckIcon,
-  BuildingOfficeIcon,
-  GlobeAltIcon,
-  BuildingStorefrontIcon,
-  Cog6ToothIcon,
-  NewspaperIcon,
-  ChevronDownIcon,
-  Bars3Icon,
   XMarkIcon,
-  LockClosedIcon,
-  ChartBarSquareIcon,
-  FolderOpenIcon,
-  CalendarDaysIcon,
-  CircleStackIcon,
-  ChartPieIcon,
-  ClipboardDocumentListIcon,
-  CalendarIcon,
-  TrophyIcon,
-  PresentationChartBarIcon,
+  Bars3Icon,
   SwatchIcon,
-  FunnelIcon,
-  BuildingOffice2Icon,
-  PencilSquareIcon,
-  BoltIcon,
 } from "@heroicons/react/24/outline";
-
-const NAV_STRUCTURE = [
-  { type: "link", to: "/app", label: "Dashboard", icon: HomeIcon, end: true, modulo: "geral" },
-  { type: "link", to: "/app/painel-prefeito", label: "Painel do Prefeito", icon: BuildingLibraryIcon, modulo: "painel_prefeito" },
-  { type: "link", to: "/app/benchmark", label: "Benchmark", icon: ChartBarSquareIcon, modulo: "benchmark" },
-  { type: "link", to: "/app/ips", label: "IPS", icon: PresentationChartBarIcon, modulo: "ips" },
-  {
-    type: "group", label: "Economia", icon: ChartBarIcon,
-    children: [
-      { to: "/app/pib", label: "PIB", icon: ChartBarIcon, modulo: "pib" },
-      { to: "/app/vaf", label: "VAF", icon: ChartPieIcon, modulo: "vaf" },
-      { to: "/app/fpm", label: "FPM", icon: BanknotesIcon },
-      { to: "/app/dinheiro-na-mesa", label: "Dinheiro na Mesa", icon: BanknotesIcon, modulo: "captacao_federal" },
-      { to: "/app/emendas", label: "Emendas", icon: BuildingLibraryIcon, modulo: "emendas" },
-      { to: "/app/arrecadacao", label: "Arrecadação", icon: BanknotesIcon, modulo: "arrecadacao" },
-    ],
-  },
-  {
-    type: "group", label: "Emprego", icon: BriefcaseIcon,
-    children: [
-      { to: "/app/caged", label: "CAGED", icon: BriefcaseIcon, modulo: "caged" },
-      { to: "/app/rais", label: "RAIS", icon: BuildingLibraryIcon, modulo: "rais" },
-    ],
-  },
-  {
-    type: "group", label: "Social", icon: HeartIcon,
-    children: [
-      { to: "/app/bolsa-familia", label: "Bolsa Família", icon: HeartIcon, modulo: "bolsa_familia" },
-      { to: "/app/pe-de-meia", label: "Pé-de-Meia", icon: AcademicCapIcon, modulo: "pe_de_meia" },
-      { to: "/app/inss", label: "INSS", icon: ShieldCheckIcon, modulo: "inss" },
-    ],
-  },
-  {
-    type: "group", label: "Comércio", icon: BuildingStorefrontIcon,
-    children: [
-      { to: "/app/estban", label: "Bancos", icon: BuildingOfficeIcon, modulo: "estban" },
-      { to: "/app/comex", label: "Comércio Ext.", icon: GlobeAltIcon, modulo: "comex" },
-      { to: "/app/empresas", label: "Empresas", icon: BuildingStorefrontIcon, modulo: "empresas" },
-      { to: "/app/pix", label: "PIX", icon: BanknotesIcon, modulo: "pix" },
-    ],
-  },
-  { type: "link", to: "/app/projetos", label: "Projetos", icon: FolderOpenIcon, modulo: "projetos" },
-  {
-    type: "group", label: "Desenv. Econômico", icon: ChartBarIcon,
-    children: [
-      { to: "/app/desenvolvimento-economico/funil",      label: "Funil de Investimentos", icon: FunnelIcon,          modulo: "desenvolvimento_economico.funil" },
-      { to: "/app/desenvolvimento-economico/retencao",   label: "Retenção & Expansão",    icon: BuildingOffice2Icon, modulo: "desenvolvimento_economico.retencao" },
-      { to: "/app/desenvolvimento-economico/captacao",   label: "Captação de Recursos",   icon: BanknotesIcon,       modulo: "desenvolvimento_economico.captacao" },
-      { to: "/app/desenvolvimento-economico/escrita",    label: "Escrita de Projetos",    icon: PencilSquareIcon,    modulo: "desenvolvimento_economico.escrita" },
-      { to: "/app/desenvolvimento-economico/premiacoes", label: "Premiações",             icon: TrophyIcon,          modulo: "desenvolvimento_economico.premiacoes" },
-    ],
-  },
-  { type: "link", to: "/app/timeline", label: "Timeline", icon: CalendarDaysIcon, modulo: "timeline_mandato" },
-  { type: "link", to: "/app/dados-internos/calendario", label: "Calendário", icon: CalendarIcon, modulo: "dados_internos.calendario" },
-  { type: "link", to: "/app/impacto", label: "Impacto de Ações", icon: BoltIcon, modulo: "impacto" },
-  {
-    type: "group", label: "Dados Internos", icon: CircleStackIcon,
-    children: [
-      { to: "/app/dados-internos/indicadores", label: "Indicadores", icon: ChartPieIcon, modulo: "dados_internos.indicadores" },
-      { to: "/app/dados-internos/plano-gov", label: "Plano de Governo", icon: ClipboardDocumentListIcon, modulo: "dados_internos.plano_gov" },
-    ],
-  },
-  { type: "link", to: "/app/releases", label: "Releases", icon: NewspaperIcon, modulo: "releases", hideForAdmin: true },
-];
-
-// Flat list of every navigable item (links + group children) — used to map the
-// current route to its module so a locked route can show the upsell teaser.
-const NAV_FLAT = NAV_STRUCTURE.flatMap((item) =>
-  item.type === "group" ? item.children : item.type === "link" ? [item] : []
-);
-
-function isChildActive(children, pathname) {
-  return children.some(
-    (c) => pathname === c.to || (c.to !== "/" && pathname.startsWith(c.to))
-  );
-}
+import SidebarNav from "./SidebarNav";
+import { NAV_FLAT, isModuloLocked } from "./navStructure";
 
 function ThemePicker() {
   const { themeId, setThemeId } = useTheme();
@@ -208,28 +105,8 @@ export default function DashboardLayout() {
   const isGlobal = user?.role === "ADMIN_GLOBAL";
   const isLight = themeId === "light";
 
-  const [openGroups, setOpenGroups] = useState(() => {
-    const open = new Set();
-    NAV_STRUCTURE.forEach((item, idx) => {
-      if (item.type === "group" && isChildActive(item.children, location.pathname)) {
-        open.add(idx);
-      }
-    });
-    return open;
-  });
-
   useEffect(() => {
     setSidebarOpen(false);
-    NAV_STRUCTURE.forEach((item, idx) => {
-      if (item.type === "group" && isChildActive(item.children, location.pathname)) {
-        setOpenGroups((prev) => {
-          if (prev.has(idx)) return prev;
-          const next = new Set(prev);
-          next.add(idx);
-          return next;
-        });
-      }
-    });
   }, [location.pathname]);
 
   useEffect(() => {
@@ -245,32 +122,13 @@ export default function DashboardLayout() {
     });
   }, [user, isGlobal]);
 
-  // Plan-gated items are no longer hidden — they stay visible but show a lock
-  // (see isLocked) so the client gets a taste and an upgrade nudge. Only
-  // hideForAdmin still removes an item (Releases for ADMIN_GLOBAL).
-  const isVisible = (modulo, hideForAdmin) => {
-    if (hideForAdmin && isGlobal) return false;
-    return true;
-  };
-  const isLocked = (modulo) => {
-    if (isGlobal || modulos === null || modulo == null) return false;
-    return !modulos.includes(modulo);
-  };
-
-  // Module of the current route → drives the locked teaser on the content area.
+  // Módulo da rota atual → decide o teaser de bloqueio na área de conteúdo.
   const currentNav = NAV_FLAT
     .filter((n) => n.to && (location.pathname === n.to || location.pathname.startsWith(n.to + "/")))
     .sort((a, b) => b.to.length - a.to.length)[0];
-  const currentLocked = currentNav ? isLocked(currentNav.modulo) : false;
-
-  const toggleGroup = (idx) => {
-    setOpenGroups((prev) => {
-      const next = new Set(prev);
-      if (next.has(idx)) next.delete(idx);
-      else next.add(idx);
-      return next;
-    });
-  };
+  const currentLocked = currentNav
+    ? isModuloLocked({ isGlobal, modulos, modulo: currentNav.modulo })
+    : false;
 
   const sidebarContent = (
     <>
@@ -305,97 +163,7 @@ export default function DashboardLayout() {
       </div>
 
       {/* Nav */}
-      <nav className="px-3 py-3 space-y-0.5">
-        {NAV_STRUCTURE.map((item, idx) => {
-          if (item.type === "link") {
-            if (!isVisible(item.modulo, item.hideForAdmin)) return null;
-            const Icon = item.icon;
-            const locked = isLocked(item.modulo);
-            return (
-              <NavLink
-                key={item.to}
-                to={item.to}
-                end={item.end}
-                className={({ isActive }) => `nid-nav-item ${isActive ? "active" : ""}`}
-                style={locked ? { opacity: 0.7 } : undefined}
-                title={locked ? "Recurso bloqueado — disponível em um plano superior" : undefined}
-              >
-                <Icon className="w-4 h-4 flex-shrink-0" />
-                <span>{item.label}</span>
-                {locked && (
-                  <LockClosedIcon className="w-3.5 h-3.5 flex-shrink-0" style={{ marginLeft: "auto", color: "var(--text-mute)" }} />
-                )}
-              </NavLink>
-            );
-          }
-
-          if (item.type === "group") {
-            const visibleChildren = item.children.filter((c) =>
-              isVisible(c.modulo, c.hideForAdmin)
-            );
-            if (visibleChildren.length === 0) return null;
-
-            const Icon = item.icon;
-            const isOpen = openGroups.has(idx);
-            const hasActive = isChildActive(visibleChildren, location.pathname);
-
-            return (
-              <div key={idx}>
-                <button
-                  onClick={() => toggleGroup(idx)}
-                  className="nid-nav-item"
-                  style={hasActive ? { color: "var(--text)" } : undefined}
-                >
-                  <Icon className="w-4 h-4 flex-shrink-0" />
-                  <span style={{ flex: 1, textAlign: "left" }}>{item.label}</span>
-                  <ChevronDownIcon
-                    className={`w-3.5 h-3.5 transition-transform duration-200 ${isOpen ? "rotate-180" : ""}`}
-                  />
-                </button>
-
-                {isOpen && (
-                  <div className="nid-nav-children space-y-0.5">
-                    {visibleChildren.map((child) => {
-                      const ChildIcon = child.icon;
-                      const childLocked = isLocked(child.modulo);
-                      return (
-                        <NavLink
-                          key={child.to}
-                          to={child.to}
-                          end={child.end}
-                          className={({ isActive }) => `nid-nav-item nid-nav-child ${isActive ? "active" : ""}`}
-                          style={childLocked ? { opacity: 0.7 } : undefined}
-                          title={childLocked ? "Recurso bloqueado — disponível em um plano superior" : undefined}
-                        >
-                          <ChildIcon className="w-4 h-4 flex-shrink-0" />
-                          <span style={{ flex: 1 }}>{child.label}</span>
-                          {childLocked && (
-                            <LockClosedIcon className="w-3.5 h-3.5 flex-shrink-0" style={{ color: "var(--text-mute)" }} />
-                          )}
-                        </NavLink>
-                      );
-                    })}
-                  </div>
-                )}
-              </div>
-            );
-          }
-          return null;
-        })}
-
-        {temPermissaoAdmin(user) && (
-          <div className="pt-3 mt-3" style={{ borderTop: "1px solid var(--border)" }}>
-            <p className="nid-nav-section">Admin</p>
-            <NavLink
-              to="/admin"
-              className={({ isActive }) => `nid-nav-item ${isActive ? "active" : ""}`}
-            >
-              <Cog6ToothIcon className="w-4 h-4 flex-shrink-0" />
-              Painel Admin
-            </NavLink>
-          </div>
-        )}
-      </nav>
+      <SidebarNav user={user} modulos={modulos} />
     </>
   );
 
