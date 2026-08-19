@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { describe, it, expect } from "vitest";
 import { render, screen, fireEvent } from "@testing-library/react";
-import { MemoryRouter } from "react-router-dom";
+import { MemoryRouter, Link } from "react-router-dom";
 import SidebarNav from "./SidebarNav";
 
 const LOCK_TITLE = "Recurso bloqueado — disponível em um plano superior";
@@ -48,6 +48,24 @@ describe("SidebarNav — grupos colapsáveis", () => {
     expect(screen.getByText("IPS")).toBeInTheDocument();
     fireEvent.click(screen.getByText("Contexto Socioeconômico"));
     expect(screen.queryByText("IPS")).toBeNull();
+  });
+
+  it("grupo abre automaticamente ao navegar depois do mount (ajuste de estado em render)", () => {
+    render(
+      <MemoryRouter initialEntries={["/app"]}>
+        <Link to="/app/caged">ir para caged</Link>
+        <SidebarNav user={USER_COMUM} modulos={null} />
+      </MemoryRouter>
+    );
+    // Emprego começa fechado em /app: CAGED não está no DOM.
+    expect(screen.queryByText("CAGED")).toBeNull();
+
+    // Navegação real pós-mount (via location, não remount) deve reabrir o
+    // grupo Emprego — é exatamente o trecho reescrito no fix do lint
+    // (ajuste de estado durante a renderização em vez de useEffect).
+    fireEvent.click(screen.getByText("ir para caged"));
+
+    expect(screen.getByText("CAGED")).toBeInTheDocument();
   });
 });
 
