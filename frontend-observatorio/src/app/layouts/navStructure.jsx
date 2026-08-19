@@ -64,6 +64,7 @@ export const NAV_STRUCTURE = [
       { type: "link", to: "/app/estban", label: "Bancos", icon: BuildingOfficeIcon, modulo: "estban" },
       { type: "link", to: "/app/comex", label: "Comércio Exterior", icon: GlobeAltIcon, modulo: "comex" },
       { type: "link", to: "/app/pix", label: "PIX", icon: BanknotesIcon, modulo: "pix" },
+      { type: "link", to: "/app/analise-economica", label: "Análise Econômica", icon: PresentationChartBarIcon },
       {
         type: "group", label: "Emprego", icon: BriefcaseIcon,
         children: [

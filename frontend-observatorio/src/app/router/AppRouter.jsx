@@ -35,6 +35,7 @@ import EstbanPage from "../../pages/estban/EstbanPage";
 import ComexPage from "../../pages/comex/ComexPage";
 import EmpresasPage from "../../pages/empresas/EmpresasPage";
 import PixPage from "../../pages/pix/PixPage";
+import AnaliseEconomicaPage from "../../pages/analise-economica/AnaliseEconomicaPage";
 import ReleasesPage from "../../pages/releases/ReleasesPage";
 import TimelinePage from "../../pages/timeline/TimelinePage";
 import ProjetosPage from "../../pages/projetos/ProjetosPage";
@@ -132,6 +133,7 @@ export default function AppRouter() {
           <Route path="comex" element={<ComexPage />} />
           <Route path="empresas" element={<EmpresasPage />} />
           <Route path="pix" element={<PixPage />} />
+          <Route path="analise-economica" element={<AnaliseEconomicaPage />} />
           <Route path="releases" element={<ReleasesPage />} />
           <Route path="notificacoes" element={<NotificacoesPage />} />
           <Route path="timeline" element={<TimelinePage />} />

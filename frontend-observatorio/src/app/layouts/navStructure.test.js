@@ -54,8 +54,8 @@ describe("NAV_STRUCTURE — 5 eixos", () => {
       NAV_FLAT.filter((i) => i.modulo != null).map((i) => [i.to, i.modulo])
     );
     expect(mapa).toEqual(ROTA_MODULO);
-    // 30 com chave + FPM (única rota sem gate de plano) = 31 navegáveis
-    expect(NAV_FLAT).toHaveLength(31);
+    // 30 com chave + FPM e Análise Econômica sem = 32 navegáveis
+    expect(NAV_FLAT).toHaveLength(32);
   });
 
   it("flags pontuais preservadas e itens bem formados", () => {
@@ -63,6 +63,7 @@ describe("NAV_STRUCTURE — 5 eixos", () => {
     expect(porRota["/app"].end).toBe(true);
     expect(porRota["/app/releases"].hideForAdmin).toBe(true);
     expect(porRota["/app/fpm"].modulo).toBeUndefined();
+    expect(porRota["/app/analise-economica"].modulo).toBeUndefined();
     NAV_FLAT.forEach((i) => {
       expect(typeof i.to).toBe("string");
       expect(typeof i.label).toBe("string");
@@ -79,6 +80,7 @@ describe("NAV_STRUCTURE — 5 eixos", () => {
     expect(labels).toContain("Retenção & Expansão");
     expect(labels).toContain("Indicadores Internos");
     expect(labels).toContain("Planos de Desenvolvimento");
+    expect(labels).toContain("Análise Econômica");
     expect(labels).not.toContain("Dashboard");
     expect(labels).not.toContain("Timeline");
     expect(labels).not.toContain("Funil de Investimentos");
