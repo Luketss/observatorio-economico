@@ -29,7 +29,7 @@ export default function TimelinePage() {
               margin: 0,
             }}
           >
-            Memória Institucional
+            Histórico Institucional
           </h1>
           <p
             style={{

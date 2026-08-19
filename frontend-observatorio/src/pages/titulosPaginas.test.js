@@ -9,11 +9,11 @@ const ler = (rel) =>
 // de ausência — "Retenção"/"Indicadores" aparecem legitimamente em outros
 // pontos desses arquivos)]
 const CASOS = [
-  ["./DashboardGeralPage.jsx", "Central de Inteligência Econômica", "Dashboard Geral"],
-  ["./timeline/TimelinePage.jsx", "Memória Institucional", "Timeline do Mandato"],
+  ["./DashboardGeralPage.jsx", "Núcleo de Dados", "Central de Inteligência"],
+  ["./timeline/TimelinePage.jsx", "Histórico Institucional", "Memória Institucional"],
   ["./desenvolvimento-economico/FunilTab.jsx", "Atração de Investimentos", "Funil de Investimentos"],
-  ["./desenvolvimento-economico/RetencaoTab.jsx", "Inteligência Empresarial", null],
-  ["./dados-internos/IndicadoresInternosPage.jsx", "Cidade Inteligente", "Indicadores Internos\n"],
+  ["./desenvolvimento-economico/RetencaoTab.jsx", "Retenção & Expansão", "Inteligência Empresarial"],
+  ["./dados-internos/IndicadoresInternosPage.jsx", "Indicadores Internos", "Cidade Inteligente"],
 ];
 
 describe("Títulos das páginas renomeadas (Fase 1 — 5 eixos)", () => {
@@ -35,7 +35,23 @@ describe("Títulos das páginas renomeadas (Fase 1 — 5 eixos)", () => {
 
   it("MandatoTimeline acompanha o nome novo da página", () => {
     const src = ler("../components/MandatoTimeline.jsx");
-    expect(src).toContain("Memória Institucional");
-    expect(src).not.toContain("Timeline do Mandato");
+    expect(src).toContain("Histórico Institucional");
+    expect(src).not.toContain("Memória Institucional");
+  });
+
+  it("PainelPrefeitoPage usa o título novo", () => {
+    const src = ler("./painel-prefeito/PainelPrefeitoPage.jsx");
+    expect(src).toContain('title="Visão do Prefeito"');
+    expect(src).not.toContain('title="Painel do Prefeito"');
+  });
+
+  it("ProjetosPage usa o título novo", () => {
+    const src = ler("./projetos/ProjetosPage.jsx");
+    expect(src).toContain("Planos de Desenvolvimento");
+  });
+
+  it("ProjetosResumoCard acompanha o nome novo da página de destino", () => {
+    const src = ler("../components/ProjetosResumoCard.jsx");
+    expect(src).toContain('title="Planos de Desenvolvimento"');
   });
 });

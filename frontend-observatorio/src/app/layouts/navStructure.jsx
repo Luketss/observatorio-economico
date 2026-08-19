@@ -33,11 +33,11 @@ export const NAV_STRUCTURE = [
     type: "section",
     label: "Visão Executiva",
     items: [
-      { type: "link", to: "/app", label: "Central de Inteligência", icon: HomeIcon, end: true, modulo: "geral" },
-      { type: "link", to: "/app/painel-prefeito", label: "Painel do Prefeito", icon: BuildingLibraryIcon, modulo: "painel_prefeito" },
+      { type: "link", to: "/app", label: "Núcleo de Dados", icon: HomeIcon, end: true, modulo: "geral" },
+      { type: "link", to: "/app/painel-prefeito", label: "Visão do Prefeito", icon: BuildingLibraryIcon, modulo: "painel_prefeito" },
       { type: "link", to: "/app/benchmark", label: "Benchmark", icon: ChartBarSquareIcon, modulo: "benchmark" },
       {
-        type: "group", label: "Contexto Socioeconômico", icon: HeartIcon,
+        type: "group", label: "Panorama Socioeconômico", icon: HeartIcon,
         children: [
           { to: "/app/ips", label: "IPS", icon: PresentationChartBarIcon, modulo: "ips" },
           { to: "/app/bolsa-familia", label: "Bolsa Família", icon: HeartIcon, modulo: "bolsa_familia" },
@@ -49,9 +49,9 @@ export const NAV_STRUCTURE = [
   },
   {
     type: "section",
-    label: "Indicadores Internos",
+    label: "Indicadores & Cidade Int.",
     items: [
-      { type: "link", to: "/app/dados-internos/indicadores", label: "Indicadores & Cidade Inteligente", icon: ChartPieIcon, modulo: "dados_internos.indicadores" },
+      { type: "link", to: "/app/dados-internos/indicadores", label: "Indicadores Internos", icon: ChartPieIcon, modulo: "dados_internos.indicadores" },
     ],
   },
   {
@@ -84,10 +84,10 @@ export const NAV_STRUCTURE = [
     type: "section",
     label: "Desenv. Empresarial",
     items: [
-      { type: "link", to: "/app/desenvolvimento-economico/retencao", label: "Inteligência Empresarial", icon: BuildingOffice2Icon, modulo: "desenvolvimento_economico.retencao" },
+      { type: "link", to: "/app/desenvolvimento-economico/retencao", label: "Retenção & Expansão", icon: BuildingOffice2Icon, modulo: "desenvolvimento_economico.retencao" },
       { type: "link", to: "/app/desenvolvimento-economico/funil", label: "Atração de Investimentos", icon: FunnelIcon, modulo: "desenvolvimento_economico.funil" },
       {
-        type: "group", label: "Programas & Premiações", icon: TrophyIcon,
+        type: "group", label: "Certificações e Premiações", icon: TrophyIcon,
         children: [
           { to: "/app/desenvolvimento-economico/premiacoes", label: "Premiações", icon: TrophyIcon, modulo: "desenvolvimento_economico.premiacoes" },
           { to: "/app/desenvolvimento-economico/captacao", label: "Captação de Recursos", icon: BanknotesIcon, modulo: "desenvolvimento_economico.captacao" },
@@ -102,9 +102,9 @@ export const NAV_STRUCTURE = [
     type: "section",
     label: "Gestão",
     items: [
-      { type: "link", to: "/app/projetos", label: "Projetos", icon: FolderOpenIcon, modulo: "projetos" },
+      { type: "link", to: "/app/projetos", label: "Planos de Desenvolvimento", icon: FolderOpenIcon, modulo: "projetos" },
       { type: "link", to: "/app/dados-internos/plano-gov", label: "Plano de Governo", icon: ClipboardDocumentListIcon, modulo: "dados_internos.plano_gov" },
-      { type: "link", to: "/app/timeline", label: "Memória Institucional", icon: CalendarDaysIcon, modulo: "timeline_mandato" },
+      { type: "link", to: "/app/timeline", label: "Histórico Institucional", icon: CalendarDaysIcon, modulo: "timeline_mandato" },
       { type: "link", to: "/app/dados-internos/calendario", label: "Calendário", icon: CalendarIcon, modulo: "dados_internos.calendario" },
       { type: "link", to: "/app/impacto", label: "Impacto de Ações", icon: BoltIcon, modulo: "impacto" },
       { type: "link", to: "/app/releases", label: "Releases", icon: NewspaperIcon, modulo: "releases", hideForAdmin: true },

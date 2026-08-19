@@ -353,7 +353,7 @@ export default function PainelPrefeitoPage() {
   if (needsMunicipio) {
     return (
       <motion.div initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3 }}>
-        <NidPageHeader title="Painel do Prefeito" sub="Visão executiva de todas as áreas do município" />
+        <NidPageHeader title="Visão do Prefeito" sub="Visão executiva de todas as áreas do município" />
         <SelecioneMunicipio />
       </motion.div>
     );
@@ -362,7 +362,7 @@ export default function PainelPrefeitoPage() {
   return (
     <motion.div initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3 }}>
       <NidPageHeader
-        title="Painel do Prefeito"
+        title="Visão do Prefeito"
         sub="Visão executiva de todas as áreas do município"
         chips={[
           { label: "Gerencial", active: modo === "gerencial", onClick: () => setModo("gerencial") },

@@ -26,7 +26,7 @@ export default function ProjetosResumoCard({ dataset, indicadorKey } = {}) {
 
   return (
     <NidPanel
-      title="Projetos"
+      title="Planos de Desenvolvimento"
       sub="Ações em execução no município"
       dataset={dataset}
       indicadorKey={indicadorKey}

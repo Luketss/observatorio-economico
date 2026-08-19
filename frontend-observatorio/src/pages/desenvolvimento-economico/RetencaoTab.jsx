@@ -224,14 +224,9 @@ export default function RetencaoTab() {
   const header = (
     <div className="flex items-center gap-3">
       <BuildingOffice2Icon className="w-7 h-7 text-blue-600" />
-      <div>
-        <h1 className="text-2xl font-extrabold tracking-tight text-[var(--text)]">
-          Inteligência Empresarial & Relacionamento
-        </h1>
-        <p className="text-xs mt-0.5 text-[var(--text-dim)]">
-          Acompanhamento de empresas instaladas — retenção e expansão.
-        </p>
-      </div>
+      <h1 className="text-2xl font-extrabold tracking-tight text-[var(--text)]">
+        Retenção & Expansão
+      </h1>
     </div>
   );
 

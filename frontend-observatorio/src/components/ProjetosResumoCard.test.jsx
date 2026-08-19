@@ -44,7 +44,7 @@ describe("ProjetosResumoCard", () => {
   it("sem dataset/indicadorKey não renderiza o ⓘ (comportamento atual preservado)", async () => {
     api.get.mockResolvedValueOnce({ data: [] });
     montar();
-    await waitFor(() => expect(screen.getByText("Projetos")).toBeTruthy());
+    await waitFor(() => expect(screen.getByText("Planos de Desenvolvimento")).toBeTruthy());
     expect(screen.queryByTestId("chart-info")).toBeNull();
   });
 

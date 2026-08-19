@@ -25,7 +25,7 @@ describe("SidebarNav — seções", () => {
     );
     expect(headers).toEqual([
       "Visão Executiva",
-      "Indicadores Internos",
+      "Indicadores & Cidade Int.",
       "Dados Econômicos",
       "Desenv. Empresarial",
       "Gestão",
@@ -44,9 +44,9 @@ describe("SidebarNav — grupos colapsáveis", () => {
   it("clique no header do grupo abre e fecha os filhos", () => {
     renderNav({ route: "/app" });
     expect(screen.queryByText("IPS")).toBeNull();
-    fireEvent.click(screen.getByText("Contexto Socioeconômico"));
+    fireEvent.click(screen.getByText("Panorama Socioeconômico"));
     expect(screen.getByText("IPS")).toBeInTheDocument();
-    fireEvent.click(screen.getByText("Contexto Socioeconômico"));
+    fireEvent.click(screen.getByText("Panorama Socioeconômico"));
     expect(screen.queryByText("IPS")).toBeNull();
   });
 
@@ -74,7 +74,7 @@ describe("SidebarNav — cadeado de plano", () => {
     renderNav({ modulos: ["geral"], route: "/app" });
     const pib = screen.getByText("PIB").closest("a");
     expect(pib).toHaveAttribute("title", LOCK_TITLE);
-    const central = screen.getByText("Central de Inteligência").closest("a");
+    const central = screen.getByText("Núcleo de Dados").closest("a");
     expect(central).not.toHaveAttribute("title");
   });
 

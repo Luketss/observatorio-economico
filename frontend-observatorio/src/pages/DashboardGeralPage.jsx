@@ -236,7 +236,7 @@ export default function DashboardGeralPage() {
       transition={{ duration: 0.3 }}
     >
       <NidPageHeader
-        title="Central de Inteligência Econômica"
+        title="Núcleo de Dados"
         sub="Indicadores econômicos consolidados do município"
       />
 

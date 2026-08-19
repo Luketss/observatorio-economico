@@ -41,7 +41,7 @@ describe("NAV_STRUCTURE — 5 eixos", () => {
   it("tem as 5 seções na ordem do design", () => {
     expect(NAV_STRUCTURE.map((s) => s.label)).toEqual([
       "Visão Executiva",
-      "Indicadores Internos",
+      "Indicadores & Cidade Int.",
       "Dados Econômicos",
       "Desenv. Empresarial",
       "Gestão",
@@ -72,15 +72,20 @@ describe("NAV_STRUCTURE — 5 eixos", () => {
 
   it("labels renomeados do design presentes; antigos ausentes", () => {
     const labels = NAV_FLAT.map((i) => i.label);
-    expect(labels).toContain("Central de Inteligência");
-    expect(labels).toContain("Memória Institucional");
+    expect(labels).toContain("Núcleo de Dados");
+    expect(labels).toContain("Visão do Prefeito");
+    expect(labels).toContain("Histórico Institucional");
     expect(labels).toContain("Atração de Investimentos");
-    expect(labels).toContain("Inteligência Empresarial");
-    expect(labels).toContain("Indicadores & Cidade Inteligente");
+    expect(labels).toContain("Retenção & Expansão");
+    expect(labels).toContain("Indicadores Internos");
+    expect(labels).toContain("Planos de Desenvolvimento");
     expect(labels).not.toContain("Dashboard");
     expect(labels).not.toContain("Timeline");
     expect(labels).not.toContain("Funil de Investimentos");
-    expect(labels).not.toContain("Retenção & Expansão");
+    expect(labels).not.toContain("Central de Inteligência");
+    expect(labels).not.toContain("Inteligência Empresarial");
+    expect(labels).not.toContain("Memória Institucional");
+    expect(labels).not.toContain("Projetos");
   });
 
   it("labels de grupo são únicos (openGroups é chaveado por label)", () => {

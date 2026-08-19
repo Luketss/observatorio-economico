@@ -25,7 +25,7 @@ export default function ProjetosPage() {
         <FolderOpenIcon style={{ width: 28, height: 28, color: "var(--accent-1)" }} />
         <div>
           <h1 style={{ fontSize: 22, fontWeight: 800, letterSpacing: "-0.02em", color: "var(--text)", margin: 0 }}>
-            Projetos
+            Planos de Desenvolvimento
           </h1>
           <p style={{ fontSize: 13, color: "var(--text-dim)", marginTop: 2 }}>
             Acervo de modelos e acompanhamento de projetos municipais.
