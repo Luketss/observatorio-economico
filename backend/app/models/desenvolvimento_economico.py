@@ -47,11 +47,14 @@ class EmpresaRetencao(Base):
 
     nome: Mapped[str] = mapped_column(String(200), nullable=False)
     cnpj: Mapped[str | None] = mapped_column(String(18), nullable=True)
+    cnpj_basico: Mapped[str | None] = mapped_column(String(8), nullable=True, index=True)  # raiz normalizada — vínculo lógico com `empresas`
     setor: Mapped[str | None] = mapped_column(String(100), nullable=True)
     num_empregos: Mapped[int | None] = mapped_column(Integer, nullable=True)
     status_risco: Mapped[str] = mapped_column(String(10), nullable=False, default="baixo")
     potencial_expansao: Mapped[str] = mapped_column(String(10), nullable=False, default="baixo")
     responsavel: Mapped[str | None] = mapped_column(String(150), nullable=True)
+    proxima_acao: Mapped[str | None] = mapped_column(Text, nullable=True)
+    proxima_acao_data: Mapped[date | None] = mapped_column(Date, nullable=True)
 
     criado_em: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=lambda: datetime.now(timezone.utc)
@@ -64,6 +67,8 @@ class EmpresaRetencao(Base):
 
     municipio = relationship("Municipio")
     visitas = relationship("VisitaRetencao", back_populates="empresa", cascade="all, delete-orphan")
+    contatos = relationship("ContatoEmpresa", back_populates="empresa", cascade="all, delete-orphan")
+    demandas = relationship("DemandaEmpresa", back_populates="empresa", cascade="all, delete-orphan")
 
 
 class VisitaRetencao(Base):
@@ -86,6 +91,62 @@ class VisitaRetencao(Base):
 
     empresa = relationship("EmpresaRetencao", back_populates="visitas")
     municipio = relationship("Municipio")
+
+
+class ContatoEmpresa(Base):
+    """Registro de contato/reunião com a empresa (Gestão Empresarial)."""
+    __tablename__ = "contato_empresa"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+    empresa_id: Mapped[int] = mapped_column(
+        Integer, ForeignKey("empresa_retencao.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    municipio_id: Mapped[int] = mapped_column(Integer, ForeignKey("municipios.id"), nullable=False, index=True)
+    criado_por: Mapped[int | None] = mapped_column(Integer, ForeignKey("usuarios.id"), nullable=True)
+
+    data: Mapped[date] = mapped_column(Date, nullable=False)
+    tipo: Mapped[str] = mapped_column(String(20), nullable=False, default="reuniao")  # reuniao|ligacao|email|visita_tecnica|outro
+    responsavel: Mapped[str | None] = mapped_column(String(150), nullable=True)
+    observacoes: Mapped[str | None] = mapped_column(Text, nullable=True)
+
+    criado_em: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=lambda: datetime.now(timezone.utc)
+    )
+    atualizado_em: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        default=lambda: datetime.now(timezone.utc),
+        onupdate=lambda: datetime.now(timezone.utc),
+    )
+
+    empresa = relationship("EmpresaRetencao", back_populates="contatos")
+
+
+class DemandaEmpresa(Base):
+    """Demanda apresentada pela empresa (Gestão Empresarial)."""
+    __tablename__ = "demanda_empresa"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+    empresa_id: Mapped[int] = mapped_column(
+        Integer, ForeignKey("empresa_retencao.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    municipio_id: Mapped[int] = mapped_column(Integer, ForeignKey("municipios.id"), nullable=False, index=True)
+    criado_por: Mapped[int | None] = mapped_column(Integer, ForeignKey("usuarios.id"), nullable=True)
+
+    descricao: Mapped[str] = mapped_column(Text, nullable=False)
+    status: Mapped[str] = mapped_column(String(20), nullable=False, default="aberta")  # aberta|em_andamento|resolvida
+    data_registro: Mapped[date] = mapped_column(Date, nullable=False)
+    responsavel: Mapped[str | None] = mapped_column(String(150), nullable=True)
+
+    criado_em: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=lambda: datetime.now(timezone.utc)
+    )
+    atualizado_em: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        default=lambda: datetime.now(timezone.utc),
+        onupdate=lambda: datetime.now(timezone.utc),
+    )
+
+    empresa = relationship("EmpresaRetencao", back_populates="demandas")
 
 
 # ── 3.3 Captação de Recursos ───────────────────────────────────────────────
