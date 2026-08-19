@@ -101,8 +101,10 @@ export default function SidebarNav({ user, modulos }) {
               return (
                 <div key={item.label}>
                   <button
+                    type="button"
                     onClick={() => toggleGroup(item.label)}
                     className="nid-nav-item"
+                    aria-expanded={isOpen}
                     style={hasActive ? { color: "var(--text)" } : undefined}
                   >
                     <Icon className="w-4 h-4 flex-shrink-0" />

@@ -89,7 +89,7 @@ export default function MandatoTimeline({ municipioId }) {
       {/* ── Panel header ──────────────────────────────────────────────────── */}
       <div className="nid-panel-head">
         <div>
-          <p className="nid-panel-title">Timeline do Mandato</p>
+          <p className="nid-panel-title">Memória Institucional</p>
           <p className="nid-panel-sub">Marcos e eventos do município</p>
         </div>
         {canManage && (

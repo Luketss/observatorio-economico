@@ -32,4 +32,10 @@ describe("Títulos das páginas renomeadas (Fase 1 — 5 eixos)", () => {
     const src = ler("../components/FunilResumoCard.jsx");
     expect(src).toContain('title="Atração de Investimentos"');
   });
+
+  it("MandatoTimeline acompanha o nome novo da página", () => {
+    const src = ler("../components/MandatoTimeline.jsx");
+    expect(src).toContain("Memória Institucional");
+    expect(src).not.toContain("Timeline do Mandato");
+  });
 });

@@ -82,6 +82,13 @@ describe("NAV_STRUCTURE — 5 eixos", () => {
     expect(labels).not.toContain("Funil de Investimentos");
     expect(labels).not.toContain("Retenção & Expansão");
   });
+
+  it("labels de grupo são únicos (openGroups é chaveado por label)", () => {
+    const grupos = NAV_STRUCTURE.flatMap((s) =>
+      s.items.filter((i) => i.type === "group").map((i) => i.label)
+    );
+    expect(new Set(grupos).size).toBe(grupos.length);
+  });
 });
 
 describe("isModuloLocked", () => {
