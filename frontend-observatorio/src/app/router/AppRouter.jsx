@@ -40,7 +40,7 @@ import ReleasesPage from "../../pages/releases/ReleasesPage";
 import TimelinePage from "../../pages/timeline/TimelinePage";
 import ProjetosPage from "../../pages/projetos/ProjetosPage";
 import FunilTab from "../../pages/desenvolvimento-economico/FunilTab";
-import RetencaoTab from "../../pages/desenvolvimento-economico/RetencaoTab";
+import GestaoEmpresarialTab from "../../pages/desenvolvimento-economico/GestaoEmpresarialTab";
 import CaptacaoTab from "../../pages/desenvolvimento-economico/CaptacaoTab";
 import EscritaTab from "../../pages/desenvolvimento-economico/EscritaTab";
 import PremiacoesTab from "../../pages/desenvolvimento-economico/PremiacoesTab";
@@ -140,7 +140,7 @@ export default function AppRouter() {
           <Route path="projetos" element={<ProjetosPage />} />
           <Route path="desenvolvimento-economico" element={<Navigate to="/app/desenvolvimento-economico/funil" replace />} />
           <Route path="desenvolvimento-economico/funil" element={<FunilTab />} />
-          <Route path="desenvolvimento-economico/retencao" element={<RetencaoTab />} />
+          <Route path="desenvolvimento-economico/retencao" element={<GestaoEmpresarialTab />} />
           <Route path="desenvolvimento-economico/captacao" element={<CaptacaoTab />} />
           <Route path="desenvolvimento-economico/escrita" element={<EscritaTab />} />
           <Route path="desenvolvimento-economico/premiacoes" element={<PremiacoesTab />} />

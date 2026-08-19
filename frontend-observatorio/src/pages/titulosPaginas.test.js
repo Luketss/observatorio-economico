@@ -12,7 +12,7 @@ const CASOS = [
   ["./DashboardGeralPage.jsx", "Núcleo de Dados", "Central de Inteligência"],
   ["./timeline/TimelinePage.jsx", "Histórico Institucional", "Memória Institucional"],
   ["./desenvolvimento-economico/FunilTab.jsx", "Atração de Investimentos", "Funil de Investimentos"],
-  ["./desenvolvimento-economico/RetencaoTab.jsx", "Retenção & Expansão", "Inteligência Empresarial"],
+  ["./desenvolvimento-economico/GestaoEmpresarialTab.jsx", "Gestão Empresarial", "Retenção & Expansão"],
   ["./dados-internos/IndicadoresInternosPage.jsx", "Indicadores Internos", "Cidade Inteligente"],
 ];
 
