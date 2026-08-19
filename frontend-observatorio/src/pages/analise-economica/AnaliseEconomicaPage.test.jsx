@@ -53,21 +53,21 @@ beforeEach(() => {
 describe("AnaliseEconomicaPage — cards das 6 bases", () => {
   it("renderiza os 6 cards com valores dos resumos e links de aprofundamento", async () => {
     montar();
-    await waitFor(() => expect(screen.getByText("PIB")).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByRole("link", { name: "Aprofundar em PIB" })).toBeInTheDocument());
     expect(screen.getByText("VAF · IPM")).toBeInTheDocument();
     expect(screen.getByText("Empresas ativas")).toBeInTheDocument();
     expect(screen.getByText("Crédito bancário")).toBeInTheDocument();
     expect(screen.getByText("Balança comercial")).toBeInTheDocument();
     expect(screen.getByText("Transações PIX")).toBeInTheDocument();
     expect(screen.getByText("585")).toBeInTheDocument(); // empresas ativas
-    expect(screen.getByText("PIB").closest("a")).toHaveAttribute("href", "/app/pib");
+    expect(screen.getByRole("link", { name: "Aprofundar em PIB" })).toHaveAttribute("href", "/app/pib");
   });
 
   it("base com erro (403) degrada para — sem quebrar as demais", async () => {
     respostas["/pix/resumo"] = new Error("403");
     montar();
     await waitFor(() => expect(screen.getByText("585")).toBeInTheDocument());
-    const cardPix = screen.getByText("Transações PIX").closest("a");
+    const cardPix = screen.getByRole("link", { name: "Aprofundar em Transações PIX" });
     expect(cardPix.textContent).toContain("—");
   });
 

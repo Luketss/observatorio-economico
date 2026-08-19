@@ -101,7 +101,7 @@ export default function AnaliseEconomicaPage() {
               aria-pressed={dataset === key}
               onClick={() => setDataset(key)}
             >
-              {key === "pib" ? "P.I.B." : CHIP_LABELS[key]}
+              {CHIP_LABELS[key]}
             </button>
           ))}
         </div>
