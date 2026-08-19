@@ -1,7 +1,9 @@
 from datetime import date, datetime
-from typing import List, Optional
+from typing import List, Literal, Optional
 
 from pydantic import BaseModel
+
+from app.schemas.empresa import EmpresaOut
 
 
 # ── 3.1 Funil de Investimentos ─────────────────────────────────────────────
@@ -74,6 +76,66 @@ class VisitaRetencaoOut(BaseModel):
         from_attributes = True
 
 
+TipoContato = Literal["reuniao", "ligacao", "email", "visita_tecnica", "outro"]
+StatusDemanda = Literal["aberta", "em_andamento", "resolvida"]
+
+
+class ContatoEmpresaCreate(BaseModel):
+    data: date
+    tipo: TipoContato = "reuniao"
+    responsavel: Optional[str] = None
+    observacoes: Optional[str] = None
+
+
+class ContatoEmpresaUpdate(BaseModel):
+    data: Optional[date] = None
+    tipo: Optional[TipoContato] = None
+    responsavel: Optional[str] = None
+    observacoes: Optional[str] = None
+
+
+class ContatoEmpresaOut(BaseModel):
+    id: int
+    empresa_id: int
+    data: date
+    tipo: str
+    responsavel: Optional[str] = None
+    observacoes: Optional[str] = None
+    criado_em: datetime
+    atualizado_em: datetime
+
+    class Config:
+        from_attributes = True
+
+
+class DemandaEmpresaCreate(BaseModel):
+    descricao: str
+    status: StatusDemanda = "aberta"
+    data_registro: date
+    responsavel: Optional[str] = None
+
+
+class DemandaEmpresaUpdate(BaseModel):
+    descricao: Optional[str] = None
+    status: Optional[StatusDemanda] = None
+    data_registro: Optional[date] = None
+    responsavel: Optional[str] = None
+
+
+class DemandaEmpresaOut(BaseModel):
+    id: int
+    empresa_id: int
+    descricao: str
+    status: str
+    data_registro: date
+    responsavel: Optional[str] = None
+    criado_em: datetime
+    atualizado_em: datetime
+
+    class Config:
+        from_attributes = True
+
+
 class EmpresaRetencaoCreate(BaseModel):
     nome: str
     cnpj: Optional[str] = None
@@ -82,6 +144,9 @@ class EmpresaRetencaoCreate(BaseModel):
     status_risco: str = "baixo"
     potencial_expansao: str = "baixo"
     responsavel: Optional[str] = None
+    cnpj_basico: Optional[str] = None
+    proxima_acao: Optional[str] = None
+    proxima_acao_data: Optional[date] = None
 
 
 class EmpresaRetencaoUpdate(BaseModel):
@@ -92,6 +157,9 @@ class EmpresaRetencaoUpdate(BaseModel):
     status_risco: Optional[str] = None
     potencial_expansao: Optional[str] = None
     responsavel: Optional[str] = None
+    cnpj_basico: Optional[str] = None
+    proxima_acao: Optional[str] = None
+    proxima_acao_data: Optional[date] = None
 
 
 class EmpresaRetencaoOut(BaseModel):
@@ -107,6 +175,12 @@ class EmpresaRetencaoOut(BaseModel):
     criado_em: datetime
     atualizado_em: datetime
     visitas: List[VisitaRetencaoOut] = []
+    cnpj_basico: Optional[str] = None
+    proxima_acao: Optional[str] = None
+    proxima_acao_data: Optional[date] = None
+    contatos: List[ContatoEmpresaOut] = []
+    demandas: List[DemandaEmpresaOut] = []
+    perfil_rfb: Optional[EmpresaOut] = None
 
     class Config:
         from_attributes = True
@@ -124,6 +198,9 @@ class EmpresaRetencaoLeanOut(BaseModel):
     responsavel: Optional[str] = None
     criado_em: datetime
     atualizado_em: datetime
+    cnpj_basico: Optional[str] = None
+    proxima_acao: Optional[str] = None
+    proxima_acao_data: Optional[date] = None
 
     class Config:
         from_attributes = True

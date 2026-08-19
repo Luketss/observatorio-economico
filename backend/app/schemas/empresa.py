@@ -15,6 +15,9 @@ class EmpresaOut(BaseModel):
     opcao_simples: bool
     opcao_mei: bool
 
+    class Config:
+        from_attributes = True
+
 
 class EmpresaResumo(BaseModel):
     total_empresas: int
