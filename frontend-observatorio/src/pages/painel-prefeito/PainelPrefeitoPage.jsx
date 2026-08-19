@@ -43,6 +43,9 @@ function norm(s) {
 // ── headline metric registry (one per dataset) ──────────────────────────────
 // pick(resumo) → { value, unit, delta, foot }
 const METRICS = {
+  // Não redeclarar pib/vaf/empresas/estban/comex/pix aqui — uma redeclaração
+  // sombrearia a entrada compartilhada e dessincronizaria Painel × Análise
+  // Econômica. Edite src/utils/metricasEconomicas.js.
   ...METRICAS_ECONOMICAS,
   arrecadacao: {
     label: "Arrecadação", route: "/app/arrecadacao",

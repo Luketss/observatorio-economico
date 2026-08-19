@@ -81,6 +81,7 @@ describe("AnaliseEconomicaPage — cards das 6 bases", () => {
     );
     await waitFor(() => expect(screen.getByText("585")).toBeInTheDocument());
     expect(screen.getAllByText("Disponível apenas no plano pago")).toHaveLength(1);
+    expect(screen.queryByRole("link", { name: "Aprofundar em Transações PIX" })).toBeNull();
   });
 });
 

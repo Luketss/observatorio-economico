@@ -18,7 +18,11 @@ export default function PlanGate({ planKey, children }) {
   return (
     <div className="relative rounded-2xl overflow-hidden">
       {/* Blurred preview of content */}
-      <div className="blur-sm pointer-events-none select-none opacity-50">
+      <div
+        className="blur-sm pointer-events-none select-none opacity-50"
+        inert
+        aria-hidden="true"
+      >
         {children}
       </div>
 
