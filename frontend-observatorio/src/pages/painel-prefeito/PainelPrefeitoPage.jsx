@@ -10,12 +10,13 @@ import PrioridadesPanel from "../../components/PrioridadesPanel";
 import AlertaFpmCard from "../../components/AlertaFpmCard";
 import DinheiroNaMesaCard from "../../components/DinheiroNaMesaCard";
 import EmendasResumoCard from "../../components/EmendasResumoCard";
-import { fmtMoneyShort, fmtNumberShort } from "../../components/nid/charts";
+import { fmtMoneyShort } from "../../components/nid/charts";
 import KpiSkeleton from "../../components/nid/KpiSkeleton";
 import SelecioneMunicipio from "../../components/nid/SelecioneMunicipio";
 import FunilResumoCard from "../../components/FunilResumoCard";
 import ProjetosResumoCard from "../../components/ProjetosResumoCard";
 import { lerModo, persistirModo } from "../../utils/painelModo";
+import { fmtBR, moneyDisplay, kpiDelta, METRICAS_ECONOMICAS } from "../../utils/metricasEconomicas";
 import {
   BanknotesIcon,
   BuildingOffice2Icon,
@@ -29,23 +30,6 @@ import {
 } from "@heroicons/react/24/outline";
 
 // ── helpers ────────────────────────────────────────────────────────────────
-const fmtBR = (v, opts = {}) =>
-  v != null ? Number(v).toLocaleString("pt-BR", opts) : "—";
-
-function moneyDisplay(v) {
-  if (v == null) return { value: "—", unit: "" };
-  const a = Math.abs(v);
-  if (a >= 1e9) return { value: `R$ ${(v / 1e9).toLocaleString("pt-BR", { maximumFractionDigits: 1 })}`, unit: "Bi" };
-  if (a >= 1e6) return { value: `R$ ${(v / 1e6).toLocaleString("pt-BR", { maximumFractionDigits: 1 })}`, unit: "Mi" };
-  if (a >= 1e3) return { value: `R$ ${(v / 1e3).toLocaleString("pt-BR", { maximumFractionDigits: 0 })}`, unit: "k" };
-  return { value: `R$ ${fmtBR(v)}`, unit: "" };
-}
-
-function kpiDelta(p) {
-  if (p == null) return null;
-  return { value: Number(p), direction: p > 0 ? "up" : p < 0 ? "down" : "flat" };
-}
-
 // strip accents + lowercase for fuzzy area/department matching
 function norm(s) {
   return (s || "")
@@ -59,17 +43,10 @@ function norm(s) {
 // ── headline metric registry (one per dataset) ──────────────────────────────
 // pick(resumo) → { value, unit, delta, foot }
 const METRICS = {
+  ...METRICAS_ECONOMICAS,
   arrecadacao: {
     label: "Arrecadação", route: "/app/arrecadacao",
     pick: (r) => ({ ...moneyDisplay(r?.total_geral), delta: kpiDelta(r?.crescimento_percentual), foot: "vs ano anterior" }),
-  },
-  pib: {
-    label: "PIB", route: "/app/pib",
-    pick: (r) => ({ ...moneyDisplay(r?.pib_ultimo_ano), delta: kpiDelta(r?.crescimento_percentual), foot: r?.ultimo_ano ? String(r.ultimo_ano) : "" }),
-  },
-  vaf: {
-    label: "VAF · IPM", route: "/app/vaf",
-    pick: (r) => ({ value: r?.ipm_ultimo_ano != null ? fmtBR(r.ipm_ultimo_ano, { maximumFractionDigits: 4 }) : "—", unit: "", delta: kpiDelta(r?.variacao_ipm_percentual), foot: r?.ultimo_ano ? String(r.ultimo_ano) : "" }),
   },
   caged: {
     label: "Saldo CAGED", route: "/app/caged",
@@ -78,22 +55,6 @@ const METRICS = {
   rais: {
     label: "Vínculos formais", route: "/app/rais",
     pick: (r) => ({ value: r?.total_vinculos != null ? fmtBR(r.total_vinculos) : "—", unit: "", delta: null, foot: r?.remuneracao_media != null ? `R$ ${fmtBR(r.remuneracao_media, { maximumFractionDigits: 0 })} méd.` : "" }),
-  },
-  empresas: {
-    label: "Empresas ativas", route: "/app/empresas",
-    pick: (r) => ({ value: r?.total_ativas != null ? fmtBR(r.total_ativas) : "—", unit: "", delta: null, foot: r?.total_mei != null ? `${fmtBR(r.total_mei)} MEI` : "" }),
-  },
-  estban: {
-    label: "Crédito bancário", route: "/app/estban",
-    pick: (r) => ({ ...moneyDisplay(r?.total_operacoes_credito), delta: null, foot: r?.qtd_agencias != null ? `${fmtBR(r.qtd_agencias)} agências` : "" }),
-  },
-  comex: {
-    label: "Balança comercial", route: "/app/comex",
-    pick: (r) => ({ value: r?.balanca_comercial != null ? `US$ ${fmtBR(r.balanca_comercial, { maximumFractionDigits: 0 })}` : "—", unit: "", delta: null, foot: "exportação − importação" }),
-  },
-  pix: {
-    label: "Transações PIX", route: "/app/pix",
-    pick: (r) => ({ value: r?.total_transacoes != null ? fmtNumberShort(r.total_transacoes) : "—", unit: "", delta: null, foot: "PF + PJ" }),
   },
   bolsa_familia: {
     label: "Bolsa Família", route: "/app/bolsa-familia",
