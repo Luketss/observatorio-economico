@@ -163,3 +163,34 @@ Nenhuma outra tela muda de conteúdo na Fase 1.
   uma vez (sem sidebar híbrida).
 - **Sidebar mais alta (~27 linhas):** aceito na decisão de abordagem; grupos
   colapsáveis e scroll já existentes mitigam.
+
+## Revisão de nomenclatura — 19/08/2026 (feedback do cliente)
+
+Onda bounded pós-Fase 1. Renames de label + título de página (URLs, chaves de
+plano e estrutura intocadas):
+
+- Central de Inteligência (Econômica) → **Núcleo de Dados** (`/app`)
+- Painel do Prefeito → **Visão do Prefeito**
+- grupo Contexto Socioeconômico → **Panorama Socioeconômico**
+- seção do Eixo 2 → **Indicadores & Cidade Int.**; item/página →
+  **Indicadores Internos** (volta ao título original)
+- item/página de retenção → **Retenção & Expansão** (reverte a renomeação da
+  F1; subtítulo adicional da F1 removido)
+- grupo Programas & Premiações → **Certificações e Premiações** (mesmos 5
+  filhos: Premiações, Captação, Escrita, Dinheiro na Mesa, Emendas)
+- Projetos → **Planos de Desenvolvimento** (página + card-resumo do painel)
+- Memória Institucional → **Histórico Institucional** (sidebar + página +
+  painel `MandatoTimeline`)
+
+Decisões registradas:
+
+- **"Gestão Empresarial"** passa a ser o nome do módulo 14 FUTURO (Fase 3,
+  fusão Empresas+Retenção). Até lá o item existente chama-se Retenção &
+  Expansão — sem item vazio.
+- **Módulo 03 renomeado para "Análise Econômica"** e reposicionado: quando a
+  Fase 2 o entregar, o item entra no **Eixo 3** (abaixo dos dados
+  econômicos), não no Eixo 1.
+- **"Cidade Inteligente"** (com ISO/ABNT, mantido pelo cliente como conceito)
+  é módulo futuro do Eixo 2 — sem item vazio agora.
+- Mantidos pelo cliente: Benchmark, Eixo 3 inteiro, Atração de
+  Investimentos, Plano de Governo, Calendário, Impacto, Releases.
