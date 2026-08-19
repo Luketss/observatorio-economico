@@ -1,11 +1,12 @@
 from datetime import date
 from typing import List
+import re
 
 from app.api.deps import get_current_user, get_db, scoped_modulo
 from app.models.empresa import Empresa
-from app.schemas.empresa import EmpresaResumo, EmpresaPorPorteItem, EmpresaPorCnaeItem
+from app.schemas.empresa import EmpresaResumo, EmpresaPorPorteItem, EmpresaPorCnaeItem, EmpresaOut
 from fastapi import APIRouter, Depends, Query
-from sqlalchemy import func, case
+from sqlalchemy import func, case, or_
 from sqlalchemy.orm import Session
 
 PORTE_LABELS = {
@@ -128,6 +129,28 @@ def resumo_empresas(
         total_simples=int(row[3] or 0),
         abertas_periodo=int(abertas_q.scalar() or 0),
     )
+
+
+@router.get("/buscar", response_model=List[EmpresaOut])
+def buscar_empresas(
+    q: str = Query(min_length=2),
+    mid: int | None = Depends(scoped_modulo("empresas")),
+    db: Session = Depends(get_db),
+):
+    """Autocomplete da Gestão Empresarial: match por nome ou raiz de CNPJ."""
+    if mid is None:
+        return []
+    digitos = re.sub(r"\D", "", q)
+    query = db.query(Empresa).filter(Empresa.municipio_id == mid)
+    if len(digitos) >= 3:
+        query = query.filter(Empresa.cnpj_basico.like(f"{digitos[:8]}%"))
+    else:
+        like = f"%{q}%"
+        query = query.filter(or_(
+            Empresa.razao_social.ilike(like),
+            Empresa.nome_fantasia.ilike(like),
+        ))
+    return query.order_by(Empresa.razao_social).limit(10).all()
 
 
 @router.get("/por_porte", response_model=List[EmpresaPorPorteItem])

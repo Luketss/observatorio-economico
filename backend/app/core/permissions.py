@@ -26,7 +26,7 @@ AREA_LABELS = {
     "funil": "Funil de Investimentos",
     "escrita": "Escrita de Projetos",
     "premiacoes": "Premiações",
-    "retencao": "Retenção & Expansão",
+    "retencao": "Gestão Empresarial",
     "dados_internos": "Dados Internos",
     "mandato": "Timeline do Mandato",
     "usuarios": "Usuários do Município",
