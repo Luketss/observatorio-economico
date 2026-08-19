@@ -33,12 +33,8 @@ export default function AnaliseEconomicaPage() {
   const [dataset, setDataset] = useState("pib");
 
   useEffect(() => {
-    if (needsMunicipio) {
-      setLoading(false);
-      return;
-    }
+    if (needsMunicipio) return;
     let alive = true;
-    setLoading(true);
     const safeGet = (url) => api.get(url).then((r) => r.data).catch(() => null);
     Promise.all(ORDEM_ECONOMICA.map((key) => safeGet(METRICAS_ECONOMICAS[key].resumoPath))).then((res) => {
       if (!alive) return;
