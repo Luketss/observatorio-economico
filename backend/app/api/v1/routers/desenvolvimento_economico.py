@@ -1,24 +1,34 @@
 from datetime import date
 from typing import List
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Query
 from sqlalchemy.orm import Session, selectinload
 
 from app.api.deps import get_current_user, get_db, require_permissao
+from app.core.cnpj import cnpj_para_basico
 from app.core.exceptions import ForbiddenException, NotFoundException
 from app.models.desenvolvimento_economico import (
     CaptacaoRecurso,
+    ContatoEmpresa,
+    DemandaEmpresa,
     EmpresaRetencao,
     EscritaProjeto,
     InvestimentoFunil,
     Premiacao,
     VisitaRetencao,
 )
+from app.models.empresa import Empresa
 from app.models.usuario import Usuario
 from app.schemas.desenvolvimento_economico import (
     CaptacaoRecursoCreate,
     CaptacaoRecursoOut,
     CaptacaoRecursoUpdate,
+    ContatoEmpresaCreate,
+    ContatoEmpresaOut,
+    ContatoEmpresaUpdate,
+    DemandaEmpresaCreate,
+    DemandaEmpresaOut,
+    DemandaEmpresaUpdate,
     EmpresaRetencaoCreate,
     EmpresaRetencaoLeanOut,
     EmpresaRetencaoOut,
@@ -36,6 +46,7 @@ from app.schemas.desenvolvimento_economico import (
     VisitaRetencaoCreate,
     VisitaRetencaoOut,
 )
+from app.schemas.empresa import EmpresaOut
 
 router = APIRouter(prefix="/desenvolvimento-economico", tags=["Desenvolvimento Econômico"])
 
@@ -145,10 +156,15 @@ def deletar_funil(
 
 @router.get("/retencao", response_model=List[EmpresaRetencaoLeanOut])
 def listar_retencao(
+    municipio_id: int | None = Query(default=None),
     db: Session = Depends(get_db),
     current_user: Usuario = Depends(get_current_user),
 ):
-    query = _apply_tenant(db.query(EmpresaRetencao), EmpresaRetencao, current_user)
+    query = db.query(EmpresaRetencao)
+    if current_user.role.nome != "ADMIN_GLOBAL":
+        query = query.filter(EmpresaRetencao.municipio_id == current_user.municipio_id)
+    elif municipio_id is not None:
+        query = query.filter(EmpresaRetencao.municipio_id == municipio_id)
     return query.order_by(EmpresaRetencao.nome).all()
 
 
@@ -160,7 +176,11 @@ def detalhe_retencao(
 ):
     empresa = (
         db.query(EmpresaRetencao)
-        .options(selectinload(EmpresaRetencao.visitas))
+        .options(
+            selectinload(EmpresaRetencao.visitas),
+            selectinload(EmpresaRetencao.contatos),
+            selectinload(EmpresaRetencao.demandas),
+        )
         .filter(EmpresaRetencao.id == empresa_id)
         .first()
     )
@@ -169,7 +189,19 @@ def detalhe_retencao(
     if current_user.role.nome != "ADMIN_GLOBAL" and empresa.municipio_id != current_user.municipio_id:
         raise ForbiddenException("Acesso negado")
     empresa.visitas.sort(key=lambda v: v.data_visita)
-    return empresa
+    empresa.contatos.sort(key=lambda c: c.data)
+    empresa.demandas.sort(key=lambda d: d.data_registro)
+    out = EmpresaRetencaoOut.model_validate(empresa)
+    if empresa.cnpj_basico:
+        perfil = (
+            db.query(Empresa)
+            .filter(Empresa.municipio_id == empresa.municipio_id,
+                    Empresa.cnpj_basico == empresa.cnpj_basico)
+            .first()
+        )
+        if perfil:
+            out.perfil_rfb = EmpresaOut.model_validate(perfil)
+    return out
 
 
 @router.post("/retencao", response_model=EmpresaRetencaoLeanOut)
@@ -179,8 +211,11 @@ def criar_retencao(
     current_user: Usuario = Depends(require_permissao("retencao", "criar")),
 ):
     _exigir_municipio(current_user)
+    payload = data.model_dump()
+    if payload.get("cnpj_basico") is None:
+        payload["cnpj_basico"] = cnpj_para_basico(payload.get("cnpj"))
     empresa = EmpresaRetencao(
-        **data.model_dump(),
+        **payload,
         municipio_id=_municipio_id(current_user),
         criado_por=current_user.id,
     )
@@ -202,7 +237,10 @@ def atualizar_retencao(
         raise NotFoundException("Empresa não encontrada")
     if current_user.role.nome != "ADMIN_GLOBAL" and empresa.municipio_id != current_user.municipio_id:
         raise ForbiddenException("Acesso negado")
-    for field, value in data.model_dump(exclude_unset=True).items():
+    campos = data.model_dump(exclude_unset=True)
+    if "cnpj" in campos and "cnpj_basico" not in campos:
+        campos["cnpj_basico"] = cnpj_para_basico(campos.get("cnpj"))
+    for field, value in campos.items():
         setattr(empresa, field, value)
     db.commit()
     db.refresh(empresa)
@@ -260,6 +298,124 @@ def deletar_visita(
     if current_user.role.nome != "ADMIN_GLOBAL" and visita.municipio_id != current_user.municipio_id:
         raise ForbiddenException("Acesso negado")
     db.delete(visita)
+    db.commit()
+    return {"ok": True}
+
+
+@router.post("/retencao/{empresa_id}/contatos", response_model=ContatoEmpresaOut)
+def adicionar_contato(
+    empresa_id: int,
+    data: ContatoEmpresaCreate,
+    db: Session = Depends(get_db),
+    current_user: Usuario = Depends(require_permissao("retencao", "editar")),
+):
+    empresa = db.get(EmpresaRetencao, empresa_id)
+    if not empresa:
+        raise NotFoundException("Empresa não encontrada")
+    if current_user.role.nome != "ADMIN_GLOBAL" and empresa.municipio_id != current_user.municipio_id:
+        raise ForbiddenException("Acesso negado")
+    contato = ContatoEmpresa(
+        **data.model_dump(),
+        empresa_id=empresa_id,
+        municipio_id=empresa.municipio_id,
+        criado_por=current_user.id,
+    )
+    db.add(contato)
+    db.commit()
+    db.refresh(contato)
+    return contato
+
+
+@router.put("/retencao/contatos/{contato_id}", response_model=ContatoEmpresaOut)
+def atualizar_contato(
+    contato_id: int,
+    data: ContatoEmpresaUpdate,
+    db: Session = Depends(get_db),
+    current_user: Usuario = Depends(require_permissao("retencao", "editar")),
+):
+    contato = db.get(ContatoEmpresa, contato_id)
+    if not contato:
+        raise NotFoundException("Contato não encontrado")
+    if current_user.role.nome != "ADMIN_GLOBAL" and contato.municipio_id != current_user.municipio_id:
+        raise ForbiddenException("Acesso negado")
+    for field, value in data.model_dump(exclude_unset=True).items():
+        setattr(contato, field, value)
+    db.commit()
+    db.refresh(contato)
+    return contato
+
+
+@router.delete("/retencao/contatos/{contato_id}")
+def deletar_contato(
+    contato_id: int,
+    db: Session = Depends(get_db),
+    current_user: Usuario = Depends(require_permissao("retencao", "editar")),
+):
+    contato = db.get(ContatoEmpresa, contato_id)
+    if not contato:
+        raise NotFoundException("Contato não encontrado")
+    if current_user.role.nome != "ADMIN_GLOBAL" and contato.municipio_id != current_user.municipio_id:
+        raise ForbiddenException("Acesso negado")
+    db.delete(contato)
+    db.commit()
+    return {"ok": True}
+
+
+@router.post("/retencao/{empresa_id}/demandas", response_model=DemandaEmpresaOut)
+def adicionar_demanda(
+    empresa_id: int,
+    data: DemandaEmpresaCreate,
+    db: Session = Depends(get_db),
+    current_user: Usuario = Depends(require_permissao("retencao", "editar")),
+):
+    empresa = db.get(EmpresaRetencao, empresa_id)
+    if not empresa:
+        raise NotFoundException("Empresa não encontrada")
+    if current_user.role.nome != "ADMIN_GLOBAL" and empresa.municipio_id != current_user.municipio_id:
+        raise ForbiddenException("Acesso negado")
+    demanda = DemandaEmpresa(
+        **data.model_dump(),
+        empresa_id=empresa_id,
+        municipio_id=empresa.municipio_id,
+        criado_por=current_user.id,
+    )
+    db.add(demanda)
+    db.commit()
+    db.refresh(demanda)
+    return demanda
+
+
+@router.put("/retencao/demandas/{demanda_id}", response_model=DemandaEmpresaOut)
+def atualizar_demanda(
+    demanda_id: int,
+    data: DemandaEmpresaUpdate,
+    db: Session = Depends(get_db),
+    current_user: Usuario = Depends(require_permissao("retencao", "editar")),
+):
+    demanda = db.get(DemandaEmpresa, demanda_id)
+    if not demanda:
+        raise NotFoundException("Demanda não encontrada")
+    if current_user.role.nome != "ADMIN_GLOBAL" and demanda.municipio_id != current_user.municipio_id:
+        raise ForbiddenException("Acesso negado")
+    for field, value in data.model_dump(exclude_unset=True).items():
+        setattr(demanda, field, value)
+    db.commit()
+    db.refresh(demanda)
+    return demanda
+
+
+@router.delete("/retencao/demandas/{demanda_id}")
+def deletar_demanda(
+    demanda_id: int,
+    db: Session = Depends(get_db),
+    current_user: Usuario = Depends(require_permissao("retencao", "editar")),
+):
+    demanda = db.get(DemandaEmpresa, demanda_id)
+    if not demanda:
+        raise NotFoundException("Demanda não encontrada")
+    if current_user.role.nome != "ADMIN_GLOBAL" and demanda.municipio_id != current_user.municipio_id:
+        raise ForbiddenException("Acesso negado")
+    db.delete(demanda)
     db.commit()
     return {"ok": True}
 
