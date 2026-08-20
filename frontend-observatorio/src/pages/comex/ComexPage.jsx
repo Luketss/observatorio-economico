@@ -9,7 +9,7 @@ import FilterBar, { describeFilter, clearFilter } from "../../components/FilterB
 import { janela12m, dentroDoFiltro } from "../../utils/periodoCards";
 import KpiCard from "../../components/KpiCard";
 import PlanGate from "../../components/PlanGate";
-import { NidPageHeader, NidPanel, NidLegend } from "../../components/nid/Panel";
+import { NidPageHeader, NidPanel, NidLegend, NidInsight } from "../../components/nid/Panel";
 import { MultiLineChart, HBarChart } from "../../components/nid/charts";
 import CompareToggle from "../../components/nid/CompareToggle";
 import { comparePanelData } from "../../utils/periodos";
@@ -20,6 +20,7 @@ import KpiSkeleton from "../../components/nid/KpiSkeleton";
 import SelecioneMunicipio from "../../components/nid/SelecioneMunicipio";
 import PeriodoMenu from "../../components/nid/PeriodoMenu";
 import { aplicarPresetSerie } from "../../utils/periodoGrafico";
+import { montarLeituraComex } from "../../utils/leituraComex";
 
 
 const fmtUSD = (v) =>
@@ -190,6 +191,8 @@ export default function ComexPage() {
   const balancaPositiva = totaisComex.exp - totaisComex.imp >= 0;
   const filtroLabel = describeFilter(filters);
 
+  const leiturasComex = useMemo(() => montarLeituraComex({ serie }), [serie]);
+
   const cards = [
     {
       label: "Total Exportado",
@@ -266,6 +269,14 @@ export default function ComexPage() {
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           {cards.map((c) => (
             <KpiCard key={c.label} {...c} />
+          ))}
+        </div>
+      )}
+
+      {!loading && leiturasComex.length > 0 && (
+        <div className="nid-insights">
+          {leiturasComex.map((l) => (
+            <NidInsight key={l.texto} kind={l.kind}>{l.texto}</NidInsight>
           ))}
         </div>
       )}
