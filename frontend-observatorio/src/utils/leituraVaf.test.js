@@ -18,7 +18,7 @@ describe("montarLeituraVaf", () => {
     const iVariacao = out.indexOf(variacao);
     expect(out[iVariacao + 1].kind).toBe("info");
     expect(out[iVariacao + 1].texto).toBe(
-      "IPM maior significa fatia maior do repasse de ICMS do estado no ano seguinte."
+      "IPM maior significa fatia maior do repasse de ICMS do estado dois anos depois (ano de aplicação)."
     );
   });
 
@@ -62,15 +62,27 @@ describe("montarLeituraVaf", () => {
     );
   });
 
-  it("ignora linhas com pct_ipm null e usa os dois últimos anos-base válidos", () => {
+  it("ignora linhas sem índice e usa os dois últimos anos-base válidos", () => {
     const serie = [
       ...SERIE,
-      { ano_base: 2024, indice_participacao_municipal: 0.0999, pct_ipm: null },
+      { ano_base: 2024, indice_participacao_municipal: null, pct_ipm: 5.0 },
     ];
     const out = montarLeituraVaf({ serie });
     const variacao = out.find((l) => l.texto.startsWith("Índice de participação"));
     expect(variacao.texto).toBe(
       "Índice de participação (IPM) subiu de 0,0220 para 0,0250 (ano-base 2023)."
+    );
+  });
+
+  it("linha com índice válido conta mesmo sem pct_ipm", () => {
+    const serie = [
+      { ano_base: 2022, indice_participacao_municipal: 0.0200, pct_ipm: null },
+      { ano_base: 2023, indice_participacao_municipal: 0.0220, pct_ipm: null },
+    ];
+    const out = montarLeituraVaf({ serie });
+    const variacao = out.find((l) => l.texto.startsWith("Índice de participação"));
+    expect(variacao.texto).toBe(
+      "Índice de participação (IPM) subiu de 0,0200 para 0,0220 (ano-base 2023)."
     );
   });
 

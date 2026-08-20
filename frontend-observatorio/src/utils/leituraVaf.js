@@ -6,10 +6,9 @@
  * anos-base. Item sem dado suficiente é OMITIDO (a strip encolhe; nunca
  * renderiza placeholder).
  *
- * `pct_ipm` é a variação percentual pré-calculada (ex.: 5.24, -2.30) usada
- * aqui só como marca de linha com dado válido; o valor exibido é sempre
- * `indice_participacao_municipal` (a fração do IPM em si), formatado com 4
- * casas decimais e vírgula.
+ * O valor exibido é sempre `indice_participacao_municipal` (a fração do IPM
+ * em si), formatado com 4 casas decimais e vírgula — não `pct_ipm`, que é a
+ * variação percentual pré-calculada (ex.: 5.24, -2.30).
  */
 
 const fmtIndice = (v) => Number(v).toFixed(4).replace(".", ",");
@@ -17,7 +16,7 @@ const fmtIndice = (v) => Number(v).toFixed(4).replace(".", ",");
 export function montarLeituraVaf({ serie } = {}) {
   const leituras = [];
   const porAno = (serie || [])
-    .filter((d) => d.pct_ipm != null && d.indice_participacao_municipal != null)
+    .filter((d) => d.indice_participacao_municipal != null)
     .slice()
     .sort((a, b) => a.ano_base - b.ano_base);
 
@@ -51,7 +50,9 @@ export function montarLeituraVaf({ serie } = {}) {
     if (houveMudanca) {
       leituras.push({
         kind: "info",
-        texto: "IPM maior significa fatia maior do repasse de ICMS do estado no ano seguinte.",
+        // Ano-base reflete no repasse DOIS anos depois (ano de aplicação) —
+        // mesma semântica do painel "ICMS Projetado" e do docs/dados-para-stakeholder.md.
+        texto: "IPM maior significa fatia maior do repasse de ICMS do estado dois anos depois (ano de aplicação).",
       });
     }
   }
