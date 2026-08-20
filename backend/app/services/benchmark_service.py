@@ -5,8 +5,9 @@ Cada consulta espelha a agregação do endpoint comparativo homônimo já
 existente (mesma fonte de verdade dos precedentes F4/F5) — inclusive as
 semânticas herdadas: ESTBAN soma saldos mensais do ano (como o
 `/estban/comparativo` atual) e COMEX considera só exportações. Municípios
-demo ficam fora de TODAS as consultas (dado fabricado não entra em
-analytics cross-município).
+demo ficam fora do cross-município (pool de pares, cobertura, posição) —
+dado fabricado não entra em analytics; a série do PRÓPRIO foco os inclui
+via `incluir_demo=True`, paridade com /pib/comparativo.
 
 `calcular_posicao` é puro de propósito — o router passa os valores do
 último ano e o mapa de UFs (que já tem via `carregar_refs`)."""
