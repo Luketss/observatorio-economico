@@ -1,8 +1,21 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
+import { Link } from "react-router-dom";
 import api from "../../services/api";
-import { NewspaperIcon, XMarkIcon, PencilSquareIcon, SparklesIcon } from "@heroicons/react/24/outline";
+import {
+  NewspaperIcon,
+  XMarkIcon,
+  PencilSquareIcon,
+  SparklesIcon,
+  ClipboardDocumentIcon,
+  CheckIcon,
+  ArrowRightIcon,
+} from "@heroicons/react/24/outline";
 import { useAuth } from "../../context/AuthContext";
+import { useToast } from "../../context/ToastContext";
+import NidSelect from "../../components/nid/NidSelect";
+import { DATASET_ROUTE } from "../../utils/prioridadesForm";
+import { getLabel, fmtDateRelease, abrirImpressao } from "../../utils/releaseDoc";
 
 function Badge({ modelo }) {
   const isEspecialista = modelo === "especialista";
@@ -22,40 +35,24 @@ function Badge({ modelo }) {
   );
 }
 
-const DATASET_LABELS = {
-  geral: "Visão Geral",
-  arrecadacao: "Arrecadação",
-  pib: "PIB",
-  caged: "CAGED",
-  rais: "RAIS",
-  bolsa_familia: "Bolsa Família",
-  pe_de_meia: "Pé-de-Meia",
-  inss: "INSS",
-  estban: "Bancos (Estban)",
-  comex: "Comércio Exterior",
-  empresas: "Empresas",
-  pix: "PIX",
-};
-
-function fmtDate(dt) {
-  if (!dt) return "—";
-  return new Date(dt).toLocaleDateString("pt-BR", {
-    day: "2-digit",
-    month: "long",
-    year: "numeric",
-  });
+function datasetKey(dataset) {
+  return dataset.replace(/^release_/, "");
 }
 
-function getLabel(dataset) {
-  const key = dataset.replace(/^release_/, "");
-  return DATASET_LABELS[key] || key;
-}
+const FEEDBACK_MS = 2000;
 
 export default function ReleasesPage() {
   const { user } = useAuth();
+  const { addToast } = useToast();
   const [releases, setReleases] = useState([]);
   const [loading, setLoading] = useState(true);
   const [modal, setModal] = useState(null);
+  const [datasetFiltro, setDatasetFiltro] = useState("");
+  const [copiedAll, setCopiedAll] = useState(false);
+  const [copiedIndex, setCopiedIndex] = useState(null);
+
+  const copiedAllTimer = useRef(null);
+  const copiedIndexTimer = useRef(null);
 
   useEffect(() => {
     api
@@ -65,61 +62,63 @@ export default function ReleasesPage() {
       .finally(() => setLoading(false));
   }, []);
 
+  useEffect(() => {
+    return () => {
+      clearTimeout(copiedAllTimer.current);
+      clearTimeout(copiedIndexTimer.current);
+    };
+  }, []);
+
+  // Backend ordena por dataset (chave técnica) — reordena aqui pelo mais
+  // recente primeiro, que é o que faz sentido pra quem está lendo a lista.
+  const ordenadas = useMemo(
+    () => [...releases].sort((a, b) => new Date(b.gerado_em) - new Date(a.gerado_em)),
+    [releases]
+  );
+
+  const datasetsPresentes = useMemo(() => {
+    const chaves = [...new Set(ordenadas.map((r) => datasetKey(r.dataset)))];
+    return chaves.map((key) => ({ key, label: getLabel(key) }));
+  }, [ordenadas]);
+
+  const visiveis = datasetFiltro
+    ? ordenadas.filter((r) => datasetKey(r.dataset) === datasetFiltro)
+    : ordenadas;
+
+  const clipboardDisponivel = typeof navigator !== "undefined" && !!navigator.clipboard;
+
+  const abrirModal = (release) => {
+    setCopiedAll(false);
+    setCopiedIndex(null);
+    setModal(release);
+  };
+
+  const fecharModal = () => {
+    setCopiedAll(false);
+    setCopiedIndex(null);
+    setModal(null);
+  };
+
   const handlePrint = (release) => {
-    const label = getLabel(release.dataset);
     const municipioNome = user?.municipio?.nome || "Município";
-    const dataGerado = fmtDate(release.gerado_em);
-    const html = `<!DOCTYPE html>
-<html lang="pt-BR">
-<head>
-  <meta charset="UTF-8"/>
-  <title>Release — ${label} — ${municipioNome}</title>
-  <style>
-    * { margin: 0; padding: 0; box-sizing: border-box; }
-    body {
-      font-family: Georgia, 'Times New Roman', serif;
-      font-size: 12pt;
-      line-height: 1.8;
-      color: #1a1a1a;
-      background: white;
-      max-width: 720px;
-      margin: 0 auto;
-      padding: 48px 40px;
-    }
-    header {
-      border-bottom: 3px solid #1a1a1a;
-      padding-bottom: 16px;
-      margin-bottom: 28px;
-    }
-    .tag {
-      font-size: 8.5pt;
-      font-weight: bold;
-      letter-spacing: .12em;
-      text-transform: uppercase;
-      color: #666;
-      margin-bottom: 8px;
-    }
-    h1 { font-size: 22pt; font-weight: bold; line-height: 1.2; margin-bottom: 8px; }
-    .meta { font-size: 9pt; color: #555; font-style: italic; }
-    .body p { margin-bottom: 1.4em; text-align: justify; hyphens: auto; }
-    @media print { body { padding: 0; max-width: 100%; } @page { margin: 2cm; } }
-  </style>
-</head>
-<body>
-  <header>
-    <div class="tag">Release de Imprensa</div>
-    <h1>Prefeitura de ${municipioNome}</h1>
-    <div class="meta">${label} &mdash; ${dataGerado}</div>
-  </header>
-  <div class="body">
-    ${release.bullets.map((p) => `<p>${p}</p>`).join("\n    ")}
-  </div>
-  <script>window.onload = function() { window.print(); }</script>
-</body>
-</html>`;
-    const win = window.open("", "_blank");
-    win.document.write(html);
-    win.document.close();
+    const ok = abrirImpressao(release, municipioNome);
+    if (!ok) addToast("Habilite pop-ups para baixar o PDF.", "error");
+  };
+
+  const handleCopyAll = async () => {
+    if (!modal || !clipboardDisponivel) return;
+    await navigator.clipboard.writeText(modal.bullets.join("\n\n"));
+    setCopiedAll(true);
+    clearTimeout(copiedAllTimer.current);
+    copiedAllTimer.current = setTimeout(() => setCopiedAll(false), FEEDBACK_MS);
+  };
+
+  const handleCopyParagraph = async (texto, i) => {
+    if (!clipboardDisponivel) return;
+    await navigator.clipboard.writeText(texto);
+    setCopiedIndex(i);
+    clearTimeout(copiedIndexTimer.current);
+    copiedIndexTimer.current = setTimeout(() => setCopiedIndex(null), FEEDBACK_MS);
   };
 
   return (
@@ -129,15 +128,30 @@ export default function ReleasesPage() {
       transition={{ duration: 0.3 }}
       className="space-y-8"
     >
-      <div>
-        <div className="flex items-center gap-2">
-          <h1 className="text-2xl font-extrabold tracking-tight text-[var(--text)]">
-            Releases de Imprensa
-          </h1>
+      <div className="flex items-start justify-between gap-4 flex-wrap">
+        <div>
+          <div className="flex items-center gap-2">
+            <h1 className="text-2xl font-extrabold tracking-tight text-[var(--text)]">
+              Releases de Imprensa
+            </h1>
+          </div>
+          <p className="text-sm text-[var(--text-mute)] mt-1">
+            Comunicados para divulgação institucional, gerados por IA ou por especialista.
+          </p>
         </div>
-        <p className="text-sm text-[var(--text-mute)] mt-1">
-          Comunicados para divulgação institucional, gerados por IA ou por especialista.
-        </p>
+
+        {!loading && releases.length > 0 && (
+          <NidSelect
+            value={datasetFiltro}
+            onChange={(e) => setDatasetFiltro(e.target.value)}
+            ariaLabel="Filtrar por tema"
+          >
+            <option value="">Todos os temas</option>
+            {datasetsPresentes.map((d) => (
+              <option key={d.key} value={d.key}>{d.label}</option>
+            ))}
+          </NidSelect>
+        )}
       </div>
 
       {loading ? (
@@ -161,16 +175,18 @@ export default function ReleasesPage() {
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
-          {releases.map((release) => {
+          {visiveis.map((release) => {
             const label = getLabel(release.dataset);
+            const route = DATASET_ROUTE[datasetKey(release.dataset)];
             return (
               <div
                 key={release.id}
+                data-testid={`release-card-${datasetKey(release.dataset)}`}
                 className="bg-[var(--panel)] rounded-2xl border border-[var(--border)] shadow-sm p-6 flex flex-col gap-4"
               >
                 <div className="flex items-start gap-3">
-                  <div className="w-10 h-10 rounded-xl bg-violet-100  flex items-center justify-center flex-shrink-0">
-                    <NewspaperIcon className="w-5 h-5 text-violet-600 " />
+                  <div className="w-10 h-10 rounded-xl bg-[var(--panel-2)] flex items-center justify-center flex-shrink-0">
+                    <NewspaperIcon className="w-5 h-5 text-[var(--accent-3)]" />
                   </div>
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 flex-wrap">
@@ -178,7 +194,8 @@ export default function ReleasesPage() {
                       <Badge modelo={release.modelo} />
                     </div>
                     <p className="text-xs text-[var(--text-mute)] mt-0.5">
-                      {fmtDate(release.gerado_em)}
+                      {fmtDateRelease(release.gerado_em)}
+                      {release.periodo && ` · ${release.periodo}`}
                     </p>
                   </div>
                 </div>
@@ -187,16 +204,25 @@ export default function ReleasesPage() {
                   {release.bullets[0]}
                 </p>
 
+                {route && (
+                  <Link
+                    to={route}
+                    className="inline-flex items-center gap-1 text-xs font-medium text-[var(--accent-3)] hover:opacity-80 transition-colors -mt-2"
+                  >
+                    Ver os dados <ArrowRightIcon className="w-3.5 h-3.5" />
+                  </Link>
+                )}
+
                 <div className="flex gap-2 mt-auto">
                   <button
-                    onClick={() => setModal(release)}
-                    className="flex-1 text-sm font-medium text-violet-600  border border-violet-200  rounded-xl py-2 hover:bg-[var(--panel-2)] transition-colors"
+                    onClick={() => abrirModal(release)}
+                    className="flex-1 text-sm font-medium text-[var(--accent-3)] border border-[var(--border)] rounded-xl py-2 hover:bg-[var(--panel-2)] transition-colors"
                   >
                     Visualizar
                   </button>
                   <button
                     onClick={() => handlePrint(release)}
-                    className="flex-1 text-sm font-medium text-white bg-violet-600 hover:bg-violet-700 rounded-xl py-2 transition-colors"
+                    className="flex-1 text-sm font-medium text-[var(--bg)] bg-[var(--accent-3)] hover:opacity-90 rounded-xl py-2 transition-colors"
                   >
                     Baixar PDF
                   </button>
@@ -215,7 +241,7 @@ export default function ReleasesPage() {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            onClick={() => setModal(null)}
+            onClick={fecharModal}
           >
             <motion.div
               className="bg-[var(--panel)] rounded-2xl shadow-xl w-full max-w-2xl max-h-[80vh] overflow-y-auto"
@@ -237,11 +263,20 @@ export default function ReleasesPage() {
                     {getLabel(modal.dataset)}
                   </h3>
                   <p className="text-xs text-[var(--text-mute)] mt-1">
-                    {fmtDate(modal.gerado_em)}
+                    {fmtDateRelease(modal.gerado_em)}
+                    {modal.periodo && ` · ${modal.periodo}`}
                   </p>
+                  {DATASET_ROUTE[datasetKey(modal.dataset)] && (
+                    <Link
+                      to={DATASET_ROUTE[datasetKey(modal.dataset)]}
+                      className="inline-flex items-center gap-1 text-xs font-medium text-[var(--accent-3)] hover:opacity-80 transition-colors mt-1"
+                    >
+                      Ver os dados <ArrowRightIcon className="w-3.5 h-3.5" />
+                    </Link>
+                  )}
                 </div>
                 <button
-                  onClick={() => setModal(null)}
+                  onClick={fecharModal}
                   className="text-slate-400 hover:text-slate-600  transition-colors ml-4"
                 >
                   <XMarkIcon className="w-5 h-5" />
@@ -249,23 +284,57 @@ export default function ReleasesPage() {
               </div>
 
               <div className="p-6 space-y-4">
+                {clipboardDisponivel && (
+                  <div className="flex justify-end">
+                    <button
+                      onClick={handleCopyAll}
+                      className="inline-flex items-center gap-1.5 text-xs font-medium text-[var(--text-dim)] border border-[var(--border)] rounded-lg px-2.5 py-1.5 hover:bg-[var(--panel-2)] transition-colors"
+                    >
+                      {copiedAll ? (
+                        <><CheckIcon className="w-3.5 h-3.5" /> Copiado!</>
+                      ) : (
+                        <><ClipboardDocumentIcon className="w-3.5 h-3.5" /> Copiar tudo</>
+                      )}
+                    </button>
+                  </div>
+                )}
                 {modal.bullets.map((paragraph, i) => (
-                  <p key={i} className="text-sm leading-relaxed text-slate-700 ">
-                    {paragraph}
-                  </p>
+                  <div key={i} className="flex items-start gap-2">
+                    <p className="text-sm leading-relaxed text-slate-700  flex-1">
+                      {paragraph}
+                    </p>
+                    {clipboardDisponivel && (
+                      <div className="flex items-center gap-1.5 flex-shrink-0 mt-0.5">
+                        {copiedIndex === i && (
+                          <span className="text-[10px] font-medium text-[var(--accent-5)]">Copiado!</span>
+                        )}
+                        <button
+                          onClick={() => handleCopyParagraph(paragraph, i)}
+                          aria-label="Copiar parágrafo"
+                          className="p-1 rounded text-[var(--text-mute)] hover:text-[var(--text-dim)] hover:bg-[var(--panel-2)] transition-colors"
+                        >
+                          {copiedIndex === i ? (
+                            <CheckIcon className="w-3.5 h-3.5" />
+                          ) : (
+                            <ClipboardDocumentIcon className="w-3.5 h-3.5" />
+                          )}
+                        </button>
+                      </div>
+                    )}
+                  </div>
                 ))}
               </div>
 
               <div className="flex items-center justify-end gap-3 px-6 py-4 border-t border-[var(--border)]">
                 <button
-                  onClick={() => setModal(null)}
+                  onClick={fecharModal}
                   className="px-4 py-2 rounded-xl border border-[var(--border)] text-sm text-[var(--text-dim)] hover:bg-[var(--panel-2)] transition-colors"
                 >
                   Fechar
                 </button>
                 <button
                   onClick={() => handlePrint(modal)}
-                  className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-violet-600 hover:bg-violet-700 text-white text-sm font-medium transition-colors"
+                  className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-[var(--accent-3)] hover:opacity-90 text-[var(--bg)] text-sm font-medium transition-colors"
                 >
                   <NewspaperIcon className="w-4 h-4" />
                   Imprimir / Baixar PDF

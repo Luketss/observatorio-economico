@@ -10,29 +10,15 @@ import {
   XMarkIcon,
 } from "@heroicons/react/24/outline";
 import MunicipioPicker from "../../components/nid/MunicipioPicker";
+import { DATASET_LABELS, getLabel, abrirImpressao } from "../../utils/releaseDoc";
 
-const DATASETS = [
-  { key: "geral", label: "Visão Geral" },
-  { key: "arrecadacao", label: "Arrecadação" },
-  { key: "pib", label: "PIB" },
-  { key: "caged", label: "CAGED" },
-  { key: "rais", label: "RAIS" },
-  { key: "bolsa_familia", label: "Bolsa Família" },
-  { key: "pe_de_meia", label: "Pé-de-Meia" },
-  { key: "inss", label: "INSS" },
-  { key: "estban", label: "Bancos (Estban)" },
-  { key: "comex", label: "Comércio Exterior" },
-  { key: "empresas", label: "Empresas" },
-  { key: "pix", label: "PIX" },
-];
+// Mesma ordem/chaves de DATASET_LABELS, no shape { key, label } que o
+// seletor "Novo release para..." e o cálculo de availableToAdd precisam.
+const DATASETS = Object.entries(DATASET_LABELS).map(([key, label]) => ({ key, label }));
 
-const DATASET_LABEL = Object.fromEntries(DATASETS.map((d) => [d.key, d.label]));
-
-function getLabel(dataset) {
-  const key = dataset.replace(/^release_/, "");
-  return DATASET_LABEL[key] || key;
-}
-
+// Data curta (com hora) exibida nos cards e no modal de preview — distinta
+// do formato longo usado no documento impresso (fmtDateRelease, em
+// utils/releaseDoc).
 function fmtDate(dt) {
   if (!dt) return null;
   return new Date(dt).toLocaleString("pt-BR", {
@@ -136,41 +122,8 @@ export default function ReleasesAdminPage() {
   };
 
   const handlePrint = (release) => {
-    const label = getLabel(release.dataset);
-    const dataGerado = new Date(release.gerado_em).toLocaleDateString("pt-BR", {
-      day: "2-digit", month: "long", year: "numeric",
-    });
-    const html = `<!DOCTYPE html>
-<html lang="pt-BR">
-<head>
-  <meta charset="UTF-8"/>
-  <title>Release — ${label} — ${municipioNome}</title>
-  <style>
-    * { margin: 0; padding: 0; box-sizing: border-box; }
-    body { font-family: Georgia, serif; font-size: 12pt; line-height: 1.8; color: #1a1a1a; max-width: 720px; margin: 0 auto; padding: 48px 40px; }
-    header { border-bottom: 3px solid #1a1a1a; padding-bottom: 16px; margin-bottom: 28px; }
-    .tag { font-size: 8.5pt; font-weight: bold; letter-spacing: .12em; text-transform: uppercase; color: #666; margin-bottom: 8px; }
-    h1 { font-size: 22pt; font-weight: bold; line-height: 1.2; margin-bottom: 8px; }
-    .meta { font-size: 9pt; color: #555; font-style: italic; }
-    .body p { margin-bottom: 1.4em; text-align: justify; }
-    @media print { body { padding: 0; max-width: 100%; } @page { margin: 2cm; } }
-  </style>
-</head>
-<body>
-  <header>
-    <div class="tag">Release de Imprensa</div>
-    <h1>Prefeitura de ${municipioNome}</h1>
-    <div class="meta">${label} &mdash; ${dataGerado}</div>
-  </header>
-  <div class="body">
-    ${release.bullets.map((p) => `<p>${p}</p>`).join("\n    ")}
-  </div>
-  <script>window.onload = function() { window.print(); }</script>
-</body>
-</html>`;
-    const win = window.open("", "_blank");
-    win.document.write(html);
-    win.document.close();
+    const ok = abrirImpressao(release, municipioNome);
+    if (!ok) window.alert("Habilite pop-ups para baixar o PDF.");
   };
 
   // Datasets that don't yet have a release (for the "add" selector)

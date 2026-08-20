@@ -3,22 +3,10 @@ import { motion, AnimatePresence } from "framer-motion";
 import api from "../services/api";
 import { NewspaperIcon, ChevronDownIcon, ChevronUpIcon } from "@heroicons/react/24/outline";
 import { useAuth } from "../context/AuthContext";
+import { abrirImpressao } from "../utils/releaseDoc";
 
-const DATASET_LABELS = {
-  geral: "Visão Geral",
-  arrecadacao: "Arrecadação",
-  pib: "PIB",
-  caged: "CAGED",
-  rais: "RAIS",
-  bolsa_familia: "Bolsa Família",
-  pe_de_meia: "Pé-de-Meia",
-  inss: "INSS",
-  estban: "Bancos (Estban)",
-  comex: "Comércio Exterior",
-  empresas: "Empresas",
-  pix: "PIX",
-};
-
+// Data curta (com hora) exibida no rodapé do card — distinta do formato
+// longo usado no documento impresso (fmtDateRelease, em utils/releaseDoc).
 function fmtDate(dt) {
   if (!dt) return "";
   return new Date(dt).toLocaleString("pt-BR", {
@@ -48,53 +36,10 @@ export default function ReleasesPanel({ dataset }) {
   }, [dataset, isGlobal]);
 
   const handlePrint = () => {
-    const label = DATASET_LABELS[dataset] || dataset;
+    if (!release) return;
     const municipioNome = user?.municipio?.nome || "Município";
-    const dataGerado = release
-      ? new Date(release.gerado_em).toLocaleDateString("pt-BR", {
-          day: "2-digit", month: "long", year: "numeric",
-        })
-      : "";
-    const html = `<!DOCTYPE html>
-<html lang="pt-BR">
-<head>
-  <meta charset="UTF-8"/>
-  <title>Release — ${label} — ${municipioNome}</title>
-  <style>
-    * { margin: 0; padding: 0; box-sizing: border-box; }
-    body {
-      font-family: Georgia, 'Times New Roman', serif;
-      font-size: 12pt;
-      line-height: 1.8;
-      color: #1a1a1a;
-      background: white;
-      max-width: 720px;
-      margin: 0 auto;
-      padding: 48px 40px;
-    }
-    header { border-bottom: 3px solid #1a1a1a; padding-bottom: 16px; margin-bottom: 28px; }
-    .tag { font-size: 8.5pt; font-weight: bold; letter-spacing: .12em; text-transform: uppercase; color: #666; margin-bottom: 8px; }
-    h1 { font-size: 22pt; font-weight: bold; line-height: 1.2; margin-bottom: 8px; }
-    .meta { font-size: 9pt; color: #555; font-style: italic; }
-    .body p { margin-bottom: 1.4em; text-align: justify; hyphens: auto; }
-    @media print { body { padding: 0; max-width: 100%; } @page { margin: 2cm; } }
-  </style>
-</head>
-<body>
-  <header>
-    <div class="tag">Release de Imprensa</div>
-    <h1>Prefeitura de ${municipioNome}</h1>
-    <div class="meta">${label} &mdash; ${dataGerado}</div>
-  </header>
-  <div class="body">
-    ${release.bullets.map((p) => `<p>${p}</p>`).join("\n    ")}
-  </div>
-  <script>window.onload = function() { window.print(); }</script>
-</body>
-</html>`;
-    const win = window.open("", "_blank");
-    win.document.write(html);
-    win.document.close();
+    const ok = abrirImpressao(release, municipioNome);
+    if (!ok) window.alert("Habilite pop-ups para baixar o PDF.");
   };
 
   if (loading) {
