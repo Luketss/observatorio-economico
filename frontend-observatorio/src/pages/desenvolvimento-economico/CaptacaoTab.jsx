@@ -136,7 +136,7 @@ export default function CaptacaoTab() {
   }, [needsMunicipio]);
 
   useEffect(() => {
-    if (!temEmendas || isGlobal) return;
+    if (!temEmendas || needsMunicipio) return;
     setRadarErro(false);
     api.get("/emendas/radar", { params: anoEmendas ? { ano: anoEmendas } : {} })
       .then((r) => setRadar(r.data))
@@ -145,7 +145,7 @@ export default function CaptacaoTab() {
         setRadarErro(true);
         setAnoEmendas("");
       });
-  }, [temEmendas, isGlobal, anoEmendas]);
+  }, [temEmendas, needsMunicipio, anoEmendas]);
 
   const kpis = useMemo(() => ({
     total: items.length,
