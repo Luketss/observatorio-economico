@@ -492,38 +492,144 @@ def _fetch_dados(
         periodo = f"{rows[0].ano}-{rows[0].mes:02d}" if rows else "geral"
 
     elif dataset == "geral":
-        pib = (
+        bases: dict = {}
+
+        pib_rows = (
             db.query(PibAnual)
             .filter(PibAnual.municipio_id == municipio_id)
             .order_by(PibAnual.ano.desc())
+            .limit(2)
+            .all()
+        )
+        if pib_rows:
+            item = {"ano": pib_rows[0].ano, "pib_total": pib_rows[0].pib_total}
+            if len(pib_rows) == 2 and pib_rows[1].pib_total:
+                item["yoy_crescimento_pct"] = round(
+                    (pib_rows[0].pib_total - pib_rows[1].pib_total) / pib_rows[1].pib_total * 100, 1
+                )
+            bases["pib"] = item
+
+        arr_rows = (
+            db.query(ArrecadacaoMensal)
+            .filter(ArrecadacaoMensal.municipio_id == municipio_id)
+            .order_by(ArrecadacaoMensal.ano.desc(), ArrecadacaoMensal.mes.desc())
+            .limit(24)
+            .all()
+        )
+        if arr_rows:
+            total_12m = round(sum(r.valor_total or 0 for r in arr_rows[:12]), 2)
+            item = {"ultimo_mes": f"{arr_rows[0].ano}-{arr_rows[0].mes:02d}", "total_12m": total_12m}
+            if len(arr_rows) >= 24:
+                prev_12m = sum(r.valor_total or 0 for r in arr_rows[12:24])
+                if prev_12m:
+                    item["yoy_crescimento_pct"] = round((total_12m - prev_12m) / prev_12m * 100, 1)
+            bases["arrecadacao"] = item
+
+        # caged: últimas 12 competências (mesma consulta do branch "caged")
+        caged_rows = (
+            db.query(CagedMovimentacao)
+            .filter(CagedMovimentacao.municipio_id == municipio_id)
+            .order_by(CagedMovimentacao.ano.desc(), CagedMovimentacao.mes.desc())
+            .limit(12)
+            .all()
+        )
+        if caged_rows:
+            bases["caged"] = {
+                "saldo_12m": sum(r.saldo or 0 for r in caged_rows),
+                "ultimo_mes": f"{caged_rows[0].ano}-{caged_rows[0].mes:02d}",
+            }
+
+        # vaf: linha mais recente (branch "vaf")
+        vaf_row = (
+            db.query(VafAnual)
+            .filter(VafAnual.municipio_id == municipio_id)
+            .order_by(VafAnual.ano_base.desc())
             .first()
         )
-        arr = (
-            db.query(func.sum(ArrecadacaoMensal.valor_total))
-            .filter(ArrecadacaoMensal.municipio_id == municipio_id)
+        if vaf_row:
+            bases["vaf"] = {"ano_base": vaf_row.ano_base, "pct_ipm": vaf_row.pct_ipm}
+
+        # empresas: contagens (mesmos filtros do branch "empresas")
+        empresas_total = (
+            db.query(func.count(Empresa.id))
+            .filter(Empresa.municipio_id == municipio_id)
             .scalar()
         )
-        caged = (
-            db.query(func.sum(CagedMovimentacao.saldo))
-            .filter(CagedMovimentacao.municipio_id == municipio_id)
-            .scalar()
+        if empresas_total:
+            empresas_ativas = (
+                db.query(func.count(Empresa.id))
+                .filter(Empresa.municipio_id == municipio_id, Empresa.situacao == "02")
+                .scalar()
+            )
+            bases["empresas"] = {"total": empresas_total, "ativas": empresas_ativas}
+
+        # estban: último mês (branch "estban")
+        estban_row = (
+            db.query(EstbanMensal)
+            .filter(EstbanMensal.municipio_id == municipio_id)
+            .order_by(EstbanMensal.data_referencia.desc())
+            .first()
         )
-        bf = (
-            db.query(func.sum(BolsaFamiliaResumo.total_beneficiarios))
-            .filter(BolsaFamiliaResumo.municipio_id == municipio_id)
-            .scalar()
-        )
-        dados = [
-            {
-                "pib_ultimo_ano": (
-                    {"ano": pib.ano, "valor": pib.pib_total} if pib else None
+        if estban_row:
+            bases["estban"] = {
+                "ultimo_mes": str(estban_row.data_referencia)[:7],
+                "credito_total": estban_row.valor_operacoes_credito,
+                "depositos_total": (
+                    (estban_row.valor_depositos_vista or 0)
+                    + (estban_row.valor_poupanca or 0)
+                    + (estban_row.valor_depositos_prazo or 0)
                 ),
-                "arrecadacao_total": arr,
-                "saldo_caged_total": caged,
-                "beneficiarios_bolsa_familia": bf,
             }
-        ]
-        periodo = str(pib.ano) if pib else "geral"
+
+        # comex: últimas 12 competências — 24 linhas (export+import por mês, como no branch "comex")
+        comex_rows = (
+            db.query(ComexMensal)
+            .filter(ComexMensal.municipio_id == municipio_id)
+            .order_by(ComexMensal.ano.desc(), ComexMensal.mes.desc())
+            .limit(24)
+            .all()
+        )
+        if comex_rows:
+            exportado_12m = sum(
+                r.valor_usd or 0 for r in comex_rows if (r.tipo_operacao or "").lower() in ("exp", "export")
+            )
+            importado_12m = sum(
+                r.valor_usd or 0 for r in comex_rows if (r.tipo_operacao or "").lower() in ("imp", "import")
+            )
+            bases["comex"] = {
+                "exportado_12m": round(exportado_12m, 2),
+                "importado_12m": round(importado_12m, 2),
+                "balanca_12m": round(exportado_12m - importado_12m, 2),
+            }
+
+        # pix: últimas 12 competências (branch "pix")
+        pix_rows = (
+            db.query(PixMensal)
+            .filter(PixMensal.municipio_id == municipio_id)
+            .order_by(PixMensal.ano.desc(), PixMensal.mes.desc())
+            .limit(12)
+            .all()
+        )
+        if pix_rows:
+            bases["pix"] = {
+                "volume_pf_12m": round(sum(r.vl_pagador_pf or 0 for r in pix_rows), 2),
+                "volume_pj_12m": round(sum(r.vl_pagador_pj or 0 for r in pix_rows), 2),
+            }
+
+        bf = (
+            db.query(BolsaFamiliaResumo)
+            .filter(BolsaFamiliaResumo.municipio_id == municipio_id)
+            .order_by(BolsaFamiliaResumo.ano.desc(), BolsaFamiliaResumo.mes.desc())
+            .first()
+        )
+        if bf:
+            bases["bolsa_familia"] = {
+                "ultimo_mes": f"{bf.ano}-{bf.mes:02d}",
+                "beneficiarios": bf.total_beneficiarios,
+            }
+
+        dados = [{"bases": bases}]
+        periodo = str(bases["pib"]["ano"]) if "pib" in bases else "geral"
 
     else:
         raise HTTPException(
@@ -681,6 +787,19 @@ CUIDADOS DE INTERPRETAÇÃO:
 Um dashboard pode mostrar oscilação que é apenas efeito de calendário, regra de negócio ou mudança metodológica. O insight nunca deve nascer do gráfico sozinho; ele deve nascer do dado original e da sua lógica.
 
 ESTILO: português do Brasil, tom executivo e técnico, sem menção a IA ou automação.
+"""
+
+_PROMPT_GERAL = """Você é o assessor econômico sênior do prefeito de {nome} ({estado}), responsável por transformar os dados consolidados do município em leitura executiva.
+
+Você receberá um payload com a chave "bases": um resumo compacto de cada base de dados disponível (PIB, arrecadação, emprego formal, VAF, empresas, bancos, comércio exterior, PIX, Bolsa Família). Bases ausentes do payload NÃO têm dados — ignore-as por completo, sem mencioná-las.
+
+Gere exatamente 5 insights, nesta composição:
+1. Um retrato de CENÁRIO do município em uma frase (os números mais estruturais).
+2-3. Duas MUDANÇAS ou tendências relevantes (priorize variações percentuais presentes no payload).
+4. Um ponto de ATENÇÃO ou risco concreto.
+5. Uma OPORTUNIDADE acionável para a gestão.
+
+Regras: cite números do payload (formato brasileiro); nunca invente dados nem compare unidades de natureza diferente; cada base tem periodicidade própria (anual, mensal, acumulado 12 meses — o payload indica). Linguagem executiva, direta, português do Brasil, sem jargão técnico desnecessário e sem menção a IA ou automação.
 """
 
 _PROMPT_PIB = """Você é um analista estratégico sênior da Uaizi, especialista em economia regional e análise estrutural de PIB municipal.
@@ -1006,7 +1125,7 @@ Destaque: ganhos ou perdas de participação relativa frente ao estado, anos de 
 """
 
 _DATASET_PROMPT_MAP = {
-    "geral": _PROMPT_BASE,
+    "geral": _PROMPT_GERAL,
     "pib": _PROMPT_PIB,
     "vaf": _PROMPT_VAF,
     "arrecadacao": _PROMPT_ARRECADACAO,
