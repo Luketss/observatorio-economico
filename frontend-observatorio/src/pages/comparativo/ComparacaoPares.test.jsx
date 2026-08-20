@@ -12,6 +12,8 @@ vi.mock("../../components/nid/charts", () => ({
   Sparkline: () => null,
   fmtMoneyShort: (v) => `R$ ${v}`,
   fmtMoneyFull: (v) => `R$ ${v}`,
+  fmtUsdShort: (v) => `US$ ${v}`,
+  fmtUsdFull: (v) => `US$ ${v}`,
   fmtNumber: (v) => String(v),
   fmtNumberShort: (v) => String(v),
 }));

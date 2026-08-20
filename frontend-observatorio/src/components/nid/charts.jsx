@@ -95,6 +95,16 @@ export const fmtMoneyShort = (v) => {
 };
 export const fmtMoneyFull = (v) =>
   `R$ ${Number(v).toLocaleString("pt-BR", { maximumFractionDigits: 0 })}`;
+// COMEX é USD — formatar como R$ replicaria o erro da tela de ranking antiga.
+export const fmtUsdShort = (v) => {
+  const a = Math.abs(v);
+  if (a >= 1e9) return `US$ ${(v / 1e9).toFixed(1)}B`;
+  if (a >= 1e6) return `US$ ${(v / 1e6).toFixed(1)}M`;
+  if (a >= 1e3) return `US$ ${(v / 1e3).toFixed(0)}k`;
+  return `US$ ${v}`;
+};
+export const fmtUsdFull = (v) =>
+  `US$ ${Number(v).toLocaleString("pt-BR", { maximumFractionDigits: 0 })}`;
 export const fmtNumber = (v) => Number(v).toLocaleString("pt-BR");
 export const fmtNumberShort = (v) => {
   const a = Math.abs(v);

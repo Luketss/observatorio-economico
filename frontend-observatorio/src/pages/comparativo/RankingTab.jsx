@@ -1,8 +1,10 @@
 import { useEffect, useState, useMemo } from "react";
 import api from "../../services/api";
 import { useAuth } from "../../context/AuthContext";
-import { HBarChart, fmtMoneyFull, fmtNumber } from "../../components/nid/charts";
+import { HBarChart, fmtMoneyFull, fmtUsdFull, fmtNumber } from "../../components/nid/charts";
 import NidSelect from "../../components/nid/NidSelect";
+
+const PAGE_SIZE = 25;
 
 const DATASETS = [
   { key: "arrecadacao", label: "Arrecadação", endpoint: "/comparativo/arrecadacao", metrica: "total", fmt: fmtMoneyFull, hasAno: true },
@@ -10,7 +12,7 @@ const DATASETS = [
   { key: "caged", label: "CAGED", endpoint: "/comparativo/caged", metrica: "saldo_total", fmt: fmtNumber, hasAno: true },
   { key: "rais", label: "RAIS", endpoint: "/comparativo/rais", metrica: "total_vinculos", fmt: fmtNumber, hasAno: true },
   { key: "estban", label: "Bancos", endpoint: "/estban/comparativo", metrica: "credito_total", fmt: fmtMoneyFull, hasAno: true },
-  { key: "comex", label: "Comex", endpoint: "/comex/comparativo", metrica: "exportacoes", fmt: fmtMoneyFull, hasAno: true },
+  { key: "comex", label: "Comex", endpoint: "/comex/comparativo", metrica: "exportacoes", fmt: fmtUsdFull, hasAno: true },
   { key: "empresas", label: "Empresas", endpoint: "/empresas/comparativo", metrica: "total_empresas", fmt: fmtNumber, hasAno: false },
   { key: "bolsa_familia", label: "Bolsa Família", endpoint: "/bolsa_familia/comparativo", metrica: "valor_total", fmt: fmtMoneyFull, hasAno: true },
   { key: "inss", label: "INSS", endpoint: "/inss/comparativo", metrica: "valor_total", fmt: fmtMoneyFull, hasAno: true },
@@ -43,6 +45,7 @@ export default function RankingTab() {
   const [estados, setEstados] = useState([]);
   const [data, setData] = useState([]);
   const [loading, setLoading] = useState(false);
+  const [page, setPage] = useState(0);
 
   const activeDataset = DATASETS.find((d) => d.key === activeKey);
 
@@ -58,6 +61,7 @@ export default function RankingTab() {
     if (!activeDataset) return;
     setLoading(true);
     setData([]);
+    setPage(0);
     const params = activeDataset.hasAno ? { ano } : {};
     if (estadoFiltro) params.estado = estadoFiltro;
     api
@@ -79,6 +83,12 @@ export default function RankingTab() {
   }, [data, activeDataset]);
 
   const myId = user?.municipio_id;
+
+  const pageCount = Math.max(1, Math.ceil(chartData.length / PAGE_SIZE));
+  const safePage = Math.min(page, pageCount - 1);
+  const startIdx = safePage * PAGE_SIZE;
+  const pageRows = chartData.slice(startIdx, startIdx + PAGE_SIZE);
+  const myIndex = myId ? chartData.findIndex((r) => r.municipio_id === myId) : -1;
 
   return (
     <div className="space-y-8">
@@ -166,34 +176,73 @@ export default function RankingTab() {
               </tr>
             </thead>
             <tbody className="divide-y divide-[var(--border)]">
-              {chartData.map((row, i) => (
-                <tr
-                  key={i}
-                  className={`transition-colors ${
-                    myId && row.municipio_id === myId
-                      ? "bg-amber-50 "
-                      : "hover:bg-[var(--panel-2)]/40"
-                  }`}
-                >
-                  <td className="px-6 py-3 text-slate-400 font-mono text-xs">{i + 1}</td>
-                  <td className="px-4 py-3 font-medium text-[var(--text)]">
-                    {row.municipio_raw}
-                    {myId && row.municipio_id === myId && (
-                      <span className="ml-2 text-xs text-amber-600  font-semibold">
-                        (seu município)
-                      </span>
-                    )}
-                  </td>
-                  <td className="px-4 py-3 text-[var(--text-dim)] font-mono text-xs">
-                    {row.estado || "—"}
-                  </td>
-                  <td className="px-6 py-3 text-right font-semibold text-[var(--text)]">
-                    {activeDataset?.fmt(row.valor)}
-                  </td>
-                </tr>
-              ))}
+              {pageRows.map((row, i) => {
+                const rank = startIdx + i + 1;
+                return (
+                  <tr
+                    key={rank}
+                    className={`transition-colors ${
+                      myId && row.municipio_id === myId
+                        ? "bg-amber-50 "
+                        : "hover:bg-[var(--panel-2)]/40"
+                    }`}
+                  >
+                    <td className="px-6 py-3 text-slate-400 font-mono text-xs">{rank}</td>
+                    <td className="px-4 py-3 font-medium text-[var(--text)]">
+                      {row.municipio_raw}
+                      {myId && row.municipio_id === myId && (
+                        <span className="ml-2 text-xs text-amber-600  font-semibold">
+                          (seu município)
+                        </span>
+                      )}
+                    </td>
+                    <td className="px-4 py-3 text-[var(--text-dim)] font-mono text-xs">
+                      {row.estado || "—"}
+                    </td>
+                    <td className="px-6 py-3 text-right font-semibold text-[var(--text)]">
+                      {activeDataset?.fmt(row.valor)}
+                    </td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
+
+          {/* Pagination controls */}
+          <div className="flex flex-wrap items-center justify-between gap-3 px-6 py-4 border-t border-[var(--border)]">
+            <div>
+              {myId && myIndex >= 0 && (
+                <button
+                  type="button"
+                  onClick={() => setPage(Math.floor(myIndex / PAGE_SIZE))}
+                  className="px-3 py-1.5 rounded-full text-xs font-medium transition-colors bg-[var(--panel)] text-[var(--accent-1)] border border-[var(--accent-1)] hover:bg-[var(--accent-1)]/10"
+                >
+                  Ir para meu município
+                </button>
+              )}
+            </div>
+            <div className="flex items-center gap-3">
+              <button
+                type="button"
+                onClick={() => setPage((p) => Math.max(0, p - 1))}
+                disabled={safePage === 0}
+                className="px-3 py-1.5 rounded-full text-xs font-medium transition-colors bg-[var(--panel)] text-[var(--text-dim)] border border-[var(--border)] hover:border-[var(--accent-1)] disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:border-[var(--border)]"
+              >
+                Anterior
+              </button>
+              <span className="text-xs font-medium text-[var(--text-dim)]">
+                Página {safePage + 1} de {pageCount}
+              </span>
+              <button
+                type="button"
+                onClick={() => setPage((p) => Math.min(pageCount - 1, p + 1))}
+                disabled={safePage >= pageCount - 1}
+                className="px-3 py-1.5 rounded-full text-xs font-medium transition-colors bg-[var(--panel)] text-[var(--text-dim)] border border-[var(--border)] hover:border-[var(--accent-1)] disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:border-[var(--border)]"
+              >
+                Próxima
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </div>
