@@ -424,10 +424,15 @@ def deletar_demanda(
 
 @router.get("/captacao", response_model=List[CaptacaoRecursoOut])
 def listar_captacao(
+    municipio_id: int | None = Query(default=None),
     db: Session = Depends(get_db),
     current_user: Usuario = Depends(get_current_user),
 ):
-    query = _apply_tenant(db.query(CaptacaoRecurso), CaptacaoRecurso, current_user)
+    query = db.query(CaptacaoRecurso)
+    if current_user.role.nome != "ADMIN_GLOBAL":
+        query = query.filter(CaptacaoRecurso.municipio_id == current_user.municipio_id)
+    elif municipio_id is not None:
+        query = query.filter(CaptacaoRecurso.municipio_id == municipio_id)
     return query.order_by(CaptacaoRecurso.criado_em.desc()).all()
 
 
@@ -488,10 +493,15 @@ def deletar_captacao(
 
 @router.get("/escrita", response_model=List[EscritaProjetoOut])
 def listar_escrita(
+    municipio_id: int | None = Query(default=None),
     db: Session = Depends(get_db),
     current_user: Usuario = Depends(get_current_user),
 ):
-    query = _apply_tenant(db.query(EscritaProjeto), EscritaProjeto, current_user)
+    query = db.query(EscritaProjeto)
+    if current_user.role.nome != "ADMIN_GLOBAL":
+        query = query.filter(EscritaProjeto.municipio_id == current_user.municipio_id)
+    elif municipio_id is not None:
+        query = query.filter(EscritaProjeto.municipio_id == municipio_id)
     return query.order_by(EscritaProjeto.criado_em.desc()).all()
 
 
@@ -552,10 +562,15 @@ def deletar_escrita(
 
 @router.get("/premiacoes", response_model=List[PremiacaoOut])
 def listar_premiacoes(
+    municipio_id: int | None = Query(default=None),
     db: Session = Depends(get_db),
     current_user: Usuario = Depends(get_current_user),
 ):
-    query = _apply_tenant(db.query(Premiacao), Premiacao, current_user)
+    query = db.query(Premiacao)
+    if current_user.role.nome != "ADMIN_GLOBAL":
+        query = query.filter(Premiacao.municipio_id == current_user.municipio_id)
+    elif municipio_id is not None:
+        query = query.filter(Premiacao.municipio_id == municipio_id)
     return query.order_by(Premiacao.criado_em.desc()).all()
 
 
