@@ -32,7 +32,11 @@ export default function PrioridadesPanel() {
 
   useEffect(() => {
     api.get("/insights/prioridades")
-      .then((res) => setState({ status: "ok", data: res.data }))
+      .then((res) => {
+        const data = res.data;
+        if (data?.prioridades?.length) setState({ status: "ok", data });
+        else setState({ status: "empty", data: null });
+      })
       .catch((err) => {
         if (err.response?.status === 404) setState({ status: "empty", data: null });
         else setState({ status: "error", data: null });
