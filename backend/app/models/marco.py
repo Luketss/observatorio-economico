@@ -18,8 +18,9 @@ class Marco(Base):
     data: Mapped[Date] = mapped_column(Date, nullable=False, index=True)
     titulo: Mapped[str] = mapped_column(String(100), nullable=False)
     descricao: Mapped[str | None] = mapped_column(Text, nullable=True)
+    link: Mapped[str | None] = mapped_column(Text, nullable=True)
 
-    # inicio_mandato | obras | politica | evento
+    # inicio_mandato | obras | politica | evento | premiacao | legislacao | convenio | investimento
     tipo: Mapped[str] = mapped_column(String(30), nullable=False, default="evento")
 
     ativo: Mapped[bool] = mapped_column(Boolean, default=True)

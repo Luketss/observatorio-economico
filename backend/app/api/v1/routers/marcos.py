@@ -9,7 +9,10 @@ from sqlalchemy.orm import Session
 
 router = APIRouter(prefix="/marcos", tags=["Timeline do Mandato"])
 
-TIPOS_VALIDOS = {"inicio_mandato", "obras", "politica", "evento"}
+TIPOS_VALIDOS = {
+    "inicio_mandato", "obras", "politica", "evento",
+    "premiacao", "legislacao", "convenio", "investimento",
+}
 
 
 class MarcoOut(BaseModel):
@@ -18,6 +21,7 @@ class MarcoOut(BaseModel):
     data: date
     titulo: str
     descricao: str | None
+    link: str | None = None
     tipo: str
     ativo: bool
 
@@ -28,6 +32,7 @@ class MarcoCreate(BaseModel):
     data: date
     titulo: str
     descricao: str | None = None
+    link: str | None = None
     tipo: str = "evento"
     municipio_id: int | None = None
 
@@ -36,8 +41,17 @@ class MarcoUpdate(BaseModel):
     data: date | None = None
     titulo: str | None = None
     descricao: str | None = None
+    link: str | None = None
     tipo: str | None = None
     ativo: bool | None = None
+
+
+def _normaliza_link(link: str | None) -> str | None:
+    if not link:
+        return None
+    if not (link.startswith("http://") or link.startswith("https://")):
+        raise HTTPException(status_code=400, detail="Link deve começar com http:// ou https://.")
+    return link
 
 
 def _resolve_mid(current_user, municipio_id: int | None) -> int:
@@ -73,6 +87,7 @@ def criar_marco(
     if body.tipo not in TIPOS_VALIDOS:
         raise HTTPException(status_code=400, detail=f"Tipo inválido. Use: {TIPOS_VALIDOS}")
 
+    link = _normaliza_link(body.link)
     mid = _resolve_mid(current_user, body.municipio_id)
 
     marco = Marco(
@@ -80,6 +95,7 @@ def criar_marco(
         data=body.data,
         titulo=body.titulo,
         descricao=body.descricao,
+        link=link,
         tipo=body.tipo,
     )
     db.add(marco)
@@ -105,9 +121,11 @@ def atualizar_marco(
     if body.tipo and body.tipo not in TIPOS_VALIDOS:
         raise HTTPException(status_code=400, detail=f"Tipo inválido. Use: {TIPOS_VALIDOS}")
 
-    for field in ("data", "titulo", "descricao", "tipo", "ativo"):
+    for field in ("data", "titulo", "descricao", "link", "tipo", "ativo"):
         val = getattr(body, field)
         if val is not None:
+            if field == "link":
+                val = _normaliza_link(val)
             setattr(marco, field, val)
 
     db.commit()
