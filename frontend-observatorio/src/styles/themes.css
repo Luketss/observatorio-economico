@@ -1685,6 +1685,18 @@ body.theme-light .nid-filterbar [aria-pressed="true"] {
 .tl-dot.evento {
   border-color: var(--text-dim);
 }
+.tl-dot.premiacao {
+  border-color: var(--accent-2);
+}
+.tl-dot.legislacao {
+  border-color: var(--accent-3);
+}
+.tl-dot.convenio {
+  border-color: var(--accent-4);
+}
+.tl-dot.investimento {
+  border-color: var(--accent-5);
+}
 
 /* ── Card ────────────────────────────────────────────────────────────────── */
 .tl-card {
@@ -1721,6 +1733,10 @@ body.theme-light .nid-filterbar [aria-pressed="true"] {
 .tl-card .kind.obras   { color: var(--accent-4); }
 .tl-card .kind.politica{ color: var(--accent-5); }
 .tl-card .kind.evento  { color: var(--text-dim); }
+.tl-card .kind.premiacao    { color: var(--accent-2); }
+.tl-card .kind.legislacao   { color: var(--accent-3); }
+.tl-card .kind.convenio     { color: var(--accent-4); }
+.tl-card .kind.investimento { color: var(--accent-5); }
 
 /* Title */
 .tl-card h5 {

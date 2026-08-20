@@ -5,6 +5,7 @@ import { useAuth } from "../context/AuthContext";
 import api from "../services/api";
 import { FlagIcon, PlusIcon } from "@heroicons/react/24/outline";
 import NidTabBar from "./nid/NidTabBar";
+import NidSelect from "./nid/NidSelect";
 
 // ── Kind config ──────────────────────────────────────────────────────────────
 const KIND_CONFIG = {
@@ -12,17 +13,12 @@ const KIND_CONFIG = {
   obras:          { eyebrow: "Obra",               railClass: "obras" },
   politica:       { eyebrow: "Política Pública",   railClass: "politica" },
   evento:         { eyebrow: "Evento",             railClass: "evento" },
+  premiacao:      { eyebrow: "Premiação",          railClass: "premiacao" },
+  legislacao:     { eyebrow: "Legislação",         railClass: "legislacao" },
+  convenio:       { eyebrow: "Convênio",           railClass: "convenio" },
+  investimento:   { eyebrow: "Investimento",       railClass: "investimento" },
 };
 const FALLBACK_KIND = { eyebrow: "Evento", railClass: "evento" };
-
-// Filter tabs — key "all" means no filter
-const FILTER_TABS = [
-  { key: "all",           label: "Todos"    },
-  { key: "inicio_mandato",label: "Início"   },
-  { key: "obras",         label: "Obras"    },
-  { key: "politica",      label: "Política" },
-  { key: "evento",        label: "Eventos"  },
-];
 
 function fmtDate(d) {
   return new Date(d + "T00:00:00").toLocaleDateString("pt-BR", {
@@ -38,6 +34,7 @@ export default function MandatoTimeline({ municipioId }) {
   const [marcos,    setMarcos]    = useState([]);
   const [loading,   setLoading]   = useState(true);
   const [activeKind,setActiveKind] = useState("all");
+  const [anoAtivo,  setAnoAtivo]   = useState("");
 
   const canManage =
     user?.role === "ADMIN_GLOBAL" || user?.role === "ADMIN_MUNICIPIO";
@@ -51,19 +48,41 @@ export default function MandatoTimeline({ municipioId }) {
       .finally(() => setLoading(false));
   }, [municipioId]);
 
-  // ── Tabs with counts ────────────────────────────────────────────────────────
-  const tabs = FILTER_TABS.map((t) => ({
-    ...t,
-    count:
-      t.key === "all"
-        ? marcos.length
-        : marcos.filter((m) => m.tipo === t.key).length,
-  }));
+  // ── Years present in the marcos, desc ───────────────────────────────────────
+  const anos = [...new Set(marcos.map((m) => String(m.data).slice(0, 4)))].sort(
+    (a, b) => b.localeCompare(a)
+  );
+
+  // ── Marcos of the selected year ─────────────────────────────────────────────
+  const marcosDoAno = anoAtivo
+    ? marcos.filter((m) => String(m.data).slice(0, 4) === anoAtivo)
+    : marcos;
+
+  // ── Tabs derived from the kinds present in the selected year, with counts ──
+  const kindsPresentes = Object.keys(KIND_CONFIG).filter((k) =>
+    marcosDoAno.some((m) => m.tipo === k)
+  );
+
+  const tabs = [
+    { key: "all", label: "Todos", count: marcosDoAno.length },
+    ...kindsPresentes.map((k) => ({
+      key: k,
+      label: KIND_CONFIG[k].eyebrow,
+      count: marcosDoAno.filter((m) => m.tipo === k).length,
+    })),
+  ];
+
+  // If the active kind no longer exists for the selected year, fall back to
+  // "all" — derived at render time, no setState-in-effect needed.
+  const activeKindEfetivo =
+    activeKind !== "all" && !kindsPresentes.includes(activeKind)
+      ? "all"
+      : activeKind;
 
   const visible =
-    activeKind === "all"
-      ? marcos
-      : marcos.filter((m) => m.tipo === activeKind);
+    activeKindEfetivo === "all"
+      ? marcosDoAno
+      : marcosDoAno.filter((m) => m.tipo === activeKindEfetivo);
 
   // ── Loading skeleton ────────────────────────────────────────────────────────
   if (loading) {
@@ -92,19 +111,31 @@ export default function MandatoTimeline({ municipioId }) {
           <p className="nid-panel-title">Histórico Institucional</p>
           <p className="nid-panel-sub">Marcos e eventos do município</p>
         </div>
-        {canManage && (
-          <Link to="/admin/mandato" className="tl-manage-link">
-            <PlusIcon style={{ width: "14px", height: "14px" }} />
-            Gerenciar
-          </Link>
-        )}
+        <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+          <NidSelect
+            value={anoAtivo}
+            onChange={(e) => setAnoAtivo(e.target.value)}
+            ariaLabel="Filtrar por ano"
+          >
+            <option value="">Todos os anos</option>
+            {anos.map((a) => (
+              <option key={a} value={a}>{a}</option>
+            ))}
+          </NidSelect>
+          {canManage && (
+            <Link to="/admin/mandato" className="tl-manage-link">
+              <PlusIcon style={{ width: "14px", height: "14px" }} />
+              Gerenciar
+            </Link>
+          )}
+        </div>
       </div>
 
       {/* ── NidTabBar kind filter ──────────────────────────────────────────── */}
       <div style={{ marginBottom: "28px" }}>
         <NidTabBar
           tabs={tabs}
-          value={activeKind}
+          value={activeKindEfetivo}
           onChange={setActiveKind}
           ariaLabel="Filtrar por tipo de evento"
         />
@@ -115,11 +146,11 @@ export default function MandatoTimeline({ municipioId }) {
         <div className="tl-empty">
           <FlagIcon className="tl-empty__icon" />
           <p className="tl-empty__text">
-            {activeKind === "all"
+            {activeKindEfetivo === "all"
               ? "Nenhum marco registrado ainda."
               : "Nenhum evento deste tipo registrado."}
           </p>
-          {canManage && activeKind === "all" && (
+          {canManage && activeKindEfetivo === "all" && (
             <Link to="/admin/mandato" className="tl-empty__link">
               <PlusIcon style={{ width: "14px", height: "14px" }} />
               Adicionar primeiro marco

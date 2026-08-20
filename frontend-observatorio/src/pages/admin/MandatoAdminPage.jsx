@@ -15,6 +15,10 @@ const TIPOS = [
   { value: "obras", label: "Obras" },
   { value: "politica", label: "Política Pública" },
   { value: "evento", label: "Evento" },
+  { value: "premiacao", label: "Premiação" },
+  { value: "legislacao", label: "Legislação" },
+  { value: "convenio", label: "Convênio" },
+  { value: "investimento", label: "Investimento" },
 ];
 
 const TIPO_COLORS = {
@@ -22,9 +26,13 @@ const TIPO_COLORS = {
   obras: "bg-orange-100 text-orange-700",
   politica: "bg-green-100 text-green-700",
   evento: "bg-slate-100 text-slate-600",
+  premiacao: "bg-pink-100 text-pink-700",
+  legislacao: "bg-purple-100 text-purple-700",
+  convenio: "bg-amber-100 text-amber-700",
+  investimento: "bg-emerald-100 text-emerald-700",
 };
 
-const EMPTY_FORM = { data: "", titulo: "", descricao: "", tipo: "evento" };
+const EMPTY_FORM = { data: "", titulo: "", descricao: "", link: "", tipo: "evento" };
 
 function fmtDate(d) {
   return new Date(d + "T00:00:00").toLocaleDateString("pt-BR");
@@ -68,6 +76,7 @@ export default function MandatoAdminPage() {
       data: marco.data,
       titulo: marco.titulo,
       descricao: marco.descricao || "",
+      link: marco.link || "",
       tipo: marco.tipo,
     });
     setError(null);
@@ -79,10 +88,11 @@ export default function MandatoAdminPage() {
     setSaving(true);
     setError(null);
     try {
+      const payload = { ...form, link: form.link.trim() };
       if (editing) {
-        await api.put(`/marcos/${editing.id}`, form);
+        await api.put(`/marcos/${editing.id}`, payload);
       } else {
-        await api.post("/marcos", form);
+        await api.post("/marcos", payload);
       }
       setShowForm(false);
       load();
@@ -213,6 +223,19 @@ export default function MandatoAdminPage() {
                     value={form.descricao}
                     onChange={(e) => setForm({ ...form, descricao: e.target.value })}
                     className="w-full border border-[var(--border)] bg-[var(--panel)] text-[var(--text)] placeholder-[var(--text-mute)] rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-semibold text-[var(--text-dim)] uppercase tracking-wider mb-1.5">
+                    Link (opcional)
+                  </label>
+                  <input
+                    type="url"
+                    placeholder="https://..."
+                    value={form.link}
+                    onChange={(e) => setForm({ ...form, link: e.target.value })}
+                    className="w-full border border-[var(--border)] bg-[var(--panel)] text-[var(--text)] placeholder-[var(--text-mute)] rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                   />
                 </div>
 
