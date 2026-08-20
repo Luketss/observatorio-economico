@@ -56,8 +56,8 @@ export default function EmpresaDrawer({ empresa, detalhe, onClose, onChanged, ca
   const risco = empresa ? RISCO_CONFIG[empresa.status_risco] || RISCO_CONFIG.baixo : null;
   const expansao = empresa ? EXPANSAO_CONFIG[empresa.potencial_expansao] || EXPANSAO_CONFIG.baixo : null;
   const fotoHero = det?.visitas?.find((v) => v.foto_base64)?.foto_base64 || null;
-  const proximaAcao = det?.proxima_acao ?? empresa?.proxima_acao ?? null;
-  const proximaAcaoData = det?.proxima_acao_data ?? empresa?.proxima_acao_data ?? null;
+  const proximaAcao = det ? det.proxima_acao : (empresa?.proxima_acao ?? null);
+  const proximaAcaoData = det ? det.proxima_acao_data : (empresa?.proxima_acao_data ?? null);
 
   async function chamar(fn, okMsg, errMsg) {
     setSalvando(true);

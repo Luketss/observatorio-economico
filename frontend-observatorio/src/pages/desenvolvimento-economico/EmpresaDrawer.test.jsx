@@ -86,6 +86,15 @@ describe("EmpresaDrawer — abas", () => {
     expect(screen.queryByLabelText(/Status da demanda/)).toBeNull();
   });
 
+  it("próxima ação limpa no detalhe não ressuscita do prop stale (empresa)", () => {
+    render(
+      <EmpresaDrawer empresa={EMPRESA} detalhe={{ ...DETALHE, proxima_acao: null, proxima_acao_data: null }}
+        onClose={() => {}} onChanged={vi.fn()} canEditar={true} />
+    );
+    expect(screen.getByText("Nenhuma ação planejada.")).toBeInTheDocument();
+    expect(screen.queryByText("Agendar reunião")).toBeNull();
+  });
+
   it("seção RFB fica sob PlanGate quando o plano não inclui empresas", () => {
     render(
       <PlanContext.Provider value={{ modulos: [], canAccess: (k) => k !== "empresas" }}>
