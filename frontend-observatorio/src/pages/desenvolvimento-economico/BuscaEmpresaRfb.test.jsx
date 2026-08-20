@@ -1,7 +1,6 @@
 // @vitest-environment jsdom
-import { describe, it, expect, vi, afterEach } from "vitest";
-import { render, screen, cleanup, waitFor } from "@testing-library/react";
-import userEvent from "@testing-library/user-event";
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
+import { render, screen, fireEvent, act, waitFor } from "@testing-library/react";
 
 vi.mock("../../services/api", () => ({
   default: { get: vi.fn(() => Promise.resolve({ data: [
@@ -12,32 +11,28 @@ vi.mock("../../services/api", () => ({
 import api from "../../services/api";
 import BuscaEmpresaRfb from "./BuscaEmpresaRfb";
 
-afterEach(() => { cleanup(); vi.clearAllMocks(); });
+beforeEach(() => { vi.useFakeTimers(); vi.clearAllMocks(); });
+afterEach(() => vi.useRealTimers());
 
 describe("BuscaEmpresaRfb", () => {
   it("busca com debounce e entrega a empresa escolhida", async () => {
-    const user = userEvent.setup({ delay: null });
     const onSelect = vi.fn();
     render(<BuscaEmpresaRfb onSelect={onSelect} />);
-
-    await user.type(screen.getByLabelText("Buscar empresa na base CNPJ"), "acme");
-
-    await waitFor(() => expect(api.get).toHaveBeenCalledWith("/empresas/buscar", { params: { q: "acme" } }), { timeout: 1000 });
-
-    const opcao = await screen.findByRole("button", { name: /ACME LTDA/ });
-    await user.click(opcao);
-
+    fireEvent.change(screen.getByLabelText("Buscar empresa na base CNPJ"), { target: { value: "acme" } });
+    expect(api.get).not.toHaveBeenCalled(); // ainda no debounce
+    await act(() => vi.advanceTimersByTimeAsync(350));
+    expect(api.get).toHaveBeenCalledWith("/empresas/buscar", { params: { q: "acme" } });
+    expect(api.get).toHaveBeenCalledTimes(1); // catch double-call regressions
+    await act(() => vi.advanceTimersByTimeAsync(0)); // flush microtasks
+    const opcao = screen.getByRole("button", { name: /ACME LTDA/ });
+    fireEvent.click(opcao);
     expect(onSelect).toHaveBeenCalledWith(expect.objectContaining({ cnpj_basico: "12345678" }));
   });
 
   it("menos de 2 caracteres não busca", async () => {
-    const user = userEvent.setup({ delay: null });
     render(<BuscaEmpresaRfb onSelect={vi.fn()} />);
-
-    await user.type(screen.getByLabelText("Buscar empresa na base CNPJ"), "a");
-
-    await new Promise(r => setTimeout(r, 400)); // wait for debounce to pass
-
+    fireEvent.change(screen.getByLabelText("Buscar empresa na base CNPJ"), { target: { value: "a" } });
+    await act(() => vi.advanceTimersByTimeAsync(350));
     expect(api.get).not.toHaveBeenCalled();
   });
 });
