@@ -28,6 +28,7 @@ import {
 // Navegação do app em 5 seções-eixo (spec 2026-08-18-reorganizacao-eixos).
 // As chaves `modulo` acoplam este arquivo a plano_config.modulos (banco) e a
 // scoped_modulo() no backend — NÃO renomear sem migração de dados.
+// Flag `oculto: true` remove item da sidebar mas mantém no NAV_FLAT (teaser).
 export const NAV_STRUCTURE = [
   {
     type: "section",
@@ -87,16 +88,11 @@ export const NAV_STRUCTURE = [
     items: [
       { type: "link", to: "/app/desenvolvimento-economico/retencao", label: "Gestão Empresarial", icon: BuildingOffice2Icon, modulo: "desenvolvimento_economico.retencao" },
       { type: "link", to: "/app/desenvolvimento-economico/funil", label: "Atração de Investimentos", icon: FunnelIcon, modulo: "desenvolvimento_economico.funil" },
-      {
-        type: "group", label: "Certificações e Premiações", icon: TrophyIcon,
-        children: [
-          { to: "/app/desenvolvimento-economico/premiacoes", label: "Premiações", icon: TrophyIcon, modulo: "desenvolvimento_economico.premiacoes" },
-          { to: "/app/desenvolvimento-economico/captacao", label: "Captação de Recursos", icon: BanknotesIcon, modulo: "desenvolvimento_economico.captacao" },
-          { to: "/app/desenvolvimento-economico/escrita", label: "Escrita de Projetos", icon: PencilSquareIcon, modulo: "desenvolvimento_economico.escrita" },
-          { to: "/app/dinheiro-na-mesa", label: "Dinheiro na Mesa", icon: BanknotesIcon, modulo: "captacao_federal" },
-          { to: "/app/emendas", label: "Emendas", icon: BuildingLibraryIcon, modulo: "emendas" },
-        ],
-      },
+      { type: "link", to: "/app/desenvolvimento-economico/premiacoes", label: "Certificações e Premiações", icon: TrophyIcon, modulo: "desenvolvimento_economico.premiacoes" },
+      { type: "link", to: "/app/desenvolvimento-economico/captacao", label: "Captação de Recursos", icon: BanknotesIcon, modulo: "desenvolvimento_economico.captacao", oculto: true },
+      { type: "link", to: "/app/desenvolvimento-economico/escrita", label: "Escrita de Projetos", icon: PencilSquareIcon, modulo: "desenvolvimento_economico.escrita", oculto: true },
+      { type: "link", to: "/app/dinheiro-na-mesa", label: "Dinheiro na Mesa", icon: BanknotesIcon, modulo: "captacao_federal", oculto: true },
+      { type: "link", to: "/app/emendas", label: "Emendas", icon: BuildingLibraryIcon, modulo: "emendas", oculto: true },
     ],
   },
   {

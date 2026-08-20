@@ -64,6 +64,11 @@ describe("NAV_STRUCTURE — 5 eixos", () => {
     expect(porRota["/app/releases"].hideForAdmin).toBe(true);
     expect(porRota["/app/fpm"].modulo).toBeUndefined();
     expect(porRota["/app/analise-economica"].modulo).toBeUndefined();
+    expect(porRota["/app/desenvolvimento-economico/premiacoes"].oculto).toBeUndefined();
+    ["/app/desenvolvimento-economico/captacao", "/app/desenvolvimento-economico/escrita",
+     "/app/dinheiro-na-mesa", "/app/emendas"].forEach((to) => {
+      expect(porRota[to].oculto).toBe(true);
+    });
     NAV_FLAT.forEach((i) => {
       expect(typeof i.to).toBe("string");
       expect(typeof i.label).toBe("string");
@@ -78,6 +83,7 @@ describe("NAV_STRUCTURE — 5 eixos", () => {
     expect(labels).toContain("Histórico Institucional");
     expect(labels).toContain("Atração de Investimentos");
     expect(labels).toContain("Gestão Empresarial");
+    expect(labels).toContain("Certificações e Premiações");
     expect(labels).not.toContain("Retenção & Expansão");
     expect(labels).toContain("Indicadores Internos");
     expect(labels).toContain("Planos de Desenvolvimento");

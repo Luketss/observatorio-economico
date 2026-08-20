@@ -45,7 +45,8 @@ export default function SidebarNav({ user, modulos }) {
 
   // Itens fora do plano não somem — ficam visíveis com cadeado (teaser de
   // upgrade). Só hideForAdmin remove um item (Releases para ADMIN_GLOBAL).
-  const isVisible = (item) => !(item.hideForAdmin && isGlobal);
+  // Flag oculto remove itens da sidebar mas mantém em NAV_FLAT.
+  const isVisible = (item) => !item.oculto && !(item.hideForAdmin && isGlobal);
   const locked = (modulo) => isModuloLocked({ isGlobal, modulos, modulo });
 
   const toggleGroup = (label) => {

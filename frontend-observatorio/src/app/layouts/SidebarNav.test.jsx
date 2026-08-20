@@ -107,4 +107,11 @@ describe("SidebarNav — visibilidade por papel", () => {
     renderNav({ user: USER_ADMIN_MUN });
     expect(screen.getByText("Painel Admin")).toBeInTheDocument();
   });
+
+  it("entradas ocultas não aparecem na sidebar (mas o item único sim)", () => {
+    renderNav({ user: USER_COMUM });
+    expect(screen.getByText("Certificações e Premiações")).toBeInTheDocument();
+    expect(screen.queryByText("Captação de Recursos")).toBeNull();
+    expect(screen.queryByText("Emendas")).toBeNull();
+  });
 });
