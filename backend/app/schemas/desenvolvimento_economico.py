@@ -1,7 +1,7 @@
 from datetime import date, datetime
 from typing import List, Literal, Optional
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 from app.schemas.empresa import EmpresaOut
 
@@ -144,7 +144,7 @@ class EmpresaRetencaoCreate(BaseModel):
     status_risco: str = "baixo"
     potencial_expansao: str = "baixo"
     responsavel: Optional[str] = None
-    cnpj_basico: Optional[str] = None
+    cnpj_basico: Optional[str] = Field(default=None, pattern=r"^\d{8}$")
     proxima_acao: Optional[str] = None
     proxima_acao_data: Optional[date] = None
 
@@ -157,7 +157,7 @@ class EmpresaRetencaoUpdate(BaseModel):
     status_risco: Optional[str] = None
     potencial_expansao: Optional[str] = None
     responsavel: Optional[str] = None
-    cnpj_basico: Optional[str] = None
+    cnpj_basico: Optional[str] = Field(default=None, pattern=r"^\d{8}$")
     proxima_acao: Optional[str] = None
     proxima_acao_data: Optional[date] = None
 

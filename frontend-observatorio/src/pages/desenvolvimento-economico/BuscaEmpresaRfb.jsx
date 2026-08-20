@@ -44,7 +44,7 @@ export default function BuscaEmpresaRfb({ onSelect, disabled }) {
           <div className="absolute z-10 left-0 right-0 mt-1 rounded-xl border border-[var(--border)] bg-[var(--panel)] shadow-xl overflow-hidden">
             {resultados.map((e) => (
               <button
-                key={e.id}
+                key={e.cnpj_basico}
                 type="button"
                 onClick={() => { onSelect(e); setQ(""); setResultados(null); }}
                 className="w-full text-left px-3 py-2 text-xs text-[var(--text)] hover:bg-[var(--panel-2)] cursor-pointer"

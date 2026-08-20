@@ -18,6 +18,7 @@ const EMPRESA = { id: 7, nome: "ACME", setor: "Indústria", status_risco: "alto"
   proxima_acao_data: "2026-09-01" };
 const DETALHE = {
   ...EMPRESA,
+  proxima_acao: "Visita de acompanhamento",
   visitas: [{ id: 1, data_visita: "2026-08-01", responsavel: "Ana", observacoes: "ok", foto_base64: null }],
   contatos: [{ id: 2, data: "2026-08-05", tipo: "ligacao", responsavel: "Bia", observacoes: null }],
   demandas: [{ id: 3, descricao: "Iluminação da via", status: "aberta", data_registro: "2026-08-02", responsavel: null }],
@@ -42,7 +43,7 @@ describe("EmpresaDrawer — abas", () => {
     expect(screen.getByRole("tab", { name: /Contatos & Visitas/ })).toBeInTheDocument();
     expect(screen.getByRole("tab", { name: /Demandas/ })).toBeInTheDocument();
     expect(screen.getByText("ACME LTDA")).toBeInTheDocument(); // razão social RFB
-    expect(screen.getByText("Agendar reunião")).toBeInTheDocument(); // próxima ação
+    expect(screen.getByText("Visita de acompanhamento")).toBeInTheDocument(); // próxima ação vem do detalhe, não do card
   });
 
   it("aba Contatos & Visitas mescla os dois tipos em ordem cronológica", () => {

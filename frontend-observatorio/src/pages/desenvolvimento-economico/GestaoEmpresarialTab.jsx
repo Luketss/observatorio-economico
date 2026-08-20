@@ -56,8 +56,8 @@ export default function GestaoEmpresarialTab() {
   const needsMunicipio = isGlobal && viewAsId == null;
   // ADMIN_GLOBAL não cria aqui: o registro nasce no município do usuário.
   const canCriar = usePermissao("retencao", "criar") && !isGlobal;
-  const canEditar = usePermissao("retencao", "editar");
-  const canExcluir = usePermissao("retencao", "excluir");
+  const canEditar = usePermissao("retencao", "editar") && !isGlobal;
+  const canExcluir = usePermissao("retencao", "excluir") && !isGlobal;
 
   const [empresas, setEmpresas] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -97,7 +97,10 @@ export default function GestaoEmpresarialTab() {
     }
   }
 
-  useEffect(() => { load(); }, []);
+  useEffect(() => {
+    if (needsMunicipio) return;
+    load();
+  }, [needsMunicipio]);
 
   function abrirEmpresa(empresa) {
     setViewingEmpresa(empresa);
@@ -188,6 +191,15 @@ export default function GestaoEmpresarialTab() {
     </div>
   );
 
+  if (needsMunicipio) {
+    return (
+      <motion.div initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3 }} className="space-y-6">
+        {header}
+        <SelecioneMunicipio />
+      </motion.div>
+    );
+  }
+
   if (loading) {
     return (
       <motion.div initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3 }} className="space-y-6">
@@ -195,15 +207,6 @@ export default function GestaoEmpresarialTab() {
         <div className="flex justify-center py-20">
           <div className="w-8 h-8 border-4 border-blue-600 border-t-transparent rounded-full animate-spin" />
         </div>
-      </motion.div>
-    );
-  }
-
-  if (needsMunicipio) {
-    return (
-      <motion.div initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3 }} className="space-y-6">
-        {header}
-        <SelecioneMunicipio />
       </motion.div>
     );
   }

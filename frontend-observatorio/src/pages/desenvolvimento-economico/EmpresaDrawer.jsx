@@ -56,6 +56,8 @@ export default function EmpresaDrawer({ empresa, detalhe, onClose, onChanged, ca
   const risco = empresa ? RISCO_CONFIG[empresa.status_risco] || RISCO_CONFIG.baixo : null;
   const expansao = empresa ? EXPANSAO_CONFIG[empresa.potencial_expansao] || EXPANSAO_CONFIG.baixo : null;
   const fotoHero = det?.visitas?.find((v) => v.foto_base64)?.foto_base64 || null;
+  const proximaAcao = det?.proxima_acao ?? empresa?.proxima_acao ?? null;
+  const proximaAcaoData = det?.proxima_acao_data ?? empresa?.proxima_acao_data ?? null;
 
   async function chamar(fn, okMsg, errMsg) {
     setSalvando(true);
@@ -181,15 +183,15 @@ export default function EmpresaDrawer({ empresa, detalhe, onClose, onChanged, ca
             ) : (
               <div className="flex items-start justify-between gap-2">
                 <p className="text-xs text-[var(--text)]">
-                  {empresa.proxima_acao
-                    ? <>{empresa.proxima_acao}{empresa.proxima_acao_data && <span className="text-slate-400"> · {fmtDate(empresa.proxima_acao_data)}</span>}</>
+                  {proximaAcao
+                    ? <>{proximaAcao}{proximaAcaoData && <span className="text-slate-400"> · {fmtDate(proximaAcaoData)}</span>}</>
                     : <span className="text-slate-400">Nenhuma ação planejada.</span>}
                 </p>
                 {canEditar && (
                   <button type="button"
                     onClick={() => setAcaoForm({
-                      proxima_acao: empresa.proxima_acao || "",
-                      proxima_acao_data: empresa.proxima_acao_data || "",
+                      proxima_acao: proximaAcao || "",
+                      proxima_acao_data: proximaAcaoData || "",
                     })}
                     className="text-xs text-blue-600 hover:text-blue-700 font-medium shrink-0 cursor-pointer">Editar</button>
                 )}

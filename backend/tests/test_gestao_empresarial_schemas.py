@@ -53,3 +53,18 @@ def test_empresa_out_tem_novos_campos_opcionais():
     for f in ("cnpj_basico", "proxima_acao", "proxima_acao_data",
               "contatos", "demandas", "perfil_rfb"):
         assert f in campos
+
+
+def test_cnpj_basico_valido_e_invalido():
+    e = EmpresaRetencaoCreate(nome="ACME", cnpj_basico="12345678")
+    assert e.cnpj_basico == "12345678"
+    with pytest.raises(ValidationError):
+        EmpresaRetencaoCreate(nome="ACME", cnpj_basico="123456789")  # 9 dígitos
+    with pytest.raises(ValidationError):
+        EmpresaRetencaoCreate(nome="ACME", cnpj_basico="")  # vazio
+
+
+def test_cnpj_basico_update_tambem_valida():
+    from app.schemas.desenvolvimento_economico import EmpresaRetencaoUpdate
+    with pytest.raises(ValidationError):
+        EmpresaRetencaoUpdate(cnpj_basico="12.345.678")  # com máscara

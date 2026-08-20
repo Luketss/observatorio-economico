@@ -4,7 +4,7 @@ import { render, screen, fireEvent, act } from "@testing-library/react";
 
 vi.mock("../../services/api", () => ({
   default: { get: vi.fn(() => Promise.resolve({ data: [
-    { id: 9, cnpj_basico: "12345678", razao_social: "ACME LTDA", nome_fantasia: "ACME" },
+    { cnpj_basico: "12345678", razao_social: "ACME LTDA", nome_fantasia: "ACME" },
   ] })) },
 }));
 
