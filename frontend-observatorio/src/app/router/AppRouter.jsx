@@ -53,6 +53,7 @@ import CalendarioPage from "../../pages/dados-internos/CalendarioPage";
 import ImpactoPage from "../../pages/impacto/ImpactoPage";
 import PainelPrefeitoPage from "../../pages/painel-prefeito/PainelPrefeitoPage";
 import NotificacoesPage from "../../pages/notificacoes/NotificacoesPage";
+import CertificacoesShell from "../../pages/desenvolvimento-economico/CertificacoesShell";
 
 function ProtectedRoute({ children }) {
   const { user, loading } = useAuth();
@@ -119,8 +120,8 @@ export default function AppRouter() {
           <Route path="pib" element={<PibPage />} />
           <Route path="vaf" element={<VafPage />} />
           <Route path="fpm" element={<FpmPage />} />
-          <Route path="dinheiro-na-mesa" element={<DinheiroNaMesaPage />} />
-          <Route path="emendas" element={<EmendasPage />} />
+          <Route path="dinheiro-na-mesa" element={<CertificacoesShell><DinheiroNaMesaPage /></CertificacoesShell>} />
+          <Route path="emendas" element={<CertificacoesShell><EmendasPage /></CertificacoesShell>} />
           <Route path="caged" element={<CagedPage />} />
           <Route path="rais" element={<RaisPage />} />
           <Route path="benchmark" element={<BenchmarkPage />} />
@@ -141,9 +142,9 @@ export default function AppRouter() {
           <Route path="desenvolvimento-economico" element={<Navigate to="/app/desenvolvimento-economico/funil" replace />} />
           <Route path="desenvolvimento-economico/funil" element={<FunilTab />} />
           <Route path="desenvolvimento-economico/retencao" element={<GestaoEmpresarialTab />} />
-          <Route path="desenvolvimento-economico/captacao" element={<CaptacaoTab />} />
-          <Route path="desenvolvimento-economico/escrita" element={<EscritaTab />} />
-          <Route path="desenvolvimento-economico/premiacoes" element={<PremiacoesTab />} />
+          <Route path="desenvolvimento-economico/captacao" element={<CertificacoesShell><CaptacaoTab /></CertificacoesShell>} />
+          <Route path="desenvolvimento-economico/escrita" element={<CertificacoesShell><EscritaTab /></CertificacoesShell>} />
+          <Route path="desenvolvimento-economico/premiacoes" element={<CertificacoesShell><PremiacoesTab /></CertificacoesShell>} />
           <Route path="dados-internos/indicadores" element={<IndicadoresInternosPage />} />
           <Route path="dados-internos/plano-gov" element={<PlanoGovPage />} />
           <Route path="dados-internos/calendario" element={<CalendarioPage />} />
