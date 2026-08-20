@@ -59,13 +59,15 @@ PIB/VAF.
   - `caged`: `SUM(CagedMovimentacao.saldo)` por ano
   - `rais`: total de vínculos por ano (espelhar a agregação do
     `/comparativo/rais` existente)
-  - `estban`: `SUM(valor_operacoes_credito)` por `extract(year,
-    data_referencia)`
+  - `estban`: `SUM(EstbanMensal.valor_operacoes_credito)` por
+    `extract(year, data_referencia)` — mesma soma de saldos mensais do
+    `/estban/comparativo` atual (`estban.py:158`)
   - `comex`: `SUM(valor_usd)` das exportações por ano (mesmo filtro
     case-insensitive validado na F5)
-  - `pix`: `SUM(vl_pagador_pf + vl_pagador_pj)` por ano
-  - `bolsa_familia`: `SUM(valor_total)` por ano
-  - `inss`: `SUM(valor_total)` por ano
+  - `pix`: `SUM(coalesce(vl_pagador_pf,0) + coalesce(vl_pagador_pj,0))`
+    por `PixMensal.ano`
+  - `bolsa_familia`: `SUM(BolsaFamiliaResumo.valor_total)` por ano
+  - `inss`: `SUM(InssAnual.valor_anual)` por ano (todas as categorias)
   (Cada consulta espelha o endpoint comparativo/branch homônimo existente —
   mesma fonte de verdade in-file dos precedentes F4/F5.)
 - `indicador` desconhecido → 400 legível. Municípios demo sempre fora.
@@ -141,7 +143,8 @@ PIB/VAF.
 ## Riscos
 
 - **Semânticas anuais distintas por indicador** (VAF por ano-base; ESTBAN
-  crédito acumulado do ano; COMEX só exportações): mitigado pelo `label`/
+  soma saldos mensais — herdado do `/estban/comparativo` atual, mantido
+  para as 2 abas baterem; COMEX só exportações): mitigado pelo `label`/
   `unidade` do registry e subtítulos explícitos; cada consulta espelha o
   endpoint homônimo existente.
 - **Custo das queries cross-município**: mesmas agregações dos comparativos
