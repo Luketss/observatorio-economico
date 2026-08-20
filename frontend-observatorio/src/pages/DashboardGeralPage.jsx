@@ -2,11 +2,15 @@ import { useEffect, useMemo, useState } from "react";
 import { motion } from "framer-motion";
 import api from "../services/api";
 import { useAuth } from "../context/AuthContext";
+import { useViewAs } from "../context/ViewAsContext";
 import InsightsPanel from "../components/InsightsPanel";
 import PrioridadesPanel from "../components/PrioridadesPanel";
 import ReleasesPanel from "../components/ReleasesPanel";
 import KpiCard from "../components/KpiCard";
 import KpiSkeleton from "../components/nid/KpiSkeleton";
+import SelecioneMunicipio from "../components/nid/SelecioneMunicipio";
+import MudancasRelevantes from "../components/MudancasRelevantes";
+import AtalhoCard from "../components/AtalhoCard";
 import {
   NidPageHeader,
   NidPanel,
@@ -27,9 +31,12 @@ import {
 } from "../components/nid/charts";
 import { ChartHoverProvider } from "../components/nid/ChartHoverContext";
 import { montarComparativo, descreverPares } from "../utils/seriesComparativo";
+import { fmtBR, moneyDisplay } from "../utils/metricasEconomicas";
 import {
   StarIcon, UserGroupIcon, HomeIcon, HeartIcon, AcademicCapIcon,
   TruckIcon, ChartBarIcon, BuildingOfficeIcon, BoltIcon, GlobeAltIcon,
+  PresentationChartBarIcon, BuildingLibraryIcon, ChartBarSquareIcon,
+  BuildingOffice2Icon, TrophyIcon,
 } from "@heroicons/react/24/outline";
 
 const CUSTOM_ICON_MAP = {
@@ -53,17 +60,6 @@ const A5 = "var(--accent-5)";
 
 const MES_LABEL = ["Jan", "Fev", "Mar", "Abr", "Mai", "Jun", "Jul", "Ago", "Set", "Out", "Nov", "Dez"];
 
-const fmtBR = (v, opts = {}) => v != null ? Number(v).toLocaleString("pt-BR", opts) : "—";
-
-function moneyDisplay(v) {
-  if (v == null) return { value: "—", unit: "" };
-  const a = Math.abs(v);
-  if (a >= 1e9) return { value: `R$ ${(v / 1e9).toLocaleString("pt-BR", { maximumFractionDigits: 1 })}`, unit: "Bi" };
-  if (a >= 1e6) return { value: `R$ ${(v / 1e6).toLocaleString("pt-BR", { maximumFractionDigits: 1 })}`, unit: "Mi" };
-  if (a >= 1e3) return { value: `R$ ${(v / 1e3).toLocaleString("pt-BR", { maximumFractionDigits: 0 })}`, unit: "k" };
-  return { value: `R$ ${fmtBR(v)}`, unit: "" };
-}
-
 function pctDelta(p) {
   if (p == null) return null;
   return { v: `${p > 0 ? "+" : ""}${Number(p).toFixed(1)}%`, up: p > 0 ? true : p < 0 ? false : null };
@@ -72,6 +68,8 @@ function pctDelta(p) {
 export default function DashboardGeralPage() {
   const { user } = useAuth();
   const isGlobal = user?.role === "ADMIN_GLOBAL";
+  const { viewAsId } = useViewAs();
+  const needsMunicipio = isGlobal && viewAsId == null;
 
   const [pibResumo, setPibResumo] = useState(null);
   const [pibSerie, setPibSerie] = useState([]);
@@ -80,10 +78,12 @@ export default function DashboardGeralPage() {
   const [arrecPorTipo, setArrecPorTipo] = useState([]);
   const [cagedResumo, setCagedResumo] = useState(null);
   const [cagedSerie, setCagedSerie] = useState([]);
+  const [vafResumo, setVafResumo] = useState(null);
   const [customCards, setCustomCards] = useState([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    if (needsMunicipio) return;
     let alive = true;
     async function fetchAll() {
       const safeGet = (url, params) =>
@@ -93,6 +93,7 @@ export default function DashboardGeralPage() {
         pibRes, pibSerieRes, pibCompRes,
         arrecRes, arrecTipoRes,
         cagedRes, cagedSerieRes,
+        vafRes,
         cardsRes,
       ] = await Promise.all([
         safeGet("/pib/resumo"),
@@ -102,6 +103,7 @@ export default function DashboardGeralPage() {
         safeGet("/arrecadacao/por_tipo"),
         safeGet("/caged/resumo"),
         safeGet("/caged/serie"),
+        safeGet("/vaf/resumo"),
         isGlobal ? Promise.resolve([]) : safeGet("/dashboard-cards"),
       ]);
 
@@ -113,12 +115,13 @@ export default function DashboardGeralPage() {
       setArrecPorTipo(arrecTipoRes || []);
       setCagedResumo(cagedRes);
       setCagedSerie(cagedSerieRes || []);
+      setVafResumo(vafRes);
       setCustomCards(cardsRes || []);
       setLoading(false);
     }
     fetchAll();
     return () => { alive = false; };
-  }, [isGlobal]);
+  }, [isGlobal, needsMunicipio]);
 
   // ── Derived chart data ──
   const pibChartData = useMemo(
@@ -229,6 +232,22 @@ export default function DashboardGeralPage() {
     ? { value: `${saldoCaged > 0 ? "+" : ""}${fmtBR(saldoCaged)}`, unit: "vagas" }
     : { value: "—", unit: "" };
 
+  if (needsMunicipio) {
+    return (
+      <motion.div
+        initial={{ opacity: 0, y: 15 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.3 }}
+      >
+        <NidPageHeader
+          title="Núcleo de Dados"
+          sub="Indicadores econômicos consolidados do município"
+        />
+        <SelecioneMunicipio />
+      </motion.div>
+    );
+  }
+
   return (
     <motion.div
       initial={{ opacity: 0, y: 15 }}
@@ -243,6 +262,13 @@ export default function DashboardGeralPage() {
       <div className="mt-4 mb-6">
         <PrioridadesPanel />
       </div>
+
+      <h3 style={{
+        color: "var(--text-mute)", fontSize: 11, fontFamily: "var(--font-mono)",
+        letterSpacing: "0.14em", textTransform: "uppercase", marginBottom: 12,
+      }}>
+        Cenário do município
+      </h3>
 
       {/* Hero KPIs (neon design) */}
       {loading ? (
@@ -284,19 +310,25 @@ export default function DashboardGeralPage() {
             sparkData={cagedSparkData}
           />
           <NidKpiHero
-            label="Crescimento PIB"
-            badge="YoY"
-            value={pibResumo?.crescimento_percentual != null
-              ? `${pibResumo.crescimento_percentual > 0 ? "+" : ""}${pibResumo.crescimento_percentual.toFixed(1)}`
-              : "—"}
-            unit="%"
-            delta={null}
-            foot="variação último ano"
+            label="VAF · IPM"
+            badge={vafResumo?.ultimo_ano ? String(vafResumo.ultimo_ano) : null}
+            value={vafResumo?.ipm_ultimo_ano != null ? fmtBR(vafResumo.ipm_ultimo_ano, { maximumFractionDigits: 4 }) : "—"}
+            unit=""
+            delta={pctDelta(vafResumo?.variacao_ipm_percentual)}
+            foot="índice de participação"
             color={A4}
-            sparkData={pibSparkData}
           />
         </div>
       )}
+
+      <MudancasRelevantes resumos={{ pib: pibResumo, vaf: vafResumo, arrecadacao: arrecResumo, caged: cagedResumo }} />
+
+      <h3 style={{
+        color: "var(--text-mute)", fontSize: 11, fontFamily: "var(--font-mono)",
+        letterSpacing: "0.14em", textTransform: "uppercase", marginBottom: 12,
+      }}>
+        Riscos & oportunidades
+      </h3>
 
       {/* Insights strip — backend-managed (kept) + a couple neon-style data-derived hints */}
       {!loading && (pibResumo || arrecResumo || cagedResumo) && (
@@ -329,6 +361,28 @@ export default function DashboardGeralPage() {
       <div style={{ marginBottom: 22 }}>
         <InsightsPanel dataset="geral" />
       </div>
+
+      <h3 style={{
+        color: "var(--text-mute)", fontSize: 11, fontFamily: "var(--font-mono)",
+        letterSpacing: "0.14em", textTransform: "uppercase", marginBottom: 12,
+      }}>
+        Aprofundar
+      </h3>
+      <div className="grid gap-4 md:grid-cols-3" style={{ marginBottom: 22 }}>
+        <AtalhoCard titulo="Análise Econômica" descricao="As 6 bases econômicas lidas em conjunto." icone={PresentationChartBarIcon} to="/app/analise-economica" />
+        <AtalhoCard titulo="Visão do Prefeito" descricao="Panorama executivo de todas as áreas." icone={BuildingLibraryIcon} to="/app/painel-prefeito" planKey="painel_prefeito" />
+        <AtalhoCard titulo="Benchmark" descricao="Seu município comparado aos pares." icone={ChartBarSquareIcon} to="/app/benchmark" planKey="benchmark" />
+        <AtalhoCard titulo="Gestão Empresarial" descricao="Relacionamento com as empresas locais." icone={BuildingOffice2Icon} to="/app/desenvolvimento-economico/retencao" planKey="desenvolvimento_economico.retencao" />
+        <AtalhoCard titulo="Certificações e Premiações" descricao="Oportunidades, captação e reconhecimentos." icone={TrophyIcon} to="/app/desenvolvimento-economico/premiacoes" planKey="desenvolvimento_economico.premiacoes" />
+        <AtalhoCard titulo="Panorama Socioeconômico" descricao="IPS, benefícios e contexto social." icone={PresentationChartBarIcon} to="/app/ips" planKey="ips" />
+      </div>
+
+      <h3 style={{
+        color: "var(--text-mute)", fontSize: 11, fontFamily: "var(--font-mono)",
+        letterSpacing: "0.14em", textTransform: "uppercase", marginBottom: 12,
+      }}>
+        Panorama
+      </h3>
 
       {/* PIB area chart + Receita Donut */}
       {/* ChartHoverProvider syncs "annual" group: PIB Evolução ↔ PIB Comparativo */}
