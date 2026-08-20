@@ -43,14 +43,10 @@ function norm(s) {
 // ── headline metric registry (one per dataset) ──────────────────────────────
 // pick(resumo) → { value, unit, delta, foot }
 const METRICS = {
-  // Não redeclarar pib/vaf/empresas/estban/comex/pix aqui — uma redeclaração
+  // Não redeclarar pib/vaf/empresas/estban/comex/pix/arrecadacao aqui — uma redeclaração
   // sombrearia a entrada compartilhada e dessincronizaria Painel × Análise
   // Econômica. Edite src/utils/metricasEconomicas.js.
   ...METRICAS_ECONOMICAS,
-  arrecadacao: {
-    label: "Arrecadação", route: "/app/arrecadacao",
-    pick: (r) => ({ ...moneyDisplay(r?.total_geral), delta: kpiDelta(r?.crescimento_percentual), foot: "vs ano anterior" }),
-  },
   caged: {
     label: "Saldo CAGED", route: "/app/caged",
     pick: (r) => ({ value: r?.saldo_total != null ? `${r.saldo_total > 0 ? "+" : ""}${fmtBR(r.saldo_total)}` : "—", unit: "vagas", delta: null, foot: r?.total_admissoes != null ? `${fmtBR(r.total_admissoes)} adm.` : "" }),

@@ -72,4 +72,18 @@ describe("METRICAS_ECONOMICAS", () => {
       expect(p.value).toBe("—");
     });
   });
+
+  it("arrecadacao — entrada compartilhada com delta", () => {
+    const m = METRICAS_ECONOMICAS.arrecadacao;
+    expect(m.route).toBe("/app/arrecadacao");
+    expect(m.resumoPath).toBe("/arrecadacao/resumo");
+    expect(m.planKey).toBe("arrecadacao");
+    const p = m.pick({ total_geral: 2500000, crescimento_percentual: 5.2 });
+    expect(p).toEqual({ value: "R$ 2,5", unit: "Mi", delta: { value: 5.2, direction: "up" }, foot: "vs ano anterior" });
+    expect(m.pick(null).value).toBe("—");
+  });
+
+  it("ORDEM_ECONOMICA continua sem arrecadacao", () => {
+    expect(ORDEM_ECONOMICA).toEqual(["pib", "vaf", "empresas", "estban", "comex", "pix"]);
+  });
 });

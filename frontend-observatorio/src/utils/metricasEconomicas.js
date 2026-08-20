@@ -46,6 +46,10 @@ export const METRICAS_ECONOMICAS = {
     label: "Transações PIX", route: "/app/pix", resumoPath: "/pix/resumo", planKey: "pix",
     pick: (r) => ({ value: r?.total_transacoes != null ? fmtNumberShort(r.total_transacoes) : "—", unit: "", delta: null, foot: "PF + PJ" }),
   },
+  arrecadacao: {
+    label: "Arrecadação", route: "/app/arrecadacao", resumoPath: "/arrecadacao/resumo", planKey: "arrecadacao",
+    pick: (r) => ({ ...moneyDisplay(r?.total_geral), delta: kpiDelta(r?.crescimento_percentual), foot: "vs ano anterior" }),
+  },
 };
 
 export const ORDEM_ECONOMICA = ["pib", "vaf", "empresas", "estban", "comex", "pix"];
