@@ -284,24 +284,29 @@ export default function PainelPrefeitoPage() {
   // O que já foi buscado, para não refazer fetch ao trocar de modo (cache
   // simples em ref — não dispara render).
   const fetchedRef = useRef({ basico: false, completo: false });
+  const mountedRef = useRef(true);
+  useEffect(() => () => { mountedRef.current = false; }, []);
 
   useEffect(() => {
     if (needsMunicipio) {
       setLoading({ basico: false, completo: false });
       return;
     }
-    let alive = true;
     const safeGet = (url) => api.get(url).then((r) => r.data).catch(() => null);
 
+    // Flag marcada ANTES do dispatch: trocar de modo com o fetch em voo não
+    // pode disparar uma segunda leva dos mesmos endpoints. O guard dos .then
+    // é de DESMONTAGEM real (mountedRef) — na troca de modo o componente
+    // continua montado e o resultado em voo ainda deve aterrissar.
     if (!fetchedRef.current.basico) {
+      fetchedRef.current.basico = true;
       Promise.all([
         safeGet("/pib/resumo"),
         safeGet("/arrecadacao/resumo"),
         safeGet("/caged/resumo"),
         safeGet("/vaf/resumo"),
       ]).then(([pib, arr, caged, vaf]) => {
-        if (!alive) return;
-        fetchedRef.current.basico = true;
+        if (!mountedRef.current) return;
         setResumo((prev) => ({ ...prev, pib, arrecadacao: arr, caged, vaf }));
         setLoading((prev) => ({ ...prev, basico: false }));
       });
@@ -311,6 +316,7 @@ export default function PainelPrefeitoPage() {
     // Funil/Projetos/DnM/Emendas/Prioridades/AlertaFpm fazem fetch próprio.
     // O restante só é buscado quando o modo detalhado é alcançado.
     if (modo === "detalhado" && !fetchedRef.current.completo) {
+      fetchedRef.current.completo = true;
       Promise.all([
         safeGet("/rais/resumo"),
         safeGet("/empresas/resumo"),
@@ -324,8 +330,7 @@ export default function PainelPrefeitoPage() {
         safeGet("/dados_internos/indicadores"),
         safeGet("/dados_internos/plano_gov"),
       ]).then(([rais, emp, estban, comex, pix, bf, pdm, inss, ipsRes, inds, plano]) => {
-        if (!alive) return;
-        fetchedRef.current.completo = true;
+        if (!mountedRef.current) return;
         setResumo((prev) => ({
           ...prev, rais, empresas: emp, estban, comex, pix,
           bolsa_familia: bf, pe_de_meia: pdm, inss, ips: ipsRes,
@@ -337,7 +342,6 @@ export default function PainelPrefeitoPage() {
       });
     }
 
-    return () => { alive = false; };
   }, [needsMunicipio, modo]);
 
   const indByArea = useMemo(() => {
