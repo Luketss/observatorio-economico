@@ -34,7 +34,7 @@ class IndicadorBenchmark:
     key: str
     label: str
     unidade: str  # brl | usd | numero | indice
-    linhas: Callable  # (db, municipio_ids=None, anos=None) -> [(mid, ano, valor)]
+    linhas: Callable  # (db, municipio_ids=None, anos=None, incluir_demo=False) -> [(mid, ano, valor)]
 
 
 def _linhas_agregadas(col_mid, col_ano, expr_valor, filtros=()):
