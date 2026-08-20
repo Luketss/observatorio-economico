@@ -85,7 +85,7 @@ export const NAV_STRUCTURE = [
     type: "section",
     label: "Desenv. Empresarial",
     items: [
-      { type: "link", to: "/app/desenvolvimento-economico/retencao", label: "Retenção & Expansão", icon: BuildingOffice2Icon, modulo: "desenvolvimento_economico.retencao" },
+      { type: "link", to: "/app/desenvolvimento-economico/retencao", label: "Gestão Empresarial", icon: BuildingOffice2Icon, modulo: "desenvolvimento_economico.retencao" },
       { type: "link", to: "/app/desenvolvimento-economico/funil", label: "Atração de Investimentos", icon: FunnelIcon, modulo: "desenvolvimento_economico.funil" },
       {
         type: "group", label: "Certificações e Premiações", icon: TrophyIcon,

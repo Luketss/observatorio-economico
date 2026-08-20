@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useContext } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import {
   PlusIcon,
@@ -13,8 +13,10 @@ import { useToast } from "../../context/ToastContext";
 import { useEscapeKey } from "../../hooks/useEscapeKey";
 import { usePermissao } from "../../hooks/usePermissao";
 import { useViewAs } from "../../context/ViewAsContext";
+import { PlanContext } from "../../context/PlanContext";
 import SelecioneMunicipio from "../../components/nid/SelecioneMunicipio";
 import EmpresaDrawer from "./EmpresaDrawer";
+import BuscaEmpresaRfb from "./BuscaEmpresaRfb";
 import { propsTituloClicavel } from "../../utils/cliqueAcessivel";
 
 const RISCO_CONFIG = {
@@ -32,6 +34,7 @@ const EXPANSAO_CONFIG = {
 const defaultForm = {
   nome: "",
   cnpj: "",
+  cnpj_basico: null,
   setor: "",
   num_empregos: "",
   status_risco: "baixo",
@@ -47,6 +50,7 @@ function fmtDate(d) {
 export default function GestaoEmpresarialTab() {
   const { user } = useAuth();
   const { addToast } = useToast();
+  const { canAccess } = useContext(PlanContext);
   const isGlobal = user?.role === "ADMIN_GLOBAL";
   const { viewAsId } = useViewAs();
   const needsMunicipio = isGlobal && viewAsId == null;
@@ -112,6 +116,7 @@ export default function GestaoEmpresarialTab() {
     setForm({
       nome: e.nome,
       cnpj: e.cnpj || "",
+      cnpj_basico: e.cnpj_basico || null,
       setor: e.setor || "",
       num_empregos: e.num_empregos != null ? String(e.num_empregos) : "",
       status_risco: e.status_risco,
@@ -374,6 +379,27 @@ export default function GestaoEmpresarialTab() {
                   <label className="text-xs font-semibold text-[var(--text-dim)] uppercase tracking-wider">CNPJ</label>
                   <input value={form.cnpj} onChange={(e) => setForm((p) => ({ ...p, cnpj: e.target.value }))} placeholder="00.000.000/0001-00" className="px-3 py-2 rounded-lg border border-[var(--border)] text-sm bg-[var(--panel-2)] text-[var(--text)] focus:outline-none focus:ring-2 focus:ring-blue-500" />
                 </div>
+
+                {canAccess("empresas") && (
+                  <div className="md:col-span-2 flex flex-col gap-1">
+                    <label className="text-xs font-semibold text-[var(--text-dim)] uppercase tracking-wider">Vínculo com a base CNPJ</label>
+                    {form.cnpj_basico ? (
+                      <div className="flex items-center gap-2">
+                        <span className="px-2 py-1 rounded-full text-[11px] font-medium bg-[var(--panel-2)] text-green-400">
+                          Vinculada · {form.cnpj_basico}
+                        </span>
+                        <button type="button" onClick={() => setForm((p) => ({ ...p, cnpj_basico: null }))}
+                          className="text-xs text-red-500 hover:text-red-600 cursor-pointer">Desvincular</button>
+                      </div>
+                    ) : (
+                      <BuscaEmpresaRfb onSelect={(e) => setForm((p) => ({
+                        ...p,
+                        cnpj_basico: e.cnpj_basico,
+                        nome: p.nome || e.razao_social,
+                      }))} />
+                    )}
+                  </div>
+                )}
 
                 <div className="flex flex-col gap-1">
                   <label className="text-xs font-semibold text-[var(--text-dim)] uppercase tracking-wider">Setor</label>

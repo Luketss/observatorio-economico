@@ -77,7 +77,8 @@ describe("NAV_STRUCTURE — 5 eixos", () => {
     expect(labels).toContain("Visão do Prefeito");
     expect(labels).toContain("Histórico Institucional");
     expect(labels).toContain("Atração de Investimentos");
-    expect(labels).toContain("Retenção & Expansão");
+    expect(labels).toContain("Gestão Empresarial");
+    expect(labels).not.toContain("Retenção & Expansão");
     expect(labels).toContain("Indicadores Internos");
     expect(labels).toContain("Planos de Desenvolvimento");
     expect(labels).toContain("Análise Econômica");
