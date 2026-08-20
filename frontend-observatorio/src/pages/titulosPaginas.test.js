@@ -14,6 +14,7 @@ const CASOS = [
   ["./desenvolvimento-economico/FunilTab.jsx", "Atração de Investimentos", "Funil de Investimentos"],
   ["./desenvolvimento-economico/GestaoEmpresarialTab.jsx", "Gestão Empresarial", "Retenção & Expansão"],
   ["./dados-internos/IndicadoresInternosPage.jsx", "Indicadores Internos", "Cidade Inteligente"],
+  ["./desenvolvimento-economico/CertificacoesShell.jsx", "Certificações e Premiações", null],
 ];
 
 describe("Títulos das páginas renomeadas (Fase 1 — 5 eixos)", () => {
@@ -53,5 +54,10 @@ describe("Títulos das páginas renomeadas (Fase 1 — 5 eixos)", () => {
   it("ProjetosResumoCard acompanha o nome novo da página de destino", () => {
     const src = ler("../components/ProjetosResumoCard.jsx");
     expect(src).toContain('title="Planos de Desenvolvimento"');
+  });
+
+  it("DinheiroNaMesa e Emendas não têm mais NidPageHeader próprio", () => {
+    expect(ler("./dinheiro-na-mesa/DinheiroNaMesaPage.jsx")).not.toContain('title="Dinheiro na Mesa"');
+    expect(ler("./emendas/EmendasPage.jsx")).not.toContain('title="Radar de Emendas"');
   });
 });

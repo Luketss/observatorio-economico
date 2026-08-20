@@ -5,8 +5,6 @@ import {
   XMarkIcon,
   PencilIcon,
   TrashIcon,
-  InformationCircleIcon,
-  PencilSquareIcon,
   ViewColumnsIcon,
   TableCellsIcon,
 } from "@heroicons/react/24/outline";
@@ -15,6 +13,8 @@ import { useAuth } from "../../context/AuthContext";
 import { useToast } from "../../context/ToastContext";
 import { useEscapeKey } from "../../hooks/useEscapeKey";
 import { usePermissao } from "../../hooks/usePermissao";
+import { useViewAs } from "../../context/ViewAsContext";
+import SelecioneMunicipio from "../../components/nid/SelecioneMunicipio";
 import KanbanDndContext from "../../components/kanban/KanbanDndContext";
 import DraggableCard from "../../components/kanban/DraggableCard";
 import DroppableColumn from "../../components/kanban/DroppableColumn";
@@ -74,10 +74,12 @@ export default function EscritaTab() {
   const { user } = useAuth();
   const { addToast } = useToast();
   const isGlobal = user?.role === "ADMIN_GLOBAL";
+  const { viewAsId } = useViewAs();
+  const needsMunicipio = isGlobal && viewAsId == null;
   // ADMIN_GLOBAL não cria aqui: o registro nasce no município do usuário.
   const canCriar = usePermissao("escrita", "criar") && !isGlobal;
-  const canEditar = usePermissao("escrita", "editar");
-  const canExcluir = usePermissao("escrita", "excluir");
+  const canEditar = usePermissao("escrita", "editar") && !isGlobal;
+  const canExcluir = usePermissao("escrita", "excluir") && !isGlobal;
 
   const [items, setItems] = useState([]);
   const [captacoes, setCaptacoes] = useState([]);
@@ -112,7 +114,10 @@ export default function EscritaTab() {
     }
   }
 
-  useEffect(() => { load(); }, []);
+  useEffect(() => {
+    if (needsMunicipio) return;
+    load();
+  }, [needsMunicipio]);
 
   const kpis = useMemo(() => ({
     total: items.length,
@@ -205,41 +210,22 @@ export default function EscritaTab() {
     }
   }
 
-  const header = (
-    <div className="flex items-center gap-3">
-      <PencilSquareIcon className="w-7 h-7 text-blue-600" />
-      <h1 className="text-2xl font-extrabold tracking-tight text-[var(--text)]">
-        Escrita de Projetos
-      </h1>
-    </div>
-  );
+  if (needsMunicipio) {
+    return <SelecioneMunicipio />;
+  }
 
   if (loading) {
     return (
-      <motion.div initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3 }} className="space-y-6">
-        {header}
+      <div className="space-y-6">
         <div className="flex justify-center py-20">
           <div className="w-8 h-8 border-4 border-blue-600 border-t-transparent rounded-full animate-spin" />
         </div>
-      </motion.div>
-    );
-  }
-
-  if (isGlobal) {
-    return (
-      <motion.div initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3 }} className="space-y-6">
-        {header}
-        <div className="text-center py-20 text-slate-400">
-          <InformationCircleIcon className="w-12 h-12 mx-auto mb-3 opacity-30" />
-          <p className="text-sm font-medium text-[var(--text-dim)]">A escrita de projetos é específica por município.</p>
-        </div>
-      </motion.div>
+      </div>
     );
   }
 
   return (
-    <motion.div initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3 }} className="space-y-6">
-      {header}
+    <div className="space-y-6">
       {/* KPI row */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         {[
@@ -586,6 +572,6 @@ export default function EscritaTab() {
           </motion.div>
         )}
       </AnimatePresence>
-    </motion.div>
+    </div>
   );
 }

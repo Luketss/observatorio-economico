@@ -7,8 +7,6 @@ import {
   TrashIcon,
   LinkIcon,
   CalendarDaysIcon,
-  InformationCircleIcon,
-  BanknotesIcon,
   ViewColumnsIcon,
   TableCellsIcon,
   LockClosedIcon,
@@ -19,6 +17,8 @@ import { useToast } from "../../context/ToastContext";
 import { useEscapeKey } from "../../hooks/useEscapeKey";
 import { usePermissao } from "../../hooks/usePermissao";
 import { usePlan } from "../../context/PlanContext";
+import { useViewAs } from "../../context/ViewAsContext";
+import SelecioneMunicipio from "../../components/nid/SelecioneMunicipio";
 import BarraExecucao from "../../components/nid/BarraExecucao";
 import CriarOportunidadeCaptacao from "../../components/CriarOportunidadeCaptacao";
 import { emendaParaCaptacaoPayload } from "../../utils/emendaCaptacao";
@@ -90,10 +90,12 @@ export default function CaptacaoTab() {
   const { user } = useAuth();
   const { addToast } = useToast();
   const isGlobal = user?.role === "ADMIN_GLOBAL";
+  const { viewAsId } = useViewAs();
+  const needsMunicipio = isGlobal && viewAsId == null;
   // ADMIN_GLOBAL não cria aqui: o registro nasce no município do usuário.
   const canCriar = usePermissao("captacao", "criar") && !isGlobal;
-  const canEditar = usePermissao("captacao", "editar");
-  const canExcluir = usePermissao("captacao", "excluir");
+  const canEditar = usePermissao("captacao", "editar") && !isGlobal;
+  const canExcluir = usePermissao("captacao", "excluir") && !isGlobal;
   const { canAccess } = usePlan();
   const temEmendas = canAccess("emendas");
 
@@ -128,7 +130,10 @@ export default function CaptacaoTab() {
     }
   }
 
-  useEffect(() => { load(); }, []);
+  useEffect(() => {
+    if (needsMunicipio) return;
+    load();
+  }, [needsMunicipio]);
 
   useEffect(() => {
     if (!temEmendas || isGlobal) return;
@@ -232,41 +237,22 @@ export default function CaptacaoTab() {
     }
   }
 
-  const header = (
-    <div className="flex items-center gap-3">
-      <BanknotesIcon className="w-7 h-7 text-blue-600" />
-      <h1 className="text-2xl font-extrabold tracking-tight text-[var(--text)]">
-        Captação de Recursos
-      </h1>
-    </div>
-  );
+  if (needsMunicipio) {
+    return <SelecioneMunicipio />;
+  }
 
   if (loading) {
     return (
-      <motion.div initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3 }} className="space-y-6">
-        {header}
+      <div className="space-y-6">
         <div className="flex justify-center py-20">
           <div className="w-8 h-8 border-4 border-blue-600 border-t-transparent rounded-full animate-spin" />
         </div>
-      </motion.div>
-    );
-  }
-
-  if (isGlobal) {
-    return (
-      <motion.div initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3 }} className="space-y-6">
-        {header}
-        <div className="text-center py-20 text-slate-400">
-          <InformationCircleIcon className="w-12 h-12 mx-auto mb-3 opacity-30" />
-          <p className="text-sm font-medium text-[var(--text-dim)]">A captação de recursos é específica por município.</p>
-        </div>
-      </motion.div>
+      </div>
     );
   }
 
   return (
-    <motion.div initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3 }} className="space-y-6">
-      {header}
+    <div className="space-y-6">
       {/* KPI row */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         {[
@@ -681,6 +667,6 @@ export default function CaptacaoTab() {
           </motion.div>
         )}
       </AnimatePresence>
-    </motion.div>
+    </div>
   );
 }

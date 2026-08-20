@@ -1,12 +1,11 @@
 import { useEffect, useMemo, useState } from "react";
-import { motion } from "framer-motion";
 import api from "../../services/api";
 import { useAuth } from "../../context/AuthContext";
 import { useViewAs } from "../../context/ViewAsContext";
 import InfoTooltip from "../../components/InfoTooltip";
 import KpiCard from "../../components/KpiCard";
 import CriarOportunidadeCaptacao from "../../components/CriarOportunidadeCaptacao";
-import { NidPanel, NidPageHeader } from "../../components/nid/Panel";
+import { NidPanel } from "../../components/nid/Panel";
 import DataTable from "../../components/nid/DataTable";
 import { MultiLineChart, fmtMoneyShort, fmtMoneyFull } from "../../components/nid/charts";
 import KpiSkeleton from "../../components/nid/KpiSkeleton";
@@ -72,12 +71,7 @@ export default function DinheiroNaMesaPage() {
   const serieDesc = useMemo(() => [...(diag?.serie || [])].reverse(), [diag]);
 
   if (needsMunicipio) {
-    return (
-      <motion.div initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3 }}>
-        <NidPageHeader title="Dinheiro na Mesa" sub="Captação federal vs. municípios pares" />
-        <SelecioneMunicipio />
-      </motion.div>
-    );
+    return <SelecioneMunicipio />;
   }
 
   if (loading) {
@@ -91,9 +85,9 @@ export default function DinheiroNaMesaPage() {
   const indisponivel = !diag?.disponivel;
 
   return (
-    <motion.div initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3 }} className="space-y-6">
-      <div className="flex items-center gap-2">
-        <NidPageHeader title="Dinheiro na Mesa" sub="Captação de convênios federais vs. municípios do mesmo porte" />
+    <div className="space-y-6">
+      <div className="flex items-center gap-2 text-xs text-[var(--text-dim)]">
+        <span>Captação de convênios federais vs. municípios do mesmo porte</span>
         <InfoTooltip dataset="captacao_federal" />
       </div>
 
@@ -163,6 +157,6 @@ export default function DinheiroNaMesaPage() {
           </div>
         </>
       )}
-    </motion.div>
+    </div>
   );
 }

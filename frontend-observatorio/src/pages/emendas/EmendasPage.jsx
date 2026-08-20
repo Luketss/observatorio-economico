@@ -1,12 +1,11 @@
 import { useEffect, useState, useMemo } from "react";
-import { motion } from "framer-motion";
 import api from "../../services/api";
 import { useAuth } from "../../context/AuthContext";
 import { useViewAs } from "../../context/ViewAsContext";
 import InfoTooltip from "../../components/InfoTooltip";
 import KpiCard from "../../components/KpiCard";
 import CriarOportunidadeCaptacao from "../../components/CriarOportunidadeCaptacao";
-import { NidPanel, NidPageHeader } from "../../components/nid/Panel";
+import { NidPanel } from "../../components/nid/Panel";
 import { fmtMoneyShort, fmtMoneyFull, HBarChart } from "../../components/nid/charts";
 import BarraExecucao from "../../components/nid/BarraExecucao";
 import DataTable from "../../components/nid/DataTable";
@@ -41,12 +40,7 @@ export default function EmendasPage() {
   );
 
   if (needsMunicipio) {
-    return (
-      <motion.div initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3 }}>
-        <NidPageHeader title="Radar de Emendas" sub="Emendas parlamentares destinadas ao município" />
-        <SelecioneMunicipio />
-      </motion.div>
-    );
+    return <SelecioneMunicipio />;
   }
 
   if (loading && !radar) {
@@ -61,9 +55,9 @@ export default function EmendasPage() {
   const indisponivel = !radar?.disponivel;
 
   return (
-    <motion.div initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3 }} className="space-y-6">
-      <div className="flex items-center gap-2 flex-wrap">
-        <NidPageHeader title="Radar de Emendas" sub="Quem envia recurso, quanto e o que já foi executado" />
+    <div className="space-y-6">
+      <div className="flex items-center gap-2 flex-wrap text-xs text-[var(--text-dim)]">
+        <span>Quem envia recurso, quanto e o que já foi executado</span>
         <InfoTooltip dataset="emendas" />
         {(radar?.anos || []).length > 0 && (
           <NidSelect value={ano} onChange={(e) => setAno(e.target.value)} ariaLabel="Filtrar por ano" className="ml-auto">
@@ -143,6 +137,6 @@ export default function EmendasPage() {
           </NidPanel>
         </>
       )}
-    </motion.div>
+    </div>
   );
 }
