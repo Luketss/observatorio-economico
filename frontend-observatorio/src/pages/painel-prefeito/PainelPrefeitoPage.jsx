@@ -16,7 +16,7 @@ import SelecioneMunicipio from "../../components/nid/SelecioneMunicipio";
 import FunilResumoCard from "../../components/FunilResumoCard";
 import ProjetosResumoCard from "../../components/ProjetosResumoCard";
 import { lerModo, persistirModo } from "../../utils/painelModo";
-import { fmtBR, moneyDisplay, kpiDelta, METRICAS_ECONOMICAS } from "../../utils/metricasEconomicas";
+import { fmtBR, METRICAS_ECONOMICAS } from "../../utils/metricasEconomicas";
 import {
   BanknotesIcon,
   BuildingOffice2Icon,
