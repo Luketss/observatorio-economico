@@ -102,10 +102,10 @@ def test_fixado_sai_dos_pares_e_entra_em_fixados(ctx):
 def test_vaf_serie_por_ano_base(ctx):
     db, m1, m2, *_ = ctx
     db.add_all([
-        VafAnual(municipio_id=m1.id, ano_base=2021, pct_ipm=0.5),
-        VafAnual(municipio_id=m1.id, ano_base=2022, pct_ipm=0.6),
-        VafAnual(municipio_id=m2.id, ano_base=2021, pct_ipm=0.4),
-        VafAnual(municipio_id=m2.id, ano_base=2022, pct_ipm=0.7),
+        VafAnual(municipio_id=m1.id, ano_base=2021, indice_participacao_municipal=0.5),
+        VafAnual(municipio_id=m1.id, ano_base=2022, indice_participacao_municipal=0.6),
+        VafAnual(municipio_id=m2.id, ano_base=2021, indice_participacao_municipal=0.4),
+        VafAnual(municipio_id=m2.id, ano_base=2022, indice_participacao_municipal=0.7),
     ])
     db.commit()
     out = comparativo_benchmark(indicador="vaf", fixados=None, mid=m1.id, db=db)

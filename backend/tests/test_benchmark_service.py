@@ -80,7 +80,7 @@ def test_pib_filtros_de_municipio_e_ano(ctx):
 
 def test_vaf_usa_ano_base_e_unidade_indice(ctx):
     db, m1, _, _ = ctx
-    db.add(VafAnual(municipio_id=m1.id, ano_base=2021, pct_ipm=0.1234))
+    db.add(VafAnual(municipio_id=m1.id, ano_base=2021, indice_participacao_municipal=0.1234))
     db.commit()
     ind = INDICADORES_BENCHMARK["vaf"]
     assert ind.unidade == "indice"
@@ -152,8 +152,8 @@ def test_posicao_sem_valor_do_foco_devolve_none():
 def test_valor_nulo_e_omitido_da_serie(ctx):
     db, m1, _, _ = ctx
     db.add_all([
-        VafAnual(municipio_id=m1.id, ano_base=2021, pct_ipm=0.5),
-        VafAnual(municipio_id=m1.id, ano_base=2022, pct_ipm=None),
+        VafAnual(municipio_id=m1.id, ano_base=2021, indice_participacao_municipal=0.5),
+        VafAnual(municipio_id=m1.id, ano_base=2022, indice_participacao_municipal=None),
     ])
     db.commit()
     # NULL não vira 0.0 — a linha some (invariante "nunca 0" dos comparativos).

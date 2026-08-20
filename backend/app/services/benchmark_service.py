@@ -69,8 +69,12 @@ def _linhas_agregadas(col_mid, col_ano, expr_valor, filtros=()):
 INDICADORES_BENCHMARK: dict[str, IndicadorBenchmark] = {
     "pib": IndicadorBenchmark("pib", "PIB Total", "brl", _linhas_agregadas(
         PibAnual.municipio_id, PibAnual.ano, func.max(PibAnual.pib_total))),
+    # indice_participacao_municipal é a FRAÇÃO do IPM (o que a página VAF
+    # plota); pct_ipm é a variação YoY pré-computada — plotá-la aqui rotulada
+    # de "índice" mostrava a coisa errada no gráfico e no ranking.
     "vaf": IndicadorBenchmark("vaf", "VAF · Índice IPM", "indice", _linhas_agregadas(
-        VafAnual.municipio_id, VafAnual.ano_base, func.max(VafAnual.pct_ipm))),
+        VafAnual.municipio_id, VafAnual.ano_base,
+        func.max(VafAnual.indice_participacao_municipal))),
     "arrecadacao": IndicadorBenchmark("arrecadacao", "Arrecadação Total", "brl", _linhas_agregadas(
         ArrecadacaoMensal.municipio_id, ArrecadacaoMensal.ano, func.sum(ArrecadacaoMensal.valor_total))),
     "caged": IndicadorBenchmark("caged", "Saldo CAGED", "numero", _linhas_agregadas(
