@@ -502,7 +502,7 @@ def _fetch_dados(
             .all()
         )
         if pib_rows:
-            item = {"ano": pib_rows[0].ano, "pib_total": pib_rows[0].pib_total}
+            item = {"ano": pib_rows[0].ano, "pib_total": pib_rows[0].pib_total, "tipo_dado": pib_rows[0].tipo_dado}
             if len(pib_rows) == 2 and pib_rows[1].pib_total:
                 item["yoy_crescimento_pct"] = round(
                     (pib_rows[0].pib_total - pib_rows[1].pib_total) / pib_rows[1].pib_total * 100, 1

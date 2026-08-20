@@ -312,9 +312,9 @@ export default function DashboardGeralPage() {
           <NidKpiHero
             label="VAF · IPM"
             badge={vafResumo?.ultimo_ano ? String(vafResumo.ultimo_ano) : null}
-            value={vafResumo?.ipm_ultimo_ano != null ? fmtBR(vafResumo.ipm_ultimo_ano, { maximumFractionDigits: 4 }) : "—"}
+            value={vafResumo?.ultimo_ano && vafResumo?.ipm_ultimo_ano != null ? fmtBR(vafResumo.ipm_ultimo_ano, { maximumFractionDigits: 4 }) : "—"}
             unit=""
-            delta={pctDelta(vafResumo?.variacao_ipm_percentual)}
+            delta={vafResumo?.ultimo_ano ? pctDelta(vafResumo?.variacao_ipm_percentual) : null}
             foot="índice de participação"
             color={A4}
           />

@@ -53,6 +53,7 @@ def test_payload_geral_tem_bases_semeadas_e_omite_vazias(db):
     assert len(dados) == 1
     bases = dados[0]["bases"]
     assert bases["pib"]["ano"] == 2022
+    assert bases["pib"]["tipo_dado"] == "REAL"
     assert bases["pib"]["yoy_crescimento_pct"] == 10.0
     assert bases["arrecadacao"]["total_12m"] == 1200.0
     assert bases["arrecadacao"]["yoy_crescimento_pct"] == 25.0

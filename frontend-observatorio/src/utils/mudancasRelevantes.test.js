@@ -28,4 +28,14 @@ describe("montarMudancas", () => {
     expect(m.find((i) => i.key === "pib").texto).toContain("3,2%");
     expect(m.find((i) => i.key === "caged").texto).toContain("+120");
   });
+
+  it("resumos zero-fill (sentinela de base sem dados) ficam fora", () => {
+    const m = montarMudancas({
+      pib: { ultimo_ano: 0, pib_ultimo_ano: 0, crescimento_percentual: 0 },
+      vaf: { ultimo_ano: 0, ipm_ultimo_ano: 0, variacao_ipm_percentual: 0 },
+      arrecadacao: { total_geral: 0, crescimento_percentual: 0 },
+      caged: null,
+    });
+    expect(m).toEqual([]);
+  });
 });
