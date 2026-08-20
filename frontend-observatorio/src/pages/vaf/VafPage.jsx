@@ -8,7 +8,7 @@ import InfoTooltip from "../../components/InfoTooltip";
 import FilterBar, { describeFilter, clearFilter } from "../../components/FilterBar";
 import { janela12m } from "../../utils/periodoCards";
 import KpiCard from "../../components/KpiCard";
-import { NidPanel, NidLegend, NidPageHeader } from "../../components/nid/Panel";
+import { NidPanel, NidLegend, NidPageHeader, NidInsight } from "../../components/nid/Panel";
 import { useAuth } from "../../context/AuthContext";
 import { useViewAs } from "../../context/ViewAsContext";
 import KpiSkeleton from "../../components/nid/KpiSkeleton";
@@ -21,6 +21,7 @@ import {
 } from "../../components/nid/charts";
 import DataTable from "../../components/nid/DataTable";
 import { montarComparativo, descreverPares } from "../../utils/seriesComparativo";
+import { montarLeituraVaf } from "../../utils/leituraVaf";
 import ComparadorMunicipios from "../../components/nid/ComparadorMunicipios";
 import PeriodoMenu from "../../components/nid/PeriodoMenu";
 import { resolverSeriePainel } from "../../utils/periodoGrafico";
@@ -168,6 +169,8 @@ export default function VafPage() {
     }));
   }, [serie, rawSerie, periodosGrafico]);
 
+  const leiturasVaf = useMemo(() => montarLeituraVaf({ serie: rawSerie }), [rawSerie]);
+
   // ── KPI cards ──────────────────────────────────────────────────────────────
 
   const cards = [
@@ -232,6 +235,14 @@ export default function VafPage() {
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           {cards.map((c) => (
             <KpiCard key={c.label} {...c} />
+          ))}
+        </div>
+      )}
+
+      {!loading && leiturasVaf.length > 0 && (
+        <div className="nid-insights">
+          {leiturasVaf.map((l) => (
+            <NidInsight key={l.texto} kind={l.kind}>{l.texto}</NidInsight>
           ))}
         </div>
       )}
