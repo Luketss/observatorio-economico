@@ -1,6 +1,7 @@
 import logging
 from contextlib import asynccontextmanager
 
+import app.api.v1.routers.benchmark as benchmark
 import app.api.v1.routers.ips as ips
 import app.api.v1.routers.projetos as projetos
 import app.api.v1.routers.desenvolvimento_economico as desenvolvimento_economico
@@ -145,6 +146,7 @@ app.include_router(projetos.router, prefix=API_PREFIX)
 app.include_router(dados_internos.router, prefix=API_PREFIX)
 app.include_router(desenvolvimento_economico.router, prefix=API_PREFIX)
 app.include_router(ips.router, prefix=API_PREFIX)
+app.include_router(benchmark.router, prefix=API_PREFIX)
 
 
 @app.get("/health")
