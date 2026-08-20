@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { motion } from "framer-motion";
 import api from "../../services/api";
@@ -10,6 +10,8 @@ import PrioridadesPanel from "../../components/PrioridadesPanel";
 import AlertaFpmCard from "../../components/AlertaFpmCard";
 import DinheiroNaMesaCard from "../../components/DinheiroNaMesaCard";
 import EmendasResumoCard from "../../components/EmendasResumoCard";
+import MudancasRelevantes from "../../components/MudancasRelevantes";
+import ReleasesPanel from "../../components/ReleasesPanel";
 import { fmtMoneyShort } from "../../components/nid/charts";
 import KpiSkeleton from "../../components/nid/KpiSkeleton";
 import SelecioneMunicipio from "../../components/nid/SelecioneMunicipio";
@@ -79,25 +81,51 @@ const PANORAMA = [
 ];
 
 // Subconjunto macro do modo gerencial — mesmas entradas do METRICS.
+// Também é a lista de resumos buscados eagerly (ver efeito de fetch por modo).
 const PANORAMA_GERENCIAL = ["pib", "arrecadacao", "caged", "vaf"];
+
+// Período de referência (ano) por métrica, para o badge "label · period" do
+// KpiCard. Só pib/vaf/ips carregam ano no shape do próprio resumo — as
+// demais bases (caged, rais, empresas, estban, comex, pix, bolsa_familia,
+// pe_de_meia, inss, arrecadacao) não expõem ano/mês no `/resumo` agregado.
+// Fica fora de METRICS/METRICAS_ECONOMICAS de propósito: pib/vaf vêm do
+// util compartilhado (utils/metricasEconomicas.js) e não deve ser alterado
+// aqui — outras páginas o consomem.
+function periodoDe(key, r) {
+  if (!r) return undefined;
+  if (key === "pib" || key === "vaf") return r.ultimo_ano ? String(r.ultimo_ano) : undefined;
+  if (key === "ips") return r.ano ? String(r.ano) : undefined;
+  return undefined;
+}
 
 // ── secretaria / área config (fixed, standard set) ──────────────────────────
 const AREAS = [
   { key: "fazenda", label: "Fazenda & Finanças", icon: BanknotesIcon, datasets: ["arrecadacao", "vaf"], ips: [], aliases: ["fazenda", "financ", "tribut", "arrecada", "receita", "orcamento"] },
   { key: "desenv", label: "Desenvolvimento Econômico", icon: BuildingOffice2Icon, datasets: ["pib", "comex", "empresas", "estban"], ips: [], aliases: ["desenvolvimento", "economic", "industria", "comercio", "turismo", "empreend", "inovac"] },
   { key: "trabalho", label: "Trabalho & Emprego", icon: BriefcaseIcon, datasets: ["caged", "rais"], ips: [], aliases: ["trabalho", "emprego", "renda", "qualifica"] },
-  { key: "assistencia", label: "Assistência Social", icon: UserGroupIcon, datasets: ["bolsa_familia", "pe_de_meia", "inss"], ips: [{ field: "necessidades_humanas_basicas", label: "Necessidades básicas" }, { field: "moradia", label: "Moradia" }], aliases: ["assistencia", "social", "cras", "cidadania", "direitos human", "habita"] },
+  { key: "assistencia", label: "Assistência Social", icon: UserGroupIcon, datasets: ["bolsa_familia", "pe_de_meia", "inss"], ips: [{ field: "necessidades_humanas_basicas", label: "Necessidades básicas" }, { field: "moradia", label: "Moradia" }], aliases: ["assistencia", "social", "cras", "cidadania", "direitos human", "habita", "desenvolvimento social"] },
   { key: "saude", label: "Saúde", icon: HeartIcon, datasets: [], ips: [{ field: "saude_bem_estar", label: "Saúde e bem-estar" }, { field: "nutricao_cuidados_medicos", label: "Nutrição e cuidados médicos" }], aliases: ["saude"] },
   { key: "educacao", label: "Educação", icon: AcademicCapIcon, datasets: [], ips: [{ field: "acesso_conhecimento_basico", label: "Conhecimento básico" }, { field: "acesso_educacao_superior", label: "Educação superior" }], aliases: ["educa", "ensino", "escola"] },
   { key: "seguranca", label: "Segurança", icon: ShieldCheckIcon, datasets: [], ips: [{ field: "seguranca_pessoal", label: "Segurança pessoal" }], aliases: ["seguranca", "guarda", "defesa", "transito", "ordem publica"] },
   { key: "meio_ambiente", label: "Meio Ambiente", icon: GlobeAltIcon, datasets: [], ips: [{ field: "qualidade_meio_ambiente", label: "Qualidade do meio ambiente" }], aliases: ["ambiente", "ambiental", "sustentab", "saneamento", "agua", "residuo", "limpeza"] },
 ];
 
+// Área com o alias mais específico (mais longo) que casa como substring vence —
+// não apenas a primeira da lista. Sem isso, "Desenvolvimento Social" batia em
+// "desenv" (alias "desenvolvimento") antes de "assistencia" (alias "social"),
+// por AREAS[desenv] vir antes de AREAS[assistencia] no array.
 function matchAreaKey(text) {
   const t = norm(text);
   if (!t) return null;
-  const a = AREAS.find((ar) => ar.aliases.some((al) => t.includes(al)));
-  return a ? a.key : null;
+  let best = null;
+  for (const area of AREAS) {
+    for (const alias of area.aliases) {
+      if (t.includes(alias) && (!best || alias.length > best.len)) {
+        best = { key: area.key, len: alias.length };
+      }
+    }
+  }
+  return best ? best.key : null;
 }
 
 const STATUS_META = {
@@ -246,48 +274,71 @@ export default function PainelPrefeitoPage() {
   const [ips, setIps] = useState(null);
   const [indicadores, setIndicadores] = useState([]);
   const [acoes, setAcoes] = useState([]);
-  const [loading, setLoading] = useState(true);
+  // loading.basico → os 4 resumos do modo gerencial (PANORAMA_GERENCIAL).
+  // loading.completo → os 11 restantes do modo detalhado (só buscados
+  // quando o modo detalhado é alcançado — ver efeito abaixo).
+  const [loading, setLoading] = useState({ basico: true, completo: true });
   const [modo, setModo] = useState(lerModo);
   useEffect(() => { persistirModo(modo); }, [modo]);
 
+  // O que já foi buscado, para não refazer fetch ao trocar de modo (cache
+  // simples em ref — não dispara render).
+  const fetchedRef = useRef({ basico: false, completo: false });
+
   useEffect(() => {
     if (needsMunicipio) {
-      setLoading(false);
+      setLoading({ basico: false, completo: false });
       return;
     }
     let alive = true;
-    setLoading(true);
     const safeGet = (url) => api.get(url).then((r) => r.data).catch(() => null);
-    Promise.all([
-      safeGet("/arrecadacao/resumo"),
-      safeGet("/pib/resumo"),
-      safeGet("/vaf/resumo"),
-      safeGet("/caged/resumo"),
-      safeGet("/rais/resumo"),
-      safeGet("/empresas/resumo"),
-      safeGet("/estban/resumo"),
-      safeGet("/comex/resumo"),
-      safeGet("/pix/resumo"),
-      safeGet("/bolsa_familia/resumo"),
-      safeGet("/pe_de_meia/resumo"),
-      safeGet("/inss/resumo"),
-      safeGet("/ips/scorecard"),
-      safeGet("/dados_internos/indicadores"),
-      safeGet("/dados_internos/plano_gov"),
-    ]).then((res) => {
-      if (!alive) return;
-      const [arr, pib, vaf, caged, rais, emp, estban, comex, pix, bf, pdm, inss, ipsRes, inds, plano] = res;
-      setResumo({
-        arrecadacao: arr, pib, vaf, caged, rais, empresas: emp,
-        estban, comex, pix, bolsa_familia: bf, pe_de_meia: pdm, inss, ips: ipsRes,
+
+    if (!fetchedRef.current.basico) {
+      Promise.all([
+        safeGet("/pib/resumo"),
+        safeGet("/arrecadacao/resumo"),
+        safeGet("/caged/resumo"),
+        safeGet("/vaf/resumo"),
+      ]).then(([pib, arr, caged, vaf]) => {
+        if (!alive) return;
+        fetchedRef.current.basico = true;
+        setResumo((prev) => ({ ...prev, pib, arrecadacao: arr, caged, vaf }));
+        setLoading((prev) => ({ ...prev, basico: false }));
       });
-      setIps(ipsRes || null);
-      setIndicadores(Array.isArray(inds) ? inds : []);
-      setAcoes(Array.isArray(plano) ? plano : []);
-      setLoading(false);
-    });
+    }
+
+    // Modo gerencial só usa pib/arrecadacao/caged/vaf (KPIs + MudancasRelevantes);
+    // Funil/Projetos/DnM/Emendas/Prioridades/AlertaFpm fazem fetch próprio.
+    // O restante só é buscado quando o modo detalhado é alcançado.
+    if (modo === "detalhado" && !fetchedRef.current.completo) {
+      Promise.all([
+        safeGet("/rais/resumo"),
+        safeGet("/empresas/resumo"),
+        safeGet("/estban/resumo"),
+        safeGet("/comex/resumo"),
+        safeGet("/pix/resumo"),
+        safeGet("/bolsa_familia/resumo"),
+        safeGet("/pe_de_meia/resumo"),
+        safeGet("/inss/resumo"),
+        safeGet("/ips/scorecard"),
+        safeGet("/dados_internos/indicadores"),
+        safeGet("/dados_internos/plano_gov"),
+      ]).then(([rais, emp, estban, comex, pix, bf, pdm, inss, ipsRes, inds, plano]) => {
+        if (!alive) return;
+        fetchedRef.current.completo = true;
+        setResumo((prev) => ({
+          ...prev, rais, empresas: emp, estban, comex, pix,
+          bolsa_familia: bf, pe_de_meia: pdm, inss, ips: ipsRes,
+        }));
+        setIps(ipsRes || null);
+        setIndicadores(Array.isArray(inds) ? inds : []);
+        setAcoes(Array.isArray(plano) ? plano : []);
+        setLoading((prev) => ({ ...prev, completo: false }));
+      });
+    }
+
     return () => { alive = false; };
-  }, [needsMunicipio]);
+  }, [needsMunicipio, modo]);
 
   const indByArea = useMemo(() => {
     const map = {};
@@ -350,7 +401,7 @@ export default function PainelPrefeitoPage() {
         <>
           <SectionTitle>Visão geral</SectionTitle>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-7">
-            {loading
+            {loading.basico
               ? Array.from({ length: 4 }).map((_, i) => <KpiSkeleton key={i} />)
               : PANORAMA_GERENCIAL.map((key, i) => {
                   const m = METRICS[key];
@@ -359,6 +410,7 @@ export default function PainelPrefeitoPage() {
                     <Link key={key} to={m.route} className="block">
                       <KpiCard
                         label={m.label}
+                        period={periodoDe(key, resumo[key])}
                         value={p.value}
                         unit={p.unit}
                         delta={p.delta}
@@ -371,6 +423,14 @@ export default function PainelPrefeitoPage() {
                   );
                 })}
           </div>
+
+          <MudancasRelevantes
+            resumos={{
+              pib: resumo.pib, vaf: resumo.vaf,
+              arrecadacao: resumo.arrecadacao, caged: resumo.caged,
+            }}
+          />
+
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
             <FunilResumoCard dataset="painel_prefeito" indicadorKey="card_funil_investimentos" />
             <ProjetosResumoCard dataset="painel_prefeito" indicadorKey="card_projetos" />
@@ -380,7 +440,7 @@ export default function PainelPrefeitoPage() {
         <>
           {/* Panorama — all headline metrics */}
           <SectionTitle>Panorama geral</SectionTitle>
-          {loading ? (
+          {loading.basico || loading.completo ? (
             <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-4 mb-9">
               {[...Array(8)].map((_, i) => <KpiSkeleton key={i} />)}
             </div>
@@ -393,6 +453,7 @@ export default function PainelPrefeitoPage() {
                   <Link key={key} to={m.route} className="block">
                     <KpiCard
                       label={m.label}
+                      period={periodoDe(key, resumo[key])}
                       value={p.value}
                       unit={p.unit}
                       delta={p.delta}
@@ -433,6 +494,11 @@ export default function PainelPrefeitoPage() {
           </div>
         </>
       )}
+
+      {/* Release de imprensa da visão geral — comum aos dois modos */}
+      <div className="mt-7">
+        <ReleasesPanel dataset="geral" />
+      </div>
     </motion.div>
   );
 }
