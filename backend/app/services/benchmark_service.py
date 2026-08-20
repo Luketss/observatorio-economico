@@ -38,13 +38,16 @@ class IndicadorBenchmark:
 
 def _linhas_agregadas(col_mid, col_ano, expr_valor, filtros=()):
     """Fábrica da consulta anual agregada. Os filtros de município/ano incidem
-    ANTES do group_by (são as chaves do grupo, então o recorte é válido)."""
-    def linhas(db, municipio_ids=None, anos=None):
+    ANTES do group_by (são as chaves do grupo, então o recorte é válido).
+    `incluir_demo` só dispensa o filtro de demo do cross-município (pool de
+    cobertura/posição) — a série do próprio foco pode incluir demo."""
+    def linhas(db, municipio_ids=None, anos=None, incluir_demo=False):
         q = (
             db.query(col_mid.label("mid"), col_ano.label("ano"), expr_valor.label("valor"))
             .join(Municipio, Municipio.id == col_mid)
-            .filter(Municipio.is_demo.is_(False))
         )
+        if not incluir_demo:
+            q = q.filter(Municipio.is_demo.is_(False))
         for f in filtros:
             q = q.filter(f)
         if municipio_ids is not None:
@@ -53,8 +56,9 @@ def _linhas_agregadas(col_mid, col_ano, expr_valor, filtros=()):
             q = q.filter(col_ano.in_(anos))
         # extract("year", ...) volta Decimal/str dependendo do backend — int() normaliza.
         return [
-            (r.mid, int(r.ano), float(r.valor or 0))
+            (r.mid, int(r.ano), float(r.valor))
             for r in q.group_by(col_mid, col_ano).order_by(col_mid, col_ano).all()
+            if r.valor is not None
         ]
     return linhas
 

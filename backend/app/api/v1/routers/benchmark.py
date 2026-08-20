@@ -53,7 +53,7 @@ def comparativo_benchmark(
         # ADMIN_GLOBAL sem município selecionado — front exibe "selecione um município".
         return BenchmarkComparativoOut(indicador=_ind_out(ind), motivo="sem_municipio")
 
-    linhas_foco = ind.linhas(db, municipio_ids=[mid])
+    linhas_foco = ind.linhas(db, municipio_ids=[mid], incluir_demo=True)
     anos_foco = {ano for _, ano, _ in linhas_foco}
     if not anos_foco:
         return BenchmarkComparativoOut(indicador=_ind_out(ind), motivo="sem_serie")
@@ -67,12 +67,12 @@ def comparativo_benchmark(
         return BenchmarkComparativoOut(indicador=_ind_out(ind), motivo=grupo.motivo or "sem_municipio")
 
     ids = [grupo.foco.id] + [p.id for p in grupo.pares] + [f.id for f in grupo.fixados]
-    serie = ind.linhas(db, municipio_ids=ids)
+    serie = ind.linhas(db, municipio_ids=ids, incluir_demo=True)
 
     # Posição sai da cobertura já carregada (sem query extra): valores de todos
     # os municípios não-demo no último ano do foco.
     ultimo_ano = max(anos_foco)
-    valores_ano = [(m, v) for m, a, v in cobertura if a == ultimo_ano]
+    valores_ano = [(m, v) for m, a, v in cobertura if a == ultimo_ano and m in refs]
     estados = {r.id: r.estado for r in refs.values()}
     pos = calcular_posicao(valores_ano, estados, mid, ultimo_ano)
 

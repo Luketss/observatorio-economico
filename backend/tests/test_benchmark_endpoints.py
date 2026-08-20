@@ -133,3 +133,32 @@ def test_rota_expoe_envelope_e_parametros():
 
 def test_rota_de_indicadores_registrada():
     assert "/api/v1/benchmark/indicadores" in _openapi()["paths"]
+
+
+def test_foco_demo_ve_a_propria_serie_sem_posicao(ctx):
+    db, m1, m2, m3, demo = ctx
+    _seed_pib(db, (demo.id, 2021, 100.0), (demo.id, 2022, 110.0),
+              (m1.id, 2021, 200.0), (m1.id, 2022, 220.0),
+              (m2.id, 2021, 50.0), (m2.id, 2022, 60.0))
+    out = comparativo_benchmark(indicador="pib", fixados=None, mid=demo.id, db=db)
+    # Paridade com /pib/comparativo: demo em FOCO vê a própria série…
+    assert out.motivo != "sem_serie"
+    assert demo.id in {i.municipio_id for i in out.itens}
+    # …mas segue fora do ranking (cobertura é demo-free → posição None).
+    assert out.posicao is None
+
+
+def test_municipio_inativo_fora_da_posicao(ctx):
+    db, m1, m2, m3, _ = ctx
+    inativo = Municipio(nome="Omega", estado="MG", ativo=False)
+    db.add(inativo)
+    db.flush()
+    db.add(PopulacaoMunicipio(municipio_id=inativo.id, ano=2024, populacao=10_000))
+    db.commit()
+    _seed_pib(db, (m1.id, 2022, 110.0), (m2.id, 2022, 220.0),
+              (inativo.id, 2022, 999.0))
+    out = comparativo_benchmark(indicador="pib", fixados=None, mid=m1.id, db=db)
+    # Nacional e estadual contam a MESMA população (refs = ativos): o inativo
+    # não entra em nenhum dos dois totais.
+    assert out.posicao.nacional.total == 2
+    assert out.posicao.nacional.rank == 2
