@@ -10,9 +10,12 @@ class Settings(BaseSettings):
     POSTGRES_HOST: str
     POSTGRES_PORT: int
 
-    # Auth
+    # Auth — access token em 30 dias enquanto o delogar automático está
+    # desabilitado (o front ainda não usa o refresh token; ao implementar o
+    # fluxo de refresh, voltar para 30 minutos). Env var em produção
+    # sobrescreve este default.
     SECRET_KEY: str
-    ACCESS_TOKEN_EXPIRE_MINUTES: int = Field(default=30)
+    ACCESS_TOKEN_EXPIRE_MINUTES: int = Field(default=43200)
     REFRESH_TOKEN_EXPIRE_DAYS: int = Field(default=7)
 
     # App

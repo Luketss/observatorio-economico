@@ -19,8 +19,13 @@ export function AuthProvider({ children }) {
       .then((res) => {
         setUser(res.data.data);
       })
-      .catch(() => {
-        localStorage.removeItem("access_token");
+      .catch((err) => {
+        // Só descarta o token quando o backend o rejeitou de fato — uma falha
+        // de rede/cold start aqui apagava uma sessão ainda válida.
+        const status = err.response?.status;
+        if (status === 401 || status === 403) {
+          localStorage.removeItem("access_token");
+        }
         setUser(null);
       })
       .finally(() => setLoading(false));
