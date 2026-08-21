@@ -1,7 +1,7 @@
 """Cidade Inteligente — acompanhamento genérico de certificações de cidade.
-Leitura com gate de plano (scoped_modulo) e view-as; escrita por permissão
-de área + tenancy inline (moldes da Gestão Empresarial/F3)."""
-from app.api.deps import get_current_user, get_db, scoped_modulo
+Escrita por permissão de área + tenancy inline (moldes da Gestão Empresarial/F3).
+Gate de plano fica no front via NAV_FLAT."""
+from app.api.deps import get_current_user, get_db
 from app.core.exceptions import ForbiddenException, NotFoundException
 from app.models.cidade_inteligente import CertificacaoCidade, CertificacaoRequisito
 from app.models.usuario import Usuario
@@ -50,7 +50,6 @@ def _resumo_query(db: Session):
             func.sum(case((CertificacaoRequisito.status == "pendente", 1), else_=0)).label("pendentes"),
         )
         .outerjoin(CertificacaoRequisito, CertificacaoRequisito.certificacao_id == CertificacaoCidade.id)
-        .filter(CertificacaoCidade.ativo.is_(True))
         .group_by(CertificacaoCidade.id)
     )
 
@@ -69,7 +68,7 @@ def listar_certificacoes(
     db: Session = Depends(get_db),
     current_user: Usuario = Depends(get_current_user),
 ):
-    q = _resumo_query(db)
+    q = _resumo_query(db).filter(CertificacaoCidade.ativo.is_(True))
     if current_user.role.nome != "ADMIN_GLOBAL":
         q = q.filter(CertificacaoCidade.municipio_id == current_user.municipio_id)
     elif municipio_id is not None:

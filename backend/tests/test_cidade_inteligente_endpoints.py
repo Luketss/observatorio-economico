@@ -156,6 +156,15 @@ def test_atualizar_certificacao(ctx):
     assert upd.descricao == "meta 2027" and upd.nome == "ISO 37122"
 
 
+def test_desativar_certificacao_nao_quebra_e_sai_da_lista(ctx):
+    from app.api.v1.routers.cidade_inteligente import atualizar_certificacao, listar_certificacoes
+    db, _, u1, *_ = ctx
+    cert = _criar_cert(db, u1)
+    out = atualizar_certificacao(cert.id, CertificacaoUpdate(ativo=False), db=db, current_user=u1)
+    assert out.id == cert.id
+    assert listar_certificacoes(municipio_id=None, db=db, current_user=u1) == []
+
+
 def test_rota_registrada_no_app():
     from app.main import app
     paths = app.openapi()["paths"]
