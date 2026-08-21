@@ -31,6 +31,7 @@ const MODULOS = [
   { key: "desenvolvimento_economico.escrita", label: "Desenv. Econômico — Escrita de Projetos" },
   { key: "desenvolvimento_economico.premiacoes", label: "Desenv. Econômico — Premiações" },
   { key: "dados_internos.indicadores", label: "Dados Internos — Indicadores" },
+  { key: "cidade_inteligente", label: "Cidade Inteligente — Certificações ISO/ABNT" },
   { key: "dados_internos.plano_gov", label: "Dados Internos — Plano de Governo" },
   { key: "dados_internos.calendario", label: "Dados Internos — Calendário" },
   { key: "releases", label: "Releases" },

@@ -13,6 +13,7 @@ import {
   ChartBarSquareIcon,
   ChartPieIcon,
   ClipboardDocumentListIcon,
+  CpuChipIcon,
   FolderOpenIcon,
   FunnelIcon,
   GlobeAltIcon,
@@ -53,6 +54,7 @@ export const NAV_STRUCTURE = [
     label: "Indicadores & Cidade Int.",
     items: [
       { type: "link", to: "/app/dados-internos/indicadores", label: "Indicadores Internos", icon: ChartPieIcon, modulo: "dados_internos.indicadores" },
+      { type: "link", to: "/app/cidade-inteligente", label: "Cidade Inteligente", icon: CpuChipIcon, modulo: "cidade_inteligente" },
     ],
   },
   {

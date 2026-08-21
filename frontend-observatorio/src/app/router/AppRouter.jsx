@@ -54,6 +54,7 @@ import ImpactoPage from "../../pages/impacto/ImpactoPage";
 import PainelPrefeitoPage from "../../pages/painel-prefeito/PainelPrefeitoPage";
 import NotificacoesPage from "../../pages/notificacoes/NotificacoesPage";
 import CertificacoesShell from "../../pages/desenvolvimento-economico/CertificacoesShell";
+import CidadeInteligentePage from "../../pages/cidade-inteligente/CidadeInteligentePage";
 
 function ProtectedRoute({ children }) {
   const { user, loading } = useAuth();
@@ -146,6 +147,7 @@ export default function AppRouter() {
           <Route path="desenvolvimento-economico/escrita" element={<CertificacoesShell><EscritaTab /></CertificacoesShell>} />
           <Route path="desenvolvimento-economico/premiacoes" element={<CertificacoesShell><PremiacoesTab /></CertificacoesShell>} />
           <Route path="dados-internos/indicadores" element={<IndicadoresInternosPage />} />
+          <Route path="cidade-inteligente" element={<CidadeInteligentePage />} />
           <Route path="dados-internos/plano-gov" element={<PlanoGovPage />} />
           <Route path="dados-internos/calendario" element={<CalendarioPage />} />
           <Route path="impacto" element={<ImpactoPage />} />

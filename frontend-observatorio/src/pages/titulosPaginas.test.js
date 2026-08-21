@@ -15,6 +15,7 @@ const CASOS = [
   ["./desenvolvimento-economico/GestaoEmpresarialTab.jsx", "Gestão Empresarial", "Retenção & Expansão"],
   ["./dados-internos/IndicadoresInternosPage.jsx", "Indicadores Internos", "Cidade Inteligente"],
   ["./desenvolvimento-economico/CertificacoesShell.jsx", "Certificações e Premiações", null],
+  ["./cidade-inteligente/CidadeInteligentePage.jsx", "Cidade Inteligente", null],
 ];
 
 describe("Títulos das páginas renomeadas (Fase 1 — 5 eixos)", () => {

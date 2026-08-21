@@ -18,6 +18,7 @@ const AREAS = [
   ["mandato", "Timeline do Mandato"],
   ["usuarios", "Usuários do Município"],
   ["prioridades", "Prioridades do Mês"],
+  ["cidade_inteligente", "Cidade Inteligente"],
 ];
 const VERBOS = ["criar", "editar", "excluir"];
 // Áreas com verbo único: só "editar" faz sentido para prioridades.

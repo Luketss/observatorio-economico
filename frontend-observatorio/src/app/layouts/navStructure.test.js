@@ -13,6 +13,7 @@ const ROTA_MODULO = {
   "/app/pe-de-meia": "pe_de_meia",
   "/app/inss": "inss",
   "/app/dados-internos/indicadores": "dados_internos.indicadores",
+  "/app/cidade-inteligente": "cidade_inteligente",
   "/app/pib": "pib",
   "/app/vaf": "vaf",
   "/app/empresas": "empresas",
@@ -54,8 +55,8 @@ describe("NAV_STRUCTURE — 5 eixos", () => {
       NAV_FLAT.filter((i) => i.modulo != null).map((i) => [i.to, i.modulo])
     );
     expect(mapa).toEqual(ROTA_MODULO);
-    // 30 com chave + FPM e Análise Econômica sem = 32 navegáveis
-    expect(NAV_FLAT).toHaveLength(32);
+    // 31 com chave + FPM e Análise Econômica sem = 33 navegáveis — Cidade Inteligente entrou em 20/08
+    expect(NAV_FLAT).toHaveLength(33);
   });
 
   it("flags pontuais preservadas e itens bem formados", () => {
