@@ -28,6 +28,12 @@ def _assert_write(user: Usuario, verbo: str):
         raise ForbiddenException(f"Sem permissão para {verbo} em cidade_inteligente")
 
 
+def _exigir_municipio(current_user: Usuario) -> None:
+    """Criação usa o município do usuário — ADMIN_GLOBAL não tem um."""
+    if current_user.municipio_id is None:
+        raise ForbiddenException("ADMIN_GLOBAL não possui município associado")
+
+
 def _normaliza_evidencia(url: str | None) -> str | None:
     """Mesma regra do link do marco: http(s) ou 400; '' limpa (vira None)."""
     if url is None:
@@ -114,6 +120,7 @@ def criar_certificacao(
     current_user: Usuario = Depends(get_current_user),
 ):
     _assert_write(current_user, "criar")
+    _exigir_municipio(current_user)
     cert = CertificacaoCidade(municipio_id=current_user.municipio_id, **data.model_dump())
     db.add(cert)
     db.commit()

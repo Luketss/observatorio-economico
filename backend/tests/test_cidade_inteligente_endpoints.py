@@ -6,7 +6,7 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
 import app.models  # noqa: F401
-from app.core.exceptions import ForbiddenException, NotFoundException
+from app.core.exceptions import ForbiddenException
 from app.db.base import Base
 from app.models.cidade_inteligente import CertificacaoCidade, CertificacaoRequisito
 from app.models.municipio import Municipio
@@ -100,6 +100,12 @@ def test_sem_permissao_nao_cria(ctx):
     db, _, _, _, leitor, *_ = ctx
     with pytest.raises(ForbiddenException):
         _criar_cert(db, leitor)
+
+
+def test_admin_global_sem_municipio_nao_cria(ctx):
+    db, admin, *_ = ctx
+    with pytest.raises(ForbiddenException):
+        _criar_cert(db, admin)
 
 
 def test_status_invalido_rejeitado_no_schema():

@@ -22,7 +22,7 @@ def upgrade() -> None:
     sa.Column('nome', sa.String(length=150), nullable=False),
     sa.Column('entidade', sa.String(length=100), nullable=True),
     sa.Column('descricao', sa.Text(), nullable=True),
-    sa.Column('ativo', sa.Boolean(), nullable=True),
+    sa.Column('ativo', sa.Boolean(), nullable=False, server_default=sa.true()),
     sa.Column('criado_em', sa.DateTime(timezone=True), nullable=False),
     sa.Column('atualizado_em', sa.DateTime(timezone=True), nullable=False),
     sa.ForeignKeyConstraint(['municipio_id'], ['municipios.id'], ),

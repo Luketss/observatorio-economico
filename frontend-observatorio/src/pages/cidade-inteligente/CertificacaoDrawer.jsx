@@ -54,7 +54,10 @@ export default function CertificacaoDrawer({ certId, onClose }) {
   function carregar() {
     return api.get(`/cidade-inteligente/certificacoes/${certId}`)
       .then((r) => setDetalhe(r.data))
-      .catch(() => setDetalhe(null));
+      .catch(() => {
+        addToast("Não foi possível carregar a certificação", "error");
+        onClose();
+      });
   }
   useEffect(() => {
     if (certId == null) return;
@@ -231,7 +234,9 @@ export default function CertificacaoDrawer({ certId, onClose }) {
 
           <div className="space-y-3">
             {requisitosFiltrados.length === 0 ? (
-              <p className="text-xs text-slate-400 text-center py-2">Nenhum requisito nesta categoria.</p>
+              <p className="text-xs text-slate-400 text-center py-2">
+                {filtroStatus === "todos" ? "Nenhum requisito cadastrado ainda." : "Nenhum requisito nesta categoria."}
+              </p>
             ) : (
               requisitosFiltrados.map((req) => (
                 <div key={req.id} className="rounded-xl border border-[var(--border)] p-3 space-y-1.5">
