@@ -51,6 +51,7 @@ from app.models.populacao import PopulacaoMunicipio
 from app.models.fpm import FpmMensal
 from app.models.captacao_federal import CaptacaoFederalAnual
 from app.models.emenda import EmendaParlamentar
+from app.models.cidade_inteligente import CertificacaoCidade, CertificacaoRequisito
 
 __all__ = [
     "Usuario",
@@ -103,4 +104,6 @@ __all__ = [
     "FpmMensal",
     "CaptacaoFederalAnual",
     "EmendaParlamentar",
+    "CertificacaoCidade",
+    "CertificacaoRequisito",
 ]
