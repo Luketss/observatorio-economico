@@ -16,6 +16,7 @@ AREAS = (
     "mandato",
     "usuarios",
     "prioridades",
+    "cidade_inteligente",
 )
 
 VERBOS = ("criar", "editar", "excluir")
@@ -31,6 +32,7 @@ AREA_LABELS = {
     "mandato": "Timeline do Mandato",
     "usuarios": "Usuários do Município",
     "prioridades": "Prioridades do Mês",
+    "cidade_inteligente": "Cidade Inteligente",
 }
 
 PERMISSOES_TODAS = {area: list(VERBOS) for area in AREAS}
