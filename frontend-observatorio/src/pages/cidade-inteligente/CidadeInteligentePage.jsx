@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
+import { motion } from "framer-motion";
 import { PlusIcon, XMarkIcon } from "@heroicons/react/24/outline";
 import { useAuth } from "../../context/AuthContext";
 import { useViewAs } from "../../context/ViewAsContext";
@@ -79,15 +80,15 @@ export default function CidadeInteligentePage() {
 
   if (needsMunicipio) {
     return (
-      <div>
+      <motion.div initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3 }}>
         <NidPageHeader title="Cidade Inteligente" sub="Certificações e selos que o município acompanha." />
         <SelecioneMunicipio />
-      </div>
+      </motion.div>
     );
   }
 
   return (
-    <div>
+    <motion.div initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3 }}>
       <NidPageHeader title="Cidade Inteligente" sub="Certificações e selos que o município acompanha." />
 
       <div className="flex justify-end mb-4">
@@ -230,6 +231,6 @@ export default function CidadeInteligentePage() {
       )}
 
       <CertificacaoDrawer certId={aberta} onClose={fecharDrawer} />
-    </div>
+    </motion.div>
   );
 }

@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { render, screen, fireEvent } from "@testing-library/react";
+import { render, screen, fireEvent, waitFor } from "@testing-library/react";
 
 const authState = { user: { role: "PREFEITO", permissoes: { cidade_inteligente: ["criar", "editar", "excluir"] } } };
 vi.mock("../../context/AuthContext", () => ({ useAuth: () => authState }));
@@ -18,9 +18,13 @@ const DETALHE = {
   ],
 };
 vi.mock("../../services/api", () => ({
-  default: { get: vi.fn(() => Promise.resolve({ data: DETALHE })) },
+  default: {
+    get: vi.fn(() => Promise.resolve({ data: DETALHE })),
+    put: vi.fn(() => Promise.resolve({ data: {} })),
+  },
 }));
 
+import api from "../../services/api";
 import CertificacaoDrawer from "./CertificacaoDrawer";
 
 const montar = () => render(<CertificacaoDrawer certId={1} onClose={() => {}} />);
@@ -59,5 +63,23 @@ describe("CertificacaoDrawer", () => {
     montar();
     await screen.findByText("Plano diretor");
     expect(screen.queryByRole("button", { name: /Novo requisito/ })).toBeNull();
+  });
+
+  it("permissão só de editar (sem excluir) mostra Novo requisito mas não Excluir certificação", async () => {
+    authState.user = { role: "PREFEITO", permissoes: { cidade_inteligente: ["editar"] } };
+    montar();
+    await screen.findByText("Plano diretor");
+    expect(screen.getByRole("button", { name: "Novo requisito" })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Excluir certificação" })).toBeNull();
+  });
+
+  it("toggle de status do requisito chama api.put com o novo status", async () => {
+    montar();
+    await screen.findByText("Wi-Fi público");
+    fireEvent.click(screen.getByRole("button", { name: /Editar status de Wi-Fi público/ }));
+    const select = screen.getByRole("combobox", { name: /Status do requisito Wi-Fi público/ });
+    fireEvent.change(select, { target: { value: "atendido" } });
+    expect(api.put).toHaveBeenCalledWith("/cidade-inteligente/requisitos/11", { status: "atendido" });
+    await waitFor(() => expect(api.get).toHaveBeenCalledTimes(2));
   });
 });

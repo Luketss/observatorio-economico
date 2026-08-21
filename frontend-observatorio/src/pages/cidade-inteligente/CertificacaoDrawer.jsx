@@ -37,6 +37,7 @@ export default function CertificacaoDrawer({ certId, onClose }) {
   const { addToast } = useToast();
   const isGlobal = user?.role === "ADMIN_GLOBAL";
   const canEditar = usePermissao("cidade_inteligente", "editar") && !isGlobal;
+  const canExcluirCert = usePermissao("cidade_inteligente", "excluir") && !isGlobal;
 
   const [detalhe, setDetalhe] = useState(null);
   const [salvando, setSalvando] = useState(false);
@@ -183,16 +184,20 @@ export default function CertificacaoDrawer({ certId, onClose }) {
                   <h2 className="text-lg font-bold text-[var(--text)] leading-snug">{detalhe.nome}</h2>
                   {detalhe.descricao && <p className="text-xs text-slate-400 mt-1">{detalhe.descricao}</p>}
                 </div>
-                {canEditar && !confirmandoExclusao && (
+                {(canEditar || canExcluirCert) && !confirmandoExclusao && (
                   <div className="flex gap-1 shrink-0">
-                    <button type="button" onClick={abrirEdicaoCert} aria-label="Editar certificação"
-                      className="p-1.5 rounded-lg text-slate-400 hover:text-blue-600 hover:bg-[var(--panel-2)] transition-colors cursor-pointer">
-                      <PencilIcon className="w-3.5 h-3.5" />
-                    </button>
-                    <button type="button" onClick={() => setConfirmandoExclusao(true)} aria-label="Excluir certificação"
-                      className="p-1.5 rounded-lg text-slate-400 hover:text-red-500 hover:bg-[var(--panel-2)] transition-colors cursor-pointer">
-                      <TrashIcon className="w-3.5 h-3.5" />
-                    </button>
+                    {canEditar && (
+                      <button type="button" onClick={abrirEdicaoCert} aria-label="Editar certificação"
+                        className="p-1.5 rounded-lg text-slate-400 hover:text-blue-600 hover:bg-[var(--panel-2)] transition-colors cursor-pointer">
+                        <PencilIcon className="w-3.5 h-3.5" />
+                      </button>
+                    )}
+                    {canExcluirCert && (
+                      <button type="button" onClick={() => setConfirmandoExclusao(true)} aria-label="Excluir certificação"
+                        className="p-1.5 rounded-lg text-slate-400 hover:text-red-500 hover:bg-[var(--panel-2)] transition-colors cursor-pointer">
+                        <TrashIcon className="w-3.5 h-3.5" />
+                      </button>
+                    )}
                   </div>
                 )}
               </>
