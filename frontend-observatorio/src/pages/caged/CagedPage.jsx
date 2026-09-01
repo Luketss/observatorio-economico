@@ -28,6 +28,7 @@ const A5 = "var(--accent-5)";
 
 const MES_LABEL = ["Jan", "Fev", "Mar", "Abr", "Mai", "Jun", "Jul", "Ago", "Set", "Out", "Nov", "Dez"];
 const fmtBR = (v) => v != null ? Number(v).toLocaleString("pt-BR") : "—";
+const fmtSinal = (v) => `${v > 0 ? "+" : ""}${fmtBR(v)}`;
 const fmtCurrency = (v) => v != null
   ? Number(v).toLocaleString("pt-BR", { style: "currency", currency: "BRL", maximumFractionDigits: 0 })
   : "—";
@@ -177,6 +178,33 @@ export default function CagedPage() {
       saldo: filtered.reduce((s, d) => s + (d.saldo || 0), 0),
     };
   }, [serie, anoAtivo]);
+
+  // KPI "Saldo · Acumulado": segue o ano em foco, como o resto da página; a
+  // aba "Histórico" mostra o acumulado de todo o período coletado. Antes
+  // somava todos os anos por padrão — com a série cobrindo ago/25–jul/26 o
+  // leitor via −54 enquanto o insight logo abaixo dizia "Saldo 2026: +208".
+  const [saldoModo, setSaldoModo] = useState("ano");
+  const saldoKpi = useMemo(() => {
+    const historico = resumo?.saldo_total ?? null;
+    if (saldoModo === "historico") {
+      return {
+        valor: historico,
+        delta: resumo ? {
+          v: pct(Math.abs(resumo.saldo_total), resumo.total_admissoes + resumo.total_desligamentos),
+          up: resumo.saldo_total >= 0,
+        } : null,
+        foot: "empregos formais líquidos · todo o período",
+      };
+    }
+    return {
+      valor: totaisAno.saldo,
+      delta: {
+        v: pct(Math.abs(totaisAno.saldo), totaisAno.admissoes + totaisAno.desligamentos),
+        up: totaisAno.saldo >= 0,
+      },
+      foot: historico != null ? `${fmtSinal(historico)} no histórico` : "empregos formais líquidos",
+    };
+  }, [saldoModo, resumo, totaisAno]);
 
   const ultimoSalario = salario.slice(-1)[0]?.salario_medio_admissoes;
 
@@ -364,21 +392,19 @@ export default function CagedPage() {
         <div className="nid-kpis">
           <NidKpiHero
             label="Saldo · Acumulado"
-            badge="histórico"
-            value={fmtBR(resumo?.saldo_total)}
+            tabs={[anoAtivo ? String(anoAtivo) : "Ano", "Histórico"]}
+            onTabChange={(i) => setSaldoModo(i === 0 ? "ano" : "historico")}
+            value={fmtBR(saldoKpi.valor)}
             unit="vagas"
-            delta={resumo ? {
-              v: pct(Math.abs(resumo.saldo_total), resumo.total_admissoes + resumo.total_desligamentos),
-              up: resumo.saldo_total >= 0,
-            } : null}
-            foot="empregos formais líquidos"
-            color={(resumo?.saldo_total ?? 0) >= 0 ? A5 : A2}
+            delta={saldoKpi.delta}
+            foot={saldoKpi.foot}
+            color={(saldoKpi.valor ?? 0) >= 0 ? A5 : A2}
             dataset="caged"
             indicadorKey="kpi_saldo_acumulado"
           />
           <NidKpiHero
             label="Admissões"
-            badge={ultimoAno ? String(ultimoAno) : null}
+            badge={anoAtivo ? String(anoAtivo) : null}
             value={fmtBR(totaisAno.admissoes)}
             unit=""
             foot={`${fmtBR(resumo?.total_admissoes)} no histórico`}
@@ -389,7 +415,7 @@ export default function CagedPage() {
           />
           <NidKpiHero
             label="Desligamentos"
-            badge={ultimoAno ? String(ultimoAno) : null}
+            badge={anoAtivo ? String(anoAtivo) : null}
             value={fmtBR(totaisAno.desligamentos)}
             unit=""
             foot={`${fmtBR(resumo?.total_desligamentos)} no histórico`}

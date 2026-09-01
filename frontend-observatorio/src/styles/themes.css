@@ -569,6 +569,16 @@ body.theme-minimal .nid-brand-logo { filter: none; }
   color: var(--text-mute);
   letter-spacing: 0.06em;
 }
+.nid-kpi-tabs {
+  margin-left: auto;
+  display: inline-flex;
+  gap: 2px;
+}
+.nid-kpi-tabs .nid-tab {
+  font-size: 9.5px;
+  padding: 2px 7px;
+  letter-spacing: 0.06em;
+}
 .nid-kpi-value .nid-unit {
   font-size: 14px;
   font-weight: 500;

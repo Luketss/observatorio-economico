@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { render, screen, cleanup } from "@testing-library/react";
+import { render, screen, cleanup, fireEvent } from "@testing-library/react";
 import { describe, expect, it, vi, afterEach } from "vitest";
 
 vi.mock("../ChartInfoIcon", () => ({
@@ -59,5 +59,26 @@ describe("NidKpiHero + ChartInfoIcon", () => {
   it("só uma das props não renderiza o ícone", () => {
     render(<NidKpiHero label="Saldo · Acumulado" value="123" dataset="caged" />);
     expect(screen.queryByTestId("chart-info")).toBeNull();
+  });
+});
+
+describe("NidKpiHero — abas de período", () => {
+  afterEach(() => cleanup());
+
+  it("sem tabs não renderiza tablist (comportamento atual preservado)", () => {
+    render(<NidKpiHero label="Saldo" value="1" />);
+    expect(screen.queryByRole("tablist")).toBeNull();
+  });
+
+  it("renderiza as abas, marca a primeira como ativa e avisa a troca", () => {
+    const onTabChange = vi.fn();
+    render(<NidKpiHero label="Saldo" value="1" tabs={["2026", "Histórico"]} onTabChange={onTabChange} />);
+    const abas = screen.getAllByRole("tab");
+    expect(abas.map((a) => a.textContent)).toEqual(["2026", "Histórico"]);
+    expect(abas[0].getAttribute("aria-selected")).toBe("true");
+    fireEvent.click(abas[1]);
+    expect(onTabChange).toHaveBeenCalledWith(1);
+    expect(abas[1].getAttribute("aria-selected")).toBe("true");
+    expect(abas[0].getAttribute("aria-selected")).toBe("false");
   });
 });

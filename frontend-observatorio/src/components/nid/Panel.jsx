@@ -114,8 +114,10 @@ export function NidInsight({ kind = "info", children }) {
 export function NidKpiHero({
   label, badge, value, unit, delta, foot, color = "var(--accent-1)", sparkData, glow = true,
   dataset, indicadorKey,
+  tabs, onTabChange, // abas de período do próprio KPI (ex.: ["2026", "Histórico"])
 }) {
   const comInfo = Boolean(dataset && indicadorKey);
+  const [activeTab, setActiveTab] = useState(0);
   return (
     <div
       className="nid-kpi"
@@ -125,6 +127,22 @@ export function NidKpiHero({
         <span>{label}</span>
         {comInfo && <ChartInfoIcon dataset={dataset} indicadorKey={indicadorKey} />}
         {badge && <span className="nid-badge">{badge}</span>}
+        {tabs && tabs.length > 0 && (
+          <span className="nid-kpi-tabs" role="tablist">
+            {tabs.map((t, i) => (
+              <button
+                key={i}
+                type="button"
+                role="tab"
+                aria-selected={i === activeTab}
+                className={`nid-tab ${i === activeTab ? "active" : ""}`}
+                onClick={() => { setActiveTab(i); onTabChange?.(i); }}
+              >
+                {t}
+              </button>
+            ))}
+          </span>
+        )}
       </div>
       <div className="nid-kpi-value">
         {value}
