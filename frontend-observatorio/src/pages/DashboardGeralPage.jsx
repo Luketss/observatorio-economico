@@ -447,7 +447,6 @@ export default function DashboardGeralPage() {
             colors={[A3, A1, A4, A2]}
             glow
             height={260}
-           
             focusSeries={cmp.focusSeries}
             peerCount={cmp.peerSeries.length}
             showMedian

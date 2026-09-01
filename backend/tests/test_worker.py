@@ -220,6 +220,7 @@ def test_iniciar_job_recusa_selecao_acima_do_maximo_da_fonte():
     assert exc.value.status_code == 400
     assert str(n) in exc.value.detail
     assert str(MAX_MUNICIPIOS_POR_EXECUCAO) in exc.value.detail
+    db.execute.assert_not_called()  # nem o advisory lock: a guarda vem antes
     db.add.assert_not_called()
     db.commit.assert_not_called()
 
@@ -230,7 +231,8 @@ def test_iniciar_job_aceita_selecao_no_limite_da_fonte():
 
     db = _db_sem_job_ativo()
     db.query(Municipio).all.return_value = [MagicMock() for _ in range(MAX_MUNICIPIOS_POR_EXECUCAO)]
-    with patch("app.services.ingestao_automatica.runner.settings") as st,          patch("app.services.ingestao_automatica.runner.threading.Thread"):
+    with patch("app.services.ingestao_automatica.runner.settings") as st, \
+         patch("app.services.ingestao_automatica.runner.threading.Thread"):
         st.INGESTAO_EXECUTOR = "worker"
         job = iniciar_job(db, "cnpj", {"estado": "MG"}, usuario_id=1)
     assert job is not None
@@ -242,7 +244,8 @@ def test_fontes_sem_teto_nao_sao_limitadas():
 
     db = _db_sem_job_ativo()
     db.query(Municipio).all.return_value = [MagicMock() for _ in range(500)]
-    with patch("app.services.ingestao_automatica.runner.settings") as st,          patch("app.services.ingestao_automatica.runner.threading.Thread"):
+    with patch("app.services.ingestao_automatica.runner.settings") as st, \
+         patch("app.services.ingestao_automatica.runner.threading.Thread"):
         st.INGESTAO_EXECUTOR = "worker"
         job = iniciar_job(db, "populacao", {"estado": "MG"}, usuario_id=1)
     assert job is not None

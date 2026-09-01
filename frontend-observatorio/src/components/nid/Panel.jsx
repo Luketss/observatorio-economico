@@ -128,7 +128,7 @@ export function NidKpiHero({
         {comInfo && <ChartInfoIcon dataset={dataset} indicadorKey={indicadorKey} />}
         {badge && <span className="nid-badge">{badge}</span>}
         {tabs && tabs.length > 0 && (
-          <span className="nid-kpi-tabs" role="tablist">
+          <span className="nid-kpi-tabs" role="tablist" aria-label="Período">
             {tabs.map((t, i) => (
               <button
                 key={i}

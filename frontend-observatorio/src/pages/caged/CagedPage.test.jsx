@@ -73,4 +73,14 @@ describe("CagedPage — KPI Saldo segue o ano em foco", () => {
     expect(kpi("Admissões").querySelector(".nid-badge").textContent).toBe("2025");
     expect(kpi("Desligamentos").querySelector(".nid-badge").textContent).toBe("2025");
   });
+
+  it("sem série não inventa zero: o KPI mostra — e sem delta", async () => {
+    respostas["/caged/serie"] = [];
+    // /caged/resumo devolve sentinela zerada quando não há dados
+    respostas["/caged/resumo"] = { total_admissoes: 0, total_desligamentos: 0, saldo_total: 0 };
+    montar();
+    await esperarKpis();
+    expect(valor("Saldo · Acumulado").trim()).toBe("— vagas");
+    expect(kpi("Saldo · Acumulado").querySelector(".nid-delta")).toBeNull();
+  });
 });

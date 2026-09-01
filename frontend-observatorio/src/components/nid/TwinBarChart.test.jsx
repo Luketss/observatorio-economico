@@ -7,7 +7,7 @@
 // antigo desmonta e o ResizeObserver, ainda preso à div desmontada, entrega a
 // notificação 0x0 que o navegador emite ao remover o elemento observado. A
 // largura vira 0 para sempre (o observer nunca é religado à div nova).
-import { describe, it, expect, beforeEach } from "vitest";
+import { describe, it, expect, beforeEach, afterAll, vi } from "vitest";
 import { render, act } from "@testing-library/react";
 import { TwinBarChart } from "./charts.jsx";
 
@@ -26,7 +26,8 @@ class FakeResizeObserver {
   unobserve(el) { this.targets.delete(el); }
   disconnect() { this.disconnected = true; this.targets.clear(); }
 }
-globalThis.ResizeObserver = FakeResizeObserver;
+vi.stubGlobal("ResizeObserver", FakeResizeObserver);
+afterAll(() => vi.unstubAllGlobals());
 
 function entregar(width, filtro = () => true) {
   act(() => {

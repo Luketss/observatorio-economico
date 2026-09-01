@@ -196,15 +196,18 @@ export default function CagedPage() {
         foot: "empregos formais líquidos · todo o período",
       };
     }
+    // Sem série (município sem CAGED ou /caged/serie falhou) não há ano em
+    // foco: o KPI mostra "—", não um zero silencioso.
+    const temAno = years.length > 0;
     return {
-      valor: totaisAno.saldo,
-      delta: {
+      valor: temAno ? totaisAno.saldo : null,
+      delta: temAno ? {
         v: pct(Math.abs(totaisAno.saldo), totaisAno.admissoes + totaisAno.desligamentos),
         up: totaisAno.saldo >= 0,
-      },
-      foot: historico != null ? `${fmtSinal(historico)} no histórico` : "empregos formais líquidos",
+      } : null,
+      foot: temAno && historico != null ? `${fmtSinal(historico)} no histórico` : "empregos formais líquidos",
     };
-  }, [saldoModo, resumo, totaisAno]);
+  }, [saldoModo, resumo, totaisAno, years]);
 
   const ultimoSalario = salario.slice(-1)[0]?.salario_medio_admissoes;
 

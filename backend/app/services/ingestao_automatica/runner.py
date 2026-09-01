@@ -237,17 +237,22 @@ def iniciar_job(db, dataset_key: str, filtros: dict, usuario_id: int):
     municipios = resolver_municipios(db, filtros)
     if not municipios:
         raise HTTPException(status_code=404, detail="Nenhum município ativo para o filtro informado.")
-    if fonte is not None and fonte.max_municipios and len(municipios) > fonte.max_municipios:
+    if fonte is not None and fonte.max_municipios is not None and len(municipios) > fonte.max_municipios:
         # A fonte declara o teto (cnpj mantém em memória todos os
         # estabelecimentos dos alvos). Recusar aqui, antes de criar o job, é o
         # que o admin vê na hora — antes o job nascia, "concluía" em 1s com 0
         # linhas e o motivo ficava escondido no resumo.
+        teto = fonte.max_municipios
+        if (filtros or {}).get("municipio_ids"):
+            dica = f"reduza a seleção para até {teto} municípios"
+        else:
+            dica = (f"selecione até {teto} municípios na lista (sem filtro, ou por UF com "
+                    "mais municípios que isso, a execução é recusada)")
         raise HTTPException(
             status_code=400,
             detail=(
                 f"{fonte.label}: a seleção tem {len(municipios)} municípios e a fonte aceita "
-                f"no máximo {fonte.max_municipios} por execução — selecione os municípios na "
-                "lista (filtro de UF ou 'todos' excede o limite)."
+                f"no máximo {teto} por execução — {dica}."
             ),
         )
 

@@ -393,8 +393,8 @@ export default function DatasetFontesAdminPage() {
                     )}
                     {f.max_municipios && (
                       <p className="text-xs mt-0.5" style={{ color: "var(--accent-4)" }}>
-                        Máximo de {f.max_municipios} municípios por execução — selecione os municípios
-                        na lista (filtro de UF ou "todos" excede o limite).
+                        Máximo de {f.max_municipios} municípios por execução — selecione até {f.max_municipios} na
+                        lista (sem filtro, ou por UF com mais municípios que isso, a execução é recusada).
                       </p>
                     )}
                   </div>

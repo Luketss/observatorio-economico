@@ -12,6 +12,10 @@ import { createContext, useContext, useState, useMemo } from "react";
  *
  * Charts without syncGroup, or rendered outside a provider, are completely
  * unaffected — the default context is a no-op.
+ *
+ * Sem consumidor em páginas desde set/2026: o Núcleo de Dados deixou de
+ * sincronizar Evolução do PIB ↔ PIB Comparativo (o cliente reportou o hover
+ * espelhado como bug). Religar só por decisão de produto.
  */
 
 const Ctx = createContext({ get: () => undefined, set: () => {} });
