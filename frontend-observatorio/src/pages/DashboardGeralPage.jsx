@@ -29,7 +29,6 @@ import {
   fmtMoneyFull,
   fmtNumber,
 } from "../components/nid/charts";
-import { ChartHoverProvider } from "../components/nid/ChartHoverContext";
 import { montarComparativo, descreverPares } from "../utils/seriesComparativo";
 import { fmtBR, moneyDisplay } from "../utils/metricasEconomicas";
 import {
@@ -385,78 +384,78 @@ export default function DashboardGeralPage() {
       </h3>
 
       {/* PIB area chart + Receita Donut */}
-      {/* ChartHoverProvider syncs "annual" group: PIB Evolução ↔ PIB Comparativo */}
-      <ChartHoverProvider>
-        <div className="nid-grid-2">
-          <NidPanel title="Evolução do PIB" sub="Série anual · IBGE / SIDRA" tabs={["Anual"]} dataset="geral" indicadorKey="chart_evolucao_pib">
-            <AreaLineChart data={pibChartData} color={A1} glow height={280} label="PIB Total" syncGroup="annual" />
-            <NidLegend items={[{ name: "PIB Total", color: A1 }]} />
-          </NidPanel>
+      {/* Evolução do PIB e PIB Comparativo são independentes de propósito: o
+          hover sincronizado entre os dois (grupo "annual") confundia o leitor —
+          reportado como bug pelo cliente. */}
+      <div className="nid-grid-2">
+        <NidPanel title="Evolução do PIB" sub="Série anual · IBGE / SIDRA" tabs={["Anual"]} dataset="geral" indicadorKey="chart_evolucao_pib">
+          <AreaLineChart data={pibChartData} color={A1} glow height={280} label="PIB Total" />
+          <NidLegend items={[{ name: "PIB Total", color: A1 }]} />
+        </NidPanel>
 
-          <NidPanel
-            title="Receita por Tipo"
-            sub={arrecResumo?.total_geral != null ? "Composição YTD" : "Sem dados"}
-            dataset="geral"
-            indicadorKey="chart_receita_por_tipo"
-          >
-            {arrecDonut.items.length > 0 ? (
-              <>
-                <DonutChart
-                  data={arrecDonut.items}
-                  colors={arrecDonut.palette}
-                  glow
-                  height={210}
-                  centerLabel={arrecResumo?.total_geral != null ? fmtMoneyShort(arrecResumo.total_geral) : ""}
-                  centerSub="ARRECADADO"
-                />
-                <NidLegend items={arrecDonut.legendItems} />
-              </>
-            ) : (
-              <div style={{
-                height: 210, display: "grid", placeItems: "center",
-                color: "var(--text-mute)", fontSize: 13, fontFamily: "var(--font-mono)",
-              }}>
-                Sem dados disponíveis
-              </div>
-            )}
-          </NidPanel>
-        </div>
+        <NidPanel
+          title="Receita por Tipo"
+          sub={arrecResumo?.total_geral != null ? "Composição YTD" : "Sem dados"}
+          dataset="geral"
+          indicadorKey="chart_receita_por_tipo"
+        >
+          {arrecDonut.items.length > 0 ? (
+            <>
+              <DonutChart
+                data={arrecDonut.items}
+                colors={arrecDonut.palette}
+                glow
+                height={210}
+                centerLabel={arrecResumo?.total_geral != null ? fmtMoneyShort(arrecResumo.total_geral) : ""}
+                centerSub="ARRECADADO"
+              />
+              <NidLegend items={arrecDonut.legendItems} />
+            </>
+          ) : (
+            <div style={{
+              height: 210, display: "grid", placeItems: "center",
+              color: "var(--text-mute)", fontSize: 13, fontFamily: "var(--font-mono)",
+            }}>
+              Sem dados disponíveis
+            </div>
+          )}
+        </NidPanel>
+      </div>
 
-        {/* VA por Setor + Comparativo cidades */}
-        <div className="nid-grid-1-1">
-          <NidPanel title="Valor Adicionado por Setor" sub="Decomposição setorial · R$ correntes" dataset="geral" indicadorKey="chart_va_setor">
-            <StackedBarChart
-              data={vaSetorData}
-              keys={["Agropecuária", "Indústria", "Serviços", "Governo"]}
-              colors={[A5, A1, A3, A4]}
-              glow
-              height={260}
-            />
-            <NidLegend items={[
-              { name: "Agropecuária", color: A5 },
-              { name: "Indústria",   color: A1 },
-              { name: "Serviços",    color: A3 },
-              { name: "Governo",     color: A4 },
-            ]} />
-          </NidPanel>
+      {/* VA por Setor + Comparativo cidades */}
+      <div className="nid-grid-1-1">
+        <NidPanel title="Valor Adicionado por Setor" sub="Decomposição setorial · R$ correntes" dataset="geral" indicadorKey="chart_va_setor">
+          <StackedBarChart
+            data={vaSetorData}
+            keys={["Agropecuária", "Indústria", "Serviços", "Governo"]}
+            colors={[A5, A1, A3, A4]}
+            glow
+            height={260}
+          />
+          <NidLegend items={[
+            { name: "Agropecuária", color: A5 },
+            { name: "Indústria",   color: A1 },
+            { name: "Serviços",    color: A3 },
+            { name: "Governo",     color: A4 },
+          ]} />
+        </NidPanel>
 
-          <NidPanel title="PIB Comparativo" sub={descreverPares(pibComp)} dataset="geral" indicadorKey="chart_pib_comparativo">
-            <MultiLineChart
-              data={cmp.data}
-              series={seriesComp}
-              colors={[A3, A1, A4, A2]}
-              glow
-              height={260}
-              syncGroup="annual"
-              focusSeries={cmp.focusSeries}
-              peerCount={cmp.peerSeries.length}
-              showMedian
-              showBand
-              legend
-            />
-          </NidPanel>
-        </div>
-      </ChartHoverProvider>
+        <NidPanel title="PIB Comparativo" sub={descreverPares(pibComp)} dataset="geral" indicadorKey="chart_pib_comparativo">
+          <MultiLineChart
+            data={cmp.data}
+            series={seriesComp}
+            colors={[A3, A1, A4, A2]}
+            glow
+            height={260}
+           
+            focusSeries={cmp.focusSeries}
+            peerCount={cmp.peerSeries.length}
+            showMedian
+            showBand
+            legend
+          />
+        </NidPanel>
+      </div>
 
       {/* CAGED twin bars + Top setores */}
       <div className="nid-grid-1-1">

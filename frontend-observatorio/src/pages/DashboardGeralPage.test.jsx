@@ -65,3 +65,50 @@ describe("DashboardGeralPage — porta de entrada", () => {
     expect(api.get).not.toHaveBeenCalled();
   });
 });
+
+// ── Gráficos de PIB independentes ────────────────────────────────────────────
+// O cliente reportou como bug: passar o mouse na "Evolução do PIB" acendia o
+// tooltip fantasma no "PIB Comparativo" (e vice-versa). Os dois gráficos não
+// compartilham mais o grupo de hover.
+import { fireEvent } from "@testing-library/react";
+
+// jsdom não implementa ResizeObserver; gráficos com dados medem o container.
+if (typeof globalThis.ResizeObserver === "undefined") {
+  globalThis.ResizeObserver = class { observe() {} unobserve() {} disconnect() {} };
+}
+
+describe("DashboardGeralPage — gráficos de PIB independentes", () => {
+  it("hover na Evolução do PIB não acende tooltip no PIB Comparativo", async () => {
+    respostas["/pib/serie"] = [
+      { ano: 2020, pib_total: 100 }, { ano: 2021, pib_total: 120 }, { ano: 2022, pib_total: 130 },
+    ];
+    respostas["/pib/comparativo"] = {
+      foco: { municipio_id: 1, nome: "Foco", estado: "MG" },
+      pares: [{ municipio_id: 2, nome: "Par", estado: "MG" }],
+      fixados: [], criterio_pares: "populacao", motivo: null,
+      itens: [
+        { ano: 2020, municipio_id: 1, cidade: "Foco", pib_total: 100, va_agropecuaria: 10, va_industria: 30, va_servicos: 40, va_governo: 20 },
+        { ano: 2021, municipio_id: 1, cidade: "Foco", pib_total: 120, va_agropecuaria: 12, va_industria: 36, va_servicos: 48, va_governo: 24 },
+        { ano: 2022, municipio_id: 1, cidade: "Foco", pib_total: 130, va_agropecuaria: 13, va_industria: 39, va_servicos: 52, va_governo: 26 },
+        { ano: 2020, municipio_id: 2, cidade: "Par", pib_total: 90 },
+        { ano: 2021, municipio_id: 2, cidade: "Par", pib_total: 95 },
+        { ano: 2022, municipio_id: 2, cidade: "Par", pib_total: 99 },
+      ],
+    };
+    montar();
+    await waitFor(() => expect(screen.getByText("Evolução do PIB")).toBeInTheDocument());
+    const evolucao = screen.getByText("Evolução do PIB").closest(".nid-panel");
+    const comparativo = screen.getByText("PIB Comparativo").closest(".nid-panel");
+    await waitFor(() => expect(evolucao.querySelector("rect[fill='transparent']")).not.toBeNull());
+    await waitFor(() => expect(comparativo.querySelector("rect[fill='transparent']")).not.toBeNull());
+
+    fireEvent.mouseMove(evolucao.querySelector("rect[fill='transparent']"), { clientX: 120 });
+    expect(evolucao.querySelectorAll(".nid-tip").length).toBe(1);
+    expect(comparativo.querySelectorAll(".nid-tip").length).toBe(0);
+
+    fireEvent.mouseLeave(evolucao.querySelector(".nid-chart-wrap"));
+    fireEvent.mouseMove(comparativo.querySelector("rect[fill='transparent']"), { clientX: 120 });
+    expect(comparativo.querySelectorAll(".nid-tip").length).toBe(1);
+    expect(evolucao.querySelectorAll(".nid-tip").length).toBe(0);
+  });
+});
