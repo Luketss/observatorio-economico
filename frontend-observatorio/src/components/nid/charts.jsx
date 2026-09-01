@@ -1288,10 +1288,11 @@ export function MultiLineChart({
 function TwinBarBrutoChart({
   data, height, glow,
   colorUp, colorDown,
-  yCaption, w, wrapRef,
+  yCaption,
   syncGroup,
 }) {
   const id = useId().replace(/:/g, "");
+  const [wrapRef, w] = useContainerWidth(800);
   const [localHover, setLocalHover] = useState(null);
   const [externalLabel, setExternalLabel] = useChartHover(syncGroup);
 
@@ -1410,10 +1411,11 @@ function TwinBarBrutoChart({
 function TwinBarSaldoChart({
   data, height, glow,
   colorUp, colorDown,
-  yCaption, showCumulative, w, wrapRef,
+  yCaption, showCumulative,
   syncGroup,
 }) {
   const id = useId().replace(/:/g, "");
+  const [wrapRef, w] = useContainerWidth(800);
   const [localHover, setLocalHover] = useState(null);
   const [externalLabel, setExternalLabel] = useChartHover(syncGroup);
 
@@ -1605,14 +1607,16 @@ export function TwinBarChart({
   emptyAction,
   syncGroup,    // ticket 14: cross-chart hover sync
 }) {
-  const [wrapRef, w] = useContainerWidth(800);
   if (loading) return <ChartState kind="loading" shape="twin" height={height} />;
   if (!data || data.length === 0) return <EmptyChart h={height} shape="twin" message={emptyMessage} action={emptyAction} />;
 
   // Default showCumulative to true in saldo mode, false otherwise.
   const cumulative = showCumulative != null ? showCumulative : mode === "saldo";
 
-  const shared = { data, height, glow, colorUp, colorDown, yCaption, w, wrapRef, syncGroup };
+  // Cada renderer mede o próprio container: medir aqui e passar ref+largura
+  // deixava o ResizeObserver preso à div do renderer desmontado na troca de
+  // modo (o navegador entrega 0x0 ao removê-la) e nunca o religava à nova.
+  const shared = { data, height, glow, colorUp, colorDown, yCaption, syncGroup };
 
   if (mode === "bruto") {
     return <TwinBarBrutoChart {...shared} />;
