@@ -200,3 +200,49 @@ def test_executar_job_fonte_desconhecida_marca_erro_sem_executar():
     db_job_mock.commit.assert_called_once()
     db_mock.close.assert_called_once()
     db_job_mock.close.assert_called_once()
+
+
+# --- teto de municípios declarado pela fonte (cnpj) ---------------------------
+
+def test_iniciar_job_recusa_selecao_acima_do_maximo_da_fonte():
+    """cnpj mantém em memória todos os estabelecimentos dos alvos: a fonte
+    declara max_municipios e o job nem nasce quando a seleção o excede — o
+    admin recebe 400 na hora, em vez de um job 'concluído' com 0 linhas e o
+    aviso escondido no resumo."""
+    from app.models.municipio import Municipio
+    from app.services.ingestao_automatica.cnpj_rfb import MAX_MUNICIPIOS_POR_EXECUCAO
+
+    db = _db_sem_job_ativo()
+    n = MAX_MUNICIPIOS_POR_EXECUCAO + 1
+    db.query(Municipio).all.return_value = [MagicMock() for _ in range(n)]
+    with pytest.raises(HTTPException) as exc:
+        iniciar_job(db, "cnpj", {"estado": "MG"}, usuario_id=1)
+    assert exc.value.status_code == 400
+    assert str(n) in exc.value.detail
+    assert str(MAX_MUNICIPIOS_POR_EXECUCAO) in exc.value.detail
+    db.add.assert_not_called()
+    db.commit.assert_not_called()
+
+
+def test_iniciar_job_aceita_selecao_no_limite_da_fonte():
+    from app.models.municipio import Municipio
+    from app.services.ingestao_automatica.cnpj_rfb import MAX_MUNICIPIOS_POR_EXECUCAO
+
+    db = _db_sem_job_ativo()
+    db.query(Municipio).all.return_value = [MagicMock() for _ in range(MAX_MUNICIPIOS_POR_EXECUCAO)]
+    with patch("app.services.ingestao_automatica.runner.settings") as st,          patch("app.services.ingestao_automatica.runner.threading.Thread"):
+        st.INGESTAO_EXECUTOR = "worker"
+        job = iniciar_job(db, "cnpj", {"estado": "MG"}, usuario_id=1)
+    assert job is not None
+    db.commit.assert_called()
+
+
+def test_fontes_sem_teto_nao_sao_limitadas():
+    from app.models.municipio import Municipio
+
+    db = _db_sem_job_ativo()
+    db.query(Municipio).all.return_value = [MagicMock() for _ in range(500)]
+    with patch("app.services.ingestao_automatica.runner.settings") as st,          patch("app.services.ingestao_automatica.runner.threading.Thread"):
+        st.INGESTAO_EXECUTOR = "worker"
+        job = iniciar_job(db, "populacao", {"estado": "MG"}, usuario_id=1)
+    assert job is not None

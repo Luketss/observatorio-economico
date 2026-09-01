@@ -433,3 +433,17 @@ def test_rota_executar_arquivo_e_multipart_no_openapi():
     schema = app.openapi()
     op = schema["paths"]["/api/v1/ingestao-automatica/{dataset_key}/executar-arquivo"]["post"]
     assert "multipart/form-data" in op["requestBody"]["content"]
+
+
+# ── teto de municípios por fonte exposto ao admin ────────────────────────────
+def test_listar_fontes_expoe_o_teto_de_municipios():
+    """A tela de coletas mostra a nota do teto a partir deste campo."""
+    import app.services.ingestao_automatica  # noqa: F401 — registra as fontes
+    from unittest.mock import MagicMock
+    from app.api.v1.routers.ingestao_automatica import listar_fontes
+    from app.services.ingestao_automatica.cnpj_rfb import MAX_MUNICIPIOS_POR_EXECUCAO
+
+    out = listar_fontes(db=MagicMock(), current_user=SimpleNamespace(id=1))
+    por_key = {f["key"]: f for f in out["fontes"]}
+    assert por_key["cnpj"]["max_municipios"] == MAX_MUNICIPIOS_POR_EXECUCAO
+    assert por_key["populacao"]["max_municipios"] is None

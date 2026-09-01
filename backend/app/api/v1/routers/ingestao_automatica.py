@@ -80,6 +80,7 @@ def listar_fontes(
             "label": fonte.label,
             "fonte": fonte.fonte,
             "requer_arquivo": fonte.requer_arquivo,
+            "max_municipios": fonte.max_municipios,
             "ultima_execucao": None if ultimo_audit is None else {
                 "criado_em": ultimo_audit.criado_em,
                 "status": ultimo_audit.status,

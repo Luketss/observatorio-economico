@@ -234,8 +234,22 @@ def iniciar_job(db, dataset_key: str, filtros: dict, usuario_id: int):
     if fonte is None and dataset_key != DATASET_TODAS:
         raise HTTPException(status_code=404, detail=f"Fonte automática '{dataset_key}' não existe.")
 
-    if not resolver_municipios(db, filtros):
+    municipios = resolver_municipios(db, filtros)
+    if not municipios:
         raise HTTPException(status_code=404, detail="Nenhum município ativo para o filtro informado.")
+    if fonte is not None and fonte.max_municipios and len(municipios) > fonte.max_municipios:
+        # A fonte declara o teto (cnpj mantém em memória todos os
+        # estabelecimentos dos alvos). Recusar aqui, antes de criar o job, é o
+        # que o admin vê na hora — antes o job nascia, "concluía" em 1s com 0
+        # linhas e o motivo ficava escondido no resumo.
+        raise HTTPException(
+            status_code=400,
+            detail=(
+                f"{fonte.label}: a seleção tem {len(municipios)} municípios e a fonte aceita "
+                f"no máximo {fonte.max_municipios} por execução — selecione os municípios na "
+                "lista (filtro de UF ou 'todos' excede o limite)."
+            ),
+        )
 
     # serializa criação de jobs entre workers/requests (lock liberado no commit/rollback)
     db.execute(text("SELECT pg_advisory_xact_lock(hashtext('ingestao_job_iniciar'))"))

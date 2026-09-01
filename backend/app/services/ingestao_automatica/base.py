@@ -21,6 +21,9 @@ class FonteAutomatica:
     # fonte que exige arquivo enviado pela tela (upload → ingestao_arquivo);
     # o runner passa arquivo_id= e o /executar normal responde 400
     requer_arquivo: bool = False
+    # teto de municípios por execução (None = sem teto). O runner recusa a
+    # seleção com 400 antes de criar o job; a fonte mantém a própria guarda.
+    max_municipios: int | None = None
 
 
 FONTES_AUTOMATICAS: dict[str, FonteAutomatica] = {}

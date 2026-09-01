@@ -228,3 +228,11 @@ def test_executar_recusa_selecao_grande_sem_chamada_de_rede():
     (erro,) = resumo.erros
     assert f"{n} municípios" in erro
     assert f"limite de {MAX_MUNICIPIOS_POR_EXECUCAO}" in erro
+
+
+def test_fonte_registrada_declara_o_teto_de_municipios():
+    """O runner recusa a seleção no POST (400) a partir deste campo — a guarda
+    dentro de executar() continua como defesa em profundidade."""
+    from app.services.ingestao_automatica.base import FONTES_AUTOMATICAS
+
+    assert FONTES_AUTOMATICAS["cnpj"].max_municipios == MAX_MUNICIPIOS_POR_EXECUCAO

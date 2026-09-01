@@ -390,4 +390,5 @@ registrar(FonteAutomatica(
     label="Empresas (CNPJ/RFB)",
     fonte="RFB — Cadastro Nacional da Pessoa Jurídica, dados abertos mensais",
     executar=executar,
+    max_municipios=MAX_MUNICIPIOS_POR_EXECUCAO,
 ))

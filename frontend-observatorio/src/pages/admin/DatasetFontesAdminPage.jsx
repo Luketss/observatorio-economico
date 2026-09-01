@@ -391,6 +391,12 @@ export default function DatasetFontesAdminPage() {
                         Requer o arquivo anual do site — filtros de estado/município não se aplicam.
                       </p>
                     )}
+                    {f.max_municipios && (
+                      <p className="text-xs mt-0.5" style={{ color: "var(--accent-4)" }}>
+                        Máximo de {f.max_municipios} municípios por execução — selecione os municípios
+                        na lista (filtro de UF ou "todos" excede o limite).
+                      </p>
+                    )}
                   </div>
                 ),
               },
