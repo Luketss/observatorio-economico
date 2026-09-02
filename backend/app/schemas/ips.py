@@ -7,6 +7,12 @@ class IpsMunicipioItem(BaseModel):
     estado: str
 
 
+class IpsAnoItem(BaseModel):
+    ano: int
+    municipios: int                    # municípios (sem demo) com linha nesse ano
+    tem_municipio: bool | None = None  # só quando a consulta informa municipio_id
+
+
 class IpsScorecardItem(BaseModel):
     municipio_id: int
     ano: int

@@ -8,6 +8,7 @@ from app.api.deps import get_current_user, get_db
 from app.models.ips import IpsMunicipio
 from app.models.municipio import Municipio
 from app.schemas.ips import (
+    IpsAnoItem,
     IpsComparativoItem,
     IpsDestaque,
     IpsDestaques,
@@ -36,13 +37,65 @@ COMPONENTS = [
 ]
 
 
+def _ultimo_ano(db: Session, municipio_id: int | None = None) -> int | None:
+    """Ano mais recente com dados IPS — do município, ou da base toda (sem demo).
+
+    É o ano padrão dos endpoints quando `ano` não vem na chamada: a carga é
+    por arquivo/ano e o valor fixo (2025) deixava um ano novo invisível para
+    quem não passa o parâmetro (Painel do Prefeito)."""
+    q = db.query(func.max(IpsMunicipio.ano))
+    if municipio_id is not None:
+        q = q.filter(IpsMunicipio.municipio_id == municipio_id)
+    else:
+        q = (q.join(Municipio, IpsMunicipio.municipio_id == Municipio.id)
+             .filter(Municipio.is_demo.is_(False)))
+    return q.scalar()
+
+
+@router.get("/anos", response_model=List[IpsAnoItem])
+def listar_anos(
+    municipio_id: int | None = Query(None),
+    db: Session = Depends(get_db),
+    _=Depends(get_current_user),
+):
+    """Anos com dados IPS (mais recente primeiro) e quantos municípios cada um
+    cobre — a carga é por arquivo/ano e pode ser parcial (ex.: 2026 com 25
+    municípios). Com `municipio_id`, marca em quais anos ele tem linha, para o
+    front escolher o ano padrão sem trocar de município às escondidas."""
+    rows = (
+        db.query(IpsMunicipio.ano, func.count(func.distinct(IpsMunicipio.municipio_id)).label("n"))
+        .join(Municipio, IpsMunicipio.municipio_id == Municipio.id)
+        .filter(Municipio.is_demo.is_(False))
+        .group_by(IpsMunicipio.ano)
+        .order_by(IpsMunicipio.ano.desc())
+        .all()
+    )
+    anos_do_municipio: set[int] | None = None
+    if municipio_id is not None:
+        anos_do_municipio = {
+            a for (a,) in db.query(IpsMunicipio.ano).filter(IpsMunicipio.municipio_id == municipio_id)
+        }
+    return [
+        IpsAnoItem(
+            ano=r.ano,
+            municipios=r.n,
+            tem_municipio=None if anos_do_municipio is None else r.ano in anos_do_municipio,
+        )
+        for r in rows
+    ]
+
+
 @router.get("/municipios", response_model=List[IpsMunicipioItem])
 def listar_municipios(
-    ano: int = Query(2025),
+    ano: int | None = Query(None),
     estado: str | None = Query(None),
     db: Session = Depends(get_db),
     _=Depends(get_current_user),
 ):
+    if ano is None:
+        ano = _ultimo_ano(db)
+    if ano is None:
+        return []
     query = (
         db.query(Municipio.id, Municipio.nome, Municipio.estado)
         .join(IpsMunicipio, IpsMunicipio.municipio_id == Municipio.id)
@@ -57,16 +110,31 @@ def listar_municipios(
 
 @router.get("/scorecard", response_model=IpsScorecardItem)
 def scorecard(
-    municipio_id: int = Query(...),
-    ano: int = Query(2025),
+    municipio_id: int | None = Query(None),
+    ano: int | None = Query(None),
     db: Session = Depends(get_db),
-    _=Depends(get_current_user),
+    current_user=Depends(get_current_user),
 ):
-    row = (
-        db.query(IpsMunicipio)
-        .filter(IpsMunicipio.municipio_id == municipio_id, IpsMunicipio.ano == ano)
-        .first()
-    )
+    # O Painel do Prefeito chama sem parâmetro nenhum: vale o município do
+    # usuário (o view-as já injeta municipio_id no front) e o ano mais recente
+    # com dados dele. Sem município nenhum, o erro é explícito — antes o 422
+    # de parâmetro obrigatório virava card vazio em silêncio.
+    if municipio_id is None:
+        municipio_id = getattr(current_user, "municipio_id", None)
+    if municipio_id is None:
+        raise HTTPException(
+            status_code=400,
+            detail="Informe municipio_id: o usuário não está vinculado a um município.",
+        )
+    if ano is None:
+        ano = _ultimo_ano(db, municipio_id)
+    row = None
+    if ano is not None:
+        row = (
+            db.query(IpsMunicipio)
+            .filter(IpsMunicipio.municipio_id == municipio_id, IpsMunicipio.ano == ano)
+            .first()
+        )
     if not row:
         raise HTTPException(status_code=404, detail="IPS data not found")
     return IpsScorecardItem(
@@ -101,15 +169,19 @@ def evolucao(
 @router.get("/ranking", response_model=IpsRanking)
 def ranking(
     municipio_id: int = Query(...),
-    ano: int = Query(2025),
+    ano: int | None = Query(None),
     db: Session = Depends(get_db),
     _=Depends(get_current_user),
 ):
-    city = (
-        db.query(IpsMunicipio)
-        .filter(IpsMunicipio.municipio_id == municipio_id, IpsMunicipio.ano == ano)
-        .first()
-    )
+    if ano is None:
+        ano = _ultimo_ano(db, municipio_id)
+    city = None
+    if ano is not None:
+        city = (
+            db.query(IpsMunicipio)
+            .filter(IpsMunicipio.municipio_id == municipio_id, IpsMunicipio.ano == ano)
+            .first()
+        )
     if not city or city.ips_geral is None:
         raise HTTPException(status_code=404, detail="IPS data not found")
 
@@ -159,11 +231,15 @@ def ranking(
 @router.get("/comparativo", response_model=List[IpsComparativoItem])
 def comparativo(
     municipio_id: int = Query(...),
-    ano: int = Query(2025),
+    ano: int | None = Query(None),
     municipio_ids: str = Query(""),
     db: Session = Depends(get_db),
     _=Depends(get_current_user),
 ):
+    if ano is None:
+        ano = _ultimo_ano(db, municipio_id)
+    if ano is None:
+        return []
     ids = {municipio_id}
     if municipio_ids:
         for part in municipio_ids.split(","):
@@ -195,15 +271,19 @@ def comparativo(
 @router.get("/destaques", response_model=IpsDestaques)
 def destaques(
     municipio_id: int = Query(...),
-    ano: int = Query(2025),
+    ano: int | None = Query(None),
     db: Session = Depends(get_db),
     _=Depends(get_current_user),
 ):
-    city = (
-        db.query(IpsMunicipio)
-        .filter(IpsMunicipio.municipio_id == municipio_id, IpsMunicipio.ano == ano)
-        .first()
-    )
+    if ano is None:
+        ano = _ultimo_ano(db, municipio_id)
+    city = None
+    if ano is not None:
+        city = (
+            db.query(IpsMunicipio)
+            .filter(IpsMunicipio.municipio_id == municipio_id, IpsMunicipio.ano == ano)
+            .first()
+        )
     if not city:
         raise HTTPException(status_code=404, detail="IPS data not found")
 
@@ -243,16 +323,20 @@ def destaques(
 @router.get("/sugestoes", response_model=List[IpsSugestao])
 def sugestoes(
     municipio_id: int = Query(...),
-    ano: int = Query(2025),
+    ano: int | None = Query(None),
     limit: int = Query(5),
     db: Session = Depends(get_db),
     _=Depends(get_current_user),
 ):
-    city = (
-        db.query(IpsMunicipio)
-        .filter(IpsMunicipio.municipio_id == municipio_id, IpsMunicipio.ano == ano)
-        .first()
-    )
+    if ano is None:
+        ano = _ultimo_ano(db, municipio_id)
+    city = None
+    if ano is not None:
+        city = (
+            db.query(IpsMunicipio)
+            .filter(IpsMunicipio.municipio_id == municipio_id, IpsMunicipio.ano == ano)
+            .first()
+        )
     if not city or city.pib_per_capita is None or city.ips_geral is None:
         return []
 

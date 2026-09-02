@@ -79,7 +79,14 @@ export default function IpsPage() {
   const [selectedEstado, setSelectedEstado] = useState("");
   const [municipios, setMunicipios] = useState([]);
   const [selectedMunicipioId, setSelectedMunicipioId] = useState(null);
-  const [selectedAno, setSelectedAno] = useState(2025);
+  // Último município escolhido de propósito (o do usuário conta como escolha
+  // inicial): ao trocar de ano a página tenta mantê-lo; se ele não tem dados
+  // no ano, cai em outro município E avisa — nada de trocar às escondidas.
+  const [escolha, setEscolha] = useState(null); // { id, nome }
+  // Anos com dados vêm do backend: a carga é por arquivo/ano e pode ser
+  // parcial. null até a lista chegar; sem anos, nada é carregado.
+  const [anos, setAnos] = useState(null);
+  const [selectedAno, setSelectedAno] = useState(null);
 
   const [scorecard, setScorecard] = useState(null);
   const [evolucao, setEvolucao] = useState([]);
@@ -91,37 +98,58 @@ export default function IpsPage() {
   const [compareMunicipioIds, setCompareMunicipioIds] = useState([]);
   const [openDims, setOpenDims] = useState({ nhb: false, fbe: false, opo: false });
 
-  // Load state list on mount
+  // Anos disponíveis. Ano padrão: o mais recente em que o município do usuário
+  // tem linha — abrir direto no ano mais novo (ex.: 2026 com 25 municípios)
+  // tiraria a própria cidade da tela.
   useEffect(() => {
+    const params = user?.municipio_id ? { municipio_id: user.municipio_id } : {};
+    api.get("/ips/anos", { params }).then((res) => {
+      const lista = res.data ?? [];
+      setAnos(lista);
+      const padrao = lista.find((a) => a.tem_municipio) ?? lista[0];
+      setSelectedAno(padrao?.ano ?? null);
+    }).catch((err) => console.error("Erro ao carregar anos IPS:", err));
+  }, [user?.municipio_id]);
+
+  // Load state list when the year changes (keeps the current state if it still has data)
+  useEffect(() => {
+    if (!selectedAno) return;
     api.get("/ips/municipios", { params: { ano: selectedAno } }).then((res) => {
       const estadoSet = [...new Set(res.data.map((m) => m.estado))].sort();
       setEstados(estadoSet);
-      if (user?.estado && estadoSet.includes(user.estado)) {
-        setSelectedEstado(user.estado);
-      } else if (estadoSet.length > 0) {
-        setSelectedEstado(estadoSet[0]);
-      }
+      setSelectedEstado((atual) => {
+        if (atual && estadoSet.includes(atual)) return atual;
+        if (user?.estado && estadoSet.includes(user.estado)) return user.estado;
+        return estadoSet[0] ?? "";
+      });
     }).catch((err) => console.error("Erro ao carregar estados IPS:", err));
   }, [selectedAno]);
 
-  // Load city list when estado changes
+  // Load city list when estado/year changes. Preference: the deliberate
+  // choice, then the city on screen, then the user's own city, then the first.
+  // `escolha`/`selectedMunicipioId` ficam fora das deps de propósito: só
+  // interessam quando o ano ou o estado mudam (o closure é o do mesmo render).
   useEffect(() => {
-    if (!selectedEstado) return;
+    if (!selectedEstado || !selectedAno) return;
     api
       .get("/ips/municipios", { params: { ano: selectedAno, estado: selectedEstado } })
       .then((res) => {
-        setMunicipios(res.data);
-        const userCity = res.data.find((m) => m.municipio_id === user?.municipio_id);
-        setSelectedMunicipioId(
-          userCity ? userCity.municipio_id : res.data[0]?.municipio_id ?? null
-        );
+        const lista = res.data;
+        setMunicipios(lista);
+        const tem = (id) => id != null && lista.some((m) => m.municipio_id === id);
+        const preferidos = [escolha?.id, selectedMunicipioId, user?.municipio_id];
+        setSelectedMunicipioId(preferidos.find(tem) ?? lista[0]?.municipio_id ?? null);
+        if (!escolha) {
+          const userCity = lista.find((m) => m.municipio_id === user?.municipio_id);
+          if (userCity) setEscolha({ id: userCity.municipio_id, nome: userCity.nome });
+        }
       })
       .catch((err) => console.error("Erro ao carregar municípios IPS:", err));
   }, [selectedEstado, selectedAno]);
 
   // Load all data when city/year changes
   useEffect(() => {
-    if (!selectedMunicipioId) return;
+    if (!selectedMunicipioId || !selectedAno) return;
     setLoading(true);
     const params = { municipio_id: selectedMunicipioId, ano: selectedAno };
     Promise.all([
@@ -145,7 +173,7 @@ export default function IpsPage() {
 
   // Load comparativo when compare ids change
   useEffect(() => {
-    if (!selectedMunicipioId) return;
+    if (!selectedMunicipioId || !selectedAno) return;
     const allIds = [selectedMunicipioId, ...compareMunicipioIds];
     api
       .get("/ips/comparativo", {
@@ -200,6 +228,18 @@ export default function IpsPage() {
     scorecard?.area_km2 && `Área ${Number(scorecard.area_km2).toLocaleString("pt-BR", { maximumFractionDigits: 1 })} km²`,
   ].filter(Boolean).join(" · ");
 
+  // Cobertura do ano selecionado vs. o ano mais coberto: carga parcial é
+  // avisada, não escondida.
+  const anosAsc = useMemo(() => [...(anos ?? [])].sort((a, b) => a.ano - b.ano), [anos]);
+  const anoSel = anosAsc.find((a) => a.ano === selectedAno);
+  const maxCobertura = anosAsc.reduce((m, a) => Math.max(m, a.municipios), 0);
+  const coberturaParcial = Boolean(anoSel && anoSel.municipios < maxCobertura);
+  const nomeSelecionado = municipios.find((m) => m.municipio_id === selectedMunicipioId)?.nome;
+  const avisoMunicipio =
+    escolha && selectedMunicipioId != null && selectedMunicipioId !== escolha.id && nomeSelecionado
+      ? `${escolha.nome} não tem dados de IPS em ${selectedAno} — exibindo ${nomeSelecionado}.`
+      : null;
+
   return (
     <motion.div initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3 }} className="space-y-6">
       <div className="flex items-center gap-2">
@@ -216,7 +256,7 @@ export default function IpsPage() {
           <label className="block text-xs text-[var(--text-mute)] mb-1">Estado</label>
           <NidSelect
             value={selectedEstado}
-            onChange={(e) => setSelectedEstado(e.target.value)}
+            onChange={(e) => { setSelectedEstado(e.target.value); setEscolha(null); }}
             ariaLabel="Filtrar por estado"
           >
             {estados.map((e) => (
@@ -229,24 +269,45 @@ export default function IpsPage() {
           <MunicipioPicker
             municipios={municipios.map((m) => ({ ...m, id: m.municipio_id }))}
             value={selectedMunicipioId ?? ""}
-            onChange={(id) => setSelectedMunicipioId(id ? Number(id) : null)}
+            onChange={(id) => {
+              const novo = id ? Number(id) : null;
+              setSelectedMunicipioId(novo);
+              const m = municipios.find((x) => x.municipio_id === novo);
+              setEscolha(m ? { id: m.municipio_id, nome: m.nome } : null);
+            }}
           />
         </div>
         <div>
           <label className="block text-xs text-[var(--text-mute)] mb-1">Ano</label>
           <div className="flex" style={{ gap: 6 }}>
-            {[2024, 2025].map((a) => (
+            {anosAsc.map((a) => (
               <button
-                key={a}
-                onClick={() => setSelectedAno(a)}
-                className={`nid-tab ${selectedAno === a ? "active" : ""}`}
+                key={a.ano}
+                type="button"
+                onClick={() => setSelectedAno(a.ano)}
+                title={`${a.municipios.toLocaleString("pt-BR")} municípios com dados`}
+                className={`nid-tab ${selectedAno === a.ano ? "active" : ""}`}
               >
-                {a}
+                {a.ano}
               </button>
             ))}
+            {anos && anos.length === 0 && (
+              <span className="text-xs text-[var(--text-mute)]">Sem anos com dados de IPS</span>
+            )}
           </div>
         </div>
       </div>
+
+      {(coberturaParcial || avisoMunicipio) && (
+        <div className="text-xs space-y-1" style={{ color: "var(--accent-4)" }}>
+          {coberturaParcial && (
+            <p>
+              IPS {selectedAno}: {anoSel.municipios.toLocaleString("pt-BR")} de {maxCobertura.toLocaleString("pt-BR")} municípios com dados — a carga deste ano é parcial.
+            </p>
+          )}
+          {avisoMunicipio && <p>{avisoMunicipio}</p>}
+        </div>
+      )}
 
       {loading && (
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
