@@ -162,6 +162,34 @@ class EmpresaRetencaoUpdate(BaseModel):
     proxima_acao_data: Optional[date] = None
 
 
+# ── relevância e risco calculados (derivados na leitura) ──────────────────
+
+class FatorOut(BaseModel):
+    chave: str
+    rotulo: str
+    pontos: int
+    maximo: int
+    origem: Literal["cadastro", "rfb"]
+
+
+class RelevanciaOut(BaseModel):
+    score: int
+    faixa: Literal["alta", "media", "baixa"]
+    parcial: bool
+    fatores: List[FatorOut]
+
+
+class SinalOut(BaseModel):
+    chave: str
+    rotulo: str
+    desde: Optional[date] = None
+
+
+class RiscoOut(BaseModel):
+    nivel: Literal["alto", "atencao", "nenhum"]
+    sinais: List[SinalOut]
+
+
 class EmpresaRetencaoOut(BaseModel):
     id: int
     municipio_id: int
@@ -181,6 +209,8 @@ class EmpresaRetencaoOut(BaseModel):
     contatos: List[ContatoEmpresaOut] = []
     demandas: List[DemandaEmpresaOut] = []
     perfil_rfb: Optional[EmpresaOut] = None
+    relevancia: RelevanciaOut
+    risco: RiscoOut
 
     class Config:
         from_attributes = True
@@ -201,6 +231,8 @@ class EmpresaRetencaoLeanOut(BaseModel):
     cnpj_basico: Optional[str] = None
     proxima_acao: Optional[str] = None
     proxima_acao_data: Optional[date] = None
+    relevancia: RelevanciaOut
+    risco: RiscoOut
 
     class Config:
         from_attributes = True

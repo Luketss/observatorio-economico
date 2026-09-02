@@ -150,3 +150,80 @@ def test_rotas_novas_no_openapi():
     assert "/api/v1/desenvolvimento-economico/retencao/contatos/{contato_id}" in paths
     assert "/api/v1/desenvolvimento-economico/retencao/{empresa_id}/demandas" in paths
     assert "/api/v1/desenvolvimento-economico/retencao/demandas/{demanda_id}" in paths
+
+
+# ── relevância e risco calculados (sub-frente A) ─────────────────────────────
+
+def test_listagem_enriquecida_ordenada_por_relevancia_e_nome(ctx):
+    from app.api.v1.routers.desenvolvimento_economico import listar_retencao
+    db, _, u1, *_ = ctx
+    _criar_empresa(db, u1, nome="beta")                                        # 0 pontos
+    _criar_empresa(db, u1, nome="Alfa")                                        # 0 pontos
+    _criar_empresa(db, u1, nome="Zeta", num_empregos=600, potencial_expansao="alto")  # 40 + 15 = 55
+    lista = listar_retencao(municipio_id=None, db=db, current_user=u1)
+    assert [e.nome for e in lista] == ["Zeta", "Alfa", "beta"]
+    assert [e.relevancia.score for e in lista] == [55, 0, 0]
+    assert lista[0].relevancia.faixa == "media" and lista[0].relevancia.parcial is True
+    assert lista[0].risco.nivel == "nenhum" and lista[0].risco.sinais == []
+    assert {f.chave for f in lista[0].relevancia.fatores} == {"empregos", "porte", "tempo", "capital", "expansao"}
+
+
+def test_detalhe_traz_relevancia_risco_e_perfil_rfb_numa_leitura(ctx):
+    from app.api.v1.routers.desenvolvimento_economico import detalhe_retencao
+    db, _, u1, _, m1, _ = ctx
+    db.add(Empresa(municipio_id=m1.id, cnpj_basico="12345678", razao_social="ACME LTDA",
+                   situacao="02", porte="03", data_inicio=date(2010, 1, 5), capital_social=150_000.0))
+    db.commit()
+    e = _criar_empresa(db, u1, cnpj_basico="12345678", num_empregos=42, potencial_expansao="alto",
+                       proxima_acao="Ligar", proxima_acao_data=date(2026, 1, 1))
+    det = detalhe_retencao(e.id, db=db, current_user=u1)
+    assert det.perfil_rfb is not None and det.perfil_rfb.razao_social == "ACME LTDA"
+    # 20 (empregos) + 12 (EPP) + 15 (10+ anos) + 6 (150 mil) + 15 (alto) = 68
+    assert (det.relevancia.score, det.relevancia.faixa, det.relevancia.parcial) == (68, "alta", False)
+    assert [s.chave for s in det.risco.sinais][0] == "proxima_acao_vencida"
+    assert det.risco.sinais[0].desde == date(2026, 1, 1)
+
+
+def test_post_e_put_devolvem_enriquecido(ctx):
+    from app.api.v1.routers.desenvolvimento_economico import atualizar_retencao
+    db, _, u1, *_ = ctx
+    out = _criar_empresa(db, u1, num_empregos=10)
+    assert out.relevancia.score == 20 and out.risco.nivel == "nenhum"
+    upd = atualizar_retencao(out.id, EmpresaRetencaoUpdate(potencial_expansao="alto"), db=db, current_user=u1)
+    assert upd.relevancia.score == 35
+
+
+def test_enriquecer_casa_o_perfil_do_municipio_certo(ctx):
+    from app.services.gestao_empresarial import enriquecer
+    db, _, u1, u2, m1, m2 = ctx
+    db.add_all([
+        Empresa(municipio_id=m1.id, cnpj_basico="12345678", razao_social="Filial 1", situacao="02", porte="01"),
+        Empresa(municipio_id=m2.id, cnpj_basico="12345678", razao_social="Filial 2", situacao="02", porte="05"),
+    ])
+    db.commit()
+    e1 = _criar_empresa(db, u1, cnpj_basico="12345678")
+    e2 = _criar_empresa(db, u2, cnpj_basico="12345678")
+    cadastros = db.query(EmpresaRetencao).filter(EmpresaRetencao.id.in_([e1.id, e2.id])).all()
+    calc = enriquecer(db, cadastros)
+    assert calc[e1.id].perfil_rfb.razao_social == "Filial 1" and calc[e1.id].relevancia.score == 6
+    assert calc[e2.id].perfil_rfb.razao_social == "Filial 2" and calc[e2.id].relevancia.score == 20
+
+
+def test_enriquecer_usa_contatos_visitas_e_demandas(ctx):
+    from datetime import timedelta
+    from app.api.v1.routers.desenvolvimento_economico import (
+        adicionar_contato, adicionar_demanda, adicionar_visita, detalhe_retencao,
+    )
+    from app.schemas.desenvolvimento_economico import VisitaRetencaoCreate
+    db, _, u1, *_ = ctx
+    hoje = date.today()
+    e = _criar_empresa(db, u1)
+    adicionar_contato(e.id, ContatoEmpresaCreate(data=hoje - timedelta(days=200)), db=db, current_user=u1)
+    adicionar_visita(e.id, VisitaRetencaoCreate(data_visita=hoje - timedelta(days=10)), db=db, current_user=u1)
+    adicionar_demanda(e.id, DemandaEmpresaCreate(descricao="Via", data_registro=hoje - timedelta(days=45)),
+                      db=db, current_user=u1)
+    det = detalhe_retencao(e.id, db=db, current_user=u1)
+    chaves = [s.chave for s in det.risco.sinais]
+    assert "sem_contato_90d" not in chaves          # a visita de 10 dias atrás conta como contato
+    assert chaves == ["demanda_aberta_30d"] and det.risco.nivel == "atencao"
+    assert det.risco.sinais[0].desde == hoje - timedelta(days=45)

@@ -1,7 +1,9 @@
+from dataclasses import asdict
 from datetime import date
 from typing import List
 
 from fastapi import APIRouter, Depends, Query
+from sqlalchemy import inspect as sa_inspect
 from sqlalchemy.orm import Session, selectinload
 
 from app.api.deps import get_current_user, get_db, require_permissao
@@ -17,7 +19,6 @@ from app.models.desenvolvimento_economico import (
     Premiacao,
     VisitaRetencao,
 )
-from app.models.empresa import Empresa
 from app.models.usuario import Usuario
 from app.schemas.desenvolvimento_economico import (
     CaptacaoRecursoCreate,
@@ -46,7 +47,7 @@ from app.schemas.desenvolvimento_economico import (
     VisitaRetencaoCreate,
     VisitaRetencaoOut,
 )
-from app.schemas.empresa import EmpresaOut
+from app.services.gestao_empresarial import Enriquecimento, enriquecer, ordenar_por_relevancia
 
 router = APIRouter(prefix="/desenvolvimento-economico", tags=["Desenvolvimento Econômico"])
 
@@ -67,6 +68,23 @@ def _apply_tenant(query, model, current_user: Usuario):
     if current_user.role.nome != "ADMIN_GLOBAL":
         query = query.filter(model.municipio_id == current_user.municipio_id)
     return query
+
+
+def _colunas(obj) -> dict:
+    """Colunas mapeadas do ORM como dict — os schemas enriquecidos têm campos
+    obrigatórios que o ORM não tem, então a serialização é explícita."""
+    return {a.key: getattr(obj, a.key) for a in sa_inspect(type(obj)).column_attrs}
+
+
+def _lean_out(empresa: EmpresaRetencao, calc: Enriquecimento) -> EmpresaRetencaoLeanOut:
+    return EmpresaRetencaoLeanOut.model_validate(
+        {**_colunas(empresa), "relevancia": asdict(calc.relevancia), "risco": asdict(calc.risco)},
+        from_attributes=True,
+    )
+
+
+def _lean_enriquecido(db: Session, empresa: EmpresaRetencao) -> EmpresaRetencaoLeanOut:
+    return _lean_out(empresa, enriquecer(db, [empresa])[empresa.id])
 
 
 # ── 3.1 Funil de Investimentos ─────────────────────────────────────────────
@@ -165,7 +183,10 @@ def listar_retencao(
         query = query.filter(EmpresaRetencao.municipio_id == current_user.municipio_id)
     elif municipio_id is not None:
         query = query.filter(EmpresaRetencao.municipio_id == municipio_id)
-    return query.order_by(EmpresaRetencao.nome).all()
+    empresas = query.all()
+    calc = enriquecer(db, empresas)
+    # Ordem de relevância decrescente com desempate por nome (antes: só nome).
+    return [_lean_out(e, calc[e.id]) for e in ordenar_por_relevancia(empresas, calc)]
 
 
 @router.get("/retencao/{empresa_id}", response_model=EmpresaRetencaoOut)
@@ -191,17 +212,19 @@ def detalhe_retencao(
     empresa.visitas.sort(key=lambda v: v.data_visita)
     empresa.contatos.sort(key=lambda c: c.data)
     empresa.demandas.sort(key=lambda d: d.data_registro)
-    out = EmpresaRetencaoOut.model_validate(empresa)
-    if empresa.cnpj_basico:
-        perfil = (
-            db.query(Empresa)
-            .filter(Empresa.municipio_id == empresa.municipio_id,
-                    Empresa.cnpj_basico == empresa.cnpj_basico)
-            .first()
-        )
-        if perfil:
-            out.perfil_rfb = EmpresaOut.model_validate(perfil)
-    return out
+    calc = enriquecer(db, [empresa])[empresa.id]  # perfil RFB lido uma única vez, aqui
+    return EmpresaRetencaoOut.model_validate(
+        {
+            **_colunas(empresa),
+            "visitas": empresa.visitas,
+            "contatos": empresa.contatos,
+            "demandas": empresa.demandas,
+            "perfil_rfb": calc.perfil_rfb,
+            "relevancia": asdict(calc.relevancia),
+            "risco": asdict(calc.risco),
+        },
+        from_attributes=True,
+    )
 
 
 @router.post("/retencao", response_model=EmpresaRetencaoLeanOut)
@@ -222,7 +245,7 @@ def criar_retencao(
     db.add(empresa)
     db.commit()
     db.refresh(empresa)
-    return empresa
+    return _lean_enriquecido(db, empresa)
 
 
 @router.put("/retencao/{empresa_id}", response_model=EmpresaRetencaoLeanOut)
@@ -244,7 +267,7 @@ def atualizar_retencao(
         setattr(empresa, field, value)
     db.commit()
     db.refresh(empresa)
-    return empresa
+    return _lean_enriquecido(db, empresa)
 
 
 @router.delete("/retencao/{empresa_id}")
