@@ -76,6 +76,25 @@ def test_listar_anos_marca_os_anos_em_que_o_municipio_tem_linha(ctx):
     assert [(a.ano, a.tem_municipio) for a in out] == [(2026, False), (2025, True), (2024, True)]
 
 
+def test_listar_anos_municipio_sem_ips_marca_tudo_false(ctx):
+    db, _alfa, _beta, gama, *_ = ctx
+    out = listar_anos(municipio_id=gama.id, db=db, _=None)
+    assert [a.tem_municipio for a in out] == [False, False, False]
+
+
+def test_ano_padrao_da_base_ignora_demo(ctx):
+    # Só a linha demo fica com 2026 → /anos não lista 2026 e o ano padrão da
+    # base (usado por /municipios sem ano) cai para 2025.
+    db, alfa, *_ = ctx
+    (db.query(IpsMunicipio)
+       .filter(IpsMunicipio.municipio_id == alfa.id, IpsMunicipio.ano == 2026)
+       .delete())
+    db.commit()
+    assert [a.ano for a in listar_anos(municipio_id=None, db=db, _=None)] == [2025, 2024]
+    out = listar_municipios(ano=None, estado=None, db=db, _=None)
+    assert [m.nome for m in out] == ["Alfa", "Beta"]
+
+
 def test_listar_anos_base_vazia(ctx):
     db, *_ = ctx
     db.query(IpsMunicipio).delete()

@@ -52,6 +52,21 @@ def _ultimo_ano(db: Session, municipio_id: int | None = None) -> int | None:
     return q.scalar()
 
 
+def _linha_do_ano(db: Session, municipio_id: int, ano: int | None):
+    """Linha do município no ano — ou no último ano com dados dele, quando
+    `ano` não veio. Devolve (ano resolvido, linha ou None)."""
+    if ano is None:
+        ano = _ultimo_ano(db, municipio_id)
+    if ano is None:
+        return None, None
+    row = (
+        db.query(IpsMunicipio)
+        .filter(IpsMunicipio.municipio_id == municipio_id, IpsMunicipio.ano == ano)
+        .first()
+    )
+    return ano, row
+
+
 @router.get("/anos", response_model=List[IpsAnoItem])
 def listar_anos(
     municipio_id: int | None = Query(None),
@@ -126,15 +141,7 @@ def scorecard(
             status_code=400,
             detail="Informe municipio_id: o usuário não está vinculado a um município.",
         )
-    if ano is None:
-        ano = _ultimo_ano(db, municipio_id)
-    row = None
-    if ano is not None:
-        row = (
-            db.query(IpsMunicipio)
-            .filter(IpsMunicipio.municipio_id == municipio_id, IpsMunicipio.ano == ano)
-            .first()
-        )
+    ano, row = _linha_do_ano(db, municipio_id, ano)
     if not row:
         raise HTTPException(status_code=404, detail="IPS data not found")
     return IpsScorecardItem(
@@ -173,15 +180,7 @@ def ranking(
     db: Session = Depends(get_db),
     _=Depends(get_current_user),
 ):
-    if ano is None:
-        ano = _ultimo_ano(db, municipio_id)
-    city = None
-    if ano is not None:
-        city = (
-            db.query(IpsMunicipio)
-            .filter(IpsMunicipio.municipio_id == municipio_id, IpsMunicipio.ano == ano)
-            .first()
-        )
+    ano, city = _linha_do_ano(db, municipio_id, ano)
     if not city or city.ips_geral is None:
         raise HTTPException(status_code=404, detail="IPS data not found")
 
@@ -275,15 +274,7 @@ def destaques(
     db: Session = Depends(get_db),
     _=Depends(get_current_user),
 ):
-    if ano is None:
-        ano = _ultimo_ano(db, municipio_id)
-    city = None
-    if ano is not None:
-        city = (
-            db.query(IpsMunicipio)
-            .filter(IpsMunicipio.municipio_id == municipio_id, IpsMunicipio.ano == ano)
-            .first()
-        )
+    ano, city = _linha_do_ano(db, municipio_id, ano)
     if not city:
         raise HTTPException(status_code=404, detail="IPS data not found")
 
@@ -328,15 +319,7 @@ def sugestoes(
     db: Session = Depends(get_db),
     _=Depends(get_current_user),
 ):
-    if ano is None:
-        ano = _ultimo_ano(db, municipio_id)
-    city = None
-    if ano is not None:
-        city = (
-            db.query(IpsMunicipio)
-            .filter(IpsMunicipio.municipio_id == municipio_id, IpsMunicipio.ano == ano)
-            .first()
-        )
+    ano, city = _linha_do_ano(db, municipio_id, ano)
     if not city or city.pib_per_capita is None or city.ips_geral is None:
         return []
 

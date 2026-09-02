@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { motion } from "framer-motion";
 import api from "../../services/api";
 import { useAuth } from "../../context/AuthContext";
+import { useViewAs } from "../../context/ViewAsContext";
 import KpiCard from "../../components/KpiCard";
 import InfoTooltip from "../../components/InfoTooltip";
 import { NidPageHeader, NidPanel } from "../../components/nid/Panel";
@@ -74,19 +75,29 @@ const SERIES_COLORS = [
 
 export default function IpsPage() {
   const { user } = useAuth();
+  const { viewAsId } = useViewAs();
+  // Município de referência: o impersonado (view-as) ou o do usuário.
+  const municipioBase = viewAsId ?? user?.municipio_id ?? null;
 
   const [estados, setEstados] = useState([]);
   const [selectedEstado, setSelectedEstado] = useState("");
-  const [municipios, setMunicipios] = useState([]);
+  // Lista de municípios carimbada com o (ano, estado) a que pertence — os
+  // dados só são buscados quando a lista é a do ano/estado selecionados.
+  const [municipiosDoAno, setMunicipiosDoAno] = useState({ ano: null, estado: "", itens: [] });
+  const municipios = municipiosDoAno.itens;
   const [selectedMunicipioId, setSelectedMunicipioId] = useState(null);
-  // Último município escolhido de propósito (o do usuário conta como escolha
-  // inicial): ao trocar de ano a página tenta mantê-lo; se ele não tem dados
-  // no ano, cai em outro município E avisa — nada de trocar às escondidas.
+  // Último município escolhido de propósito (o de referência conta como
+  // escolha inicial): ao trocar de ano a página tenta voltar a ele.
   const [escolha, setEscolha] = useState(null); // { id, nome }
+  // Município na tela no momento do clique na aba de ano: se depois da troca
+  // a tela mostra outro, o leitor é avisado — nada de trocar às escondidas.
+  const [antesDoAno, setAntesDoAno] = useState(null); // { id, nome, estado }
   // Anos com dados vêm do backend: a carga é por arquivo/ano e pode ser
   // parcial. null até a lista chegar; sem anos, nada é carregado.
   const [anos, setAnos] = useState(null);
   const [selectedAno, setSelectedAno] = useState(null);
+  // Erro audível da última carga (anos, municípios ou dados do município).
+  const [erro, setErro] = useState(null);
 
   const [scorecard, setScorecard] = useState(null);
   const [evolucao, setEvolucao] = useState([]);
@@ -94,63 +105,97 @@ export default function IpsPage() {
   const [comparativo, setComparativo] = useState([]);
   const [destaques, setDestaques] = useState(null);
   const [sugestoes, setSugestoes] = useState([]);
-  const [loading, setLoading] = useState(false);
+  // (município, ano) a que os dados na tela pertencem.
+  const [dadosDe, setDadosDe] = useState(null);
   const [compareMunicipioIds, setCompareMunicipioIds] = useState([]);
   const [openDims, setOpenDims] = useState({ nhb: false, fbe: false, opo: false });
 
-  // Anos disponíveis. Ano padrão: o mais recente em que o município do usuário
-  // tem linha — abrir direto no ano mais novo (ex.: 2026 com 25 municípios)
-  // tiraria a própria cidade da tela.
+  // Anos disponíveis. Ano padrão: o mais recente em que o município de
+  // referência tem linha — abrir direto no ano mais novo (ex.: 2026 com 25
+  // municípios) tiraria a própria cidade da tela.
+  // Toda resposta superada (a seleção mudou antes de ela chegar) é ignorada
+  // pelo cleanup dos efeitos — sem isso uma resposta atrasada desfazia a troca.
   useEffect(() => {
-    const params = user?.municipio_id ? { municipio_id: user.municipio_id } : {};
+    let vivo = true;
+    setErro(null);
+    const params = municipioBase ? { municipio_id: municipioBase } : {};
     api.get("/ips/anos", { params }).then((res) => {
+      if (!vivo) return;
       const lista = res.data ?? [];
       setAnos(lista);
       const padrao = lista.find((a) => a.tem_municipio) ?? lista[0];
       setSelectedAno(padrao?.ano ?? null);
-    }).catch((err) => console.error("Erro ao carregar anos IPS:", err));
-  }, [user?.municipio_id]);
+    }).catch((err) => {
+      console.error("Erro ao carregar anos IPS:", err);
+      if (vivo) setErro("Não foi possível carregar os anos do IPS.");
+    });
+    return () => { vivo = false; };
+  }, [municipioBase]);
 
-  // Load state list when the year changes (keeps the current state if it still has data)
+  // Estados com dados no ano. Mantém o estado atual se ele ainda tem dados;
+  // senão o do município de referência, o do usuário, o primeiro da lista.
   useEffect(() => {
-    if (!selectedAno) return;
+    if (!selectedAno) return undefined;
+    let vivo = true;
     api.get("/ips/municipios", { params: { ano: selectedAno } }).then((res) => {
+      if (!vivo) return;
       const estadoSet = [...new Set(res.data.map((m) => m.estado))].sort();
+      const doBase = res.data.find((m) => m.municipio_id === municipioBase)?.estado;
       setEstados(estadoSet);
       setSelectedEstado((atual) => {
         if (atual && estadoSet.includes(atual)) return atual;
+        if (doBase) return doBase;
         if (user?.estado && estadoSet.includes(user.estado)) return user.estado;
         return estadoSet[0] ?? "";
       });
-    }).catch((err) => console.error("Erro ao carregar estados IPS:", err));
+    }).catch((err) => {
+      console.error("Erro ao carregar estados IPS:", err);
+      if (vivo) setErro("Não foi possível carregar os municípios do IPS.");
+    });
+    return () => { vivo = false; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedAno]);
 
-  // Load city list when estado/year changes. Preference: the deliberate
-  // choice, then the city on screen, then the user's own city, then the first.
+  // Municípios do estado no ano. Preferência: a escolha deliberada, o
+  // município na tela, o de referência, o primeiro da lista.
   // `escolha`/`selectedMunicipioId` ficam fora das deps de propósito: só
   // interessam quando o ano ou o estado mudam (o closure é o do mesmo render).
   useEffect(() => {
-    if (!selectedEstado || !selectedAno) return;
+    if (!selectedEstado || !selectedAno) return undefined;
+    let vivo = true;
     api
       .get("/ips/municipios", { params: { ano: selectedAno, estado: selectedEstado } })
       .then((res) => {
+        if (!vivo) return;
         const lista = res.data;
-        setMunicipios(lista);
+        setMunicipiosDoAno({ ano: selectedAno, estado: selectedEstado, itens: lista });
         const tem = (id) => id != null && lista.some((m) => m.municipio_id === id);
-        const preferidos = [escolha?.id, selectedMunicipioId, user?.municipio_id];
+        const preferidos = [escolha?.id, selectedMunicipioId, municipioBase];
         setSelectedMunicipioId(preferidos.find(tem) ?? lista[0]?.municipio_id ?? null);
         if (!escolha) {
-          const userCity = lista.find((m) => m.municipio_id === user?.municipio_id);
-          if (userCity) setEscolha({ id: userCity.municipio_id, nome: userCity.nome });
+          const base = lista.find((m) => m.municipio_id === municipioBase);
+          if (base) setEscolha({ id: base.municipio_id, nome: base.nome });
         }
       })
-      .catch((err) => console.error("Erro ao carregar municípios IPS:", err));
+      .catch((err) => {
+        console.error("Erro ao carregar municípios IPS:", err);
+        if (vivo) setErro("Não foi possível carregar os municípios do IPS.");
+      });
+    return () => { vivo = false; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedEstado, selectedAno]);
 
-  // Load all data when city/year changes
+  // Os dados só são buscados quando a lista de municípios já é a do ano/estado
+  // selecionados e o município está nela — evita a rodada com o município
+  // antigo no ano novo (404 garantido) e o card do ano anterior sob a aba nova.
+  const listaAtual = municipiosDoAno.ano === selectedAno && municipiosDoAno.estado === selectedEstado;
+  const nomeSelecionado = municipios.find((m) => m.municipio_id === selectedMunicipioId)?.nome;
+  const prontoParaDados = listaAtual && selectedMunicipioId != null && nomeSelecionado != null;
+
   useEffect(() => {
-    if (!selectedMunicipioId || !selectedAno) return;
-    setLoading(true);
+    if (!prontoParaDados) return undefined;
+    let vivo = true;
+    setErro(null);
     const params = { municipio_id: selectedMunicipioId, ano: selectedAno };
     Promise.all([
       api.get("/ips/scorecard", { params }),
@@ -160,20 +205,27 @@ export default function IpsPage() {
       api.get("/ips/sugestoes", { params: { ...params, limit: 6 } }),
     ])
       .then(([sc, ev, rk, dest, sug]) => {
+        if (!vivo) return;
         setScorecard(sc.data);
         setEvolucao(ev.data);
         setRanking(rk.data);
         setDestaques(dest.data);
         setSugestoes(sug.data);
+        setDadosDe({ municipio_id: selectedMunicipioId, ano: selectedAno });
         setCompareMunicipioIds([]);
       })
-      .catch((err) => console.error("Erro ao carregar dados IPS:", err))
-      .finally(() => setLoading(false));
-  }, [selectedMunicipioId, selectedAno]);
+      .catch((err) => {
+        console.error("Erro ao carregar dados IPS:", err);
+        if (vivo) setErro(`Não foi possível carregar o IPS de ${nomeSelecionado} em ${selectedAno}.`);
+      });
+    return () => { vivo = false; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [prontoParaDados, selectedMunicipioId, selectedAno]);
 
   // Load comparativo when compare ids change
   useEffect(() => {
-    if (!selectedMunicipioId || !selectedAno) return;
+    if (!prontoParaDados) return undefined;
+    let vivo = true;
     const allIds = [selectedMunicipioId, ...compareMunicipioIds];
     api
       .get("/ips/comparativo", {
@@ -183,9 +235,10 @@ export default function IpsPage() {
           municipio_ids: allIds.join(","),
         },
       })
-      .then((res) => setComparativo(res.data))
+      .then((res) => { if (vivo) setComparativo(res.data); })
       .catch((err) => console.error("Erro ao carregar comparativo IPS:", err));
-  }, [selectedMunicipioId, selectedAno, compareMunicipioIds]);
+    return () => { vivo = false; };
+  }, [prontoParaDados, selectedMunicipioId, selectedAno, compareMunicipioIds]);
 
   function addCompare(municipioId) {
     if (!compareMunicipioIds.includes(municipioId) && municipioId !== selectedMunicipioId) {
@@ -234,11 +287,24 @@ export default function IpsPage() {
   const anoSel = anosAsc.find((a) => a.ano === selectedAno);
   const maxCobertura = anosAsc.reduce((m, a) => Math.max(m, a.municipios), 0);
   const coberturaParcial = Boolean(anoSel && anoSel.municipios < maxCobertura);
-  const nomeSelecionado = municipios.find((m) => m.municipio_id === selectedMunicipioId)?.nome;
-  const avisoMunicipio =
-    escolha && selectedMunicipioId != null && selectedMunicipioId !== escolha.id && nomeSelecionado
-      ? `${escolha.nome} não tem dados de IPS em ${selectedAno} — exibindo ${nomeSelecionado}.`
-      : null;
+  // Aviso de troca: o município que estava na tela ao clicar na aba não tem
+  // dados no ano (não está na lista atual) e a tela mostra outro. Quando o
+  // estado também mudou, os dois aparecem com a UF.
+  const trocouMunicipio = Boolean(
+    antesDoAno && listaAtual && nomeSelecionado && selectedMunicipioId !== antesDoAno.id
+      && !municipios.some((m) => m.municipio_id === antesDoAno.id),
+  );
+  const trocouEstado = trocouMunicipio && antesDoAno.estado !== selectedEstado;
+  const avisoMunicipio = trocouMunicipio
+    ? `${antesDoAno.nome}${trocouEstado ? ` (${antesDoAno.estado})` : ""} não tem dados de IPS em ${selectedAno}`
+      + ` — exibindo ${nomeSelecionado}${trocouEstado ? ` (${selectedEstado})` : ""}.`
+    : null;
+  // Os dados na tela pertencem ao (município, ano) selecionados? Enquanto
+  // não, esqueleto — nunca o card do ano anterior sob a aba nova.
+  const dadosAtuais = Boolean(
+    scorecard && dadosDe && dadosDe.municipio_id === selectedMunicipioId && dadosDe.ano === selectedAno,
+  );
+  const carregando = !erro && (anos === null || (selectedAno != null && !dadosAtuais));
 
   return (
     <motion.div initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3 }} className="space-y-6">
@@ -256,7 +322,7 @@ export default function IpsPage() {
           <label className="block text-xs text-[var(--text-mute)] mb-1">Estado</label>
           <NidSelect
             value={selectedEstado}
-            onChange={(e) => { setSelectedEstado(e.target.value); setEscolha(null); }}
+            onChange={(e) => { setSelectedEstado(e.target.value); setEscolha(null); setAntesDoAno(null); }}
             ariaLabel="Filtrar por estado"
           >
             {estados.map((e) => (
@@ -274,6 +340,7 @@ export default function IpsPage() {
               setSelectedMunicipioId(novo);
               const m = municipios.find((x) => x.municipio_id === novo);
               setEscolha(m ? { id: m.municipio_id, nome: m.nome } : null);
+              setAntesDoAno(null);
             }}
           />
         </div>
@@ -284,7 +351,13 @@ export default function IpsPage() {
               <button
                 key={a.ano}
                 type="button"
-                onClick={() => setSelectedAno(a.ano)}
+                onClick={() => {
+                  if (a.ano === selectedAno) return;
+                  setAntesDoAno(nomeSelecionado
+                    ? { id: selectedMunicipioId, nome: nomeSelecionado, estado: selectedEstado }
+                    : null);
+                  setSelectedAno(a.ano);
+                }}
                 title={`${a.municipios.toLocaleString("pt-BR")} municípios com dados`}
                 className={`nid-tab ${selectedAno === a.ano ? "active" : ""}`}
               >
@@ -309,13 +382,17 @@ export default function IpsPage() {
         </div>
       )}
 
-      {loading && (
+      {erro && (
+        <p className="text-sm" style={{ color: "var(--accent-2)" }} role="alert">{erro}</p>
+      )}
+
+      {carregando && (
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           {[...Array(4)].map((_, i) => <KpiSkeleton key={i} />)}
         </div>
       )}
 
-      {!loading && scorecard && (
+      {dadosAtuais && (
         <>
           {/* KPIs */}
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
