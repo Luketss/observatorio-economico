@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback, useContext } from "react";
+import { useEffect, useMemo, useState, useCallback, useContext } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import {
   PlusIcon,
@@ -15,6 +15,7 @@ import { usePermissao } from "../../hooks/usePermissao";
 import { useViewAs } from "../../context/ViewAsContext";
 import { PlanContext } from "../../context/PlanContext";
 import SelecioneMunicipio from "../../components/nid/SelecioneMunicipio";
+import NidSelect from "../../components/nid/NidSelect";
 import EmpresaDrawer from "./EmpresaDrawer";
 import BuscaEmpresaRfb from "./BuscaEmpresaRfb";
 import { propsTituloClicavel } from "../../utils/cliqueAcessivel";
@@ -30,6 +31,55 @@ const EXPANSAO_CONFIG = {
   medio:  { label: "Expansão média",  color: "bg-[var(--panel-2)] text-amber-400" },
   alto:   { label: "Expansão alta",   color: "bg-[var(--panel-2)] text-blue-400" },
 };
+
+// Relevância e risco calculados no backend (derivados na leitura). Tons por
+// tokens: alta accent-5, média accent-4, baixa text-dim; sinais em accent-4,
+// accent-2 quando o nível é alto ou a empresa está baixada na RFB.
+const FAIXA_CONFIG = {
+  alta:  { label: "Alta",  color: "var(--accent-5)" },
+  media: { label: "Média", color: "var(--accent-4)" },
+  baixa: { label: "Baixa", color: "var(--text-dim)" },
+};
+const SINAL_LABEL = {
+  proxima_acao_vencida: "Ação vencida",
+  sem_contato_90d: "Sem contato 90d+",
+  demanda_aberta_30d: "Demanda aberta 30d+",
+  rfb_irregular: "RFB irregular",
+  rfb_baixada: "RFB baixada",
+};
+const NIVEL_ORDEM = { alto: 0, atencao: 1, nenhum: 2 };
+const normalizar = (s) => (s || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
+// "Em risco" = avaliação manual alta OU nível calculado alto.
+const emRisco = (e) => e.status_risco === "alto" || e.risco?.nivel === "alto";
+const porNome = (a, b) => a.nome.localeCompare(b.nome, "pt-BR", { sensitivity: "base" });
+const score = (e) => e.relevancia?.score ?? 0;
+
+function ChipRelevancia({ relevancia }) {
+  if (!relevancia) return null;
+  const faixa = FAIXA_CONFIG[relevancia.faixa] || FAIXA_CONFIG.baixa;
+  return (
+    <span
+      className="px-2 py-0.5 rounded-full text-[11px] font-medium bg-[var(--panel-2)]"
+      style={{ color: faixa.color }}
+      title={relevancia.parcial ? "sem vínculo com a base RFB" : undefined}
+    >
+      Relevância {relevancia.score} · {faixa.label}{relevancia.parcial ? " · parcial" : ""}
+    </span>
+  );
+}
+
+function ChipsSinais({ risco }) {
+  if (!risco?.sinais?.length) return null;
+  return risco.sinais.map((s) => (
+    <span
+      key={s.chave}
+      className="px-2 py-0.5 rounded-full text-[11px] font-medium bg-[var(--panel-2)]"
+      style={{ color: risco.nivel === "alto" || s.chave === "rfb_baixada" ? "var(--accent-2)" : "var(--accent-4)" }}
+    >
+      {SINAL_LABEL[s.chave] || s.rotulo}
+    </span>
+  ));
+}
 
 const defaultForm = {
   nome: "",
@@ -70,6 +120,30 @@ export default function GestaoEmpresarialTab() {
   const [saving, setSaving] = useState(false);
   const [formError, setFormError] = useState(null);
   const [deleteConfirmId, setDeleteConfirmId] = useState(null);
+
+  // Busca, ordenação e filtro no cliente sobre a lista já carregada (a ordem
+  // inicial do backend já é a de relevância; reordenar aqui mantém a regra
+  // visível mesmo com mocks/listas antigas).
+  const [busca, setBusca] = useState("");
+  const [ordem, setOrdem] = useState("relevancia"); // relevancia | nome | risco
+  const [filtro, setFiltro] = useState("todas");    // todas | risco | alta | sem_rfb
+
+  const visiveis = useMemo(() => {
+    const q = normalizar(busca.trim());
+    const lista = empresas.filter((e) => {
+      if (q && !normalizar(e.nome).includes(q) && !normalizar(e.setor).includes(q)) return false;
+      if (filtro === "risco") return emRisco(e);
+      if (filtro === "alta") return e.relevancia?.faixa === "alta";
+      if (filtro === "sem_rfb") return Boolean(e.relevancia?.parcial);
+      return true;
+    });
+    if (ordem === "nome") return [...lista].sort(porNome);
+    if (ordem === "risco") {
+      return [...lista].sort((a, b) =>
+        (NIVEL_ORDEM[a.risco?.nivel] ?? 2) - (NIVEL_ORDEM[b.risco?.nivel] ?? 2) || score(b) - score(a) || porNome(a, b));
+    }
+    return [...lista].sort((a, b) => score(b) - score(a) || porNome(a, b));
+  }, [empresas, busca, ordem, filtro]);
 
   useEscapeKey(useCallback(() => {
     if (deleteConfirmId) { setDeleteConfirmId(null); return; }
@@ -174,7 +248,8 @@ export default function GestaoEmpresarialTab() {
 
   const kpis = {
     total: empresas.length,
-    altoRisco: empresas.filter((e) => e.status_risco === "alto").length,
+    emRisco: empresas.filter(emRisco).length,
+    altaRelevancia: empresas.filter((e) => e.relevancia?.faixa === "alta").length,
     altoExpansao: empresas.filter((e) => e.potencial_expansao === "alto").length,
     totalEmpregos: empresas.reduce((s, e) => s + (e.num_empregos || 0), 0),
   };
@@ -215,10 +290,11 @@ export default function GestaoEmpresarialTab() {
     <motion.div initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3 }} className="space-y-6">
       {header}
       {/* KPI row */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-5 gap-4">
         {[
           { label: "Total de empresas", value: kpis.total, color: "text-[var(--text)]" },
-          { label: "Alto risco", value: kpis.altoRisco, color: "text-red-600" },
+          { label: "Em risco", value: kpis.emRisco, color: "text-red-600" },
+          { label: "Alta relevância", value: kpis.altaRelevancia, color: "text-[var(--accent-5)]" },
           { label: "Alto potencial", value: kpis.altoExpansao, color: "text-blue-600" },
           { label: "Total empregos", value: kpis.totalEmpregos.toLocaleString("pt-BR"), color: "text-green-600" },
         ].map((k) => (
@@ -229,12 +305,30 @@ export default function GestaoEmpresarialTab() {
         ))}
       </div>
 
-      {/* Toolbar */}
-      <div className="flex justify-end">
+      {/* Toolbar: busca, ordenação e filtro (cliente) + Nova Empresa */}
+      <div className="flex flex-wrap items-center gap-2">
+        <input
+          aria-label="Buscar empresa"
+          value={busca}
+          onChange={(e) => setBusca(e.target.value)}
+          placeholder="Buscar por nome ou setor…"
+          className="px-3 py-1.5 rounded-xl border border-[var(--border)] text-sm bg-[var(--panel)] text-[var(--text)] focus:outline-none focus:ring-2 focus:ring-[var(--accent-1)] min-w-[220px]"
+        />
+        <NidSelect value={ordem} onChange={(e) => setOrdem(e.target.value)} ariaLabel="Ordenar por">
+          <option value="relevancia">Relevância</option>
+          <option value="nome">Nome</option>
+          <option value="risco">Risco</option>
+        </NidSelect>
+        <NidSelect value={filtro} onChange={(e) => setFiltro(e.target.value)} ariaLabel="Filtrar empresas">
+          <option value="todas">Todas</option>
+          <option value="risco">Em risco</option>
+          <option value="alta">Alta relevância</option>
+          <option value="sem_rfb">Sem vínculo RFB</option>
+        </NidSelect>
         {canCriar && (
           <button
             onClick={openCreate}
-            className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2.5 rounded-xl text-sm font-medium transition-colors cursor-pointer"
+            className="ml-auto flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2.5 rounded-xl text-sm font-medium transition-colors cursor-pointer"
           >
             <PlusIcon className="w-4 h-4" />
             Nova Empresa
@@ -248,9 +342,13 @@ export default function GestaoEmpresarialTab() {
           <p className="text-sm">Nenhuma empresa monitorada ainda.</p>
           {canCriar && <p className="text-xs mt-1">Clique em "Nova Empresa" para começar.</p>}
         </div>
+      ) : visiveis.length === 0 ? (
+        <div className="text-center py-16 text-slate-400">
+          <p className="text-sm">Nenhuma empresa corresponde ao filtro.</p>
+        </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-          {empresas.map((empresa) => {
+          {visiveis.map((empresa) => {
             const risco = RISCO_CONFIG[empresa.status_risco] || RISCO_CONFIG.baixo;
             const expansao = EXPANSAO_CONFIG[empresa.potencial_expansao] || EXPANSAO_CONFIG.baixo;
             return (
@@ -284,8 +382,10 @@ export default function GestaoEmpresarialTab() {
                   </div>
 
                   <div className="flex flex-wrap gap-1.5">
+                    <ChipRelevancia relevancia={empresa.relevancia} />
                     <span className={`px-2 py-0.5 rounded-full text-[11px] font-medium ${risco.color}`}>{risco.label}</span>
                     <span className={`px-2 py-0.5 rounded-full text-[11px] font-medium ${expansao.color}`}>{expansao.label}</span>
+                    <ChipsSinais risco={empresa.risco} />
                   </div>
 
                   {empresa.num_empregos != null && (
