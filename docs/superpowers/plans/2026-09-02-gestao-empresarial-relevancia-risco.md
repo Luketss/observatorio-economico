@@ -864,7 +864,8 @@ const LISTA = [
 ];
 
 const nomesNaTela = () => screen.getAllByRole("heading", { level: 4 }).map((h) => h.textContent);
-const kpi = (label) => screen.getByText(label).nextElementSibling.textContent;
+// Só o <p> do KPI: "Em risco" e "Alta relevância" também são <option> do filtro.
+const kpi = (label) => screen.getAllByText(label).find((el) => el.tagName === "P").nextElementSibling.textContent;
 
 describe("GestaoEmpresarialTab — relevância e risco calculados", () => {
   beforeEach(() => {
@@ -944,7 +945,7 @@ describe("GestaoEmpresarialTab — relevância e risco calculados", () => {
     await waitFor(() => expect(screen.getByText("ACME")).toBeInTheDocument());
     expect(kpi("Em risco")).toBe("0");
     expect(kpi("Alta relevância")).toBe("0");
-    expect(screen.queryByText(/Relevância/)).toBeNull();
+    expect(screen.queryByText(/^Relevância \d/)).toBeNull(); // só o chip; a <option> "Relevância" não conta
   });
 });
 ```
@@ -981,7 +982,7 @@ const SINAL_LABEL = {
   rfb_baixada: "RFB baixada",
 };
 const NIVEL_ORDEM = { alto: 0, atencao: 1, nenhum: 2 };
-const normalizar = (s) => (s || "").normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase();
+const normalizar = (s) => (s || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
 // "Em risco" = avaliação manual alta OU nível calculado alto.
 const emRisco = (e) => e.status_risco === "alto" || e.risco?.nivel === "alto";
 const porNome = (a, b) => a.nome.localeCompare(b.nome, "pt-BR", { sensitivity: "base" });
@@ -1375,7 +1376,7 @@ E dentro do `<PlanGate planKey="empresas">` da Base RFB, logo após o fechamento
 - [ ] **Step 4: Rodar e ver passar**
 
 Run: `npx vitest run src/pages/desenvolvimento-economico/EmpresaDrawer.test.jsx`
-Expected: 13 passed (7 antigos + 6 novos). Se `getByText("Base RFB").closest("div")` pegar um `div` menor do que a seção, ajustar o teste para `.closest(".space-y-1\\.5")` ou usar `screen.getByText("Na relevância").parentElement`.
+Expected: 13 passed (7 antigos + 6 novos). (`getByText("Base RFB").closest("div")` é o `div.border-t … space-y-1.5` que envolve o `<p>Base RFB</p>`, a `<dl>` e o `FatoresRfb`.)
 
 - [ ] **Step 5: Suíte completa do front e commit**
 
