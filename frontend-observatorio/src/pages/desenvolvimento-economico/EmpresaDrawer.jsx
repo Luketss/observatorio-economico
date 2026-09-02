@@ -24,6 +24,12 @@ const STATUS_DEMANDA = {
 };
 const PORTE_RFB = { "00": "Não informado", "01": "Micro", "03": "Pequena", "05": "Média", "07": "Grande" };
 const SITUACAO_RFB = { "01": "Nula", "02": "Ativa", "03": "Suspensa", "04": "Inapta", "08": "Baixada" };
+const FAIXA_CONFIG = {
+  alta:  { label: "Alta",  color: "var(--accent-5)" },
+  media: { label: "Média", color: "var(--accent-4)" },
+  baixa: { label: "Baixa", color: "var(--text-dim)" },
+};
+const NIVEL_LABEL = { alto: "alto", atencao: "atenção", nenhum: "nenhum" };
 const ABAS = ["Perfil", "Contatos & Visitas", "Demandas"];
 
 const inputCls = "w-full px-3 py-1.5 rounded-lg border border-[var(--border)] text-xs bg-[var(--panel-2)] text-[var(--text)] focus:outline-none focus:ring-1 focus:ring-blue-500";
@@ -42,6 +48,76 @@ const defaultContato = { data: "", tipo: "reuniao", responsavel: "", observacoes
 const defaultVisita = { data_visita: "", responsavel: "", observacoes: "", foto_base64: "" };
 const defaultDemanda = { descricao: "", data_registro: "", responsavel: "" };
 
+// Linha "rótulo …… pontos/máximo". Fator de cadastro zerado por dado ausente
+// vira dica; o modificador de situação (maximo 0) mostra só os pontos.
+function LinhaFator({ f }) {
+  const dica = f.chave === "empregos" && f.pontos === 0 ? " — informe os empregos para refinar" : "";
+  return (
+    <li className="flex justify-between gap-2 text-xs">
+      <span className="text-[var(--text-dim)]">{f.rotulo}{dica}</span>
+      <span className="text-[var(--text)] tabular-nums shrink-0">{f.maximo > 0 ? `${f.pontos}/${f.maximo}` : String(f.pontos)}</span>
+    </li>
+  );
+}
+
+// Score, faixa, barra e fatores de cadastro. Os fatores RFB ficam na seção
+// Base RFB (sob o PlanGate "empresas" já existente) — ver FatoresRfb.
+function BlocoRelevancia({ relevancia }) {
+  if (!relevancia) return null;
+  const faixa = FAIXA_CONFIG[relevancia.faixa] || FAIXA_CONFIG.baixa;
+  const cadastro = relevancia.fatores.filter((f) => f.origem === "cadastro");
+  return (
+    <section aria-label="Relevância" className="rounded-xl border border-[var(--border)] bg-[var(--panel-2)] p-3 space-y-2">
+      <div className="flex items-baseline gap-2">
+        <p className="text-xs font-semibold text-[var(--text-dim)] uppercase tracking-wider">Relevância</p>
+        <span className="text-xl font-extrabold" style={{ color: faixa.color }}>{relevancia.score}</span>
+        <span className="text-xs" style={{ color: faixa.color }}>{faixa.label}{relevancia.parcial ? " · parcial" : ""}</span>
+      </div>
+      <div className="h-1.5 rounded-full bg-[var(--panel)] overflow-hidden" role="progressbar"
+        aria-valuenow={relevancia.score} aria-valuemin={0} aria-valuemax={100}>
+        <div className="h-full rounded-full" style={{ width: `${relevancia.score}%`, background: faixa.color }} />
+      </div>
+      <ul className="space-y-1">{cadastro.map((f) => <LinhaFator key={f.chave} f={f} />)}</ul>
+      {relevancia.parcial && (
+        <p className="text-xs text-slate-400">parcial — vincule à base RFB no formulário de edição.</p>
+      )}
+    </section>
+  );
+}
+
+function FatoresRfb({ relevancia }) {
+  const rfb = relevancia?.fatores?.filter((f) => f.origem === "rfb") ?? [];
+  if (rfb.length === 0) return null;
+  return (
+    <div className="pt-2 space-y-1">
+      <p className="text-[11px] text-slate-400 uppercase tracking-wider">Na relevância</p>
+      <ul className="space-y-1">{rfb.map((f) => <LinhaFator key={f.chave} f={f} />)}</ul>
+    </div>
+  );
+}
+
+function BlocoSinais({ risco }) {
+  if (!risco) return null;
+  return (
+    <section aria-label="Sinais de risco" className="rounded-xl border border-[var(--border)] bg-[var(--panel-2)] p-3 space-y-1.5">
+      <p className="text-xs font-semibold text-[var(--text-dim)] uppercase tracking-wider">
+        Sinais de risco{risco.nivel !== "nenhum" && ` · ${NIVEL_LABEL[risco.nivel] || risco.nivel}`}
+      </p>
+      {risco.sinais.length === 0 ? (
+        <p className="text-xs text-slate-400">Nenhum sinal de risco calculado.</p>
+      ) : (
+        <ul className="space-y-1">
+          {risco.sinais.map((s) => (
+            <li key={s.chave} className="text-xs text-[var(--text)]">
+              {s.rotulo}{s.desde && <span className="text-slate-400"> · desde {fmtDate(s.desde)}</span>}
+            </li>
+          ))}
+        </ul>
+      )}
+    </section>
+  );
+}
+
 export default function EmpresaDrawer({ empresa, detalhe, onClose, onChanged, canEditar }) {
   const { addToast } = useToast();
   const [aba, setAba] = useState(0);
@@ -58,6 +134,9 @@ export default function EmpresaDrawer({ empresa, detalhe, onClose, onChanged, ca
   const fotoHero = det?.visitas?.find((v) => v.foto_base64)?.foto_base64 || null;
   const proximaAcao = det ? det.proxima_acao : (empresa?.proxima_acao ?? null);
   const proximaAcaoData = det ? det.proxima_acao_data : (empresa?.proxima_acao_data ?? null);
+  // Enquanto o detalhe não chegou, o card já traz relevância/risco (LeanOut).
+  const relevancia = det?.relevancia ?? empresa?.relevancia ?? null;
+  const riscoCalc = det?.risco ?? empresa?.risco ?? null;
 
   async function chamar(fn, okMsg, errMsg) {
     setSalvando(true);
@@ -204,6 +283,8 @@ export default function EmpresaDrawer({ empresa, detalhe, onClose, onChanged, ca
           {/* ── Aba Perfil ── */}
           {aba === 0 && (
             <div className="space-y-3">
+              <BlocoRelevancia relevancia={relevancia} />
+              <BlocoSinais risco={riscoCalc} />
               {empresa.num_empregos != null && (
                 <p className="text-xs text-slate-400">{empresa.num_empregos.toLocaleString("pt-BR")} emprego(s)</p>
               )}
@@ -230,6 +311,7 @@ export default function EmpresaDrawer({ empresa, detalhe, onClose, onChanged, ca
                         : "Empresa sem vínculo com a base CNPJ — vincule no formulário de edição."}
                     </p>
                   )}
+                  <FatoresRfb relevancia={relevancia} />
                 </div>
               </PlanGate>
             </div>
