@@ -84,9 +84,9 @@ describe("AgendaTab", () => {
     const onAbrirEmpresa = vi.fn();
     montar({ onAbrirEmpresa });
     await esperar();
-    fireEvent.click(within(regiao("Sem contato há 90 dias ou mais")).getByRole("button", { name: "Abrir Delta" }));
+    fireEvent.click(within(regiao("Sem contato há 90 dias ou mais")).getByRole("button", { name: /^Abrir Delta/ }));
     expect(onAbrirEmpresa).toHaveBeenCalledWith(11);
-    fireEvent.click(within(regiao("Demandas abertas")).getByRole("button", { name: "Abrir ACME" }));
+    fireEvent.click(within(regiao("Demandas abertas")).getByRole("button", { name: /^Abrir ACME/ }));
     expect(onAbrirEmpresa).toHaveBeenLastCalledWith(7);
   });
 

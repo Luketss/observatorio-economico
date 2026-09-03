@@ -34,9 +34,9 @@ function Item({ onClick, empresa, tom, children }) {
       <button
         type="button"
         onClick={onClick}
-        aria-label={`Abrir ${empresa}`}
         className="w-full text-left text-xs rounded-lg px-2 py-1.5 hover:bg-[var(--panel-2)] cursor-pointer"
       >
+        <span className="sr-only">Abrir</span>{" "}
         <span className="font-medium text-[var(--text)]">{empresa}</span>
         <span className="text-[var(--text-dim)]"> · </span>
         <span className="text-[var(--text-dim)]" style={tom ? { color: tom } : undefined}>{children}</span>
