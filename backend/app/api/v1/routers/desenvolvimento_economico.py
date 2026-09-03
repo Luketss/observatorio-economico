@@ -8,6 +8,7 @@ from sqlalchemy.orm import Session, selectinload
 
 from app.api.deps import get_current_user, get_db, require_permissao
 from app.core.cnpj import cnpj_para_basico
+from app.core.datas import hoje_local
 from app.core.exceptions import ForbiddenException, NotFoundException
 from app.models.desenvolvimento_economico import (
     CaptacaoRecurso,
@@ -84,7 +85,7 @@ def _lean_out(empresa: EmpresaRetencao, calc: Enriquecimento) -> EmpresaRetencao
 
 
 def _lean_enriquecido(db: Session, empresa: EmpresaRetencao) -> EmpresaRetencaoLeanOut:
-    return _lean_out(empresa, enriquecer(db, [empresa])[empresa.id])
+    return _lean_out(empresa, enriquecer(db, [empresa], hoje=hoje_local())[empresa.id])
 
 
 # ── 3.1 Funil de Investimentos ─────────────────────────────────────────────
@@ -184,7 +185,7 @@ def listar_retencao(
     elif municipio_id is not None:
         query = query.filter(EmpresaRetencao.municipio_id == municipio_id)
     empresas = query.all()
-    calc = enriquecer(db, empresas)
+    calc = enriquecer(db, empresas, hoje=hoje_local())
     # Ordem de relevância decrescente com desempate por nome (antes: só nome).
     return [_lean_out(e, calc[e.id]) for e in ordenar_por_relevancia(empresas, calc)]
 
@@ -212,7 +213,7 @@ def detalhe_retencao(
     empresa.visitas.sort(key=lambda v: v.data_visita)
     empresa.contatos.sort(key=lambda c: c.data)
     empresa.demandas.sort(key=lambda d: d.data_registro)
-    calc = enriquecer(db, [empresa])[empresa.id]  # perfil RFB lido uma única vez, aqui
+    calc = enriquecer(db, [empresa], hoje=hoje_local())[empresa.id]  # perfil RFB lido uma única vez, aqui
     return EmpresaRetencaoOut.model_validate(
         {
             **_colunas(empresa),

@@ -30,6 +30,7 @@ from typing import Iterable
 from sqlalchemy import func
 from sqlalchemy.orm import Session
 
+from app.core.datas import hoje_local
 from app.models.desenvolvimento_economico import ContatoEmpresa, DemandaEmpresa, VisitaRetencao
 from app.models.empresa import Empresa
 
@@ -250,7 +251,7 @@ def enriquecer(db: Session, cadastros: Iterable, hoje: date | None = None) -> di
     cadastros = list(cadastros)
     if not cadastros:
         return {}
-    hoje = hoje or date.today()
+    hoje = hoje or hoje_local()
     ids = [c.id for c in cadastros]
 
     perfis: dict[tuple[int, str], Empresa] = {}
