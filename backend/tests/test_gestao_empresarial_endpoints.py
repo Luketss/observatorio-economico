@@ -10,7 +10,7 @@ import app.models  # noqa: F401
 from app.core.exceptions import ForbiddenException
 from app.db.base import Base
 from app.models.desenvolvimento_economico import (
-    ContatoEmpresa, DemandaEmpresa, EmpresaRetencao, VisitaRetencao,
+    ContatoEmpresa, DemandaEmpresa, DemandaStatusHistorico, EmpresaRetencao, VisitaRetencao,
 )
 from app.models.empresa import Empresa
 from app.models.municipio import Municipio
@@ -29,7 +29,8 @@ def ctx():
     Base.metadata.create_all(engine, tables=[
         Municipio.__table__, Role.__table__, Usuario.__table__,
         EmpresaRetencao.__table__, VisitaRetencao.__table__,
-        ContatoEmpresa.__table__, DemandaEmpresa.__table__, Empresa.__table__,
+        ContatoEmpresa.__table__, DemandaEmpresa.__table__, DemandaStatusHistorico.__table__,
+        Empresa.__table__,
     ])
     db = sessionmaker(bind=engine)()
     role_g = Role(nome="ADMIN_GLOBAL", builtin=True, permissoes={})
@@ -275,3 +276,52 @@ def test_rotas_de_descoberta_vem_antes_do_detalhe_por_id():
     base = "/api/v1/desenvolvimento-economico/retencao"
     assert caminhos.index(f"{base}/descobrir") < caminhos.index(base + "/{empresa_id}")
     assert caminhos.index(f"{base}/descobrir/divisoes") < caminhos.index(base + "/{empresa_id}")
+
+
+# ── histórico de status das demandas (sub-frente C) ─────────────────────────
+
+def test_post_demanda_grava_linha_inicial_do_historico(ctx):
+    from app.api.v1.routers.desenvolvimento_economico import adicionar_demanda
+    db, _, u1, *_ = ctx
+    e = _criar_empresa(db, u1)
+    d = adicionar_demanda(e.id, DemandaEmpresaCreate(descricao="Via", data_registro=date(2026, 8, 1)),
+                          db=db, current_user=u1)
+    assert [(h.de, h.para, h.alterado_por) for h in d.historico] == [(None, "aberta", u1.id)]
+    assert d.historico[0].alterado_por_nome == "U1"
+
+
+def test_put_grava_transicao_so_quando_o_status_muda(ctx):
+    from app.api.v1.routers.desenvolvimento_economico import adicionar_demanda, atualizar_demanda
+    db, _, u1, *_ = ctx
+    e = _criar_empresa(db, u1)
+    d = adicionar_demanda(e.id, DemandaEmpresaCreate(descricao="Via", data_registro=date(2026, 8, 1)),
+                          db=db, current_user=u1)
+    atualizar_demanda(d.id, DemandaEmpresaUpdate(descricao="Via pública"), db=db, current_user=u1)   # só descrição
+    atualizar_demanda(d.id, DemandaEmpresaUpdate(status="aberta"), db=db, current_user=u1)           # mesmo status
+    upd = atualizar_demanda(d.id, DemandaEmpresaUpdate(status="em_andamento"), db=db, current_user=u1)
+    assert [(h.de, h.para) for h in upd.historico] == [(None, "aberta"), ("aberta", "em_andamento")]
+    assert upd.historico[-1].alterado_por == u1.id
+    assert db.query(DemandaStatusHistorico).filter_by(demanda_id=d.id).count() == 2
+
+
+def test_detalhe_traz_historico_das_demandas_com_nome_do_usuario(ctx):
+    from app.api.v1.routers.desenvolvimento_economico import adicionar_demanda, atualizar_demanda, detalhe_retencao
+    db, _, u1, *_ = ctx
+    e = _criar_empresa(db, u1)
+    d = adicionar_demanda(e.id, DemandaEmpresaCreate(descricao="Via", data_registro=date(2026, 8, 1)),
+                          db=db, current_user=u1)
+    atualizar_demanda(d.id, DemandaEmpresaUpdate(status="resolvida"), db=db, current_user=u1)
+    det = detalhe_retencao(e.id, db=db, current_user=u1)
+    hist = det.demandas[0].historico
+    assert [(h.de, h.para, h.alterado_por_nome) for h in hist] == [(None, "aberta", "U1"), ("aberta", "resolvida", "U1")]
+    assert hist[0].alterado_em is not None
+
+
+def test_demanda_antiga_sem_historico_continua_valida(ctx):
+    from app.api.v1.routers.desenvolvimento_economico import detalhe_retencao
+    db, _, u1, *_ = ctx
+    e = _criar_empresa(db, u1)
+    db.add(DemandaEmpresa(empresa_id=e.id, municipio_id=e.municipio_id, descricao="Antiga", data_registro=date(2026, 7, 1)))
+    db.commit()
+    det = detalhe_retencao(e.id, db=db, current_user=u1)
+    assert det.demandas[0].historico == []

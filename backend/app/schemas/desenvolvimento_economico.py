@@ -122,6 +122,16 @@ class DemandaEmpresaUpdate(BaseModel):
     responsavel: Optional[str] = None
 
 
+class DemandaStatusOut(BaseModel):
+    de: Optional[str] = None
+    para: str
+    alterado_em: datetime
+    alterado_por_nome: Optional[str] = None
+
+    class Config:
+        from_attributes = True
+
+
 class DemandaEmpresaOut(BaseModel):
     id: int
     empresa_id: int
@@ -131,6 +141,7 @@ class DemandaEmpresaOut(BaseModel):
     responsavel: Optional[str] = None
     criado_em: datetime
     atualizado_em: datetime
+    historico: List[DemandaStatusOut] = []
 
     class Config:
         from_attributes = True

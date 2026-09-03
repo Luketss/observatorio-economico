@@ -15,6 +15,7 @@ from app.models.desenvolvimento_economico import (
     CaptacaoRecurso,
     ContatoEmpresa,
     DemandaEmpresa,
+    DemandaStatusHistorico,
     EmpresaRetencao,
     EscritaProjeto,
     InvestimentoFunil,
@@ -90,6 +91,16 @@ def _lean_out(empresa: EmpresaRetencao, calc: Enriquecimento) -> EmpresaRetencao
 
 def _lean_enriquecido(db: Session, empresa: EmpresaRetencao) -> EmpresaRetencaoLeanOut:
     return _lean_out(empresa, enriquecer(db, [empresa], hoje=hoje_local())[empresa.id])
+
+
+def _registrar_status_demanda(db: Session, demanda: DemandaEmpresa, de: str | None, para: str,
+                              usuario_id: int | None) -> None:
+    """Uma linha de histórico por transição (sub-frente C). Não faz commit:
+    entra no mesmo commit da demanda."""
+    db.add(DemandaStatusHistorico(
+        demanda_id=demanda.id, municipio_id=demanda.municipio_id,
+        de=de, para=para, alterado_por=usuario_id,
+    ))
 
 
 # ── 3.1 Funil de Investimentos ─────────────────────────────────────────────
@@ -264,7 +275,9 @@ def detalhe_retencao(
         .options(
             selectinload(EmpresaRetencao.visitas),
             selectinload(EmpresaRetencao.contatos),
-            selectinload(EmpresaRetencao.demandas),
+            selectinload(EmpresaRetencao.demandas)
+            .selectinload(DemandaEmpresa.historico)
+            .selectinload(DemandaStatusHistorico.usuario),
         )
         .filter(EmpresaRetencao.id == empresa_id)
         .first()
@@ -467,6 +480,8 @@ def adicionar_demanda(
         criado_por=current_user.id,
     )
     db.add(demanda)
+    db.flush()  # id da demanda para a linha inicial do histórico
+    _registrar_status_demanda(db, demanda, None, demanda.status, current_user.id)
     db.commit()
     db.refresh(demanda)
     return demanda
@@ -484,8 +499,12 @@ def atualizar_demanda(
         raise NotFoundException("Demanda não encontrada")
     if current_user.role.nome != "ADMIN_GLOBAL" and demanda.municipio_id != current_user.municipio_id:
         raise ForbiddenException("Acesso negado")
-    for field, value in data.model_dump(exclude_unset=True).items():
+    campos = data.model_dump(exclude_unset=True)
+    status_antigo = demanda.status
+    for field, value in campos.items():
         setattr(demanda, field, value)
+    if "status" in campos and campos["status"] != status_antigo:
+        _registrar_status_demanda(db, demanda, status_antigo, campos["status"], current_user.id)
     db.commit()
     db.refresh(demanda)
     return demanda
