@@ -24,6 +24,7 @@ from app.models.desenvolvimento_economico import (
 )
 from app.models.usuario import Usuario
 from app.schemas.desenvolvimento_economico import (
+    AgendaOut,
     CaptacaoRecursoCreate,
     CaptacaoRecursoOut,
     CaptacaoRecursoUpdate,
@@ -53,7 +54,7 @@ from app.schemas.desenvolvimento_economico import (
     VisitaRetencaoCreate,
     VisitaRetencaoOut,
 )
-from app.services.gestao_empresarial import Enriquecimento, descobrir, divisoes_disponiveis, enriquecer, ordenar_por_relevancia
+from app.services.gestao_empresarial import JANELAS_AGENDA, Enriquecimento, agenda, agenda_vazia, descobrir, divisoes_disponiveis, enriquecer, ordenar_por_relevancia
 
 router = APIRouter(prefix="/desenvolvimento-economico", tags=["Desenvolvimento Econômico"])
 
@@ -262,6 +263,30 @@ def descobrir_divisoes(
         for d, n in divisoes_disponiveis(db, mid)
     ]
     return sorted(itens, key=lambda i: i.descricao)
+
+
+@router.get("/retencao/agenda", response_model=AgendaOut)
+def agenda_retencao(
+    dias: int = Query(7),
+    municipio_id: int | None = Query(default=None),
+    db: Session = Depends(get_db),
+    current_user: Usuario = Depends(get_current_user),
+):
+    """Agenda do gestor: ações vencidas, próximas N dias, sem data, demandas
+    abertas, sem contato 90 d+ e contatos recentes. Mesmo tenant de
+    /retencao; ADMIN_GLOBAL sem view-as recebe a agenda vazia. Rota estática
+    ANTES de /retencao/{empresa_id}."""
+    if dias not in JANELAS_AGENDA:
+        raise HTTPException(status_code=422, detail=f"dias deve ser um de {list(JANELAS_AGENDA)}")
+    hoje = hoje_local()
+    query = db.query(EmpresaRetencao)
+    if current_user.role.nome != "ADMIN_GLOBAL":
+        query = query.filter(EmpresaRetencao.municipio_id == current_user.municipio_id)
+    elif municipio_id is not None:
+        query = query.filter(EmpresaRetencao.municipio_id == municipio_id)
+    else:
+        return AgendaOut(**asdict(agenda_vazia(hoje, dias)))
+    return AgendaOut(**asdict(agenda(db, query.all(), hoje=hoje, dias=dias)))
 
 
 @router.get("/retencao/{empresa_id}", response_model=EmpresaRetencaoOut)

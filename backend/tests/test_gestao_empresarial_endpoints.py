@@ -276,6 +276,7 @@ def test_rotas_de_descoberta_vem_antes_do_detalhe_por_id():
     base = "/api/v1/desenvolvimento-economico/retencao"
     assert caminhos.index(f"{base}/descobrir") < caminhos.index(base + "/{empresa_id}")
     assert caminhos.index(f"{base}/descobrir/divisoes") < caminhos.index(base + "/{empresa_id}")
+    assert caminhos.index(f"{base}/agenda") < caminhos.index(base + "/{empresa_id}")
 
 
 # ── histórico de status das demandas (sub-frente C) ─────────────────────────
@@ -325,3 +326,54 @@ def test_demanda_antiga_sem_historico_continua_valida(ctx):
     db.commit()
     det = detalhe_retencao(e.id, db=db, current_user=u1)
     assert det.demandas[0].historico == []
+
+
+# ── agenda (sub-frente C) ────────────────────────────────────────────────────
+
+def test_agenda_respeita_tenant_e_view_as(ctx):
+    from datetime import timedelta
+    from app.api.v1.routers.desenvolvimento_economico import agenda_retencao
+    from app.core.datas import hoje_local
+    db, admin, u1, u2, m1, m2 = ctx
+    hoje = hoje_local()
+    _criar_empresa(db, u1, nome="Alfa Co", proxima_acao="Ligar", proxima_acao_data=hoje - timedelta(days=2))
+    _criar_empresa(db, u2, nome="Beta Co", proxima_acao="Visitar", proxima_acao_data=hoje + timedelta(days=3))
+    a1 = agenda_retencao(dias=7, municipio_id=None, db=db, current_user=u1)
+    assert [i.empresa_nome for i in a1.vencidas] == ["Alfa Co"] and a1.proximas == []
+    assert (a1.kpis.vencidas, a1.dias, a1.hoje) == (1, 7, hoje)
+    a2 = agenda_retencao(dias=7, municipio_id=m2.id, db=db, current_user=admin)
+    assert [(i.empresa_nome, i.dias) for i in a2.proximas] == [("Beta Co", 3)] and a2.vencidas == []
+    u1_ignora = agenda_retencao(dias=7, municipio_id=m2.id, db=db, current_user=u1)
+    assert [i.empresa_nome for i in u1_ignora.vencidas] == ["Alfa Co"]
+
+
+def test_agenda_admin_sem_municipio_e_vazia_e_dias_invalido_e_422(ctx):
+    from fastapi import HTTPException
+    from app.api.v1.routers.desenvolvimento_economico import agenda_retencao
+    db, admin, u1, *_ = ctx
+    _criar_empresa(db, u1, nome="Alfa Co")
+    vazia = agenda_retencao(dias=30, municipio_id=None, db=db, current_user=admin)
+    assert vazia.kpis.sem_contato == 0 and vazia.sem_contato == [] and vazia.dias == 30
+    with pytest.raises(HTTPException) as exc:
+        agenda_retencao(dias=10, municipio_id=None, db=db, current_user=u1)
+    assert exc.value.status_code == 422
+
+
+def test_agenda_devolve_demandas_e_contatos_recentes(ctx):
+    from datetime import timedelta
+    from app.api.v1.routers.desenvolvimento_economico import adicionar_contato, adicionar_demanda, agenda_retencao
+    from app.core.datas import hoje_local
+    db, _, u1, *_ = ctx
+    hoje = hoje_local()
+    e = _criar_empresa(db, u1, nome="Alfa Co")
+    adicionar_demanda(e.id, DemandaEmpresaCreate(descricao="Via", data_registro=hoje - timedelta(days=40)),
+                      db=db, current_user=u1)
+    adicionar_contato(e.id, ContatoEmpresaCreate(data=hoje - timedelta(days=2), tipo="email"), db=db, current_user=u1)
+    ag = agenda_retencao(dias=7, municipio_id=None, db=db, current_user=u1)
+    assert [(d.descricao, d.dias_em_aberto, d.sinal_30d) for d in ag.demandas] == [("Via", 40, True)]
+    # A linha inicial do histórico foi gravada agora pelo POST (Task 2): "desde" é
+    # a data de hoje, não data_registro. Tolerância de 1 dia: alterado_em é UTC e
+    # hoje_local é BRT (entre 21h e 0h em Brasília as datas diferem).
+    assert abs((ag.demandas[0].status_desde - hoje).days) <= 1
+    assert [(c.tipo, c.subtipo, c.empresa_nome) for c in ag.contatos_recentes] == [("contato", "email", "Alfa Co")]
+    assert ag.kpis.demandas_abertas == 1

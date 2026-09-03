@@ -397,3 +397,64 @@ class DivisaoCnaeOut(BaseModel):
     divisao: str
     descricao: str
     total: int
+
+
+# ── agenda do gestor (sub-frente C) ────────────────────────────────────────
+
+class ItemAcaoOut(BaseModel):
+    empresa_id: int
+    empresa_nome: str
+    proxima_acao: str
+    proxima_acao_data: Optional[date] = None
+    dias: Optional[int] = None
+    responsavel: Optional[str] = None
+
+
+class ItemDemandaOut(BaseModel):
+    demanda_id: int
+    empresa_id: int
+    empresa_nome: str
+    descricao: str
+    status: str
+    data_registro: date
+    dias_em_aberto: int
+    status_desde: date
+    responsavel: Optional[str] = None
+    sinal_30d: bool
+
+
+class ItemSemContatoOut(BaseModel):
+    empresa_id: int
+    empresa_nome: str
+    desde: Optional[date] = None
+    dias: Optional[int] = None
+
+
+class ItemContatoOut(BaseModel):
+    empresa_id: int
+    empresa_nome: str
+    tipo: Literal["contato", "visita"]
+    subtipo: Optional[str] = None
+    data: date
+    responsavel: Optional[str] = None
+    observacoes: Optional[str] = None
+
+
+class AgendaKpisOut(BaseModel):
+    vencidas: int
+    proximas: int
+    sem_data: int
+    demandas_abertas: int
+    sem_contato: int
+
+
+class AgendaOut(BaseModel):
+    hoje: date
+    dias: int
+    kpis: AgendaKpisOut
+    vencidas: List[ItemAcaoOut]
+    proximas: List[ItemAcaoOut]
+    sem_data: List[ItemAcaoOut]
+    demandas: List[ItemDemandaOut]
+    sem_contato: List[ItemSemContatoOut]
+    contatos_recentes: List[ItemContatoOut]
