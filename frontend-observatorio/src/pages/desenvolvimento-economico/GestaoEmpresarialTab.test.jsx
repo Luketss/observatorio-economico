@@ -202,3 +202,43 @@ describe("GestaoEmpresarialTab — aba Descobrir na base RFB", () => {
     expect(chamadas("/descobrir/divisoes")).toBe(0);
   });
 });
+
+describe("GestaoEmpresarialTab — aba Agenda", () => {
+  const AGENDA = {
+    hoje: "2026-09-03", dias: 7,
+    kpis: { vencidas: 1, proximas: 0, sem_data: 0, demandas_abertas: 0, sem_contato: 0 },
+    vencidas: [{ empresa_id: 1, empresa_nome: "ACME", proxima_acao: "Ligar", proxima_acao_data: "2026-08-30", dias: 4, responsavel: null }],
+    proximas: [], sem_data: [], demandas: [], sem_contato: [], contatos_recentes: [],
+  };
+  const chamadasAgenda = () => api.get.mock.calls.filter(([u]) => u.endsWith("/retencao/agenda"));
+
+  beforeEach(() => {
+    authState.user = { role: "GESTOR", municipio_id: 1, permissoes: { retencao: ["criar", "editar"] } };
+    api.get.mockImplementation((url) => Promise.resolve({
+      data: url.endsWith("/retencao") ? LISTA
+        : url.endsWith("/retencao/agenda") ? AGENDA
+        : url.endsWith("/retencao/1") ? { ...LISTA.find((e) => e.id === 1), visitas: [], contatos: [], demandas: [] }
+        : {},
+    }));
+  });
+
+  it("a aba Agenda carrega /retencao/agenda e some ao voltar", async () => {
+    montar();
+    await waitFor(() => expect(screen.getByText("ACME")).toBeInTheDocument());
+    expect(chamadasAgenda()).toHaveLength(0);
+    fireEvent.click(screen.getByRole("tab", { name: "Agenda" }));
+    await waitFor(() => expect(screen.getByRole("region", { name: "Ações vencidas" })).toBeInTheDocument());
+    expect(chamadasAgenda().at(-1)[1].params).toEqual({ dias: 7 });
+    fireEvent.click(screen.getByRole("tab", { name: "Acompanhadas" }));
+    expect(screen.queryByRole("region", { name: "Ações vencidas" })).toBeNull();
+  });
+
+  it("clicar num item da agenda abre o drawer da empresa da lista", async () => {
+    montar();
+    await waitFor(() => expect(screen.getByText("ACME")).toBeInTheDocument());
+    fireEvent.click(screen.getByRole("tab", { name: "Agenda" }));
+    await waitFor(() => expect(screen.getByRole("button", { name: /^Abrir ACME/ })).toBeInTheDocument());
+    fireEvent.click(screen.getByRole("button", { name: /^Abrir ACME/ }));
+    await waitFor(() => expect(api.get.mock.calls.some(([u]) => u.endsWith("/retencao/1"))).toBe(true));  // loadDetalhe da empresa 1
+  });
+});

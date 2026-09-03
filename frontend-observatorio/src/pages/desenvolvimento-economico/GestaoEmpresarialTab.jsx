@@ -19,6 +19,7 @@ import NidSelect from "../../components/nid/NidSelect";
 import NidTabBar from "../../components/nid/NidTabBar";
 import PlanGate from "../../components/PlanGate";
 import DescobrirRfb from "./DescobrirRfb";
+import AgendaTab from "./AgendaTab";
 import EmpresaDrawer from "./EmpresaDrawer";
 import BuscaEmpresaRfb from "./BuscaEmpresaRfb";
 import { propsTituloClicavel } from "../../utils/cliqueAcessivel";
@@ -128,6 +129,9 @@ export default function GestaoEmpresarialTab() {
   const [aba, setAba] = useState(0);
   // Incrementado ao salvar um cadastro: a empresa some do ranking da descoberta.
   const [refreshDescoberta, setRefreshDescoberta] = useState(0);
+  // Incrementado ao salvar cadastro e a cada alteração feita no drawer
+  // (contato, visita, demanda, próxima ação): a agenda depende de tudo isso.
+  const [refreshAgenda, setRefreshAgenda] = useState(0);
 
   // Busca, ordenação e filtro no cliente sobre a lista já carregada (a ordem
   // inicial do backend já é a de relevância; reordenar aqui mantém a regra
@@ -162,9 +166,12 @@ export default function GestaoEmpresarialTab() {
   async function load() {
     try {
       const res = await api.get("/desenvolvimento-economico/retencao");
-      setEmpresas(res.data || []);
+      const lista = res.data || [];
+      setEmpresas(lista);
+      return lista;
     } catch (err) {
       console.error(err);
+      return [];
     } finally {
       setLoading(false);
     }
@@ -187,6 +194,14 @@ export default function GestaoEmpresarialTab() {
   function abrirEmpresa(empresa) {
     setViewingEmpresa(empresa);
     if (!detalhe[empresa.id]) loadDetalhe(empresa.id);
+  }
+
+  // A agenda só conhece o id: acha a empresa na lista já carregada; se a
+  // lista ainda não chegou (ou está velha), recarrega e procura de novo.
+  async function abrirPorId(id) {
+    const achada = empresas.find((e) => e.id === id) || (await load()).find((e) => e.id === id);
+    if (achada) abrirEmpresa(achada);
+    else addToast("Empresa não encontrada — atualize a página", "error");
   }
 
   // `prefill` vem do "Acompanhar" da descoberta: nome, vínculo RFB e setor
@@ -237,6 +252,7 @@ export default function GestaoEmpresarialTab() {
       closeForm();
       await load();
       setRefreshDescoberta((n) => n + 1);
+      setRefreshAgenda((n) => n + 1);
     } catch (err) {
       setFormError(err?.response?.data?.detail || "Erro ao salvar.");
     } finally {
@@ -301,7 +317,7 @@ export default function GestaoEmpresarialTab() {
     <motion.div initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3 }} className="space-y-6">
       {header}
       <NidTabBar
-        tabs={["Acompanhadas", "Descobrir na base RFB"]}
+        tabs={["Acompanhadas", "Descobrir na base RFB", "Agenda"]}
         value={aba}
         onChange={setAba}
         ariaLabel="Seções da Gestão Empresarial"
@@ -325,6 +341,10 @@ export default function GestaoEmpresarialTab() {
             <div className="h-40" aria-hidden="true" />
           )}
         </PlanGate>
+      )}
+
+      {aba === 2 && (
+        <AgendaTab onAbrirEmpresa={abrirPorId} refreshKey={refreshAgenda} />
       )}
 
       {aba === 0 && (<>
@@ -457,7 +477,7 @@ export default function GestaoEmpresarialTab() {
         empresa={viewingEmpresa}
         detalhe={viewingEmpresa ? detalhe[viewingEmpresa.id] : null}
         onClose={() => setViewingEmpresa(null)}
-        onChanged={async (id) => { await loadDetalhe(id); await load(); }}
+        onChanged={async (id) => { await loadDetalhe(id); await load(); setRefreshAgenda((n) => n + 1); }}
         canEditar={canEditar}
       />
 
