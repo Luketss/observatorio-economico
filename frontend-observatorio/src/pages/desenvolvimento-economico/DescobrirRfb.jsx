@@ -42,6 +42,7 @@ export default function DescobrirRfb({ onAcompanhar, canCriar, refreshKey = 0 })
   const [carregando, setCarregando] = useState(true);
   const [carregandoMais, setCarregandoMais] = useState(false);
   const [erro, setErro] = useState(null);
+  const [erroMais, setErroMais] = useState(null);
   // Versão da primeira página: um "Carregar mais" em voo não anexa em cima
   // de outro filtro.
   const versaoRef = useRef(0);
@@ -80,6 +81,7 @@ export default function DescobrirRfb({ onAcompanhar, canCriar, refreshKey = 0 })
     versaoRef.current += 1;
     setCarregando(true);
     setErro(null);
+    setErroMais(null);
     setItens([]);
     setTotal(0);
     api.get(BASE, { params: params(0) })
@@ -97,13 +99,14 @@ export default function DescobrirRfb({ onAcompanhar, canCriar, refreshKey = 0 })
   async function carregarMais() {
     const versao = versaoRef.current;
     setCarregandoMais(true);
+    setErroMais(null);
     try {
       const res = await api.get(BASE, { params: params(itens.length) });
       if (versao !== versaoRef.current) return;
       setItens((prev) => [...prev, ...(res.data?.itens ?? [])]);
       setTotal(res.data?.total ?? total);
     } catch {
-      if (versao === versaoRef.current) setErro(ERRO_CARGA);
+      if (versao === versaoRef.current) setErroMais(ERRO_CARGA);
     } finally {
       setCarregandoMais(false);
     }
@@ -139,7 +142,7 @@ export default function DescobrirRfb({ onAcompanhar, canCriar, refreshKey = 0 })
       <div>
         {!carregando && (
           <p className="text-sm text-[var(--text)]">
-            {fmtInt(total)} {total === 1 ? "empresa" : "empresas"} na base RFB ainda não acompanhadas
+            {fmtInt(total)} {total === 1 ? "empresa" : "empresas"} na base RFB ainda não acompanhada{total === 1 ? "" : "s"}
           </p>
         )}
         <p className="text-xs text-slate-400">
@@ -207,7 +210,8 @@ export default function DescobrirRfb({ onAcompanhar, canCriar, refreshKey = 0 })
       )}
 
       {!carregando && !erro && itens.length < total && (
-        <div className="flex justify-center">
+        <div className="flex flex-col items-center gap-2">
+          {erroMais && <p role="alert" className="text-sm" style={{ color: "var(--accent-2)" }}>{erroMais}</p>}
           <button
             type="button"
             onClick={carregarMais}

@@ -152,4 +152,20 @@ describe("DescobrirRfb", () => {
     expect(screen.queryByRole("button", { name: /Carregar mais/ })).toBeNull();
     expect(screen.queryByText("Metal Forte")).toBeNull();
   });
+
+  it("erro no Carregar mais avisa sem derrubar a tabela nem o botão; retry limpa o aviso", async () => {
+    montar();
+    await esperarLinhas();
+    respostas[BASE] = () => Promise.reject(new Error("500"));
+    fireEvent.click(screen.getByRole("button", { name: /Carregar mais/ }));
+    await waitFor(() => expect(screen.getByRole("alert")).toHaveTextContent("Não foi possível carregar a base RFB."));
+    expect(screen.getByRole("table")).toBeInTheDocument();
+    expect(screen.getByText("Metal Forte")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /Carregar mais/ })).toBeInTheDocument();
+
+    respostas[BASE] = ({ offset }) => ({ total: 45, itens: offset === 0 ? ITENS : [TERCEIRA] });
+    fireEvent.click(screen.getByRole("button", { name: /Carregar mais/ }));
+    await waitFor(() => expect(screen.getByText("Terceira")).toBeInTheDocument());
+    expect(screen.queryByRole("alert")).toBeNull();
+  });
 });
