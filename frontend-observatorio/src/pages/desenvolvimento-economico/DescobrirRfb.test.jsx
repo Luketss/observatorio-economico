@@ -141,4 +141,15 @@ describe("DescobrirRfb", () => {
     montar();
     await waitFor(() => expect(screen.getByRole("alert")).toHaveTextContent("Não foi possível carregar a base RFB."));
   });
+
+  it("troca de filtro que falha limpa as linhas do filtro anterior", async () => {
+    montar();
+    await esperarLinhas();
+    respostas[BASE] = () => Promise.reject(new Error("500"));
+    fireEvent.change(screen.getByRole("combobox", { name: "Porte" }), { target: { value: "05" } });
+    await waitFor(() => expect(screen.getByRole("alert")).toHaveTextContent("Não foi possível carregar a base RFB."));
+    expect(screen.queryByRole("table")).toBeNull();
+    expect(screen.queryByRole("button", { name: /Carregar mais/ })).toBeNull();
+    expect(screen.queryByText("Metal Forte")).toBeNull();
+  });
 });

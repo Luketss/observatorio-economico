@@ -209,7 +209,7 @@ def descobrir_retencao(
     situacao: str = Query("02"),
     porte: str | None = Query(None),
     divisao: str | None = Query(None, pattern=r"^\d{2}$"),
-    q: str | None = Query(None),
+    q: str | None = Query(None, max_length=100),
     limit: int = Query(20, ge=1, le=100),
     offset: int = Query(0, ge=0),
     mid: int | None = Depends(scoped_modulo("empresas")),

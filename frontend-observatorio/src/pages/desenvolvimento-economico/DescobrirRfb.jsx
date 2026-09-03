@@ -80,6 +80,8 @@ export default function DescobrirRfb({ onAcompanhar, canCriar, refreshKey = 0 })
     versaoRef.current += 1;
     setCarregando(true);
     setErro(null);
+    setItens([]);
+    setTotal(0);
     api.get(BASE, { params: params(0) })
       .then((res) => {
         if (!vivo) return;
@@ -135,7 +137,11 @@ export default function DescobrirRfb({ onAcompanhar, canCriar, refreshKey = 0 })
       </div>
 
       <div>
-        <p className="text-sm text-[var(--text)]">{fmtInt(total)} empresas na base RFB ainda não acompanhadas</p>
+        {!carregando && (
+          <p className="text-sm text-[var(--text)]">
+            {fmtInt(total)} {total === 1 ? "empresa" : "empresas"} na base RFB ainda não acompanhadas
+          </p>
+        )}
         <p className="text-xs text-slate-400">
           Score RFB de 0 a 45: porte, tempo de atividade, capital e situação — os pontos de empregos e potencial
           entram quando a empresa é acompanhada.
@@ -153,7 +159,7 @@ export default function DescobrirRfb({ onAcompanhar, canCriar, refreshKey = 0 })
         </p>
       )}
 
-      {!carregando && itens.length > 0 && (
+      {!carregando && !erro && itens.length > 0 && (
         <div className="overflow-x-auto rounded-xl border border-[var(--border)]">
           <table className="w-full text-xs">
             <thead>
@@ -176,7 +182,7 @@ export default function DescobrirRfb({ onAcompanhar, canCriar, refreshKey = 0 })
                     {e.nome_fantasia && <span className="text-slate-400"> · {e.nome_fantasia}</span>}
                   </td>
                   <td className="px-3 py-2 text-[var(--text-dim)]">{e.divisao_descricao || "—"}</td>
-                  <td className="px-3 py-2 text-[var(--text-dim)]">{PORTE_RFB[e.porte] || "—"}</td>
+                  <td className="px-3 py-2 text-[var(--text-dim)]">{PORTE_RFB[e.porte] || e.porte || "—"}</td>
                   <td className="px-3 py-2 text-[var(--text-dim)]">{e.data_inicio ? e.data_inicio.slice(0, 4) : "—"}</td>
                   <td className="px-3 py-2 text-[var(--text-dim)]">{fmtBRL(e.capital_social)}</td>
                   <td className="px-3 py-2" style={{ color: corSituacao(e.situacao) }}>{SITUACAO_RFB[e.situacao] || e.situacao || "—"}</td>
@@ -200,7 +206,7 @@ export default function DescobrirRfb({ onAcompanhar, canCriar, refreshKey = 0 })
         </div>
       )}
 
-      {!carregando && itens.length < total && (
+      {!carregando && !erro && itens.length < total && (
         <div className="flex justify-center">
           <button
             type="button"
