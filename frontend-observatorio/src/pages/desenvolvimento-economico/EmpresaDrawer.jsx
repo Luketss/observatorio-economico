@@ -44,6 +44,15 @@ function fmtBRL(v) {
   return v.toLocaleString("pt-BR", { style: "currency", currency: "BRL", maximumFractionDigits: 0 });
 }
 
+function fmtDateTime(iso) {
+  if (!iso) return "";
+  return new Date(iso).toLocaleString("pt-BR", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" });
+}
+const rotuloStatus = (s) => STATUS_DEMANDA[s]?.label || s;
+// "Status desde": última transição do histórico; demandas anteriores à
+// migração 0041 não têm histórico e caem na data de registro.
+const statusDesde = (d) => (d.historico?.length ? d.historico[d.historico.length - 1].alterado_em.slice(0, 10) : d.data_registro);
+
 const defaultContato = { data: "", tipo: "reuniao", responsavel: "", observacoes: "" };
 const defaultVisita = { data_visita: "", responsavel: "", observacoes: "", foto_base64: "" };
 const defaultDemanda = { descricao: "", data_registro: "", responsavel: "" };
@@ -127,6 +136,7 @@ export default function EmpresaDrawer({ empresa, detalhe, onClose, onChanged, ca
   const [editingDemandaId, setEditingDemandaId] = useState(null);
   const [salvando, setSalvando] = useState(false);
   const [acaoForm, setAcaoForm] = useState(null); // null = exibindo; {proxima_acao, proxima_acao_data} = editando
+  const [historicoAberto, setHistoricoAberto] = useState({}); // { [demandaId]: bool }
 
   const det = detalhe;
   const risco = empresa ? RISCO_CONFIG[empresa.status_risco] || RISCO_CONFIG.baixo : null;
@@ -445,6 +455,32 @@ export default function EmpresaDrawer({ empresa, detalhe, onClose, onChanged, ca
                         <p className="text-[11px] text-slate-400">
                           {fmtDate(d.data_registro)}{d.responsavel && ` · ${d.responsavel}`}
                         </p>
+                        <p className="text-[11px] text-slate-400">
+                          {st.label} desde {fmtDate(statusDesde(d))}
+                          {" · "}
+                          <button
+                            type="button"
+                            aria-label={`ver histórico de ${d.descricao}`}
+                            aria-expanded={Boolean(historicoAberto[d.id])}
+                            onClick={() => setHistoricoAberto((p) => ({ ...p, [d.id]: !p[d.id] }))}
+                            className="text-blue-600 hover:text-blue-700 cursor-pointer"
+                          >
+                            {historicoAberto[d.id] ? "ocultar histórico" : "ver histórico"}
+                          </button>
+                        </p>
+                        {historicoAberto[d.id] && (
+                          (d.historico || []).length === 0 ? (
+                            <p className="text-[11px] text-slate-400">Sem histórico registrado (anterior a set/2026).</p>
+                          ) : (
+                            <ul className="text-[11px] text-[var(--text-dim)] space-y-0.5">
+                              {d.historico.map((h, i) => (
+                                <li key={i}>
+                                  {fmtDateTime(h.alterado_em)} · {h.de ? `${rotuloStatus(h.de)} → ${rotuloStatus(h.para)}` : `criada como ${rotuloStatus(h.para)}`}{h.alterado_por_nome && ` · ${h.alterado_por_nome}`}
+                                </li>
+                              ))}
+                            </ul>
+                          )
+                        )}
                         {canEditar ? (
                           <select aria-label={`Status da demanda ${d.descricao}`} value={d.status}
                             onChange={(e) => mudarStatusDemanda(d, e.target.value)} className={inputCls}>

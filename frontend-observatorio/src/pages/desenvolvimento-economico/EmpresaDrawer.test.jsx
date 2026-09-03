@@ -32,7 +32,14 @@ const DETALHE = {
   proxima_acao: "Visita de acompanhamento",
   visitas: [{ id: 1, data_visita: "2026-08-01", responsavel: "Ana", observacoes: "ok", foto_base64: null }],
   contatos: [{ id: 2, data: "2026-08-05", tipo: "ligacao", responsavel: "Bia", observacoes: null }],
-  demandas: [{ id: 3, descricao: "Iluminação da via", status: "aberta", data_registro: "2026-08-02", responsavel: null }],
+  demandas: [
+    { id: 3, descricao: "Iluminação da via", status: "aberta", data_registro: "2026-08-02", responsavel: null,
+      historico: [
+        { de: null, para: "aberta", alterado_em: "2026-08-02T12:00:00+00:00", alterado_por_nome: "Ana" },
+      ] },
+    { id: 4, descricao: "Poda de árvores", status: "em_andamento", data_registro: "2026-07-01", responsavel: null,
+      historico: [] },
+  ],
   perfil_rfb: { id: 9, cnpj_basico: "12345678", razao_social: "ACME LTDA",
     nome_fantasia: "ACME", situacao: "02", porte: "03", cnae_fiscal: "1011101",
     capital_social: 150000, data_inicio: "2010-01-05", opcao_simples: true, opcao_mei: false },
@@ -189,5 +196,26 @@ describe("EmpresaDrawer — relevância e sinais calculados", () => {
     render(<EmpresaDrawer empresa={{ ...EMPRESA, relevancia: RELEVANCIA, risco: RISCO }} detalhe={null}
       onClose={() => {}} onChanged={vi.fn()} canEditar={true} />);
     expect(screen.getByRole("region", { name: "Relevância" }).textContent).toContain("61");
+  });
+});
+
+describe("EmpresaDrawer — histórico de status das demandas", () => {
+  it("mostra 'desde' pela última transição e expande o histórico", () => {
+    montar();
+    fireEvent.click(screen.getByRole("tab", { name: /Demandas/ }));
+    expect(screen.getByText(/Aberta desde 02\/08\/2026/)).toBeInTheDocument();
+    const botao = screen.getByRole("button", { name: "ver histórico de Iluminação da via" });
+    expect(botao).toHaveAttribute("aria-expanded", "false");
+    fireEvent.click(botao);
+    expect(botao).toHaveAttribute("aria-expanded", "true");
+    expect(screen.getByText(/criada como Aberta · Ana/)).toBeInTheDocument();
+  });
+
+  it("demanda sem histórico usa a data de registro e avisa", () => {
+    montar();
+    fireEvent.click(screen.getByRole("tab", { name: /Demandas/ }));
+    expect(screen.getByText(/Em andamento desde 01\/07\/2026/)).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "ver histórico de Poda de árvores" }));
+    expect(screen.getByText("Sem histórico registrado (anterior a set/2026).")).toBeInTheDocument();
   });
 });
