@@ -23,15 +23,16 @@ ou 2+ sinais · atencao com 1 · nenhum com 0.
 """
 from __future__ import annotations
 
+import re
 from dataclasses import dataclass
 from datetime import date, datetime, timedelta
 from typing import Iterable
 
-from sqlalchemy import func
+from sqlalchemy import Integer, case, cast, exists, func, or_
 from sqlalchemy.orm import Session
 
 from app.core.datas import hoje_local
-from app.models.desenvolvimento_economico import ContatoEmpresa, DemandaEmpresa, VisitaRetencao
+from app.models.desenvolvimento_economico import ContatoEmpresa, DemandaEmpresa, EmpresaRetencao, VisitaRetencao
 from app.models.empresa import Empresa
 
 # ── pesos e limiares (constantes: sem configuração por município) ───────────
@@ -296,3 +297,114 @@ def enriquecer(db: Session, cadastros: Iterable, hoje: date | None = None) -> di
 def ordenar_por_relevancia(cadastros: Iterable, enriquecido: dict[int, Enriquecimento]) -> list:
     """Score decrescente; desempate por nome sem distinguir maiúsculas."""
     return sorted(cadastros, key=lambda c: (-enriquecido[c.id].relevancia.score, (c.nome or "").casefold()))
+
+
+# ── descoberta na base RFB (sub-frente B) ───────────────────────────────────
+# Espelho SQL de calcular_relevancia para linhas de `empresas` SEM cadastro
+# (0 pontos de empregos e potencial): porte + tempo + capital, ajustado pela
+# situação. Máximo 45. test_gestao_empresarial_descoberta.py compara SQL e
+# Python combinação a combinação — alterou uma regra, alterou as duas.
+
+SITUACOES_RFB = ("01", "02", "03", "04", "08")
+PORTES_RFB = ("00", "01", "03", "05", "07")
+
+
+def _menos_anos(hoje: date, anos: int) -> date:
+    """`hoje` N anos atrás; 29/02 vira 28/02. Como os cortes são 2, 5 e 10
+    anos, o ano de destino de um 29/02 nunca é bissexto — `_anos_completos`
+    e o corte concordam em todos os casos."""
+    try:
+        return hoje.replace(year=hoje.year - anos)
+    except ValueError:
+        return hoje.replace(year=hoje.year - anos, day=28)
+
+
+def _datas_de_corte(hoje: date) -> tuple[date, date, date]:
+    """(corte10, corte5, corte2): `data_inicio <= corteN` ⟺ N anos completos."""
+    return _menos_anos(hoje, 10), _menos_anos(hoje, 5), _menos_anos(hoje, 2)
+
+
+def expressao_score_rfb(hoje: date):
+    corte10, corte5, corte2 = _datas_de_corte(hoje)
+    pontos_tempo = dict(PONTOS_TEMPO)  # {10: 15, 5: 11, 2: 7, 0: 3}
+    porte = case(dict(PONTOS_PORTE), value=Empresa.porte, else_=0)
+    tempo = case(
+        (Empresa.data_inicio <= corte10, pontos_tempo[10]),
+        (Empresa.data_inicio <= corte5, pontos_tempo[5]),
+        (Empresa.data_inicio <= corte2, pontos_tempo[2]),
+        (Empresa.data_inicio.isnot(None), pontos_tempo[0]),
+        else_=0,
+    )
+    capital = case(
+        *[(Empresa.capital_social > acima_de, pts) for acima_de, pts in PONTOS_CAPITAL],
+        else_=0,
+    )
+    bruto = porte + tempo + capital
+    # `bruto // 2` do Python. SQLAlchemy 2 faz divisão real com `/` (21.5) e
+    # CAST(21.5 AS INTEGER) arredonda no Postgres e trunca no SQLite — então
+    # tira-se o resto antes de dividir: (43 - 1) / 2 = 21.0 → 21 nos dois.
+    metade = cast((bruto - (bruto % 2)) / 2, Integer)
+    return case(
+        (Empresa.situacao.in_(list(SITUACAO_ZERA)), 0),
+        (Empresa.situacao.in_(list(SITUACAO_REDUZ)), metade),
+        else_=bruto,
+    ).label("score")
+
+
+def _filtros_descoberta(municipio_id: int, situacao: str, porte: str | None,
+                        divisao: str | None, q: str | None) -> list:
+    filtros = [
+        Empresa.municipio_id == municipio_id,
+        ~exists().where(
+            EmpresaRetencao.municipio_id == Empresa.municipio_id,
+            EmpresaRetencao.cnpj_basico == Empresa.cnpj_basico,
+        ),
+    ]
+    if situacao != "todas":
+        filtros.append(Empresa.situacao == situacao)
+    if porte:
+        filtros.append(Empresa.porte == porte)
+    if divisao:
+        filtros.append(Empresa.cnae_fiscal.like(f"{divisao}%"))
+    termo = (q or "").strip()
+    if len(termo) >= 2:
+        digitos = re.sub(r"\D", "", termo)
+        if len(digitos) >= 3:
+            filtros.append(Empresa.cnpj_basico.like(f"{digitos[:8]}%"))
+        else:
+            like = f"%{termo}%"
+            filtros.append(or_(Empresa.razao_social.ilike(like), Empresa.nome_fantasia.ilike(like)))
+    return filtros
+
+
+def descobrir(db: Session, municipio_id: int, *, situacao: str = "02", porte: str | None = None,
+              divisao: str | None = None, q: str | None = None, limit: int = 20, offset: int = 0,
+              hoje: date | None = None) -> tuple[int, list]:
+    """Empresas da base RFB do município ainda não acompanhadas, por score RFB
+    decrescente (desempate por razão social e raiz, para paginar de forma
+    estável). Devolve (total, linhas); cada linha é (Empresa, score)."""
+    if situacao != "todas" and situacao not in SITUACOES_RFB:
+        raise ValueError(f"situacao inválida: {situacao!r}")
+    if porte is not None and porte not in PORTES_RFB:
+        raise ValueError(f"porte inválido: {porte!r}")
+    hoje = hoje or hoje_local()
+    filtros = _filtros_descoberta(municipio_id, situacao, porte, divisao, q)
+    total = db.query(func.count(Empresa.id)).filter(*filtros).scalar() or 0
+    score = expressao_score_rfb(hoje)
+    linhas = (
+        db.query(Empresa, score)
+        .filter(*filtros)
+        .order_by(score.desc(), Empresa.razao_social.asc(), Empresa.cnpj_basico.asc())
+        .offset(offset)
+        .limit(limit)
+        .all()
+    )
+    return int(total), [(e, int(s)) for e, s in linhas]
+
+
+def divisoes_disponiveis(db: Session, municipio_id: int) -> list[tuple[str, int]]:
+    """Divisões CNAE (2 dígitos) entre as ativas não acompanhadas, com contagem."""
+    divisao = func.substr(Empresa.cnae_fiscal, 1, 2)
+    filtros = _filtros_descoberta(municipio_id, "02", None, None, None) + [Empresa.cnae_fiscal.isnot(None)]
+    rows = db.query(divisao, func.count(Empresa.id)).filter(*filtros).group_by(divisao).all()
+    return [(str(d), int(n)) for d, n in rows]
