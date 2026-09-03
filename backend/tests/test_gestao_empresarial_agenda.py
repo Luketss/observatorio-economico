@@ -110,6 +110,19 @@ def test_demandas_abertas_com_dias_status_desde_e_sinal_30d(db):
     assert itens["Via"].empresa_nome == "ACME" and itens["Via"].demanda_id == d45.id
 
 
+def test_status_desde_usa_a_data_local_do_brasil(db):
+    # 01:30 UTC de 04/09 ainda é 22:30 de 03/09 em Brasília → desde = HOJE
+    e = _emp(db, "ACME")
+    d = DemandaEmpresa(empresa_id=e.id, municipio_id=e.municipio_id, descricao="Noite", data_registro=HOJE - timedelta(days=2))
+    db.add(d)
+    db.flush()
+    db.add(DemandaStatusHistorico(demanda_id=d.id, municipio_id=e.municipio_id, de="aberta", para="em_andamento",
+                                  alterado_em=datetime(2026, 9, 4, 1, 30, tzinfo=timezone.utc)))
+    db.commit()
+    ag = agenda(db, _todas(db), hoje=HOJE)
+    assert ag.demandas[0].status_desde == HOJE
+
+
 def test_demandas_de_empresa_fora_dos_cadastros_nao_entram(db):
     dentro = _emp(db, "Dentro")
     fora = _emp(db, "Fora")

@@ -49,9 +49,12 @@ function fmtDateTime(iso) {
   return new Date(iso).toLocaleString("pt-BR", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" });
 }
 const rotuloStatus = (s) => STATUS_DEMANDA[s]?.label || s;
-// "Status desde": última transição do histórico; demandas anteriores à
-// migração 0041 não têm histórico e caem na data de registro.
-const statusDesde = (d) => (d.historico?.length ? d.historico[d.historico.length - 1].alterado_em.slice(0, 10) : d.data_registro);
+// "Status desde": última transição do histórico na data local do navegador
+// (mesmo fuso das linhas do histórico); demandas anteriores à migração 0041
+// não têm histórico e caem na data de registro.
+const statusDesde = (d) => (d.historico?.length
+  ? new Date(d.historico[d.historico.length - 1].alterado_em).toLocaleDateString("pt-BR")
+  : fmtDate(d.data_registro));
 
 const defaultContato = { data: "", tipo: "reuniao", responsavel: "", observacoes: "" };
 const defaultVisita = { data_visita: "", responsavel: "", observacoes: "", foto_base64: "" };
@@ -456,7 +459,7 @@ export default function EmpresaDrawer({ empresa, detalhe, onClose, onChanged, ca
                           {fmtDate(d.data_registro)}{d.responsavel && ` · ${d.responsavel}`}
                         </p>
                         <p className="text-[11px] text-slate-400">
-                          {st.label} desde {fmtDate(statusDesde(d))}
+                          {st.label} desde {statusDesde(d)}
                           {" · "}
                           <button
                             type="button"

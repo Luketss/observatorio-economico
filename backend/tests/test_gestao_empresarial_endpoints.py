@@ -371,9 +371,6 @@ def test_agenda_devolve_demandas_e_contatos_recentes(ctx):
     adicionar_contato(e.id, ContatoEmpresaCreate(data=hoje - timedelta(days=2), tipo="email"), db=db, current_user=u1)
     ag = agenda_retencao(dias=7, municipio_id=None, db=db, current_user=u1)
     assert [(d.descricao, d.dias_em_aberto, d.sinal_30d) for d in ag.demandas] == [("Via", 40, True)]
-    # A linha inicial do histórico foi gravada agora pelo POST (Task 2): "desde" é
-    # a data de hoje, não data_registro. Tolerância de 1 dia: alterado_em é UTC e
-    # hoje_local é BRT (entre 21h e 0h em Brasília as datas diferem).
-    assert abs((ag.demandas[0].status_desde - hoje).days) <= 1
+    assert ag.demandas[0].status_desde == hoje  # linha inicial gravada agora; data local dos dois lados
     assert [(c.tipo, c.subtipo, c.empresa_nome) for c in ag.contatos_recentes] == [("contato", "email", "Alfa Co")]
     assert ag.kpis.demandas_abertas == 1

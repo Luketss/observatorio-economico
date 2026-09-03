@@ -34,7 +34,7 @@ function Item({ onClick, empresa, tom, children }) {
       <button
         type="button"
         onClick={onClick}
-        className="w-full text-left text-xs rounded-lg px-2 py-1.5 hover:bg-[var(--panel-2)] cursor-pointer"
+        className="w-full text-left text-xs rounded-lg px-2 py-1.5 hover:bg-[var(--panel-2)] cursor-pointer truncate"
       >
         <span className="sr-only">Abrir</span>{" "}
         <span className="font-medium text-[var(--text)]">{empresa}</span>

@@ -151,7 +151,7 @@ class DemandaEmpresa(Base):
         "DemandaStatusHistorico",
         back_populates="demanda",
         cascade="all, delete-orphan",
-        order_by="DemandaStatusHistorico.alterado_em",
+        order_by="[DemandaStatusHistorico.alterado_em, DemandaStatusHistorico.id]",
     )
 
 

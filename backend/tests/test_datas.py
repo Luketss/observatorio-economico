@@ -47,3 +47,10 @@ def test_cnae_secao_mora_em_app_core_e_o_router_reexporta():
     from app.api.v1.routers.empresas import CNAE_SECAO as do_router
     assert CNAE_SECAO["47"] == "Comércio varejista" and CNAE_SECAO["25"] == "Fabricação de produtos de metal"
     assert do_router is CNAE_SECAO
+
+
+def test_data_local_converte_utc_e_assume_utc_quando_naive():
+    from datetime import timedelta
+    assert datas.data_local(datetime(2026, 9, 4, 1, 30, tzinfo=timezone.utc)) == date(2026, 9, 3)
+    assert datas.data_local(datetime(2026, 9, 4, 1, 30)) == date(2026, 9, 3)   # naive = UTC (SQLite)
+    assert datas.data_local(None) is None

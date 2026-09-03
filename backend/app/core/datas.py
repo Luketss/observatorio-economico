@@ -13,3 +13,13 @@ FUSO_BRASIL = timezone(timedelta(hours=-3), name="Brasil (fixo -3)")
 
 def hoje_local() -> date:
     return datetime.now(FUSO_BRASIL).date()
+
+
+def data_local(dt: datetime | None) -> date | None:
+    """Data (BRT) de um instante. SQLite devolve o UTC gravado como naive:
+    sem tzinfo, assume-se UTC antes de converter."""
+    if dt is None:
+        return None
+    if dt.tzinfo is None:
+        dt = dt.replace(tzinfo=timezone.utc)
+    return dt.astimezone(FUSO_BRASIL).date()

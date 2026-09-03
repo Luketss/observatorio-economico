@@ -31,7 +31,7 @@ from typing import Iterable
 from sqlalchemy import Integer, case, cast, exists, func, or_
 from sqlalchemy.orm import Session, selectinload
 
-from app.core.datas import hoje_local
+from app.core.datas import data_local, hoje_local
 from app.models.desenvolvimento_economico import ContatoEmpresa, DemandaEmpresa, EmpresaRetencao, VisitaRetencao
 from app.models.empresa import Empresa
 
@@ -489,10 +489,6 @@ def agenda_vazia(hoje: date, dias: int) -> Agenda:
     return Agenda(hoje, dias, AgendaKpis(0, 0, 0, 0, 0), (), (), (), (), (), ())
 
 
-def _nome(c) -> str:
-    return (c.nome or "").casefold()
-
-
 def agenda(db: Session, cadastros: Iterable, hoje: date | None = None, dias: int = 7) -> Agenda:
     if dias not in JANELAS_AGENDA:
         raise ValueError(f"dias inválido: {dias!r} (aceitos: {JANELAS_AGENDA})")
@@ -541,10 +537,10 @@ def agenda(db: Session, cadastros: Iterable, hoje: date | None = None, dias: int
     for d in linhas:
         registro = _como_date(d.data_registro)
         ultimo = d.historico[-1] if d.historico else None
-        desde = _como_date(ultimo.alterado_em) if ultimo is not None else registro
+        desde = data_local(ultimo.alterado_em) if ultimo is not None else registro
         demandas.append(ItemDemanda(
             d.id, d.empresa_id, nome_de.get(d.empresa_id, ""), d.descricao, d.status, registro,
-            (hoje - registro).days, desde, d.responsavel,
+            max(0, (hoje - registro).days), desde, d.responsavel,
             registro <= hoje - timedelta(days=DIAS_DEMANDA_ABERTA),
         ))
     demandas.sort(key=lambda i: (-i.dias_em_aberto, i.empresa_nome.casefold()))

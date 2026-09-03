@@ -148,11 +148,11 @@ filtrados por tenant (o router passa a lista, como faz com `enriquecer`):
    ordem por nome.
 4. **demandas**: uma consulta `DemandaEmpresa` com `empresa_id IN ids` e
    `status != "resolvida"`, com `selectinload(historico)`; `dias_em_aberto
-   = (hoje − data_registro).days`; `status_desde` = `alterado_em.date()` da
-   última linha do histórico, ou `data_registro` se não houver histórico;
-   `sinal_30d = data_registro <= hoje − DIAS_DEMANDA_ABERTA` (a mesma
-   constante do sinal da sub-frente A, aplicada por demanda); ordem por
-   `dias_em_aberto` decrescente.
+   = (hoje − data_registro).days`; `status_desde` = data local (BRT,
+   `data_local()`) do `alterado_em` da última linha do histórico, ou
+   `data_registro` se não houver histórico; `sinal_30d = data_registro <=
+   hoje − DIAS_DEMANDA_ABERTA` (a mesma constante do sinal da sub-frente A,
+   aplicada por demanda); ordem por `dias_em_aberto` decrescente.
 5. **contatos_recentes**: `ContatoEmpresa.data >= hoje − 30` e
    `VisitaRetencao.data_visita >= hoje − 30` para `empresa_id IN ids`,
    mesclados em Python como `{tipo: "contato" | "visita", subtipo: tipo do
@@ -174,7 +174,8 @@ correspondentes (`AgendaOut`, `AgendaKpisOut`, `ItemAcaoOut`,
 Tudo com `hoje = hoje_local()` passado pelo router. `dias` nunca é
 negativo em `proximas` (a fronteira `< hoje` é "vencida"; `== hoje` é
 "próxima" com `dias = 0`). "Status desde" sem histórico = `data_registro`
-(demandas anteriores à migração).
+(demandas anteriores à migração); com histórico, é a data local (BRT) do
+`alterado_em` da última linha.
 
 ## 3. Frontend
 
