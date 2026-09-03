@@ -147,6 +147,42 @@ class DemandaEmpresa(Base):
     )
 
     empresa = relationship("EmpresaRetencao", back_populates="demandas")
+    historico = relationship(
+        "DemandaStatusHistorico",
+        back_populates="demanda",
+        cascade="all, delete-orphan",
+        order_by="DemandaStatusHistorico.alterado_em",
+    )
+
+
+class DemandaStatusHistorico(Base):
+    """Transições de status de uma demanda (Gestão Empresarial, sub-frente C).
+
+    Uma linha na criação (`de` nulo, `para` = status inicial) e uma a cada
+    mudança de status. Apagar a demanda apaga o histórico (CASCADE); apagar o
+    usuário mantém a linha (SET NULL)."""
+    __tablename__ = "demanda_status_historico"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+    demanda_id: Mapped[int] = mapped_column(
+        Integer, ForeignKey("demanda_empresa.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    municipio_id: Mapped[int] = mapped_column(Integer, ForeignKey("municipios.id"), nullable=False, index=True)
+    de: Mapped[str | None] = mapped_column(String(20), nullable=True)
+    para: Mapped[str] = mapped_column(String(20), nullable=False)
+    alterado_por: Mapped[int | None] = mapped_column(
+        Integer, ForeignKey("usuarios.id", ondelete="SET NULL"), nullable=True
+    )
+    alterado_em: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, default=lambda: datetime.now(timezone.utc)
+    )
+
+    demanda = relationship("DemandaEmpresa", back_populates="historico")
+    usuario = relationship("Usuario")
+
+    @property
+    def alterado_por_nome(self) -> str | None:
+        return self.usuario.nome if self.usuario is not None else None
 
 
 # ── 3.3 Captação de Recursos ───────────────────────────────────────────────
