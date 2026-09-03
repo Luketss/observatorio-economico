@@ -2,12 +2,13 @@ from dataclasses import asdict
 from datetime import date
 from typing import List
 
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy import inspect as sa_inspect
 from sqlalchemy.orm import Session, selectinload
 
-from app.api.deps import get_current_user, get_db, require_permissao
+from app.api.deps import get_current_user, get_db, require_permissao, scoped_modulo
 from app.core.cnpj import cnpj_para_basico
+from app.core.cnae import CNAE_SECAO
 from app.core.datas import hoje_local
 from app.core.exceptions import ForbiddenException, NotFoundException
 from app.models.desenvolvimento_economico import (
@@ -31,6 +32,9 @@ from app.schemas.desenvolvimento_economico import (
     DemandaEmpresaCreate,
     DemandaEmpresaOut,
     DemandaEmpresaUpdate,
+    DescobertaItem,
+    DescobertaPage,
+    DivisaoCnaeOut,
     EmpresaRetencaoCreate,
     EmpresaRetencaoLeanOut,
     EmpresaRetencaoOut,
@@ -48,7 +52,7 @@ from app.schemas.desenvolvimento_economico import (
     VisitaRetencaoCreate,
     VisitaRetencaoOut,
 )
-from app.services.gestao_empresarial import Enriquecimento, enriquecer, ordenar_por_relevancia
+from app.services.gestao_empresarial import Enriquecimento, descobrir, divisoes_disponiveis, enriquecer, ordenar_por_relevancia
 
 router = APIRouter(prefix="/desenvolvimento-economico", tags=["Desenvolvimento Econômico"])
 
@@ -188,6 +192,65 @@ def listar_retencao(
     calc = enriquecer(db, empresas, hoje=hoje_local())
     # Ordem de relevância decrescente com desempate por nome (antes: só nome).
     return [_lean_out(e, calc[e.id]) for e in ordenar_por_relevancia(empresas, calc)]
+
+
+def _divisao_cnae(cnae_fiscal: str | None) -> tuple[str | None, str | None]:
+    if not cnae_fiscal:
+        return None, None
+    div = cnae_fiscal[:2]
+    return div, CNAE_SECAO.get(div, f"Divisão {div}")
+
+
+# Rotas estáticas de /retencao ficam ANTES de /retencao/{empresa_id}: o
+# Starlette casa em ordem de declaração e `{empresa_id}` é int — "descobrir"
+# viraria 422. test_rotas_de_descoberta_vem_antes_do_detalhe_por_id guarda isso.
+@router.get("/retencao/descobrir", response_model=DescobertaPage)
+def descobrir_retencao(
+    situacao: str = Query("02"),
+    porte: str | None = Query(None),
+    divisao: str | None = Query(None, pattern=r"^\d{2}$"),
+    q: str | None = Query(None),
+    limit: int = Query(20, ge=1, le=100),
+    offset: int = Query(0, ge=0),
+    mid: int | None = Depends(scoped_modulo("empresas")),
+    db: Session = Depends(get_db),
+):
+    """Empresas da base RFB do município ainda não acompanhadas, por score RFB
+    decrescente (espelho SQL de calcular_relevancia sem cadastro; máximo 45).
+    Plano `empresas` e escopo/view-as pela dependência; sem município → vazio."""
+    if mid is None:
+        return DescobertaPage(total=0, itens=[])
+    try:
+        total, linhas = descobrir(db, mid, situacao=situacao, porte=porte, divisao=divisao,
+                                  q=q, limit=limit, offset=offset, hoje=hoje_local())
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+    itens = []
+    for e, score in linhas:
+        div, descricao = _divisao_cnae(e.cnae_fiscal)
+        itens.append(DescobertaItem(
+            cnpj_basico=e.cnpj_basico, razao_social=e.razao_social, nome_fantasia=e.nome_fantasia,
+            situacao=e.situacao, porte=e.porte, cnae_fiscal=e.cnae_fiscal,
+            divisao=div, divisao_descricao=descricao,
+            capital_social=e.capital_social, data_inicio=e.data_inicio, score=score,
+        ))
+    return DescobertaPage(total=total, itens=itens)
+
+
+@router.get("/retencao/descobrir/divisoes", response_model=List[DivisaoCnaeOut])
+def descobrir_divisoes(
+    mid: int | None = Depends(scoped_modulo("empresas")),
+    db: Session = Depends(get_db),
+):
+    """Divisões CNAE presentes entre as ativas não acompanhadas — popula o
+    filtro da aba Descobrir uma vez por montagem."""
+    if mid is None:
+        return []
+    itens = [
+        DivisaoCnaeOut(divisao=d, descricao=CNAE_SECAO.get(d, f"Divisão {d}"), total=n)
+        for d, n in divisoes_disponiveis(db, mid)
+    ]
+    return sorted(itens, key=lambda i: i.descricao)
 
 
 @router.get("/retencao/{empresa_id}", response_model=EmpresaRetencaoOut)

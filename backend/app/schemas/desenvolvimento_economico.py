@@ -359,3 +359,30 @@ class PremiacaoOut(BaseModel):
 
     class Config:
         from_attributes = True
+
+
+# ── descoberta na base RFB (sub-frente B) ──────────────────────────────────
+
+class DescobertaItem(BaseModel):
+    cnpj_basico: str
+    razao_social: str
+    nome_fantasia: Optional[str] = None
+    situacao: Optional[str] = None
+    porte: Optional[str] = None
+    cnae_fiscal: Optional[str] = None
+    divisao: Optional[str] = None
+    divisao_descricao: Optional[str] = None
+    capital_social: Optional[float] = None
+    data_inicio: Optional[date] = None
+    score: int
+
+
+class DescobertaPage(BaseModel):
+    total: int
+    itens: List[DescobertaItem]
+
+
+class DivisaoCnaeOut(BaseModel):
+    divisao: str
+    descricao: str
+    total: int

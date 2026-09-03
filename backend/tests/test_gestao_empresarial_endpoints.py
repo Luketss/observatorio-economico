@@ -227,3 +227,51 @@ def test_enriquecer_usa_contatos_visitas_e_demandas(ctx):
     assert "sem_contato_90d" not in chaves          # a visita de 10 dias atrás conta como contato
     assert chaves == ["demanda_aberta_30d"] and det.risco.nivel == "atencao"
     assert det.risco.sinais[0].desde == hoje - timedelta(days=45)
+
+
+# ── descoberta na base RFB (sub-frente B) ────────────────────────────────────
+
+def _args_descobrir(**kw):
+    base = dict(situacao="02", porte=None, divisao=None, q=None, limit=20, offset=0)
+    base.update(kw)
+    return base
+
+
+def test_descobrir_retencao_devolve_pagina_com_divisao_e_score(ctx):
+    from app.api.v1.routers.desenvolvimento_economico import descobrir_divisoes, descobrir_retencao
+    db, _, u1, _, m1, _ = ctx
+    db.add_all([
+        Empresa(municipio_id=m1.id, cnpj_basico="11111111", razao_social="Metal Forte", situacao="02",
+                porte="05", cnae_fiscal="2511000", capital_social=5e6, data_inicio=date(2000, 1, 1)),
+        Empresa(municipio_id=m1.id, cnpj_basico="22222222", razao_social="Padaria", situacao="02",
+                porte="01", cnae_fiscal="4721102"),
+    ])
+    db.commit()
+    _criar_empresa(db, u1, nome="Padaria acompanhada", cnpj_basico="22222222")
+    page = descobrir_retencao(**_args_descobrir(), mid=m1.id, db=db)
+    assert page.total == 1
+    item = page.itens[0]
+    assert (item.razao_social, item.divisao, item.divisao_descricao, item.score) == \
+        ("Metal Forte", "25", "Fabricação de produtos de metal", 43)
+    assert item.data_inicio == date(2000, 1, 1) and item.capital_social == 5e6
+    divs = descobrir_divisoes(mid=m1.id, db=db)
+    assert [(d.divisao, d.descricao, d.total) for d in divs] == [("25", "Fabricação de produtos de metal", 1)]
+
+
+def test_descobrir_retencao_sem_municipio_e_codigo_invalido(ctx):
+    from fastapi import HTTPException
+    from app.api.v1.routers.desenvolvimento_economico import descobrir_divisoes, descobrir_retencao
+    db, *_ = ctx
+    assert descobrir_retencao(**_args_descobrir(), mid=None, db=db).total == 0
+    assert descobrir_divisoes(mid=None, db=db) == []
+    with pytest.raises(HTTPException) as exc:
+        descobrir_retencao(**_args_descobrir(situacao="99"), mid=1, db=db)
+    assert exc.value.status_code == 422
+
+
+def test_rotas_de_descoberta_vem_antes_do_detalhe_por_id():
+    from app.main import app
+    caminhos = [getattr(r, "path", "") for r in app.router.routes]
+    base = "/api/v1/desenvolvimento-economico/retencao"
+    assert caminhos.index(f"{base}/descobrir") < caminhos.index(base + "/{empresa_id}")
+    assert caminhos.index(f"{base}/descobrir/divisoes") < caminhos.index(base + "/{empresa_id}")
