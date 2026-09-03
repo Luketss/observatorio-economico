@@ -29,7 +29,7 @@ from datetime import date, datetime, timedelta
 from typing import Iterable
 
 from sqlalchemy import Integer, case, cast, exists, func, or_
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, selectinload
 
 from app.core.datas import hoje_local
 from app.models.desenvolvimento_economico import ContatoEmpresa, DemandaEmpresa, EmpresaRetencao, VisitaRetencao
@@ -408,3 +408,158 @@ def divisoes_disponiveis(db: Session, municipio_id: int) -> list[tuple[str, int]
     filtros = _filtros_descoberta(municipio_id, "02", None, None, None) + [Empresa.cnae_fiscal.isnot(None)]
     rows = db.query(divisao, func.count(Empresa.id)).filter(*filtros).group_by(divisao).all()
     return [(str(d), int(n)) for d, n in rows]
+
+
+# ── agenda do gestor (sub-frente C) ─────────────────────────────────────────
+# Vencidas e sem contato vêm dos sinais de risco (uma leitura via enriquecer);
+# próximas, sem data, demandas abertas e contatos recentes são calculados aqui
+# sobre os cadastros já filtrados por tenant pelo router.
+
+JANELAS_AGENDA = (7, 14, 30)
+DIAS_CONTATOS_RECENTES = 30
+LIMITE_CONTATOS_RECENTES = 50
+
+
+@dataclass(frozen=True)
+class ItemAcao:
+    empresa_id: int
+    empresa_nome: str
+    proxima_acao: str
+    proxima_acao_data: date | None
+    dias: int | None            # vencidas: atraso; próximas: faltam (0 = hoje); sem data: None
+    responsavel: str | None
+
+
+@dataclass(frozen=True)
+class ItemDemanda:
+    demanda_id: int
+    empresa_id: int
+    empresa_nome: str
+    descricao: str
+    status: str
+    data_registro: date
+    dias_em_aberto: int
+    status_desde: date
+    responsavel: str | None
+    sinal_30d: bool
+
+
+@dataclass(frozen=True)
+class ItemSemContato:
+    empresa_id: int
+    empresa_nome: str
+    desde: date | None
+    dias: int | None
+
+
+@dataclass(frozen=True)
+class ItemContato:
+    empresa_id: int
+    empresa_nome: str
+    tipo: str                   # "contato" | "visita"
+    subtipo: str | None         # tipo do contato (reuniao|ligacao|email|visita_tecnica|outro) ou None
+    data: date
+    responsavel: str | None
+    observacoes: str | None
+
+
+@dataclass(frozen=True)
+class AgendaKpis:
+    vencidas: int
+    proximas: int
+    sem_data: int
+    demandas_abertas: int
+    sem_contato: int
+
+
+@dataclass(frozen=True)
+class Agenda:
+    hoje: date
+    dias: int
+    kpis: AgendaKpis
+    vencidas: tuple[ItemAcao, ...]
+    proximas: tuple[ItemAcao, ...]
+    sem_data: tuple[ItemAcao, ...]
+    demandas: tuple[ItemDemanda, ...]
+    sem_contato: tuple[ItemSemContato, ...]
+    contatos_recentes: tuple[ItemContato, ...]
+
+
+def agenda_vazia(hoje: date, dias: int) -> Agenda:
+    return Agenda(hoje, dias, AgendaKpis(0, 0, 0, 0, 0), (), (), (), (), (), ())
+
+
+def _nome(c) -> str:
+    return (c.nome or "").casefold()
+
+
+def agenda(db: Session, cadastros: Iterable, hoje: date | None = None, dias: int = 7) -> Agenda:
+    if dias not in JANELAS_AGENDA:
+        raise ValueError(f"dias inválido: {dias!r} (aceitos: {JANELAS_AGENDA})")
+    cadastros = list(cadastros)
+    hoje = hoje or hoje_local()
+    if not cadastros:
+        return agenda_vazia(hoje, dias)
+
+    calc = enriquecer(db, cadastros, hoje=hoje)
+    nome_de = {c.id: c.nome for c in cadastros}
+    ids = list(nome_de)
+
+    vencidas: list[ItemAcao] = []
+    sem_contato: list[ItemSemContato] = []
+    for c in cadastros:
+        for s in calc[c.id].risco.sinais:
+            if s.chave == "proxima_acao_vencida":
+                vencidas.append(ItemAcao(c.id, c.nome, c.proxima_acao, s.desde, (hoje - s.desde).days, c.responsavel))
+            elif s.chave == "sem_contato_90d":
+                dias_sem = (hoje - s.desde).days if s.desde is not None else None
+                sem_contato.append(ItemSemContato(c.id, c.nome, s.desde, dias_sem))
+    vencidas.sort(key=lambda i: (-i.dias, i.empresa_nome.casefold()))
+    sem_contato.sort(key=lambda i: (-(i.dias or 0), i.empresa_nome.casefold()))
+
+    limite = hoje + timedelta(days=dias)
+    proximas: list[ItemAcao] = []
+    sem_data: list[ItemAcao] = []
+    for c in cadastros:
+        if not c.proxima_acao:
+            continue
+        data = _como_date(c.proxima_acao_data)
+        if data is None:
+            sem_data.append(ItemAcao(c.id, c.nome, c.proxima_acao, None, None, c.responsavel))
+        elif hoje <= data <= limite:
+            proximas.append(ItemAcao(c.id, c.nome, c.proxima_acao, data, (data - hoje).days, c.responsavel))
+    proximas.sort(key=lambda i: (i.proxima_acao_data, i.empresa_nome.casefold()))
+    sem_data.sort(key=lambda i: i.empresa_nome.casefold())
+
+    demandas: list[ItemDemanda] = []
+    linhas = (
+        db.query(DemandaEmpresa)
+        .options(selectinload(DemandaEmpresa.historico))
+        .filter(DemandaEmpresa.empresa_id.in_(ids), DemandaEmpresa.status != "resolvida")
+        .all()
+    )
+    for d in linhas:
+        registro = _como_date(d.data_registro)
+        ultimo = d.historico[-1] if d.historico else None
+        desde = _como_date(ultimo.alterado_em) if ultimo is not None else registro
+        demandas.append(ItemDemanda(
+            d.id, d.empresa_id, nome_de.get(d.empresa_id, ""), d.descricao, d.status, registro,
+            (hoje - registro).days, desde, d.responsavel,
+            registro <= hoje - timedelta(days=DIAS_DEMANDA_ABERTA),
+        ))
+    demandas.sort(key=lambda i: (-i.dias_em_aberto, i.empresa_nome.casefold()))
+
+    corte = hoje - timedelta(days=DIAS_CONTATOS_RECENTES)
+    recentes: list[ItemContato] = []
+    for k in db.query(ContatoEmpresa).filter(ContatoEmpresa.empresa_id.in_(ids), ContatoEmpresa.data >= corte):
+        recentes.append(ItemContato(k.empresa_id, nome_de.get(k.empresa_id, ""), "contato", k.tipo,
+                                    _como_date(k.data), k.responsavel, k.observacoes))
+    for v in db.query(VisitaRetencao).filter(VisitaRetencao.empresa_id.in_(ids), VisitaRetencao.data_visita >= corte):
+        recentes.append(ItemContato(v.empresa_id, nome_de.get(v.empresa_id, ""), "visita", None,
+                                    _como_date(v.data_visita), v.responsavel, v.observacoes))
+    recentes.sort(key=lambda i: (-i.data.toordinal(), i.empresa_nome.casefold()))
+    recentes = recentes[:LIMITE_CONTATOS_RECENTES]
+
+    kpis = AgendaKpis(len(vencidas), len(proximas), len(sem_data), len(demandas), len(sem_contato))
+    return Agenda(hoje, dias, kpis, tuple(vencidas), tuple(proximas), tuple(sem_data),
+                  tuple(demandas), tuple(sem_contato), tuple(recentes))
