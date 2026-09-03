@@ -16,6 +16,9 @@ import { useViewAs } from "../../context/ViewAsContext";
 import { PlanContext } from "../../context/PlanContext";
 import SelecioneMunicipio from "../../components/nid/SelecioneMunicipio";
 import NidSelect from "../../components/nid/NidSelect";
+import NidTabBar from "../../components/nid/NidTabBar";
+import PlanGate from "../../components/PlanGate";
+import DescobrirRfb from "./DescobrirRfb";
 import EmpresaDrawer from "./EmpresaDrawer";
 import BuscaEmpresaRfb from "./BuscaEmpresaRfb";
 import { propsTituloClicavel } from "../../utils/cliqueAcessivel";
@@ -121,6 +124,11 @@ export default function GestaoEmpresarialTab() {
   const [formError, setFormError] = useState(null);
   const [deleteConfirmId, setDeleteConfirmId] = useState(null);
 
+  // Abas: 0 = Acompanhadas (o que existe), 1 = Descobrir na base RFB.
+  const [aba, setAba] = useState(0);
+  // Incrementado ao salvar um cadastro: a empresa some do ranking da descoberta.
+  const [refreshDescoberta, setRefreshDescoberta] = useState(0);
+
   // Busca, ordenação e filtro no cliente sobre a lista já carregada (a ordem
   // inicial do backend já é a de relevância; reordenar aqui mantém a regra
   // visível mesmo com mocks/listas antigas).
@@ -181,9 +189,11 @@ export default function GestaoEmpresarialTab() {
     if (!detalhe[empresa.id]) loadDetalhe(empresa.id);
   }
 
-  function openCreate() {
+  // `prefill` vem do "Acompanhar" da descoberta: nome, vínculo RFB e setor
+  // (divisão CNAE) já preenchidos; o gestor completa o resto antes de salvar.
+  function openCreate(prefill = null) {
     setEditingId(null);
-    setForm(defaultForm);
+    setForm(prefill ? { ...defaultForm, ...prefill } : defaultForm);
     setFormError(null);
     setShowForm(true);
   }
@@ -226,6 +236,7 @@ export default function GestaoEmpresarialTab() {
       }
       closeForm();
       await load();
+      setRefreshDescoberta((n) => n + 1);
     } catch (err) {
       setFormError(err?.response?.data?.detail || "Erro ao salvar.");
     } finally {
@@ -289,6 +300,34 @@ export default function GestaoEmpresarialTab() {
   return (
     <motion.div initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3 }} className="space-y-6">
       {header}
+      <NidTabBar
+        tabs={["Acompanhadas", "Descobrir na base RFB"]}
+        value={aba}
+        onChange={setAba}
+        ariaLabel="Seções da Gestão Empresarial"
+      />
+
+      {aba === 1 && (
+        <PlanGate planKey="empresas">
+          {canAccess("empresas") ? (
+            <DescobrirRfb
+              canCriar={canCriar}
+              refreshKey={refreshDescoberta}
+              onAcompanhar={(e) => openCreate({
+                nome: e.razao_social,
+                cnpj_basico: e.cnpj_basico,
+                setor: e.divisao_descricao || "",
+              })}
+            />
+          ) : (
+            // Sem o plano, nada é montado (nem chamada à API); o cadeado do
+            // PlanGate aparece sobre este espaço.
+            <div className="h-40" aria-hidden="true" />
+          )}
+        </PlanGate>
+      )}
+
+      {aba === 0 && (<>
       {/* KPI row */}
       <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-5 gap-4">
         {[
@@ -327,7 +366,7 @@ export default function GestaoEmpresarialTab() {
         </NidSelect>
         {canCriar && (
           <button
-            onClick={openCreate}
+            onClick={() => openCreate()}
             className="ml-auto flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2.5 rounded-xl text-sm font-medium transition-colors cursor-pointer"
           >
             <PlusIcon className="w-4 h-4" />
@@ -411,6 +450,7 @@ export default function GestaoEmpresarialTab() {
           })}
         </div>
       )}
+      </>)}
 
       {/* Detail drawer */}
       <EmpresaDrawer

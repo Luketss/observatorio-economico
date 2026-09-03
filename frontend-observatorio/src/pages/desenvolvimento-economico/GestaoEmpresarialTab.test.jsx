@@ -15,6 +15,7 @@ vi.mock("../../services/api", () => ({
 }));
 
 import api from "../../services/api";
+import { PlanContext } from "../../context/PlanContext";
 import GestaoEmpresarialTab from "./GestaoEmpresarialTab";
 
 const montar = () => render(<MemoryRouter><GestaoEmpresarialTab /></MemoryRouter>);
@@ -135,5 +136,69 @@ describe("GestaoEmpresarialTab — relevância e risco calculados", () => {
     expect(kpi("Em risco")).toBe("0");
     expect(kpi("Alta relevância")).toBe("0");
     expect(screen.queryByText(/^Relevância \d/)).toBeNull(); // só o chip; a <option> "Relevância" não conta
+  });
+});
+
+describe("GestaoEmpresarialTab — aba Descobrir na base RFB", () => {
+  const ITEM = { cnpj_basico: "11111111", razao_social: "Metal Forte", nome_fantasia: null, situacao: "02", porte: "05",
+    cnae_fiscal: "2511000", divisao: "25", divisao_descricao: "Fabricação de produtos de metal",
+    capital_social: 5000000, data_inicio: "2000-01-05", score: 43 };
+  const chamadas = (sufixo) => api.get.mock.calls.filter(([u]) => u.endsWith(sufixo)).length;
+
+  beforeEach(() => {
+    authState.user = { role: "GESTOR", municipio_id: 1, permissoes: { retencao: ["criar", "editar"] } };
+    api.get.mockImplementation((url) => Promise.resolve({
+      data: url.endsWith("/retencao") ? LISTA
+        : url.endsWith("/descobrir/divisoes") ? [{ divisao: "25", descricao: "Fabricação de produtos de metal", total: 1 }]
+        : url.endsWith("/descobrir") ? { total: 1, itens: [ITEM] }
+        : {},
+    }));
+    api.post = vi.fn(() => Promise.resolve({ data: {} }));
+  });
+
+  it("Acompanhadas por padrão; a aba Descobrir carrega a base RFB e esconde os cards", async () => {
+    montar();
+    await waitFor(() => expect(screen.getByText("ACME")).toBeInTheDocument());
+    expect(chamadas("/descobrir")).toBe(0);
+    fireEvent.click(screen.getByRole("tab", { name: "Descobrir na base RFB" }));
+    await waitFor(() => expect(screen.getByText("Metal Forte")).toBeInTheDocument());
+    expect(screen.queryByText("ACME")).toBeNull();
+    fireEvent.click(screen.getByRole("tab", { name: "Acompanhadas" }));
+    expect(screen.getByText("ACME")).toBeInTheDocument();
+  });
+
+  it("Acompanhar abre Nova Empresa preenchido e vinculado; salvar recarrega a lista e a descoberta", async () => {
+    montar();
+    await waitFor(() => expect(screen.getByText("ACME")).toBeInTheDocument());
+    fireEvent.click(screen.getByRole("tab", { name: "Descobrir na base RFB" }));
+    await waitFor(() => expect(screen.getByRole("button", { name: "Acompanhar Metal Forte" })).toBeInTheDocument());
+    fireEvent.click(screen.getByRole("button", { name: "Acompanhar Metal Forte" }));
+    expect(screen.getByRole("heading", { name: "Nova Empresa" })).toBeInTheDocument();
+    expect(screen.getByDisplayValue("Metal Forte")).toBeInTheDocument();
+    expect(screen.getByDisplayValue("Fabricação de produtos de metal")).toBeInTheDocument();
+    expect(screen.getByText(/Vinculada · 11111111/)).toBeInTheDocument();
+
+    const listasAntes = chamadas("/retencao");
+    const descobertasAntes = chamadas("/descobrir");
+    fireEvent.click(screen.getByRole("button", { name: "Adicionar" }));
+    await waitFor(() => expect(api.post).toHaveBeenCalledWith(
+      "/desenvolvimento-economico/retencao",
+      expect.objectContaining({ nome: "Metal Forte", cnpj_basico: "11111111", setor: "Fabricação de produtos de metal" }),
+    ));
+    await waitFor(() => expect(chamadas("/retencao")).toBe(listasAntes + 1));
+    await waitFor(() => expect(chamadas("/descobrir")).toBe(descobertasAntes + 1));
+  });
+
+  it("sem o plano empresas a aba Descobrir mostra o cadeado e não chama a API", async () => {
+    render(
+      <PlanContext.Provider value={{ modulos: [], canAccess: (k) => k !== "empresas" }}>
+        <MemoryRouter><GestaoEmpresarialTab /></MemoryRouter>
+      </PlanContext.Provider>
+    );
+    await waitFor(() => expect(screen.getByText("ACME")).toBeInTheDocument());
+    fireEvent.click(screen.getByRole("tab", { name: "Descobrir na base RFB" }));
+    expect(screen.getByText("Disponível apenas no plano pago")).toBeInTheDocument();
+    expect(chamadas("/descobrir")).toBe(0);
+    expect(chamadas("/descobrir/divisoes")).toBe(0);
   });
 });
