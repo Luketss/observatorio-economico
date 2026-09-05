@@ -62,6 +62,8 @@ export default function BolsaFamiliaPage() {
   }, []);
 
   const years = useMemo(() => [...new Set(rawSerie.map((d) => d.ano))].sort(), [rawSerie]);
+  // "12m" da FilterBar reproduz esta mesma janela (não o {anoMax-1..anoMax} aproximado).
+  const range12m = useMemo(() => janela12m(rawSerie, (d) => ({ ano: d.ano, mes: d.mes })), [rawSerie]);
 
   const serie = useMemo(
     () => rawSerie.filter((d) => dentroDoFiltro(d, filters, (x) => ({ ano: x.ano, mes: x.mes }))),
@@ -158,7 +160,7 @@ export default function BolsaFamiliaPage() {
         <CompareToggle active={comparar} onChange={setComparar} disabled={!cmp.temAnterior} />
       </div>
 
-      <FilterBar id="filter-bar-bolsafamilia" years={years} showMonths value={filters} onChange={mudarFiltros} />
+      <FilterBar id="filter-bar-bolsafamilia" years={years} showMonths range12m={range12m} value={filters} onChange={mudarFiltros} />
 
       {loading ? (
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">

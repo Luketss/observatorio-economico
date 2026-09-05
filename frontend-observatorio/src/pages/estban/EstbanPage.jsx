@@ -104,6 +104,9 @@ export default function EstbanPage() {
       .finally(() => setLoading(false));
   }, []);
 
+  // "12m" da FilterBar reproduz esta mesma janela (não o {anoMax-1..anoMax} aproximado).
+  const range12m = useMemo(() => janela12mAnos(rawSerie, (d) => parseInt(String(d.data_referencia).substring(0, 4))), [rawSerie]);
+
   const years = useMemo(() => {
     const set = new Set(rawSerie.map((d) => parseInt(String(d.data_referencia).substring(0, 4))));
     return [...set].sort();
@@ -193,7 +196,7 @@ export default function EstbanPage() {
         <CompareToggle active={comparar} onChange={setComparar} disabled={!cmp.temAnterior} />
       </div>
 
-      <FilterBar id="filter-bar-estban" years={years} value={filters} onChange={mudarFiltros} />
+      <FilterBar id="filter-bar-estban" years={years} range12m={range12m} value={filters} onChange={mudarFiltros} />
 
       {loading ? (
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">

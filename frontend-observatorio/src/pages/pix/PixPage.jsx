@@ -76,6 +76,9 @@ export default function PixPage() {
       .finally(() => setLoading(false));
   }, []);
 
+  // "12m" da FilterBar reproduz esta mesma janela (não o {anoMax-1..anoMax} aproximado).
+  const range12m = useMemo(() => janela12m(rawSerie, (d) => ({ ano: d.ano, mes: d.mes })), [rawSerie]);
+
   const years = useMemo(() => {
     const set = new Set(rawSerie.map((d) => d.ano));
     return [...set].sort();
@@ -167,7 +170,7 @@ export default function PixPage() {
         <CompareToggle active={comparar} onChange={setComparar} disabled={!cmp.temAnterior} />
       </div>
 
-      <FilterBar id="filter-bar-pix" years={years} showMonths value={filters} onChange={mudarFiltros} />
+      <FilterBar id="filter-bar-pix" years={years} showMonths range12m={range12m} value={filters} onChange={mudarFiltros} />
 
       {loading ? (
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">

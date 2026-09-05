@@ -63,6 +63,9 @@ export default function ArrecadacaoPage() {
       .finally(() => setLoading(false));
   }, []);
 
+  // "12m" da FilterBar reproduz esta mesma janela (não o {anoMax-1..anoMax} aproximado).
+  const range12m = useMemo(() => janela12mAnos(rawSerie, (d) => d.ano), [rawSerie]);
+
   const years = useMemo(() => {
     const set = new Set(rawSerie.map((d) => parseInt(d.periodo)));
     return [...set].sort();
@@ -164,7 +167,7 @@ export default function ArrecadacaoPage() {
         <CompareToggle active={comparar} onChange={setComparar} disabled={!cmp.temAnterior} />
       </div>
 
-      <FilterBar id="filter-bar-arrecadacao" years={years} value={filters} onChange={mudarFiltros} />
+      <FilterBar id="filter-bar-arrecadacao" years={years} range12m={range12m} value={filters} onChange={mudarFiltros} />
 
       {loading ? (
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6">
