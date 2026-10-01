@@ -1,6 +1,11 @@
 """Fonte automática Empresas/CNPJ — snapshot mensal dos dados abertos da RFB.
 
-Share Nextcloud/SERPRO (WebDAV público; a URL antiga morreu em jan/2026).
+Share Nextcloud/SERPRO (WebDAV público; a URL antiga morreu em jan/2026), com
+o índice HTTP oficial (`/dados/cnpj/dados_abertos_cnpj/`) como espelho de
+fallback — mesmos nomes de zip, mesma pasta por mês. Transporte tolerante:
+User-Agent de navegador (hosts gov.br derrubam a conexão do UA padrão do
+requests sem resposta — "RemoteDisconnected"), re-tentativas com backoff na
+listagem e no download, e troca de endpoint quando o primeiro esgota.
 Arquivos nacionais SEM header, CSV ';' com aspas, latin-1, posicionais:
 Estabelecimentos (30 colunas, único com município — código TOM da RFB, não
 IBGE), Empresas (7), Simples (7), auxiliar Municípios (2: TOM -> nome, SEM UF).
@@ -25,7 +30,9 @@ import csv
 import io
 import logging
 import os
+import re
 import tempfile
+import time
 import zipfile
 from datetime import datetime
 
@@ -44,6 +51,20 @@ logger = logging.getLogger(__name__)
 # publicada, não é segredo.
 WEBDAV = "https://arquivos.receitafederal.gov.br/public.php/webdav"
 SHARE_TOKEN = "YggdBLfdninEJX9"
+# Espelho: índice HTTP (autoindex) dos mesmos arquivos, publicado na página
+# "Dados Abertos CNPJ" da RFB. Pastas por mês ("2026-08/") e zips de mesmo nome.
+HTTP_INDEX = "https://arquivos.receitafederal.gov.br/dados/cnpj/dados_abertos_cnpj"
+
+# Paridade com as demais fontes (util.baixar_zip, estban, arrecadacao_*): os
+# hosts gov.br fecham a conexão sem resposta para o User-Agent padrão do
+# requests ("python-requests/x") — sintoma exato "RemoteDisconnected".
+HEADERS = {"User-Agent": "Mozilla/5.0"}
+
+# Re-tentativas por endpoint (listagem) e por arquivo (download), com backoff
+# exponencial: 2s, 4s. "Connection aborted"/"RemoteDisconnected" é a falha
+# transitória típica do Nextcloud atrás do balanceador da SERPRO.
+TENTATIVAS = 3
+ESPERA_BASE_S = 2.0
 
 COLS_ESTAB = 30
 COLS_EMPRESAS = 7
@@ -232,23 +253,99 @@ def montar_linhas(colhidas, dados_emp, dados_simples) -> dict:
     return por_mid
 
 
-# ── Transporte (WebDAV público do share da RFB) ─────────────────────────────
+# ── Transporte (share WebDAV da RFB + espelho HTTP, tolerante a falhas) ─────
 
-def extrair_meses(xml: str) -> list[str]:
-    import re
-    meses = sorted(set(re.findall(r"webdav/(\d{4}-\d{2})/", xml)))
+_RE_MES = re.compile(r"(?<![\d-])(20\d{2}-(?:0[1-9]|1[0-2]))/")
+
+
+def extrair_meses(texto: str) -> list[str]:
+    """Meses ("AAAA-MM") presentes numa listagem — serve tanto para o XML do
+    PROPFIND (hrefs ".../webdav/2026-07/") quanto para o autoindex HTML do
+    espelho (href="2026-07/")."""
+    meses = sorted(set(_RE_MES.findall(texto)))
     if not meses:
-        raise ValueError("CNPJ: nenhum mês encontrado no share da RFB — layout mudou?")
+        raise ValueError("nenhum mês encontrado na listagem — layout mudou?")
     return meses
 
 
-def listar_meses() -> list[str]:
-    r = requests.request(
-        "PROPFIND", WEBDAV + "/", auth=(SHARE_TOKEN, ""),
-        headers={"Depth": "1"}, timeout=60,
-    )
-    r.raise_for_status()
-    return extrair_meses(r.text)
+class Transporte:
+    """Um endpoint da RFB: como listar os meses e de onde baixar cada zip."""
+
+    def __init__(self, nome: str, base: str, auth=None, metodo="GET", headers=None):
+        self.nome, self.base, self.auth, self.metodo = nome, base, auth, metodo
+        self.headers = {**HEADERS, **(headers or {})}
+
+    def url_listagem(self) -> str:
+        return self.base + "/"
+
+    def url_zip(self, mes: str, nome: str) -> str:
+        return f"{self.base}/{mes}/{nome}"
+
+    def listar_meses(self) -> list[str]:
+        r = requests.request(self.metodo, self.url_listagem(), auth=self.auth,
+                             headers=self.headers, timeout=60)
+        r.raise_for_status()
+        return extrair_meses(r.text)
+
+    def __repr__(self) -> str:
+        return f"{self.nome} ({self.url_listagem()})"
+
+
+TRANSPORTE_WEBDAV = Transporte(
+    "share WebDAV", WEBDAV, auth=(SHARE_TOKEN, ""), metodo="PROPFIND",
+    headers={"Depth": "1"})
+TRANSPORTE_HTTP = Transporte("índice HTTP", HTTP_INDEX)
+# Ordem de preferência: o share (verificado em 2026-08) e, se ele esgotar as
+# tentativas, o espelho HTTP.
+TRANSPORTES = (TRANSPORTE_WEBDAV, TRANSPORTE_HTTP)
+
+
+def _esperar(tentativa: int, dormir) -> None:
+    dormir(ESPERA_BASE_S * (2 ** (tentativa - 1)))
+
+
+def _descrever(exc: Exception) -> str:
+    resp = getattr(exc, "response", None)
+    if resp is not None and getattr(resp, "status_code", None):
+        return f"HTTP {resp.status_code}"
+    return f"{type(exc).__name__}: {exc}"
+
+
+class FonteIndisponivel(Exception):
+    """Nenhum endpoint da RFB respondeu com uma listagem válida."""
+
+
+def listar_meses(transporte: Transporte = TRANSPORTE_WEBDAV, dormir=time.sleep) -> list[str]:
+    """Meses publicados num endpoint, com TENTATIVAS e backoff. Esgotadas as
+    tentativas, propaga a última exceção (rede ou layout)."""
+    ultimo: Exception | None = None
+    for tentativa in range(1, TENTATIVAS + 1):
+        try:
+            return transporte.listar_meses()
+        except (requests.RequestException, ValueError) as exc:
+            ultimo = exc
+            logger.warning("CNPJ: %s tentativa %d/%d falhou: %s",
+                           transporte.nome, tentativa, TENTATIVAS, _descrever(exc))
+            if tentativa < TENTATIVAS:
+                _esperar(tentativa, dormir)
+    assert ultimo is not None
+    raise ultimo
+
+
+def localizar_snapshot(transportes=TRANSPORTES, dormir=time.sleep) -> tuple[Transporte, str]:
+    """(transporte, mês mais recente) do primeiro endpoint que responder.
+    Todos esgotados -> FonteIndisponivel com o diagnóstico de cada um (URL +
+    motivo), para o admin conferir no navegador se o share/índice mudou."""
+    falhas = []
+    for transporte in transportes:
+        try:
+            return transporte, listar_meses(transporte, dormir)[-1]
+        except (requests.RequestException, ValueError) as exc:
+            falhas.append(f"{transporte.nome} {transporte.url_listagem()}: {_descrever(exc)}")
+    raise FonteIndisponivel(
+        f"nenhum endpoint da RFB respondeu após {TENTATIVAS} tentativa(s) em cada — "
+        + "; ".join(falhas)
+        + " — confira as URLs no navegador: o share ou o caminho podem ter mudado")
 
 
 def nomes_zips() -> list[str]:
@@ -259,22 +356,26 @@ def nomes_zips() -> list[str]:
             + ["Simples.zip"])
 
 
-def baixar_zip(mes: str, nome: str, destino_dir: str):
-    """(caminho, erro): download streaming com 1 re-tentativa em falha
-    transitória. Falha dupla devolve (None, mensagem)."""
+def baixar_zip(transporte: Transporte, mes: str, nome: str, destino_dir: str, dormir=time.sleep):
+    """(caminho, erro): download streaming com TENTATIVAS e backoff em falha
+    transitória. Esgotadas, devolve (None, mensagem) — erro audível por arquivo."""
     destino = os.path.join(destino_dir, nome)
-    for tentativa in (1, 2):
+    for tentativa in range(1, TENTATIVAS + 1):
         try:
-            with requests.get(f"{WEBDAV}/{mes}/{nome}", auth=(SHARE_TOKEN, ""),
-                              stream=True, timeout=300) as r:
+            with requests.get(transporte.url_zip(mes, nome), auth=transporte.auth,
+                              headers=transporte.headers, stream=True,
+                              timeout=(60, 300)) as r:
                 r.raise_for_status()
                 with open(destino, "wb") as f:
                     for chunk in r.iter_content(chunk_size=1024 * 1024):
                         f.write(chunk)
             return destino, None
         except requests.RequestException as exc:
-            if tentativa == 2:
-                return None, f"{type(exc).__name__}: {exc}"
+            logger.warning("CNPJ: download %s tentativa %d/%d falhou: %s",
+                           nome, tentativa, TENTATIVAS, _descrever(exc))
+            if tentativa == TENTATIVAS:
+                return None, _descrever(exc)
+            _esperar(tentativa, dormir)
     return None, "inalcançável"
 
 
@@ -304,11 +405,14 @@ def executar(db, municipios, anos=None, usuario_id=None, notificar=True, progres
     if not alvos:
         return resumo
 
+    if progresso:
+        progresso(0, 1, "CNPJ: localizando snapshot mais recente na RFB")
     try:
-        mes = listar_meses()[-1]
-    except (requests.RequestException, ValueError) as exc:
-        resumo.erros.append(f"share da RFB indisponível: {exc}")
+        transporte, mes = localizar_snapshot()
+    except FonteIndisponivel as exc:
+        resumo.erros.append(f"fonte RFB indisponível: {exc}")
         return resumo
+    logger.info("CNPJ: snapshot %s via %s", mes, transporte.nome)
 
     zips = nomes_zips()
     total = len(zips)
@@ -324,7 +428,7 @@ def executar(db, municipios, anos=None, usuario_id=None, notificar=True, progres
         if progresso:
             progresso(i - 1, total, f"CNPJ {mes}: baixando {nome}")
         with tempfile.TemporaryDirectory(prefix="cnpj_") as tmp:
-            caminho, erro = baixar_zip(mes, nome, tmp)
+            caminho, erro = baixar_zip(transporte, mes, nome, tmp)
             if erro:
                 resumo.erros.append(f"{nome}: {erro}")
                 if nome.startswith(("Municipios", "Estabelecimentos")):

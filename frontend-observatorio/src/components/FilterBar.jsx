@@ -198,8 +198,13 @@ const S = {
  *  value      – { yearFrom, yearTo, monthFrom?, monthTo? } (all strings or "")
  *  onChange   – (newValue) => void
  *  id         – string, forwarded to root element
+ *  range12m   – optional { yearFrom, monthFrom, yearTo, monthTo }: the page's
+ *               own "12m" window (janela12m / janela12mAnos / janela12mCalendario).
+ *               When given, the "12m" preset applies it verbatim instead of the
+ *               {maxYear-1..maxYear} approximation of presetRange, so clicking
+ *               "12m" reproduces the page default (same KPI values, same chart span).
  */
-export default function FilterBar({ years = [], showMonths = false, value, onChange, id }) {
+export default function FilterBar({ years = [], showMonths = false, value, onChange, id, range12m }) {
   const { yearFrom = "", yearTo = "", monthFrom = "", monthTo = "" } = value || {};
 
   // "Personalizar" forces the custom pickers open even when the current
@@ -236,6 +241,18 @@ export default function FilterBar({ years = [], showMonths = false, value, onCha
       const from = yearFrom || String(years[0]);
       const to   = yearTo   || String(maxYear);
       onChange({ ...value, yearFrom: from, yearTo: to });
+    } else if (key === "12m" && range12m?.yearFrom && range12m?.yearTo) {
+      // Janela "12m" da própria página (ancorada no último dado). Sem isso o
+      // clique caía em presetRange ({anoMax-1..anoMax}, sem meses) — até 24
+      // meses numa série mensal, 2 anos numa anual — e os cards/gráficos
+      // mostravam outro valor ao voltar para 12m.
+      setForceCustom(false);
+      onChange({
+        yearFrom: range12m.yearFrom,
+        yearTo: range12m.yearTo,
+        monthFrom: range12m.monthFrom || "",
+        monthTo: range12m.monthTo || "",
+      });
     } else {
       setForceCustom(false);
       const range = presetRange(key, maxYear);

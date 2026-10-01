@@ -22,7 +22,17 @@
       "Bash(sed -i 's/className=\"px-6 py-4\"/className=\"px-3 py-4 md:px-6\"/g' InsightsAdminPage.jsx)",
       "Bash(npm install:*)",
       "Bash(head -1 /c/Users/lucas/Documents/projetos/dashboard_prefeituras/dados/Arrecadacao_Cidades_MG/*.csv)",
-      "Bash(head -1 /c/Users/lucas/Documents/projetos/dashboard_prefeituras/dados/Bolsa_Familia_Cidades_Completo/*.csv)"
+      "Bash(head -1 /c/Users/lucas/Documents/projetos/dashboard_prefeituras/dados/Bolsa_Familia_Cidades_Completo/*.csv)",
+      "Bash(npx vitest *)",
+      "Bash(npx vite *)",
+      "Bash(grep -lE '^<{7}|^={7}$|^>{7}' README.md IDEAS.md .claude/settings.local.json)",
+      "Bash(md5sum __TRACKED_VAR__/assets/uaizi-logo.png src/assets/logo_uaizi.png)",
+      "Bash(awk '{print $5, $NF}')",
+      "Bash(npx eslint *)",
+      "Bash(venv/Scripts/python -m pytest backend/tests --collect-only -q)",
+      "Bash(grep -c \"::test\" /tmp_collect.txt)",
+      "Bash(grep -i \"error\\\\|collected\" /tmp_collect.txt)",
+      "Bash(rm -f /tmp_collect.txt)"
     ]
   }
 }

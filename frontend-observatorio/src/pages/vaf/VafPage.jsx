@@ -106,6 +106,8 @@ export default function VafPage() {
   }, [icmsProj, periodosGrafico]);
 
   const years = useMemo(() => rawSerie.map((d) => d.ano_base).sort(), [rawSerie]);
+  // "12m" da FilterBar reproduz esta mesma janela (não o {anoMax-1..anoMax} aproximado).
+  const range12m = useMemo(() => janela12m(rawSerie, (d) => ({ ano: d.ano_base })), [rawSerie]);
 
   const serie = useMemo(() => {
     const { yearFrom, yearTo } = filters;
@@ -225,7 +227,7 @@ export default function VafPage() {
         <SelecioneMunicipio />
       ) : (
       <>
-      <FilterBar id="filter-bar-vaf" years={years} value={filters} onChange={mudarFiltros} />
+      <FilterBar id="filter-bar-vaf" years={years} range12m={range12m} value={filters} onChange={mudarFiltros} />
 
       {loading ? (
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">

@@ -42,6 +42,8 @@ export default function EmpresasPage() {
   const [detalhe, setDetalhe] = useState(null);
   // Cadastro corrente: default = 12 meses de CALENDÁRIO (aqui a âncora certa).
   const [filters, setFilters] = useState(() => janela12mCalendario());
+  // "12m" da FilterBar reproduz esta mesma janela (não o {anoMax-1..anoMax} aproximado).
+  const range12m = useMemo(() => janela12mCalendario(), []);
 
   // Não há série para derivar anos: FilterBar recebe anos de calendário (30).
   const anosEmpresas = useMemo(() => {
@@ -153,7 +155,7 @@ export default function EmpresasPage() {
         <SelecioneMunicipio />
       ) : (
       <>
-      <FilterBar id="filter-bar-empresas" years={anosEmpresas} showMonths value={filters} onChange={setFilters} />
+      <FilterBar id="filter-bar-empresas" years={anosEmpresas} showMonths range12m={range12m} value={filters} onChange={setFilters} />
 
       {/* KPI Cards */}
       {loading ? (

@@ -88,6 +88,8 @@ export default function PibPage() {
   }, [fixadosIds]);
 
   const years = useMemo(() => rawSerie.map((d) => d.ano).sort(), [rawSerie]);
+  // "12m" da FilterBar reproduz esta mesma janela (não o {anoMax-1..anoMax} aproximado).
+  const range12m = useMemo(() => janela12m(rawSerie, (d) => ({ ano: d.ano })), [rawSerie]);
 
   // VA por setor é do município em FOCO — antes o código pegava "a primeira
   // cidade do comparativo", que virou uma cidade qualquer quando a rota passou
@@ -225,7 +227,7 @@ export default function PibPage() {
         <SelecioneMunicipio />
       ) : (
       <>
-      <FilterBar id="filter-bar-pib" years={years} value={filters} onChange={mudarFiltros} />
+      <FilterBar id="filter-bar-pib" years={years} range12m={range12m} value={filters} onChange={mudarFiltros} />
 
       {loading ? (
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">

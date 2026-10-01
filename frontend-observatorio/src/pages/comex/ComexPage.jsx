@@ -80,6 +80,9 @@ export default function ComexPage() {
   );
   const cmp = useMemo(() => comparePanelData(rawComexSaldo, { valueKey: "_v" }), [rawComexSaldo]);
 
+  // "12m" da FilterBar reproduz esta mesma janela (não o {anoMax-1..anoMax} aproximado).
+  const range12m = useMemo(() => janela12m(serie, (d) => ({ ano: d.ano, mes: d.mes })), [serie]);
+
   // Derive available years from serie data
   const anos = useMemo(() => {
     const set = new Set(serie.map((d) => d.ano));
@@ -259,7 +262,7 @@ export default function ComexPage() {
         <CompareToggle active={comparar} onChange={setComparar} disabled={!cmp.temAnterior} />
       </div>
 
-      <FilterBar id="filter-bar-comex" years={anos.slice().sort()} showMonths value={filters} onChange={mudarFiltros} />
+      <FilterBar id="filter-bar-comex" years={anos.slice().sort()} showMonths range12m={range12m} value={filters} onChange={mudarFiltros} />
 
       {loading ? (
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
