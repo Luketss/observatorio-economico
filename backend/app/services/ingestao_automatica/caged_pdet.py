@@ -20,6 +20,18 @@ EXCEÇÕES DELIBERADAS (não sofrem fallback):
 
 ESCALA: execução Brasil-inteiro mantém agregados de todos os municípios em
 memória — usar com parcimônia até existir o worker separado (RAIS/CNPJ).
+
+JANELA PADRÃO (sem `anos`): de janeiro do ANO ANTERIOR até o mês anterior a
+hoje (12 a 23 meses). Não são "últimos 12 meses" de propósito: a tabela anual
+caged_indicadores_contrato só é recomputada para anos cobertos por inteiro, e
+o MTE publica o mês M por volta do fim de M+1 — com 12 meses, a execução de
+janeiro fechava o ano anterior sem dezembro e, de fevereiro em diante, a
+janela já não alcançava janeiro: o ano congelava com 11 meses e as revisões
+tardias (FOR/EXC) do ano anterior nunca mais entravam. Ancorando em janeiro
+do ano anterior, toda execução refecha o ano anterior assim que dezembro sai
+e mantém o ano corrente acumulado; anos novos entram sozinhos com o tempo.
+`anos` explícito (admin) continua cobrindo anos inteiros — é o caminho para
+o histórico (2020 em diante).
 """
 import contextlib
 import csv
@@ -30,7 +42,7 @@ from datetime import date
 from ftplib import FTP
 
 import py7zr
-from sqlalchemy import tuple_
+from sqlalchemy import func, tuple_
 
 from app.services.ingestao_automatica.base import FonteAutomatica, ResumoIngestao, registrar
 from app.services.ingestao_automatica.util import competencias_janela, parse_valor_br
@@ -209,6 +221,35 @@ def agregar_arquivo(linhas, ibge6_para_mid, competencias_alvo, agg, sinal: int =
     return agregadas
 
 
+INICIO_SERIE = (2020, 1)  # Novo CAGED começa em 2020-01
+
+
+def competencias_execucao(anos=None, hoje=None) -> list:
+    """Competências (ano, mes) desta execução. Com `anos`: anos inteiros
+    (clampados em competencias_janela). Sem: janeiro do ano anterior até o
+    mês anterior a `hoje` — ver JANELA PADRÃO no docstring do módulo."""
+    hoje = hoje or date.today()
+    if anos:
+        return competencias_janela(anos, inicio=INICIO_SERIE, hoje=hoje)
+    return competencias_janela(
+        [hoje.year - 1, hoje.year], inicio=INICIO_SERIE, hoje=hoje)
+
+
+def aviso_ano_parcial(ano: int, meses_ok: set, ultimo_publicado: tuple,
+                      com_linha: int, total_municipios: int) -> str:
+    """Aviso acionável para ano cujo anual NÃO foi recomputado: quais meses
+    faltaram, quantos municípios da seleção já têm linha anual (pode ser
+    zero — "preservado" sem nada a preservar) e como fechar o ano."""
+    fim = ultimo_publicado[1] if ano == ultimo_publicado[0] else 12
+    faltam = ", ".join(f"{m:02d}" for m in range(1, fim + 1) if (ano, m) not in meses_ok)
+    return (
+        f"CAGED {ano}: indicadores anuais mantidos como estavam — faltou processar "
+        f"{faltam}/{ano} (fora da janela, não publicado ou falha); "
+        f"{com_linha} de {total_municipios} município(s) têm linha anual de {ano} no banco; "
+        f"rode com anos={ano} para recomputar o ano inteiro"
+    )
+
+
 def anos_completos(meses_ok: set, ultimo_publicado: tuple) -> list:
     """Anos cujo total anual pode ser recomputado: todos os meses publicados
     do ano (jan..dez, ou jan..último publicado para o ano corrente) foram
@@ -317,7 +358,7 @@ def executar(db, municipios, anos=None, usuario_id=None, notificar=True, progres
     if not alvo:
         return resumo
 
-    competencias = competencias_janela(anos, inicio=(2020, 1))
+    competencias = competencias_execucao(anos)
     if not competencias:
         resumo.erros.append("CAGED: nenhuma competência na janela (fonte começa em 2020-01)")
         return resumo
@@ -378,10 +419,16 @@ def executar(db, municipios, anos=None, usuario_id=None, notificar=True, progres
 
     ultimo_publicado = max(meses_ok)
     anos_ind = anos_completos(meses_ok, ultimo_publicado)
+    todos_mids = sorted(set(alvo.values()))
     for ano in sorted({a for (a, _m) in meses_ok if a not in anos_ind}):
+        com_linha = db.query(
+            func.count(func.distinct(CagedIndicadoresContrato.municipio_id))
+        ).filter(
+            CagedIndicadoresContrato.ano == ano,
+            CagedIndicadoresContrato.municipio_id.in_(todos_mids),
+        ).scalar() or 0
         resumo.erros.append(
-            f"CAGED {ano}: indicadores anuais preservados (janela não cobre o ano inteiro)"
-        )
+            aviso_ano_parcial(ano, meses_ok, ultimo_publicado, com_linha, len(todos_mids)))
 
     # Fase 3 — REPLACE por (município, mês) nas 12 tabelas mensais.
     def _linhas(d):
@@ -405,7 +452,6 @@ def executar(db, municipios, anos=None, usuario_id=None, notificar=True, progres
         (CagedPorTipoEstabelecimento, agg["por_tipo_estab"], ("tipo_estabelecimento",)),
     ]
 
-    todos_mids = sorted(set(alvo.values()))
     meses_lista = sorted(meses_ok)
     for i, mid in enumerate(todos_mids, start=1):
         if progresso:
