@@ -8,6 +8,7 @@ import io
 from unittest.mock import MagicMock, patch
 
 import pytest
+import requests
 
 from app.services.ingestao_automatica.cnpj_rfb import (
     COLS_ESTAB,
@@ -196,6 +197,169 @@ def test_extrair_meses_vazio_e_erro_audivel():
         cnpj_rfb.extrair_meses("<xml/>")
 
 
+def test_extrair_meses_do_autoindex_http():
+    """O espelho HTTP é um autoindex: href="2026-08/". Datas de modificação
+    ("2026-08-05 10:00") e links para fora não viram mês."""
+    html = ('<a href="../">Parent</a> <a href="2026-07/">2026-07/</a> 2026-07-05 10:00'
+            ' <a href="2026-08/">2026-08/</a> 2026-08-05 10:00 <a href="2026-13/">x</a>')
+    assert cnpj_rfb.extrair_meses(html) == ["2026-07", "2026-08"]
+
+
+# ── Transporte tolerante: User-Agent, backoff, fallback de endpoint ──────────
+
+def _resp(texto="", status=200):
+    r = MagicMock()
+    r.text, r.status_code = texto, status
+    r.raise_for_status.return_value = None
+    return r
+
+
+def _remote_disconnected():
+    return requests.ConnectionError(
+        "('Connection aborted.', RemoteDisconnected('Remote end closed connection without response'))")
+
+
+XML_OK = "<d:href>/public.php/webdav/2026-08/</d:href><d:href>/public.php/webdav/2026-09/</d:href>"
+HTML_OK = '<a href="2026-08/">2026-08/</a>'
+
+
+def test_todas_as_requisicoes_mandam_user_agent_de_navegador():
+    """Paridade com as demais fontes: hosts gov.br derrubam a conexão do UA
+    padrão do requests ("RemoteDisconnected") — o PROPFIND do share e os GETs
+    do espelho/zip vão com Mozilla/5.0."""
+    with patch.object(cnpj_rfb.requests, "request", return_value=_resp(XML_OK)) as req:
+        cnpj_rfb.TRANSPORTE_WEBDAV.listar_meses()
+    metodo, url = req.call_args.args
+    kw = req.call_args.kwargs
+    assert (metodo, url) == ("PROPFIND", cnpj_rfb.WEBDAV + "/")
+    assert kw["headers"]["User-Agent"].startswith("Mozilla/5.0")
+    assert kw["headers"]["Depth"] == "1"
+    assert kw["auth"] == (cnpj_rfb.SHARE_TOKEN, "")
+
+    with patch.object(cnpj_rfb.requests, "request", return_value=_resp(HTML_OK)) as req:
+        cnpj_rfb.TRANSPORTE_HTTP.listar_meses()
+    metodo, url = req.call_args.args
+    assert (metodo, url) == ("GET", cnpj_rfb.HTTP_INDEX + "/")
+    assert req.call_args.kwargs["headers"]["User-Agent"].startswith("Mozilla/5.0")
+    assert req.call_args.kwargs["auth"] is None
+
+
+def test_listar_meses_retenta_com_backoff_em_falha_transitoria():
+    dormir = MagicMock()
+    with patch.object(cnpj_rfb.requests, "request",
+                      side_effect=[_remote_disconnected(), _resp(XML_OK)]) as req:
+        meses = cnpj_rfb.listar_meses(cnpj_rfb.TRANSPORTE_WEBDAV, dormir=dormir)
+    assert meses == ["2026-08", "2026-09"]
+    assert req.call_count == 2
+    dormir.assert_called_once_with(cnpj_rfb.ESPERA_BASE_S)
+
+
+def test_listar_meses_esgota_tentativas_e_propaga():
+    dormir = MagicMock()
+    with patch.object(cnpj_rfb.requests, "request",
+                      side_effect=_remote_disconnected()) as req:
+        with pytest.raises(requests.ConnectionError):
+            cnpj_rfb.listar_meses(cnpj_rfb.TRANSPORTE_WEBDAV, dormir=dormir)
+    assert req.call_count == cnpj_rfb.TENTATIVAS
+    # backoff exponencial entre tentativas (nenhuma espera após a última)
+    assert [c.args[0] for c in dormir.call_args_list] == [2.0, 4.0]
+
+
+def test_localizar_snapshot_cai_para_o_indice_http_quando_o_share_esgota():
+    """Share WebDAV fechando a conexão em todas as tentativas -> o índice HTTP
+    responde e o snapshot vem de lá, com o mês mais recente."""
+    def fake_request(metodo, url, **kw):
+        if metodo == "PROPFIND":
+            raise _remote_disconnected()
+        return _resp('<a href="2026-07/"></a><a href="2026-09/"></a>')
+
+    with patch.object(cnpj_rfb.requests, "request", side_effect=fake_request) as req:
+        transporte, mes = cnpj_rfb.localizar_snapshot(dormir=MagicMock())
+    assert transporte is cnpj_rfb.TRANSPORTE_HTTP and mes == "2026-09"
+    assert req.call_count == cnpj_rfb.TENTATIVAS + 1
+
+
+def test_localizar_snapshot_prefere_o_share_quando_ele_responde():
+    with patch.object(cnpj_rfb.requests, "request", return_value=_resp(XML_OK)) as req:
+        transporte, mes = cnpj_rfb.localizar_snapshot(dormir=MagicMock())
+    assert transporte is cnpj_rfb.TRANSPORTE_WEBDAV and mes == "2026-09"
+    assert req.call_count == 1
+
+
+def test_localizar_snapshot_todos_esgotados_diagnostico_por_endpoint():
+    """Erro audível com URL + motivo de CADA endpoint e a dica de conferir no
+    navegador — em vez do '(Connection aborted., RemoteDisconnected(...))' cru."""
+    http_404 = requests.HTTPError("404")
+    http_404.response = _resp(status=404)
+
+    def fake_request(metodo, url, **kw):
+        if metodo == "PROPFIND":
+            raise _remote_disconnected()
+        raise http_404
+
+    with patch.object(cnpj_rfb.requests, "request", side_effect=fake_request):
+        with pytest.raises(cnpj_rfb.FonteIndisponivel) as info:
+            cnpj_rfb.localizar_snapshot(dormir=MagicMock())
+    msg = str(info.value)
+    assert f"{cnpj_rfb.TENTATIVAS} tentativa" in msg
+    assert cnpj_rfb.WEBDAV + "/" in msg and "RemoteDisconnected" in msg
+    assert cnpj_rfb.HTTP_INDEX + "/" in msg and "HTTP 404" in msg
+    assert "navegador" in msg
+
+
+def test_listagem_sem_meses_tambem_cai_para_o_proximo_endpoint():
+    """Share respondendo 200 com corpo sem meses (ex.: página de erro do WAF)
+    conta como falha do endpoint, não como sucesso vazio."""
+    def fake_request(metodo, url, **kw):
+        return _resp("<html>bloqueado</html>" if metodo == "PROPFIND" else HTML_OK)
+
+    with patch.object(cnpj_rfb.requests, "request", side_effect=fake_request):
+        transporte, mes = cnpj_rfb.localizar_snapshot(dormir=MagicMock())
+    assert transporte is cnpj_rfb.TRANSPORTE_HTTP and mes == "2026-08"
+
+
+def test_baixar_zip_usa_url_auth_e_headers_do_transporte_e_retenta(tmp_path):
+    ok = MagicMock()
+    ok.__enter__.return_value = ok
+    ok.raise_for_status.return_value = None
+    ok.iter_content.return_value = [b"abc", b"def"]
+    dormir = MagicMock()
+    with patch.object(cnpj_rfb.requests, "get",
+                      side_effect=[_remote_disconnected(), ok]) as get:
+        caminho, erro = cnpj_rfb.baixar_zip(
+            cnpj_rfb.TRANSPORTE_HTTP, "2026-09", "Municipios.zip", str(tmp_path), dormir=dormir)
+    assert erro is None
+    assert open(caminho, "rb").read() == b"abcdef"
+    assert get.call_count == 2
+    url = get.call_args.args[0]
+    assert url == f"{cnpj_rfb.HTTP_INDEX}/2026-09/Municipios.zip"
+    assert get.call_args.kwargs["auth"] is None
+    assert get.call_args.kwargs["headers"]["User-Agent"].startswith("Mozilla/5.0")
+    dormir.assert_called_once_with(cnpj_rfb.ESPERA_BASE_S)
+
+
+def test_baixar_zip_esgota_tentativas_com_erro_audivel(tmp_path):
+    with patch.object(cnpj_rfb.requests, "get", side_effect=_remote_disconnected()) as get:
+        caminho, erro = cnpj_rfb.baixar_zip(
+            cnpj_rfb.TRANSPORTE_WEBDAV, "2026-09", "Estabelecimentos0.zip", str(tmp_path),
+            dormir=MagicMock())
+    assert caminho is None and "RemoteDisconnected" in erro
+    assert get.call_count == cnpj_rfb.TENTATIVAS
+    assert get.call_args.kwargs["auth"] == (cnpj_rfb.SHARE_TOKEN, "")
+
+
+def test_executar_fonte_indisponivel_nao_grava_e_e_audivel():
+    db = MagicMock()
+    with patch.object(cnpj_rfb, "localizar_snapshot",
+                      side_effect=cnpj_rfb.FonteIndisponivel("nenhum endpoint da RFB respondeu")):
+        resumo = cnpj_rfb.executar(db, ALVOS_MUNS)
+    assert resumo.municipios_ok == 0 and resumo.linhas == 0
+    (erro,) = resumo.erros
+    assert erro.startswith("fonte RFB indisponível: nenhum endpoint")
+    db.query.assert_not_called()
+    db.commit.assert_not_called()
+
+
 def test_nomes_dos_zips():
     nomes = cnpj_rfb.nomes_zips()
     assert nomes[0] == "Municipios.zip"
@@ -218,12 +382,12 @@ def test_cnpj_registrado_fora_do_todas():
 def test_executar_recusa_selecao_grande_sem_chamada_de_rede():
     """Seleção acima do limite (memória: todos os estabelecimentos dos alvos
     ficam em RAM durante as passadas) é recusada audivelmente ANTES de
-    qualquer chamada de rede — nem listar_meses() é acionado."""
+    qualquer chamada de rede — nem localizar_snapshot() é acionado."""
     n = MAX_MUNICIPIOS_POR_EXECUCAO + 1
     municipios = [_mun(i, f"Municipio{i}", f"E{i:02d}") for i in range(n)]
-    with patch.object(cnpj_rfb, "listar_meses") as listar_meses_mock:
+    with patch.object(cnpj_rfb, "localizar_snapshot") as localizar_mock:
         resumo = cnpj_rfb.executar(MagicMock(), municipios)
-    listar_meses_mock.assert_not_called()
+    localizar_mock.assert_not_called()
     assert resumo.municipios_ok == 0 and resumo.linhas == 0
     (erro,) = resumo.erros
     assert f"{n} municípios" in erro
