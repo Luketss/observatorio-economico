@@ -155,6 +155,48 @@ def test_anos_completos_exige_todos_os_meses_publicados():
     assert anos_completos({(2024, 12)} | {(2025, m) for m in range(1, 7)}, (2025, 6)) == [2025]
 
 
+def test_janela_default_vai_de_janeiro_do_ano_anterior_ate_o_mes_anterior():
+    """Sem `anos`: janeiro do ano anterior até o mês anterior a hoje — toda
+    execução refecha o ano anterior inteiro e mantém o corrente acumulado."""
+    out = caged_pdet.competencias_execucao(hoje=date(2026, 10, 1))
+    assert out[0] == (2025, 1) and out[-1] == (2026, 9) and len(out) == 21
+    # janeiro: só o ano anterior fechado (dezembro é o último possível)
+    out = caged_pdet.competencias_execucao(hoje=date(2027, 1, 15))
+    assert out[0] == (2026, 1) and out[-1] == (2026, 12) and len(out) == 12
+    # fevereiro: ano anterior inteiro + janeiro do corrente (2027 entra sozinho)
+    out = caged_pdet.competencias_execucao(hoje=date(2027, 2, 10))
+    assert out[0] == (2026, 1) and out[-1] == (2027, 1) and len(out) == 13
+    # dezembro: pior caso, 23 meses
+    assert len(caged_pdet.competencias_execucao(hoje=date(2026, 12, 20))) == 23
+
+
+def test_janela_default_clampa_no_inicio_da_serie():
+    out = caged_pdet.competencias_execucao(hoje=date(2021, 3, 1))
+    assert out[0] == (2020, 1) and out[-1] == (2021, 2)
+
+
+def test_janela_com_anos_explicitos_cobre_anos_inteiros():
+    out = caged_pdet.competencias_execucao(anos=[2025], hoje=date(2026, 10, 1))
+    assert out[0] == (2025, 1) and out[-1] == (2025, 12) and len(out) == 12
+    # ano corrente explícito: até o mês anterior a hoje
+    out = caged_pdet.competencias_execucao(anos=[2026], hoje=date(2026, 10, 1))
+    assert out[-1] == (2026, 9) and len(out) == 9
+    # ano futuro: vazio (executar avisa "nenhuma competência")
+    assert caged_pdet.competencias_execucao(anos=[2027], hoje=date(2026, 10, 1)) == []
+
+
+def test_aviso_ano_parcial_diz_o_que_faltou_e_como_fechar():
+    meses_ok = {(2025, m) for m in (10, 11, 12)} | {(2026, m) for m in range(1, 10)}
+    msg = caged_pdet.aviso_ano_parcial(2025, meses_ok, (2026, 9), com_linha=0, total_municipios=3)
+    assert msg.startswith("CAGED 2025: indicadores anuais mantidos como estavam")
+    assert "faltou processar 01, 02, 03, 04, 05, 06, 07, 08, 09/2025" in msg
+    assert "0 de 3 município(s) têm linha anual de 2025" in msg
+    assert "anos=2025" in msg
+    # ano corrente: só os meses até o último publicado contam como faltantes
+    msg = caged_pdet.aviso_ano_parcial(2026, meses_ok - {(2026, 5)}, (2026, 9), 3, 3)
+    assert "faltou processar 05/2026" in msg
+
+
 def test_meses_forexc_vai_da_janela_ate_o_mes_anterior_a_hoje():
     # janela = ano fechado 2024; FOR/EXC de exclusões tardias vão até 2026-06
     janela = [(2024, m) for m in range(1, 13)]
