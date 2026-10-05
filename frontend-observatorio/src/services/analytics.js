@@ -10,7 +10,16 @@
 
 export const CHAVES_SESSAO = ["municipio_id", "municipio", "papel"];
 
+// Papéis do sistema (seed do backend, Role.builtin=True). Papéis personalizados
+// criados pelo ADMIN_GLOBAL têm nome livre e poderiam identificar uma pessoa;
+// por isso colapsam em "PERSONALIZADO" — papel segue atributo funcional fechado.
+export const PAPEIS_SISTEMA = ["ADMIN_GLOBAL", "ADMIN_MUNICIPIO", "ANALISTA", "VISUALIZADOR"];
+export const PAPEL_PERSONALIZADO = "PERSONALIZADO";
+
 const SELETOR_SCRIPT = "script[data-website-id]";
+
+const docPadrao = () => (typeof document === "undefined" ? null : document);
+const winPadrao = () => (typeof window === "undefined" ? null : window);
 
 export function lerConfigAnalytics(env) {
   const src = String(env?.VITE_UMAMI_SRC ?? "")
@@ -21,8 +30,8 @@ export function lerConfigAnalytics(env) {
   return { src, websiteId };
 }
 
-export function iniciarAnalytics(config, doc = document) {
-  if (!config) return false;
+export function iniciarAnalytics(config, doc = docPadrao()) {
+  if (!config || !doc) return false;
   try {
     if (doc.querySelector(SELETOR_SCRIPT)) return true;
     const tag = doc.createElement("script");
@@ -37,12 +46,15 @@ export function iniciarAnalytics(config, doc = document) {
 }
 
 // /auth/me do NID: { id, nome, email, municipio_id, role, ativo }.
-// Só município e papel saem; id/nome/email nunca.
+// Só município e papel saem; id/nome/email nunca. O papel só passa se estiver
+// em PAPEIS_SISTEMA; qualquer outro nome (papel personalizado) vira PERSONALIZADO.
 export function montarDadosSessao(user) {
   if (!user) return null;
   const dados = {};
   if (user.municipio_id != null) dados.municipio_id = user.municipio_id;
-  if (user.role) dados.papel = user.role;
+  if (user.role) {
+    dados.papel = PAPEIS_SISTEMA.includes(user.role) ? user.role : PAPEL_PERSONALIZADO;
+  }
   return Object.keys(dados).length ? dados : null;
 }
 
@@ -54,11 +66,11 @@ function chamarIdentify(win, dados) {
   return false;
 }
 
-export function identificarSessao(dados, doc = document, win = window) {
-  if (!dados) return;
+export function identificarSessao(dados, doc = docPadrao(), win = winPadrao()) {
+  if (!dados || !win) return;
   try {
     if (chamarIdentify(win, dados)) return;
-    const tag = doc.querySelector(SELETOR_SCRIPT);
+    const tag = doc ? doc.querySelector(SELETOR_SCRIPT) : null;
     if (!tag) return;
     tag.addEventListener(
       "load",

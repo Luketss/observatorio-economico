@@ -6,6 +6,7 @@ import {
   iniciarAnalytics,
   lerConfigAnalytics,
   montarDadosSessao,
+  PAPEL_PERSONALIZADO,
 } from "./analytics";
 
 const CONFIG = { src: "https://umami.test", websiteId: "abc-123" };
@@ -83,6 +84,10 @@ describe("iniciarAnalytics", () => {
     };
     expect(iniciarAnalytics(CONFIG, doc)).toBe(false);
   });
+
+  it("sem doc (ambiente sem DOM) → false, sem lançar", () => {
+    expect(iniciarAnalytics(CONFIG, null)).toBe(false);
+  });
 });
 
 describe("montarDadosSessao", () => {
@@ -129,6 +134,19 @@ describe("montarDadosSessao", () => {
     for (const k of Object.keys(dados)) {
       expect(CHAVES_SESSAO).toContain(k);
     }
+  });
+
+  it("papel do sistema passa como está (ANALISTA)", () => {
+    expect(montarDadosSessao({ id: 4, municipio_id: 7, role: "ANALISTA" })).toEqual({
+      municipio_id: 7,
+      papel: "ANALISTA",
+    });
+  });
+
+  it("papel personalizado (nome livre) vira PERSONALIZADO", () => {
+    expect(
+      montarDadosSessao({ id: 5, nome: "Ana", municipio_id: 7, role: "Assessor do Prefeito" })
+    ).toEqual({ municipio_id: 7, papel: PAPEL_PERSONALIZADO });
   });
 
   it("usuário sem nada aproveitável → null", () => {
@@ -182,6 +200,10 @@ describe("identificarSessao", () => {
       },
     };
     expect(() => identificarSessao(DADOS)).not.toThrow();
+  });
+
+  it("sem doc e sem win (ambiente sem DOM) → no-op, sem lançar", () => {
+    expect(() => identificarSessao(DADOS, null, null)).not.toThrow();
   });
 
   it("dados null → no-op", () => {
