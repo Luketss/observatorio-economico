@@ -43,7 +43,8 @@ leitura.
 observatório (PIB, CAGED, FPM, IPS e demais fontes) são agregados públicos
 por município e não constituem dados pessoais. O módulo de empresas trata
 dado cadastral de pessoa jurídica, obtido da base pública da Receita Federal
-do Brasil, sem quadro societário e sem CPF de sócios ou representantes.
+do Brasil, sem quadro societário e sem CPF de sócios ou representantes. A medição de uso das telas (analytics, seção 8) também não trata dados
+pessoais.
 
 ## 3. Bases legais (art. 7º)
 
@@ -129,3 +130,28 @@ envolvidos e as medidas técnicas adotadas para conter e remediar o
 incidente. Controladora e operadora avaliam em conjunto a necessidade de
 comunicação à Autoridade Nacional de Proteção de Dados (ANPD) e aos
 titulares afetados, conforme os critérios do art. 48 da LGPD.
+
+## 8. Analytics de uso (Umami)
+
+A plataforma mede o uso das telas por meio de uma instância própria do
+Umami, software de analytics de código aberto, hospedada pela operadora na
+Railway e compartilhada com a plataforma Inteligência Legislativa (LEGIS). O
+objetivo é saber quais páginas e módulos são utilizados, por quais municípios
+e papéis de acesso, para orientar a evolução do produto.
+
+Esse tratamento não envolve dados pessoais:
+
+- Não são utilizados cookies nem identificadores persistentes no navegador.
+- O endereço IP do visitante não é armazenado: o Umami o utiliza apenas para
+  compor um hash de sessão com salt rotacionado diariamente e o descarta.
+- A sessão recebe apenas o identificador numérico do município de vínculo e o
+  papel de acesso do usuário (por exemplo, `VISUALIZADOR`). Identificador do
+  usuário, nome e e-mail nunca são enviados, e a sessão não é associada a um
+  identificador único de pessoa.
+- Município é ente público e papel de acesso é atributo funcional; nenhum dos
+  dois permite identificar uma pessoa natural.
+
+Por não conter dado pessoal, os registros de analytics ficam fora dos prazos
+de retenção da seção 4, que se aplicam exclusivamente à trilha de auditoria.
+O rastreio existe apenas no build de produção; em ambiente de desenvolvimento
+nada é enviado. Detalhes operacionais em `docs/analytics-umami.md`.
