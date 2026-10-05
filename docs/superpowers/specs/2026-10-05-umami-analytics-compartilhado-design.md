@@ -277,3 +277,17 @@ nos arquivos tocados. Sem e2e nesta frente.
   um upgrade de major do Umami seja uma decisão, não um acidente.
 - **Bloqueadores:** parte dos usuários de prefeitura usa navegador corporativo com
   bloqueador. Os números serão um piso, não o total. Aceito; anti-bloqueador está fora.
+
+## Emendas pós-revisão final (05/10/2026)
+
+1. **`papel` restrito aos papéis do sistema.** `Role.nome` é texto livre no NID (roles
+   personalizadas via `POST /roles`), então `montarDadosSessao` envia o nome só se estiver em
+   `PAPEIS_SISTEMA` (`ADMIN_GLOBAL`, `ADMIN_MUNICIPIO`, `ANALISTA`, `VISUALIZADOR`); qualquer
+   outro vira `PERSONALIZADO`. O LEGIS aplica a mesma regra com os seus quatro papéis.
+2. **LGPD §8 com a postura real.** O texto deixa de afirmar "não envolve dados pessoais" e
+   passa a descrever o payload mínimo, os atributos técnicos derivados pelo Umami, a ressalva
+   de município com titular único por papel, a base legal (art. 7º, IX) e a retenção.
+3. **Runbook**: ordem obrigatória ao trocar/remover o domínio do Umami (frontends primeiro;
+   domínio liberado pode virar XSS), nota de CSP, nota de ambientes de PR.
+4. **Loader**: parâmetros default `doc`/`win` resolvidos com guarda (`typeof document`), para
+   que "nenhuma função lança" valha também fora do navegador.

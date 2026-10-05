@@ -307,7 +307,7 @@ Agents MAY NOT:
 - **Backend**: Python + Uvicorn container
 - **Frontend**: Static site (Vite build → `dist/`)
 - **Database**: Railway PostgreSQL
-- **Env vars**: `DATABASE_URL`, `SECRET_KEY`, `ANTHROPIC_API_KEY`, `VITE_API_URL`
+- **Env vars**: `DATABASE_URL`, `SECRET_KEY`, `ANTHROPIC_API_KEY`, `VITE_API_URL`; opcionais no frontend: `VITE_UMAMI_SRC`, `VITE_UMAMI_WEBSITE_ID` (analytics, ver `docs/analytics-umami.md`)
 - Migrations run via `alembic upgrade head` before backend starts
 
 ---

@@ -52,6 +52,10 @@ No serviço **frontend** de cada projeto Railway (não no backend), Variables:
 **Redeploy do frontend**: as variáveis entram no build (`ARG` do Dockerfile); sem rebuild nada
 muda. Sem as duas variáveis o app simplesmente não rastreia (nenhuma tag, nenhum request).
 
+Ambientes de PR/preview da Railway herdam as variáveis do ambiente base. Se um dia criar um,
+remova as duas variáveis `VITE_UMAMI_*` nele; caso contrário o preview conta como produção no
+Umami.
+
 ## 4. Verificar
 
 1. Abrir o app logado → Umami → website → **Realtime** mostra 1 visitante e a página atual.
@@ -64,8 +68,16 @@ muda. Sem as duas variáveis o app simplesmente não rastreia (nenhuma tag, nenh
 
 ## 5. Operação
 
-- **URL do Umami mudou** (domínio regenerado ou domínio próprio no futuro): atualizar
-  `VITE_UMAMI_SRC` nos dois frontends e redeployar os dois.
+- **URL do Umami mudou** (domínio regenerado ou domínio próprio no futuro). **Ordem
+  obrigatória**: primeiro redeployar os dois frontends com a URL nova (ou sem as duas
+  variáveis), e só depois remover ou regenerar o domínio antigo. Um domínio `*.up.railway.app`
+  liberado pode ser registrado por terceiros, e o `script.js` servido por ele teria acesso
+  total às páginas do app. Nunca liberar um domínio que ainda esteja referenciado por um build
+  em produção.
+- **CSP**: o nginx dos frontends não envia `Content-Security-Policy` hoje. Se um dia enviar,
+  incluir a origem do Umami em `script-src` e `connect-src`. Como analytics é best-effort,
+  ninguém é avisado quando o rastreio morre em silêncio: conferir o Realtime após qualquer
+  mudança de headers.
 - **Upgrade do Umami**: trocar a tag da imagem no serviço `umami` → redeploy (as migrações
   rodam no boot). Ler o changelog antes de pular major.
 - **Backup**: o volume do Postgres é coberto pelo backup da Railway. Nada extra.
@@ -78,6 +90,8 @@ muda. Sem as duas variáveis o app simplesmente não rastreia (nenhuma tag, nenh
 ## 6. O que NÃO é enviado
 
 Nunca: id, nome ou e-mail do usuário, nem `uniqueId` de sessão. Só `municipio_id`, papel e
-(no LEGIS) nome do município. O conjunto de chaves permitidas está em `CHAVES_SESSAO` em
-`frontend-observatorio/src/services/analytics.js` e é verificado por teste. Base LGPD em
-`docs/lgpd.md`, seção 8.
+(no LEGIS) nome do município. O papel é restrito aos papéis do sistema (`ADMIN_GLOBAL`,
+`ADMIN_MUNICIPIO`, `ANALISTA`, `VISUALIZADOR`); papéis personalizados viajam como
+`PERSONALIZADO`. O conjunto de chaves permitidas está em `CHAVES_SESSAO` e a whitelist em
+`PAPEIS_SISTEMA`, ambos em `frontend-observatorio/src/services/analytics.js`, verificados por
+teste. Base LGPD em `docs/lgpd.md`, seção 8.

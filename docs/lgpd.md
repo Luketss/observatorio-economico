@@ -43,8 +43,9 @@ leitura.
 observatório (PIB, CAGED, FPM, IPS e demais fontes) são agregados públicos
 por município e não constituem dados pessoais. O módulo de empresas trata
 dado cadastral de pessoa jurídica, obtido da base pública da Receita Federal
-do Brasil, sem quadro societário e sem CPF de sócios ou representantes. A medição de uso das telas (analytics, seção 8) também não trata dados
-pessoais.
+do Brasil, sem quadro societário e sem CPF de sócios ou representantes. A
+medição de uso das telas (analytics, seção 8) trata apenas dados técnicos e
+agregados, sem identificação direta do usuário.
 
 ## 3. Bases legais (art. 7º)
 
@@ -139,19 +140,36 @@ Railway e compartilhada com a plataforma Inteligência Legislativa (LEGIS). O
 objetivo é saber quais páginas e módulos são utilizados, por quais municípios
 e papéis de acesso, para orientar a evolução do produto.
 
-Esse tratamento não envolve dados pessoais:
+**O que é coletado.** Para cada visita: página acessada, referenciador,
+data/hora, atributos técnicos do navegador (navegador, sistema operacional,
+tipo de dispositivo, resolução de tela e idioma) e a localização aproximada
+(país, região e cidade) derivada do endereço IP. O IP em si não é
+armazenado: o Umami o utiliza para derivar a localização e para compor um
+hash de sessão com salt rotacionado diariamente, e o descarta. Não são
+utilizados cookies nem identificadores persistentes no navegador.
 
-- Não são utilizados cookies nem identificadores persistentes no navegador.
-- O endereço IP do visitante não é armazenado: o Umami o utiliza apenas para
-  compor um hash de sessão com salt rotacionado diariamente e o descarta.
-- A sessão recebe apenas o identificador numérico do município de vínculo e o
-  papel de acesso do usuário (por exemplo, `VISUALIZADOR`). Identificador do
-  usuário, nome e e-mail nunca são enviados, e a sessão não é associada a um
-  identificador único de pessoa.
-- Município é ente público e papel de acesso é atributo funcional; nenhum dos
-  dois permite identificar uma pessoa natural.
+**O que a plataforma acrescenta à sessão.** Apenas o identificador numérico
+do município de vínculo e o papel de acesso do usuário, restrito aos papéis
+do sistema (`ADMIN_GLOBAL`, `ADMIN_MUNICIPIO`, `ANALISTA`, `VISUALIZADOR`).
+Papéis personalizados criados pela prefeitura são enviados como
+`PERSONALIZADO`, para que o nome livre de um papel nunca identifique uma
+pessoa. Identificador do usuário, nome e e-mail nunca são enviados, e a
+sessão não é associada a um identificador único de pessoa.
 
-Por não conter dado pessoal, os registros de analytics ficam fora dos prazos
-de retenção da seção 4, que se aplicam exclusivamente à trilha de auditoria.
-O rastreio existe apenas no build de produção; em ambiente de desenvolvimento
-nada é enviado. Detalhes operacionais em `docs/analytics-umami.md`.
+**Identificabilidade.** Município é ente público e papel de acesso é
+atributo funcional. Em municípios com um único titular de determinado papel
+(por exemplo, um único `ADMIN_MUNICIPIO`), a combinação município + papel
+pode tornar a sessão indiretamente identificável pela operadora, que
+administra as contas. Por isso a operadora não cruza os dados de analytics
+com o cadastro de usuários, o acesso ao painel do Umami é restrito ao
+administrador global da plataforma e o conjunto de dados enviados é o mínimo
+descrito acima. O tratamento tem como base legal o legítimo interesse na
+melhoria do serviço (art. 7º, IX), compatível com a expectativa de um
+servidor que utiliza ferramenta de trabalho fornecida pela prefeitura.
+
+**Retenção.** Os registros de analytics não compõem a trilha de auditoria e
+não seguem os prazos da seção 4. São mantidos enquanto úteis à evolução do
+produto e podem ser apagados por website, a qualquer momento, pela função
+nativa do Umami. O rastreio existe apenas no build de produção; em ambiente
+de desenvolvimento nada é enviado. Detalhes operacionais em
+`docs/analytics-umami.md`.
