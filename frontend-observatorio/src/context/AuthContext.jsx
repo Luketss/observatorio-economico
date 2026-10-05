@@ -1,5 +1,6 @@
 import { createContext, useContext, useState, useEffect } from "react";
 import api from "../services/api";
+import { identificarSessao, montarDadosSessao } from "../services/analytics";
 
 const AuthContext = createContext();
 
@@ -30,6 +31,14 @@ export function AuthProvider({ children }) {
       })
       .finally(() => setLoading(false));
   }, []);
+
+  // Analytics (Umami): anexa municipio_id e papel à sessão anônima quando o
+  // usuário fica conhecido (login ou sessão restaurada). Sem PII — ver
+  // montarDadosSessao. Com user null não envia nada.
+  useEffect(() => {
+    const dados = montarDadosSessao(user);
+    if (dados) identificarSessao(dados);
+  }, [user]);
 
   const login = async (email, senha) => {
     const response = await api.post(
