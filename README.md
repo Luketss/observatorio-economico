@@ -432,7 +432,12 @@ ANTHROPIC_API_KEY=sk-ant-...
 
 ```
 VITE_API_BASE_URL=https://your-backend.up.railway.app/api/v1
+# Optional — usage analytics (shared Umami instance). Omit both to disable tracking.
+VITE_UMAMI_SRC=https://umami-production-xxxx.up.railway.app
+VITE_UMAMI_WEBSITE_ID=<website id "NID" in Umami>
 ```
+
+Umami setup, website IDs and verification: see [`docs/analytics-umami.md`](docs/analytics-umami.md).
 
 The backend Dockerfile automatically runs `alembic upgrade head` before starting gunicorn, so migrations apply on every deploy.
 
@@ -509,6 +514,8 @@ Create `frontend-observatorio/.env.local`:
 ```env
 VITE_API_BASE_URL=http://localhost:8000/api/v1
 ```
+
+Do **not** set `VITE_UMAMI_*` locally — without them the app never sends analytics.
 
 ---
 

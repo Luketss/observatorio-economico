@@ -16,6 +16,13 @@ COPY . .
 ARG VITE_API_BASE_URL
 ENV VITE_API_BASE_URL=$VITE_API_BASE_URL
 
+# Umami (analytics de uso). Opcionais: sem as duas, o app nao rastreia.
+# Ver docs/analytics-umami.md.
+ARG VITE_UMAMI_SRC
+ARG VITE_UMAMI_WEBSITE_ID
+ENV VITE_UMAMI_SRC=$VITE_UMAMI_SRC
+ENV VITE_UMAMI_WEBSITE_ID=$VITE_UMAMI_WEBSITE_ID
+
 # Build do Vite
 RUN npm run build
 
