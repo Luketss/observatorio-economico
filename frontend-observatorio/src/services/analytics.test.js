@@ -66,6 +66,7 @@ describe("iniciarAnalytics", () => {
     expect(tag.defer).toBe(true);
     expect(tag.src).toBe("https://umami.test/script.js");
     expect(tag.getAttribute("data-website-id")).toBe("abc-123");
+    expect(tag.getAttribute("data-exclude-search")).toBe("true");
     expect(tag.parentElement).toBe(document.head);
   });
 

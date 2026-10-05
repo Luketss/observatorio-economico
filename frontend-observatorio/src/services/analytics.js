@@ -38,6 +38,9 @@ export function iniciarAnalytics(config, doc = docPadrao()) {
     tag.defer = true;
     tag.src = `${config.src}/script.js`;
     tag.setAttribute("data-website-id", config.websiteId);
+    // Sem query string nas URLs registradas: parametros de busca podem conter
+    // texto digitado (ex.: nome de pessoa) — LGPD. Só pathname chega ao Umami.
+    tag.setAttribute("data-exclude-search", "true");
     doc.head.appendChild(tag);
     return true;
   } catch {
