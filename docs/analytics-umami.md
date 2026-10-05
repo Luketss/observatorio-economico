@@ -95,3 +95,5 @@ Nunca: id, nome ou e-mail do usuário, nem `uniqueId` de sessão. Só `municipio
 `PERSONALIZADO`. O conjunto de chaves permitidas está em `CHAVES_SESSAO` e a whitelist em
 `PAPEIS_SISTEMA`, ambos em `frontend-observatorio/src/services/analytics.js`, verificados por
 teste. Base LGPD em `docs/lgpd.md`, seção 8.
+A query string das URLs também não é enviada (`data-exclude-search` na tag): só o pathname de cada
+tela chega ao Umami.

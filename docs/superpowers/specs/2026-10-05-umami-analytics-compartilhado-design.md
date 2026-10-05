@@ -41,7 +41,7 @@ funcionamento dos apps quando o Umami estiver fora ou bloqueado.
   (`docs/superpowers/specs/2026-08-16-auditoria-lgpd-design.md`) deixou "auditoria de
   navegação em páginas/datasets" explicitamente fora, como analytics.
 - `/auth/me` do NID devolve `{ id, nome, email, municipio_id, role }`. O do LEGIS devolve
-  `{ municipio_id, municipio_nome, role_nome, ... }`.
+  `{ municipio_id, municipio_nome, role, ... }` (`AuthenticatedUser` em `schemas/auth.py`).
 - Umami: precisa só de `DATABASE_URL` (Postgres) e `APP_SECRET`; uma instância atende N
   websites, cada um com seu `data-website-id`; o tracker captura `pushState` (rotas SPA)
   sozinho; `umami.identify(dados)` aceita dados de sessão sem id único.
@@ -109,7 +109,8 @@ usam o próprio DOM.
 // Remove barra final de src, para aceitar "https://x.app" e "https://x.app/".
 export function lerConfigAnalytics(env) → { src, websiteId } | null
 
-// Injeta UMA tag <script defer src="{src}/script.js" data-website-id="{websiteId}"> no <head>.
+// Injeta UMA tag <script defer src="{src}/script.js" data-website-id="{websiteId}"
+// data-exclude-search="true"> no <head>.
 // Se já existir script[data-website-id], não duplica. Devolve true se há tag (nova ou
 // existente), false se config é null.
 export function iniciarAnalytics(config, doc = document) → boolean
@@ -171,7 +172,7 @@ precisa de integração.
 | App | Payload de `identificarSessao` | Fonte |
 |---|---|---|
 | NID | `{ municipio_id, papel }` | `user.municipio_id`, `user.role` |
-| LEGIS | `{ municipio_id, municipio, papel }` | `user.municipio_id`, `user.municipio_nome`, `user.role_nome` |
+| LEGIS | `{ municipio_id, municipio, papel }` | `user.municipio_id`, `user.municipio_nome`, `user.role` |
 | ADMIN_GLOBAL (ambos) | `{ papel: "ADMIN_GLOBAL" }` | `municipio_id` é null e a chave é omitida |
 
 Regras:
@@ -291,3 +292,8 @@ nos arquivos tocados. Sem e2e nesta frente.
    domínio liberado pode virar XSS), nota de CSP, nota de ambientes de PR.
 4. **Loader**: parâmetros default `doc`/`win` resolvidos com guarda (`typeof document`), para
    que "nenhuma função lança" valha também fora do navegador.
+5. **LEGIS lê `user.role`.** A spec afirmava `role_nome` para o `/auth/me` do LEGIS; o payload
+   real (`AuthenticatedUser`) tem `role`. Corrigido no loader e nos testes do LEGIS. Lição de
+   processo: shape de API se confirma no schema do backend, não na spec.
+6. **`data-exclude-search="true"` na tag, nos dois gêmeos.** A busca global do LEGIS coloca o
+   texto na URL (`?q=`), e a query string ia para o Umami como "página". Só o pathname é enviado.

@@ -140,13 +140,14 @@ Railway e compartilhada com a plataforma Inteligência Legislativa (LEGIS). O
 objetivo é saber quais páginas e módulos são utilizados, por quais municípios
 e papéis de acesso, para orientar a evolução do produto.
 
-**O que é coletado.** Para cada visita: página acessada, referenciador,
-data/hora, atributos técnicos do navegador (navegador, sistema operacional,
-tipo de dispositivo, resolução de tela e idioma) e a localização aproximada
-(país, região e cidade) derivada do endereço IP. O IP em si não é
-armazenado: o Umami o utiliza para derivar a localização e para compor um
-hash de sessão com salt rotacionado diariamente, e o descarta. Não são
-utilizados cookies nem identificadores persistentes no navegador.
+**O que é coletado.** Para cada visita: página acessada (apenas o caminho,
+sem parâmetros de busca), referenciador, data/hora, atributos técnicos do
+navegador (navegador, sistema operacional, tipo de dispositivo, resolução de
+tela e idioma) e a localização aproximada (país, região e cidade) derivada
+do endereço IP. O IP em si não é armazenado: o Umami o utiliza para derivar
+a localização e para compor um hash de sessão com salt rotacionado
+diariamente, e o descarta. Não são utilizados cookies nem identificadores
+persistentes no navegador.
 
 **O que a plataforma acrescenta à sessão.** Apenas o identificador numérico
 do município de vínculo e o papel de acesso do usuário, restrito aos papéis
