@@ -94,3 +94,17 @@ describe("exportacaoRanking", () => {
     expect(r.linhas.map((l) => l.posicao)).toEqual([11, 12]);
   });
 });
+
+describe("rótulos visíveis mantêm acentos", () => {
+  it("Período, Admissões, Participação, Posição", () => {
+    expect(COLUNA_PERIODO.rotulo).toBe("Período");
+    expect(exportacaoTwin([], { acumulado: true }).colunas.map((c) => c.rotulo)).toEqual(["Período", "Admissões", "Desligamentos", "Saldo", "Saldo acumulado"]);
+    expect(exportacaoDonut([]).colunas.map((c) => c.rotulo)).toEqual(["Categoria", "Valor", "Participação (%)"]);
+    expect(exportacaoRanking([], { comPosicao: true }).colunas.map((c) => c.rotulo)).toEqual(["Posição", "Nome", "Valor"]);
+  });
+  it("linha sem label não gera undefined", () => {
+    expect(exportacaoArea([{ value: 1 }], "x").linhas[0]).toEqual({ periodo: null, valor: 1 });
+    expect(exportacaoDonut([{ value: 1 }]).linhas[0].categoria).toBeNull();
+    expect(exportacaoRanking([{ value: 1 }]).linhas[0].nome).toBeNull();
+  });
+});

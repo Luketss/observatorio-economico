@@ -2,7 +2,7 @@
 // ja recebe, com os mesmos valores dos tooltips e sem formatacao de moeda.
 // Puro: sem React, sem DOM. Spec: docs/superpowers/specs/2026-10-06-exportacao-graficos-design.md
 
-export const COLUNA_PERIODO = { chave: "periodo", rotulo: "Periodo", tipo: "texto" };
+export const COLUNA_PERIODO = { chave: "periodo", rotulo: "Período", tipo: "texto" };
 
 const numero = (chave, rotulo) => ({ chave, rotulo, tipo: "numero" });
 const lista = (data) => (Array.isArray(data) ? data : []);
@@ -11,7 +11,7 @@ const ouNull = (v) => (v == null ? null : v);
 export function exportacaoArea(data, label = "Valor") {
   return {
     colunas: [COLUNA_PERIODO, numero("valor", label)],
-    linhas: lista(data).map((d) => ({ periodo: d.label, valor: ouNull(d.value) })),
+    linhas: lista(data).map((d) => ({ periodo: ouNull(d.label), valor: ouNull(d.value) })),
   };
 }
 
@@ -19,7 +19,7 @@ export function exportacaoEmpilhado(data, keys = [], comTotal = false) {
   const colunas = [COLUNA_PERIODO, ...keys.map((k) => numero(k, k))];
   if (comTotal) colunas.push(numero("total", "Total"));
   const linhas = lista(data).map((d) => {
-    const linha = { periodo: d.label };
+    const linha = { periodo: ouNull(d.label) };
     let total = 0;
     keys.forEach((k) => {
       linha[k] = ouNull(d[k]);
@@ -35,17 +35,20 @@ export function exportacaoMultiLinha(data, series = []) {
   return {
     colunas: [COLUNA_PERIODO, ...series.map((s) => numero(s, s))],
     linhas: lista(data).map((d) => {
-      const linha = { periodo: d.label };
+      const linha = { periodo: ouNull(d.label) };
       series.forEach((s) => { linha[s] = ouNull(d[s]); });
       return linha;
     }),
   };
 }
 
+// exportacaoTwin converte dados de CAGED (admissoes/desligamentos) para exportacao.
+// Valores faltantes em admissoes/desligamentos sao tratados como 0 (nao null)
+// pois saldo e acumulado derivam deles (0 - 0 = saldo valido).
 export function exportacaoTwin(data, { acumulado = false } = {}) {
   const colunas = [
     COLUNA_PERIODO,
-    numero("admissoes", "Admissoes"),
+    numero("admissoes", "Admissões"),
     numero("desligamentos", "Desligamentos"),
     numero("saldo", "Saldo"),
   ];
@@ -56,7 +59,7 @@ export function exportacaoTwin(data, { acumulado = false } = {}) {
     const des = Number(d.desligamentos) || 0;
     const saldo = adm - des;
     soma += saldo;
-    const linha = { periodo: d.label, admissoes: adm, desligamentos: des, saldo };
+    const linha = { periodo: ouNull(d.label), admissoes: adm, desligamentos: des, saldo };
     if (acumulado) linha.acumulado = soma;
     return linha;
   });
@@ -70,10 +73,10 @@ export function exportacaoDonut(data) {
     colunas: [
       { chave: "categoria", rotulo: "Categoria", tipo: "texto" },
       numero("valor", "Valor"),
-      numero("participacao", "Participacao (%)"),
+      numero("participacao", "Participação (%)"),
     ],
     linhas: itens.map((d) => ({
-      categoria: d.label != null ? d.label : d.name,
+      categoria: ouNull(d.label != null ? d.label : d.name),
       valor: ouNull(d.value),
       participacao: total ? Math.round(((Number(d.value) || 0) / total) * 10000) / 100 : null,
     })),
@@ -82,12 +85,12 @@ export function exportacaoDonut(data) {
 
 export function exportacaoRanking(data, { comPosicao = false, offset = 0 } = {}) {
   const colunas = [
-    ...(comPosicao ? [numero("posicao", "Posicao")] : []),
+    ...(comPosicao ? [numero("posicao", "Posição")] : []),
     { chave: "nome", rotulo: "Nome", tipo: "texto" },
     numero("valor", "Valor"),
   ];
   const linhas = lista(data).map((d, i) => {
-    const linha = { nome: d.label, valor: ouNull(d.value) };
+    const linha = { nome: ouNull(d.label), valor: ouNull(d.value) };
     if (comPosicao) linha.posicao = i + 1 + offset;
     return linha;
   });
