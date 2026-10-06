@@ -37,8 +37,8 @@ CODIGO_EMAIL_MAX_TENTATIVAS = 5
 CODIGO_EMAIL_MAX_REENVIOS = 3
 CODIGO_EMAIL_INTERVALO_SEGUNDOS = 60
 FINALIDADE_LOGIN = "entrar na plataforma"
-FINALIDADE_ATIVAR = "ativar a verificacao por e-mail"
-FINALIDADE_DESATIVAR = "confirmar a desativacao da verificacao em duas etapas"
+FINALIDADE_ATIVAR = "ativar a verificação por e-mail"
+FINALIDADE_DESATIVAR = "confirmar a desativação da verificação em duas etapas"
 
 
 def gerar_codigo_email() -> str:
@@ -103,6 +103,8 @@ class MfaService:
             raise ConflictException("MFA ja esta ativo; desative antes de reconfigurar.")
         if metodo == "totp":
             exigir_chave()
+        if metodo == "email" and user.mfa is not None and user.mfa.metodo == "email":
+            self._exigir_intervalo(user.mfa, datetime.now(timezone.utc))
         segredo = pyotp.random_base32() if metodo == "totp" else None
         cifrado = cifrar(segredo) if segredo else None
         if user.mfa is None:
@@ -231,12 +233,25 @@ class MfaService:
         agora = datetime.now(timezone.utc)
         mfa.codigo_hash = hash_codigo_email(codigo)
         mfa.codigo_expira_em = agora + timedelta(minutes=CODIGO_EMAIL_VALIDADE_MINUTOS)
-        mfa.codigo_enviado_em = agora
+        mfa.codigo_enviado_em = None  # so carimba se o envio der certo
         mfa.codigo_tentativas = 0
         self.db.add(mfa)
         self.db.commit()
         html, texto = renderizar("codigo_verificacao", codigo=codigo, finalidade=finalidade)
-        return enviar(user.email, assunto("codigo_verificacao"), html, texto) is not None
+        if enviar(user.email, assunto("codigo_verificacao"), html, texto) is None:
+            return False
+        mfa.codigo_enviado_em = agora
+        self.db.add(mfa)
+        self.db.commit()
+        return True
+
+    @staticmethod
+    def _exigir_intervalo(mfa: UsuarioMfa, agora: datetime) -> None:
+        enviado_em = garantir_utc(mfa.codigo_enviado_em)
+        if enviado_em is not None:
+            faltam = CODIGO_EMAIL_INTERVALO_SEGUNDOS - int((agora - enviado_em).total_seconds())
+            if faltam > 0:
+                raise AppException(code="AGUARDE", message=f"Aguarde {faltam} s para reenviar", status_code=429)
 
     def reenviar_codigo(self, mfa: UsuarioMfa, user: Usuario, finalidade: str) -> dict:
         """Limites: 60 s entre envios (429 AGUARDE) e 3 reenvios por ciclo (429 LIMITE_REENVIO);
@@ -251,14 +266,12 @@ class MfaService:
                 message="Limite de reenvios atingido; aguarde 10 minutos e tente de novo",
                 status_code=429,
             )
-        enviado_em = garantir_utc(mfa.codigo_enviado_em)
-        if enviado_em is not None:
-            faltam = CODIGO_EMAIL_INTERVALO_SEGUNDOS - int((agora - enviado_em).total_seconds())
-            if faltam > 0:
-                raise AppException(code="AGUARDE", message=f"Aguarde {faltam} s para reenviar", status_code=429)
-        mfa.codigo_reenvios += 1
+        self._exigir_intervalo(mfa, agora)
         if not self.enviar_codigo(mfa, user, finalidade):
             raise _erro_envio()
+        mfa.codigo_reenvios += 1
+        self.db.add(mfa)
+        self.db.commit()
         return {"enviado_para": mascarar_email(user.email)}
 
     def enviar_codigo_para_desativar(self, user: Usuario) -> dict:

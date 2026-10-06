@@ -1,4 +1,4 @@
-"""Segundo fator TOTP: cadastro (so ADMIN_GLOBAL) e verificacao do login em duas etapas."""
+"""Segundo fator (TOTP ou codigo por e-mail): cadastro (so ADMIN_GLOBAL) e verificacao do login em duas etapas."""
 from app.api.deps import get_db, require_role
 from app.api.response import SuccessResponse
 from app.core.rate_limit import limiter

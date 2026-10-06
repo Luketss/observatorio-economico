@@ -1,6 +1,7 @@
 import time
 from datetime import datetime, timezone
 
+from app.core.datas import garantir_utc
 from app.core.exceptions import AppException, UnauthorizedException
 from app.core.mfa_crypto import exigir_chave
 from app.core.security import (
@@ -126,8 +127,21 @@ class AuthService:
                 "metodo": user.mfa.metodo,
             }
             if user.mfa.metodo == "email":
-                user.mfa.codigo_reenvios = 0  # cada login comeca com 3 reenvios
-                enviado = MfaService(self.session).enviar_codigo(user.mfa, user, FINALIDADE_LOGIN)
+                mfa = user.mfa
+                agora = datetime.now(timezone.utc)
+                enviado_em = garantir_utc(mfa.codigo_enviado_em)
+                expira = garantir_utc(mfa.codigo_expira_em)
+                if (
+                    mfa.codigo_hash
+                    and enviado_em is not None
+                    and (agora - enviado_em).total_seconds() < 60
+                    and expira is not None
+                    and expira > agora
+                ):
+                    enviado = True  # codigo anterior ainda vale; nao reenvia nem zera os reenvios
+                else:
+                    mfa.codigo_reenvios = 0  # cada login comeca com 3 reenvios
+                    enviado = MfaService(self.session).enviar_codigo(mfa, user, FINALIDADE_LOGIN)
                 resposta.update({"enviado_para": mascarar_email(user.email), "enviado": enviado})
             return resposta
 

@@ -483,3 +483,61 @@ def test_handler_configurar_com_payload_email_e_status_com_metodo(db, enviados):
     w = _admin(db, email="w@x.com")
     cfg2 = mfa_configurar(req, db=db, current_user=w)
     assert cfg2.data.metodo == "totp" and cfg2.data.qr_svg
+
+
+def test_login_com_envio_falho_permite_reenviar_na_hora(db, enviados):
+    u = _admin(db)
+    _ativar_email(db, u, enviados)
+    enviados.falhar = True
+    r = _login(db)
+    assert r["enviado"] is False
+    enviados.falhar = False
+    # sem _voltar_envio: o envio que falhou nao carimba o intervalo de 60 s
+    assert AuthService(db).reenviar_codigo_mfa(r["mfa_token"]) == {"enviado_para": "a***@x.com"}
+
+
+def test_reenviar_com_envio_falho_nao_consome_reenvio(db, enviados):
+    u = _admin(db)
+    svc = MfaService(db)
+    svc.configurar(u, metodo="email")
+    db.refresh(u)
+    _voltar_envio(db, u.mfa)
+    enviados.falhar = True
+    with pytest.raises(AppException) as exc:
+        svc.reenviar_codigo(u.mfa, u, FINALIDADE_ATIVAR)
+    assert exc.value.status_code == 502
+    db.refresh(u)
+    assert u.mfa.codigo_reenvios == 0
+
+
+def test_dois_logins_seguidos_enviam_um_codigo_so(db, enviados):
+    u = _admin(db)
+    _ativar_email(db, u, enviados)
+    antes = enviados.total
+    r1 = _login(db)
+    r2 = _login(db)
+    assert enviados.total == antes + 1
+    assert r1["enviado"] is True and r2["enviado"] is True and r2["enviado_para"] == "a***@x.com"
+    db.refresh(u)
+    assert AuthService(db).verificar_mfa(r2["mfa_token"], enviados.ultimo_codigo, "1.1.1.1", "t")["access_token"]
+
+
+def test_configurar_email_pendente_recente_429_aguarde_sem_novo_codigo(db, enviados):
+    u = _admin(db)
+    svc = MfaService(db)
+    svc.configurar(u, metodo="email")
+    db.refresh(u)
+    with pytest.raises(AppException) as exc:
+        svc.configurar(u, metodo="email")
+    assert exc.value.status_code == 429 and exc.value.code == "AGUARDE" and "Aguarde" in exc.value.message
+    assert enviados.total == 1
+    _voltar_envio(db, u.mfa)
+    svc.configurar(u, metodo="email")
+    assert enviados.total == 2
+
+
+def test_finalidades_acentuadas_no_corpo_do_email(db, enviados):
+    u = _admin(db)
+    MfaService(db).configurar(u, metodo="email")
+    assert "ativar a verificação por e-mail" in enviados[0]["texto"]
+    assert "desativação da verificação" in mfa_mod.FINALIDADE_DESATIVAR

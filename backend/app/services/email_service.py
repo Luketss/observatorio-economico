@@ -14,6 +14,7 @@ logger = logging.getLogger("app.email")
 RESEND_URL = "https://api.resend.com/emails"
 TIMEOUT_SEGUNDOS = 10
 MODO_SECO = "seco"
+SEM_ID = "enviado-sem-id"
 
 
 def mascarar_email(email: str) -> str:
@@ -24,12 +25,14 @@ def mascarar_email(email: str) -> str:
 
 
 def enviar(para: str, assunto: str, html: str, texto: str) -> str | None:
-    """Devolve o id do Resend, MODO_SECO sem chave, ou None em qualquer falha."""
+    """Devolve o id do Resend (SEM_ID se 2xx sem id), MODO_SECO sem chave fora de producao, ou None em falha."""
     destino = mascarar_email(para)
     if not (settings.RESEND_API_KEY or "").strip():
+        if settings.ENVIRONMENT == "production":
+            logger.warning("RESEND_API_KEY ausente em producao; e-mail NAO enviado para %s (%s)", destino, assunto)
+            return None
         logger.info("[email seco] para=%s assunto=%s", destino, assunto)
-        if settings.ENVIRONMENT != "production":
-            logger.info("[email seco] corpo:\n%s", texto)
+        logger.info("[email seco] corpo:\n%s", texto)
         return MODO_SECO
     try:
         resposta = requests.post(
@@ -51,7 +54,10 @@ def enviar(para: str, assunto: str, html: str, texto: str) -> str | None:
         logger.warning("E-mail nao enviado para %s: HTTP %s", destino, resposta.status_code)
         return None
     try:
-        return resposta.json().get("id")
+        rid = resposta.json().get("id")
     except (ValueError, AttributeError):
-        logger.warning("E-mail para %s aceito mas resposta sem id", destino)
-        return None
+        rid = None
+    if not rid:
+        logger.warning("E-mail para %s aceito (HTTP %s) mas resposta sem id", destino, resposta.status_code)
+        return SEM_ID
+    return rid

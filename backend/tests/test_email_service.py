@@ -64,9 +64,13 @@ def test_sem_chave_modo_seco_nao_posta_e_devolve_seco(monkeypatch, caplog):
 def test_modo_seco_em_producao_nao_loga_corpo(monkeypatch, caplog):
     monkeypatch.setattr(email_service.settings, "RESEND_API_KEY", "")
     monkeypatch.setattr(email_service.settings, "ENVIRONMENT", "production")
+    monkeypatch.setattr(email_service.requests, "post", lambda *a, **k: pytest.fail("nao deveria postar"))
     with caplog.at_level(logging.INFO, logger="app.email"):
-        assert enviar("a@b.com", "S", "<p>x</p>", "corpo secreto") == "seco"
+        assert enviar("a@b.com", "S", "<p>x</p>", "corpo secreto") is None
     assert "corpo secreto" not in caplog.text
+    avisos = [r for r in caplog.records if r.levelno == logging.WARNING]
+    assert len(avisos) == 1 and "RESEND_API_KEY ausente em producao" in avisos[0].getMessage()
+    assert "a***@b.com" in caplog.text and "a@b.com" not in caplog.text
 
 
 def test_excecao_de_rede_devolve_none_e_loga(chave, monkeypatch, caplog):
@@ -87,9 +91,12 @@ def test_status_nao_2xx_devolve_none(chave, monkeypatch, caplog):
     assert "422" in caplog.text
 
 
-def test_2xx_sem_json_devolve_none(chave, monkeypatch):
-    monkeypatch.setattr(email_service.requests, "post", lambda *a, **k: _Resp(200, ValueError("no json")))
-    assert enviar("a@b.com", "S", "<p>x</p>", "x") is None
+@pytest.mark.parametrize("corpo", [ValueError("no json"), {}, ["x"]])
+def test_2xx_sem_id_devolve_enviado_sem_id_e_avisa(chave, monkeypatch, caplog, corpo):
+    monkeypatch.setattr(email_service.requests, "post", lambda *a, **k: _Resp(200, corpo))
+    with caplog.at_level(logging.WARNING, logger="app.email"):
+        assert enviar("a@b.com", "S", "<p>x</p>", "x") == "enviado-sem-id"
+    assert "sem id" in caplog.text
 
 
 def test_mascarar_email():

@@ -6,6 +6,7 @@ import hashlib
 import secrets
 from datetime import datetime, timedelta, timezone
 
+from sqlalchemy import func
 from sqlalchemy.orm import Session
 
 from app.core.config import settings
@@ -42,7 +43,7 @@ class RedefinicaoSenhaService:
     def solicitar(self, email: str, ip: str | None = None) -> None:
         """Sempre silencioso: quem chama responde 202 com MENSAGEM_GENERICA."""
         email = (email or "").strip().lower()
-        user = self.db.query(Usuario).filter(Usuario.email == email).first()
+        user = self.db.query(Usuario).filter(func.lower(Usuario.email) == email).first()
         if user is None or not user.ativo:
             verify_password("x", DUMMY_PASSWORD_HASH)  # equaliza o tempo (anti-enumeracao)
             return
@@ -56,6 +57,7 @@ class RedefinicaoSenhaService:
             .count()
         )
         if pedidos_na_hora >= MAX_PEDIDOS_POR_HORA:
+            verify_password("x", DUMMY_PASSWORD_HASH)  # equaliza com o ramo de conta desconhecida
             return
         # Pedir de novo invalida o anterior: so o ultimo link vale.
         (
@@ -101,10 +103,18 @@ class RedefinicaoSenhaService:
 
     def redefinir(self, token: str, nova_senha: str, request=None) -> None:
         reg, user = self._pendente(token)
+        agora = datetime.now(timezone.utc)
+        # UPDATE guardado: so um request consome o token (corrida entre dois POSTs).
+        n = (
+            self.db.query(RedefinicaoSenha)
+            .filter(RedefinicaoSenha.id == reg.id, RedefinicaoSenha.usado_em.is_(None))
+            .update({"usado_em": agora}, synchronize_session=False)
+        )
+        if n != 1:
+            self.db.rollback()
+            raise TokenInvalido()
         user.senha_hash = hash_password(nova_senha)
-        reg.usado_em = datetime.now(timezone.utc)
         self.db.add(user)
-        self.db.add(reg)
         self.db.commit()
         registrar_acao(
             self.db, categoria="acao", acao="senha_redefinida_por_email",

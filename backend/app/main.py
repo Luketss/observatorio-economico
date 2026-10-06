@@ -72,6 +72,11 @@ async def lifespan(_app):
             db.close()
     except Exception:
         _logger.exception("Purga de auditoria indisponível no startup")
+    try:
+        if settings.ENVIRONMENT == "production" and not (settings.RESEND_API_KEY or "").strip():
+            _logger.warning("E-mail transacional DESLIGADO: RESEND_API_KEY ausente (docs/email.md)")
+    except Exception:
+        pass
     yield
 
 

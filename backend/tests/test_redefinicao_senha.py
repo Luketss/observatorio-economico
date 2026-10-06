@@ -276,3 +276,32 @@ def test_schema_nova_senha_curta_422():
         RedefinirSenhaIn(token="t" * 43, nova_senha="12345")
     with pytest.raises(ValidationError):
         EsqueciSenhaIn(email="ab")
+
+
+def test_solicitar_email_gravado_com_maiusculas_envia_para_o_gravado(db, enviados):
+    _usuario(db, email="Joao.Silva@x.gov.br")
+    RedefinicaoSenhaService(db).solicitar("joao.silva@x.gov.br")
+    assert len(enviados) == 1 and enviados[0]["para"] == "Joao.Silva@x.gov.br"
+
+
+def test_redefinir_corrida_token_ja_usado_410_e_senha_nao_muda(db, enviados):
+    u = _usuario(db)
+    svc = RedefinicaoSenhaService(db)
+    svc.solicitar("ana@x.gov.br")
+    token = _token_do_envio(enviados[0])
+    original = svc._pendente
+
+    def pendente_com_corrida(t):
+        resultado = original(t)
+        # outro request consome o token entre a leitura e o UPDATE guardado
+        db.query(RedefinicaoSenha).update({"usado_em": _agora()}, synchronize_session=False)
+        db.commit()
+        return resultado
+
+    svc._pendente = pendente_com_corrida
+    with pytest.raises(AppException) as exc:
+        svc.redefinir(token, "novaSenha9")
+    assert exc.value.status_code == 410
+    db.refresh(u)
+    assert verify_password("senha123", u.senha_hash)
+    assert db.query(AcaoAudit).filter(AcaoAudit.acao == "senha_redefinida_por_email").count() == 0
