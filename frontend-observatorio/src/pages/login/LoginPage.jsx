@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useLayoutEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext";
 import {
@@ -8,12 +8,15 @@ import {
 import LoginShell, { ErroInline } from "./LoginShell";
 import { btnPrimarioCls, inputCls, labelCls, linkCls } from "./loginEstilos";
 
+const COOLDOWN_REENVIO = 60;
+const MAX_REENVIOS = 3;
+
 function mensagemDoErro(err, padrao) {
   return err?.response?.data?.error?.message || err?.response?.data?.detail || padrao;
 }
 
 export default function LoginPage() {
-  const { login, verificarMfa, user, loading: authLoading } = useAuth();
+  const { login, verificarMfa, reenviarCodigoMfa, user, loading: authLoading } = useAuth();
   const navigate = useNavigate();
 
   const [email, setEmail] = useState("");
@@ -25,6 +28,20 @@ export default function LoginPage() {
   const [mfaToken, setMfaToken] = useState(null);
   const [codigo, setCodigo] = useState("");
   const [usarRecuperacao, setUsarRecuperacao] = useState(false);
+  const [metodo, setMetodo] = useState("totp");        // "totp" | "email"
+  const [enviadoPara, setEnviadoPara] = useState("");
+  const [envioFalhou, setEnvioFalhou] = useState(false);
+  const [cooldown, setCooldown] = useState(0);         // segundos ate liberar "Reenviar"
+  const [reenvios, setReenvios] = useState(0);
+  const [reenviando, setReenviando] = useState(false);
+  const [aviso, setAviso] = useState("");
+
+  const emCooldown = cooldown > 0;
+  useLayoutEffect(() => {
+    if (!emCooldown) return undefined;
+    const id = setInterval(() => setCooldown((c) => (c <= 1 ? 0 : c - 1)), 1000);
+    return () => clearInterval(id);
+  }, [emCooldown]);
 
   // Navigate only after React has committed the user state — avoids
   // the ProtectedRoute seeing user===null and bouncing back to /login.
@@ -44,6 +61,13 @@ export default function LoginPage() {
         setMfaToken(r.mfaToken);
         setCodigo("");
         setUsarRecuperacao(false);
+        const porEmail = r.metodo === "email";
+        setMetodo(porEmail ? "email" : "totp");
+        setEnviadoPara(r.enviadoPara || "");
+        setEnvioFalhou(porEmail && r.enviado === false);
+        setCooldown(porEmail && r.enviado !== false ? COOLDOWN_REENVIO : 0);
+        setReenvios(0);
+        setAviso("");
         setEtapa("codigo");
       }
     } catch {
@@ -58,6 +82,12 @@ export default function LoginPage() {
     setMfaToken(null);
     setCodigo("");
     setUsarRecuperacao(false);
+    setMetodo("totp");
+    setEnviadoPara("");
+    setEnvioFalhou(false);
+    setCooldown(0);
+    setReenvios(0);
+    setAviso("");
     setSenha("");
     setError(aviso);
   };
@@ -76,7 +106,9 @@ export default function LoginPage() {
       } else if (status === 503 || code === "MFA_INDISPONIVEL") {
         setError("MFA indisponível no servidor. Avise o administrador.");
       } else if (code === "UNAUTHORIZED") {
-        setError("Código inválido. Confira o app autenticador e tente de novo.");
+        setError(metodo === "email"
+          ? "Código inválido ou expirado. Confira o e-mail ou peça um novo código."
+          : "Código inválido. Confira o app autenticador e tente de novo.");
       } else {
         setError(mensagemDoErro(err, "Não foi possível verificar o código."));
       }
@@ -85,16 +117,63 @@ export default function LoginPage() {
     }
   };
 
+  const handleReenviar = async () => {
+    setReenviando(true);
+    setError("");
+    setAviso("");
+    try {
+      const r = await reenviarCodigoMfa(mfaToken);
+      if (r && r.enviado_para) setEnviadoPara(r.enviado_para);
+      setEnvioFalhou(false);
+      setReenvios((n) => n + 1);
+      setCooldown(COOLDOWN_REENVIO);
+      setAviso("Enviamos um novo código. O anterior deixou de valer.");
+    } catch (err) {
+      const code = err?.response?.data?.error?.code;
+      const msg = mensagemDoErro(err, "Não foi possível reenviar o código.");
+      if (code === "MFA_TOKEN_INVALIDADO" || code === "MFA_SESSAO_INVALIDA") {
+        voltarParaSenha("Sessão de verificação encerrada. Faça login de novo.");
+      } else if (code === "LIMITE_REENVIO") {
+        setReenvios(MAX_REENVIOS);
+        setError(msg);
+      } else if (code === "AGUARDE") {
+        const m = /(\d+)/.exec(msg);
+        setCooldown(m ? Number(m[1]) : COOLDOWN_REENVIO);
+        setError(msg);
+      } else if (err?.response?.status === 502) {
+        setError("Não foi possível enviar o e-mail agora. Tente de novo em instantes.");
+      } else {
+        setError(msg);
+      }
+    } finally {
+      setReenviando(false);
+    }
+  };
+
   return (
     <LoginShell
       titulo={etapa === "codigo" ? "Verificação em duas etapas" : "Acesse sua conta"}
-      subtitulo={etapa === "codigo" ? "Código do app autenticador" : "Insira suas credenciais para continuar"}
+      subtitulo={etapa === "codigo" ? (metodo === "email" ? "Código enviado por e-mail" : "Código do app autenticador") : "Insira suas credenciais para continuar"}
     >
       {etapa === "codigo" ? (
         <form onSubmit={handleVerificar} className="space-y-4" noValidate>
-          <p className="text-xs text-slate-500">
-            Sua conta tem verificação em duas etapas. Digite o código do app autenticador.
-          </p>
+          {metodo === "email" ? (
+            <p className="text-xs text-slate-500">
+              Enviamos um código para {enviadoPara}. Ele vale por 10 minutos.
+            </p>
+          ) : (
+            <p className="text-xs text-slate-500">
+              Sua conta tem verificação em duas etapas. Digite o código do app autenticador.
+            </p>
+          )}
+          {envioFalhou && (
+            <p className="text-xs bg-amber-50 border border-amber-100 text-amber-800 px-4 py-3 rounded-xl">
+              Não conseguimos enviar o e-mail agora. Use "Reenviar código" para tentar de novo.
+            </p>
+          )}
+          {aviso && (
+            <p role="status" className="text-xs bg-emerald-50 border border-emerald-100 text-emerald-800 px-4 py-3 rounded-xl">{aviso}</p>
+          )}
           <div className="flex flex-col gap-1.5">
             <label htmlFor="login-codigo" className={labelCls}>
               {usarRecuperacao ? "Código de recuperação" : "Código de verificação"}
@@ -118,12 +197,18 @@ export default function LoginPage() {
           <button type="submit" disabled={loading || codigo.trim().length < 6} aria-busy={loading} className={btnPrimarioCls}>
             {loading ? "Verificando..." : "Verificar"}
           </button>
+          {metodo === "email" && reenvios < MAX_REENVIOS && (
+            <button type="button" onClick={handleReenviar} disabled={reenviando || cooldown > 0}
+              className="w-full text-xs text-blue-600 hover:text-blue-700 disabled:text-slate-400 disabled:cursor-not-allowed cursor-pointer">
+              {cooldown > 0 ? `Reenviar código (${cooldown}s)` : reenviando ? "Reenviando..." : "Reenviar código"}
+            </button>
+          )}
           <div className="flex items-center justify-between text-xs">
             <button type="button" onClick={() => voltarParaSenha("")} className="text-slate-500 hover:text-slate-700 cursor-pointer">
               Voltar
             </button>
             <button type="button" onClick={() => { setUsarRecuperacao((v) => !v); setCodigo(""); setError(""); }} className={linkCls}>
-              {usarRecuperacao ? "Usar código do app" : "Usar código de recuperação"}
+              {usarRecuperacao ? (metodo === "email" ? "Usar código do e-mail" : "Usar código do app") : "Usar código de recuperação"}
             </button>
           </div>
         </form>

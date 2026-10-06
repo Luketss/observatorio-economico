@@ -194,4 +194,33 @@ describe("AuthContext — login em duas etapas (MFA)", () => {
     expect(localStorage.getItem("access_token")).toBe("t2");
     expect(identificarSessao).toHaveBeenCalledWith({ papel: "ADMIN_GLOBAL" });
   });
+
+  it("login com metodo email devolve metodo, enviadoPara e enviado", async () => {
+    api.post.mockResolvedValueOnce({ data: { mfa_obrigatorio: true, mfa_token: "tok-mfa", metodo: "email", enviado_para: "a***@x.com", enviado: false } });
+    render(<AuthProvider><ProbeMfa /></AuthProvider>);
+    await screen.findByText("sem-user");
+    fireEvent.click(screen.getByText("login"));
+    await waitFor(() => expect(screen.getByTestId("res").textContent).toBe(
+      JSON.stringify({ mfa: true, mfaToken: "tok-mfa", metodo: "email", enviadoPara: "a***@x.com", enviado: false })
+    ));
+    expect(localStorage.getItem("access_token")).toBeNull();
+  });
+
+  it("reenviarCodigoMfa chama /auth/mfa/reenviar e devolve o corpo", async () => {
+    function ProbeReenviar() {
+      const { reenviarCodigoMfa } = useAuth();
+      const [r, setR] = useState(null);
+      return (
+        <>
+          <button onClick={async () => setR(await reenviarCodigoMfa("tok-mfa"))}>reenviar</button>
+          <div data-testid="r">{r ? JSON.stringify(r) : ""}</div>
+        </>
+      );
+    }
+    api.post.mockResolvedValueOnce({ data: { enviado_para: "a***@x.com" } });
+    render(<AuthProvider><ProbeReenviar /></AuthProvider>);
+    fireEvent.click(await screen.findByText("reenviar"));
+    await waitFor(() => expect(screen.getByTestId("r").textContent).toBe(JSON.stringify({ enviado_para: "a***@x.com" })));
+    expect(api.post).toHaveBeenCalledWith("/auth/mfa/reenviar", { mfa_token: "tok-mfa" });
+  });
 });

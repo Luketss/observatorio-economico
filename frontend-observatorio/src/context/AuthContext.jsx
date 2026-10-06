@@ -53,8 +53,10 @@ export function AuthProvider({ children }) {
       new URLSearchParams({ username: email, password: senha }),
       { headers: { "Content-Type": "application/x-www-form-urlencoded" } }
     );
-    const { access_token, mfa_obrigatorio, mfa_token } = response.data;
-    if (mfa_obrigatorio) return { mfa: true, mfaToken: mfa_token };
+    const { access_token, mfa_obrigatorio, mfa_token, metodo, enviado_para, enviado } = response.data;
+    if (mfa_obrigatorio) {
+      return { mfa: true, mfaToken: mfa_token, metodo, enviadoPara: enviado_para, enviado };
+    }
     localStorage.setItem("access_token", access_token);
     await carregarUsuario();
     return { mfa: false };
@@ -66,13 +68,19 @@ export function AuthProvider({ children }) {
     await carregarUsuario();
   };
 
+  // Novo codigo por e-mail para o login em andamento (so o mfa_token identifica).
+  const reenviarCodigoMfa = async (mfaToken) => {
+    const response = await api.post("/auth/mfa/reenviar", { mfa_token: mfaToken });
+    return response.data;
+  };
+
   const logout = () => {
     localStorage.removeItem("access_token");
     setUser(null);
   };
 
   return (
-    <AuthContext.Provider value={{ user, login, verificarMfa, logout, loading }}>
+    <AuthContext.Provider value={{ user, login, verificarMfa, reenviarCodigoMfa, logout, loading }}>
       {children}
     </AuthContext.Provider>
   );

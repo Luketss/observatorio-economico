@@ -1,10 +1,10 @@
 // @vitest-environment jsdom
-import { beforeEach, describe, expect, it, vi } from "vitest";
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import LoginPage from "./LoginPage";
 
-const auth = { login: vi.fn(), verificarMfa: vi.fn(), user: null, loading: false };
+const auth = { login: vi.fn(), verificarMfa: vi.fn(), reenviarCodigoMfa: vi.fn(), user: null, loading: false };
 vi.mock("../../context/AuthContext", () => ({ useAuth: () => auth }));
 vi.mock("framer-motion", () => ({ motion: new Proxy({}, { get: () => ({ children, ...p }) => <div {...Object.fromEntries(Object.entries(p).filter(([k]) => !["initial","animate","transition","exit","whileHover","whileTap"].includes(k)))}>{children}</div> }) }));
 vi.mock("../../assets/bg.jpeg", () => ({ default: "" }));
@@ -25,6 +25,7 @@ beforeEach(() => {
   vi.clearAllMocks();
   auth.user = null;
 });
+afterEach(() => vi.useRealTimers());
 
 describe("LoginPage — etapa de codigo (MFA)", () => {
   it("sem MFA nao mostra a etapa de codigo", async () => {
@@ -111,5 +112,43 @@ describe("LoginPage — etapa de codigo (MFA)", () => {
   it("etapa da senha mostra o link Esqueci minha senha", () => {
     montar();
     expect(screen.getByRole("link", { name: "Esqueci minha senha" })).toHaveAttribute("href", "/esqueci-senha");
+  });
+});
+
+describe("LoginPage — codigo por e-mail", () => {
+  const RESP_EMAIL = { mfa: true, mfaToken: "tok", metodo: "email", enviadoPara: "a***@x.gov.br", enviado: true };
+
+  it("mostra o endereco mascarado; Reenviar fica bloqueado 60 s e depois reenvia", async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    auth.login.mockResolvedValueOnce(RESP_EMAIL);
+    auth.reenviarCodigoMfa.mockResolvedValueOnce({ enviado_para: "a***@x.gov.br" });
+    montar();
+    await preencherELogar();
+    expect(await screen.findByText(/Enviamos um código para a\*\*\*@x\.gov\.br/)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /Reenviar código/ })).toBeDisabled();
+    act(() => { vi.advanceTimersByTime(60000); });
+    await waitFor(() => expect(screen.getByRole("button", { name: /Reenviar código/ })).not.toBeDisabled());
+    fireEvent.click(screen.getByRole("button", { name: /Reenviar código/ }));
+    await waitFor(() => expect(auth.reenviarCodigoMfa).toHaveBeenCalledWith("tok"));
+    expect(await screen.findByRole("status")).toHaveTextContent(/novo código/i);
+    expect(screen.getByRole("button", { name: /Reenviar código/ })).toBeDisabled();
+  });
+
+  it("enviado false mostra aviso e libera Reenviar na hora", async () => {
+    auth.login.mockResolvedValueOnce({ ...RESP_EMAIL, enviado: false });
+    montar();
+    await preencherELogar();
+    expect(await screen.findByText(/Não conseguimos enviar o e-mail/)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /Reenviar código/ })).not.toBeDisabled();
+  });
+
+  it("LIMITE_REENVIO esconde o botao e mostra a mensagem", async () => {
+    auth.login.mockResolvedValueOnce({ ...RESP_EMAIL, enviado: false });
+    auth.reenviarCodigoMfa.mockRejectedValueOnce({ response: { status: 429, data: { error: { code: "LIMITE_REENVIO", message: "Limite de reenvios atingido; aguarde 10 minutos e tente de novo" } } } });
+    montar();
+    await preencherELogar();
+    fireEvent.click(await screen.findByRole("button", { name: /Reenviar código/ }));
+    expect(await screen.findByRole("alert")).toHaveTextContent(/Limite de reenvios/);
+    expect(screen.queryByRole("button", { name: /Reenviar código/ })).toBeNull();
   });
 });
