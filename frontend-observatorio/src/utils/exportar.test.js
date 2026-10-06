@@ -152,11 +152,16 @@ describe("resolverVars", () => {
 describe("inlinarEstilosSvg", () => {
   // O jsdom não resolve var() em getComputedStyle de forma confiável, então o
   // `win` é falso: `computados` é o que getComputedStyle devolve para qualquer
-  // elemento do svg, `raiz` é o que devolve para document.documentElement.
-  function winFake(computados = {}, raiz = {}) {
+  // elemento do svg, `raiz` é o que devolve para document.documentElement,
+  // `svg` é para o elemento SVG.
+  function winFake(computados = {}, raiz = {}, svg = {}) {
     return {
       getComputedStyle: (el) => ({
-        getPropertyValue: (p) => (el === document.documentElement ? raiz[p] ?? "" : computados[p] ?? ""),
+        getPropertyValue: (p) => {
+          if (el === document.documentElement) return raiz[p] ?? "";
+          if (el.tagName === "svg") return svg[p] ?? computados[p] ?? "";
+          return computados[p] ?? "";
+        },
       }),
     };
   }
@@ -201,40 +206,90 @@ describe("inlinarEstilosSvg", () => {
     expect(altura).toBe(280);
     expect(clone.getAttribute("width")).toBe("640");
   });
+  it("stop-color com var() é resolvido", () => {
+    document.body.innerHTML = `
+      <svg viewBox="0 0 100 50">
+        <defs>
+          <linearGradient id="grad">
+            <stop stop-color="var(--accent-1)" stop-opacity="0.45"/>
+          </linearGradient>
+        </defs>
+      </svg>`;
+    const { clone } = inlinarEstilosSvg(document.querySelector("svg"), winFake({}, { "--accent-1": "#ff0000" }));
+    const stop = clone.querySelector("stop");
+    expect(stop.getAttribute("stop-color")).toBe("#ff0000");
+    expect(stop.getAttribute("stop-opacity")).toBe("0.45");
+    expect(clone.outerHTML).not.toMatch(/var\(/);
+  });
+  it("atributo fora da lista com var() não sobrevive", () => {
+    document.body.innerHTML = `<svg viewBox="0 0 100 50"><rect data-x="var(--nada)"/></svg>`;
+    const { clone } = inlinarEstilosSvg(document.querySelector("svg"), winFake({}, {}));
+    const rect = clone.querySelector("rect");
+    expect(rect.getAttribute("data-x")).toBeNull();
+    expect(clone.outerHTML).not.toMatch(/var\(/);
+  });
+  it("variável definida no próprio svg/body vence a raiz", () => {
+    document.body.innerHTML = `<svg viewBox="0 0 100 50"><rect fill="var(--accent-1)"/></svg>`;
+    const { clone } = inlinarEstilosSvg(document.querySelector("svg"), winFake({}, { "--accent-1": "#ff0000" }, { "--accent-1": "#00ff00" }));
+    const rect = clone.querySelector("rect");
+    expect(rect.getAttribute("fill")).toBe("#00ff00");
+  });
 });
 
 describe("svgParaPng", () => {
-  function fakes({ comCanvas = true, falhaImagem = false } = {}) {
-    const ctx = { scale: vi.fn(), fillRect: vi.fn(), fillText: vi.fn(), drawImage: vi.fn(), fillStyle: "", font: "", globalAlpha: 1 };
+  function fakes({ comCanvas = true, falhaImagem = false, blobNull = false } = {}) {
+    const fillRectCalls = [];
+    const ctx = {
+      scale: vi.fn(),
+      fillRect: vi.fn(function() { fillRectCalls.push(this.fillStyle); }),
+      fillText: vi.fn(),
+      drawImage: vi.fn(),
+      fillStyle: "",
+      font: "",
+      globalAlpha: 1,
+    };
     const canvas = {
       width: 0, height: 0,
       getContext: vi.fn(() => (comCanvas ? ctx : null)),
-      toBlob: comCanvas ? vi.fn((cb) => cb(new Blob(["png"], { type: "image/png" }))) : undefined,
+      toBlob: comCanvas ? vi.fn((cb) => cb(blobNull ? null : new Blob(["png"], { type: "image/png" }))) : undefined,
     };
     class Image {
       set src(v) { this._src = v; setTimeout(() => (falhaImagem ? this.onerror?.(new Error("x")) : this.onload?.()), 0); }
     }
-    const doc = { createElement: vi.fn(() => canvas), documentElement: document.documentElement };
+    document.body.innerHTML = `<style>:root{--panel:#fafafa;--text:#111111}</style>`;
+    const doc = {
+      createElement: vi.fn(() => canvas),
+      documentElement: document.documentElement,
+      body: document.body,
+    };
     const win = {
       Image,
       URL: window.URL,
-      getComputedStyle: (el) => window.getComputedStyle(el),
+      getComputedStyle: (el) => {
+        if (el === doc.body) {
+          return {
+            getPropertyValue: (p) => ({ "--bg": "#0a0a0a", "--panel": "rgba(13,17,35,0.72)", "--text": "#eef0ff" }[p] || ""),
+          };
+        }
+        return window.getComputedStyle(el);
+      },
       XMLSerializer: window.XMLSerializer,
     };
-    return { ctx, canvas, doc, win };
+    return { ctx, canvas, doc, win, fillRectCalls };
   }
   function svg() {
     document.body.innerHTML = `<style>:root{--panel:#fafafa;--text:#111111}</style><svg viewBox="0 0 100 50"><rect width="1" height="1" fill="red"/></svg>`;
     return document.querySelector("svg");
   }
   it("desenha fundo, título, sub, gráfico e rodapé em escala 2x e devolve um Blob PNG", async () => {
-    const { ctx, canvas, doc, win } = fakes();
+    const { ctx, canvas, doc, win, fillRectCalls } = fakes();
     const blob = await svgParaPng(svg(), { titulo: "Evolução", sub: "PIB total", rodape: "Fonte: IBGE · UAIZI NID · 06/10/2026", doc, win });
     expect(blob).toBeInstanceOf(Blob);
     expect(blob.type).toBe("image/png");
     expect(ctx.scale).toHaveBeenCalledWith(2, 2);
     expect(canvas.width).toBeGreaterThan(100 * 2);
-    expect(ctx.fillRect).toHaveBeenCalledTimes(1);
+    expect(ctx.fillRect).toHaveBeenCalledTimes(2);
+    expect(fillRectCalls).toEqual(["#0a0a0a", "rgba(13,17,35,0.72)"]);
     const textos = ctx.fillText.mock.calls.map((c) => c[0]);
     expect(textos).toEqual(["Evolução", "PIB total", "Fonte: IBGE · UAIZI NID · 06/10/2026"]);
     expect(ctx.drawImage).toHaveBeenCalledTimes(1);
@@ -258,5 +313,16 @@ describe("svgParaPng", () => {
   it("imagem que falha ao carregar → rejeita", async () => {
     const { doc, win } = fakes({ falhaImagem: true });
     await expect(svgParaPng(svg(), { doc, win })).rejects.toThrow("Falha ao renderizar o gráfico");
+  });
+  it("fundo pinta --bg e depois --panel lidos do body", async () => {
+    const { doc, win, fillRectCalls } = fakes();
+    await svgParaPng(svg(), { doc, win });
+    expect(fillRectCalls.length).toBe(2);
+    expect(fillRectCalls[0]).toBe("#0a0a0a");
+    expect(fillRectCalls[1]).toBe("rgba(13,17,35,0.72)");
+  });
+  it("toBlob devolve null → rejeita 'Falha ao gerar PNG'", async () => {
+    const { doc, win } = fakes({ blobNull: true });
+    await expect(svgParaPng(svg(), { doc, win })).rejects.toThrow("Falha ao gerar PNG");
   });
 });

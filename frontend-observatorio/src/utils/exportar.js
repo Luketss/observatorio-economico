@@ -90,7 +90,7 @@ export function baixarBlob(blob, nome, doc = document, win = window) {
 export const PROPRIEDADES_SVG = [
   "fill", "fill-opacity", "stroke", "stroke-width", "stroke-opacity", "stroke-dasharray",
   "stroke-linecap", "stroke-linejoin", "opacity", "font-family", "font-size", "font-weight",
-  "text-anchor", "dominant-baseline", "letter-spacing",
+  "text-anchor", "dominant-baseline", "letter-spacing", "stop-color", "stop-opacity", "color",
 ];
 
 function dimensoesDo(svgEl) {
@@ -109,11 +109,16 @@ function dimensoesDo(svgEl) {
 
 // Troca cada var(--nome[, fallback]) pelo valor da variável na raiz (:root) ou
 // pelo fallback. Se ainda sobrar var(), devolve "" (quem chama remove o atributo).
-export function resolverVars(valor, estiloRaiz) {
+export function resolverVars(valor, buscar) {
   if (!valor || !valor.includes("var(")) return valor || "";
   let falhou = false;
   const resolvido = valor.replace(/var\(\s*(--[\w-]+)\s*(?:,\s*([^()]*))?\)/g, (_m, nome, fallback) => {
-    const v = estiloRaiz ? String(estiloRaiz.getPropertyValue(nome) || "").trim() : "";
+    let v = "";
+    if (buscar) {
+      v = typeof buscar === "function"
+        ? String(buscar(nome) || "").trim()
+        : String(buscar.getPropertyValue(nome) || "").trim();
+    }
     const fb = fallback ? fallback.trim() : "";
     if (!v && !fb) falhou = true;
     return v || fb;
@@ -129,8 +134,28 @@ export function inlinarEstilosSvg(svgEl, win = window) {
   clone.setAttribute("width", String(largura));
   clone.setAttribute("height", String(altura));
   if (!clone.getAttribute("viewBox")) clone.setAttribute("viewBox", `0 0 ${largura} ${altura}`);
-  const raiz = svgEl.ownerDocument ? svgEl.ownerDocument.documentElement : null;
-  const estiloRaiz = raiz ? win.getComputedStyle(raiz) : null;
+  const doc = svgEl.ownerDocument || document;
+  const buscarVar = (nome) => {
+    try {
+      let v = win.getComputedStyle(svgEl).getPropertyValue(nome);
+      if (v && String(v).trim()) return v;
+    } catch {
+      // ignore
+    }
+    try {
+      let v = win.getComputedStyle(doc.body || doc.documentElement).getPropertyValue(nome);
+      if (v && String(v).trim()) return v;
+    } catch {
+      // ignore
+    }
+    try {
+      let v = win.getComputedStyle(doc.documentElement).getPropertyValue(nome);
+      if (v && String(v).trim()) return v;
+    } catch {
+      // ignore
+    }
+    return "";
+  };
   const originais = [svgEl, ...svgEl.querySelectorAll("*")];
   const clonados = [clone, ...clone.querySelectorAll("*")];
   originais.forEach((el, i) => {
@@ -138,19 +163,32 @@ export function inlinarEstilosSvg(svgEl, win = window) {
     if (!alvo) return;
     const estilo = win.getComputedStyle(el);
     PROPRIEDADES_SVG.forEach((prop) => {
-      // 1) estilo computado (já resolvido pelo navegador); 2) atributo original com var() resolvido pela raiz
-      let valor = resolverVars(estilo.getPropertyValue(prop), estiloRaiz);
-      if (!valor) valor = resolverVars(alvo.getAttribute(prop), estiloRaiz);
+      let valor = resolverVars(estilo.getPropertyValue(prop), buscarVar);
+      if (!valor) valor = resolverVars(alvo.getAttribute(prop), buscarVar);
       if (valor) alvo.setAttribute(prop, valor);
       else if ((alvo.getAttribute(prop) || "").includes("var(")) alvo.removeAttribute(prop);
     });
     alvo.removeAttribute("class");
     const estiloInline = alvo.getAttribute("style");
     if (estiloInline && estiloInline.includes("var(")) {
-      const resolvido = resolverVars(estiloInline, estiloRaiz);
+      const resolvido = resolverVars(estiloInline, buscarVar);
       if (resolvido) alvo.setAttribute("style", resolvido);
       else alvo.removeAttribute("style");
     }
+  });
+  // Varredura final: qualquer atributo com var() restante é removido
+  clonados.forEach((el) => {
+    if (!el.attributes) return;
+    Array.from(el.attributes).forEach((attr) => {
+      if (attr.value && attr.value.includes("var(")) {
+        const resolvido = resolverVars(attr.value, buscarVar);
+        if (resolvido) {
+          el.setAttribute(attr.name, resolvido);
+        } else {
+          el.removeAttribute(attr.name);
+        }
+      }
+    });
   });
   return { clone, largura, altura };
 }
@@ -172,11 +210,15 @@ function carregarImagem(url, win) {
 
 function corDoTema(doc, win, variavel, padrao) {
   try {
-    const v = win.getComputedStyle(doc.documentElement).getPropertyValue(variavel).trim();
-    return v || padrao;
+    const body = doc.body || doc.documentElement;
+    let v = win.getComputedStyle(body).getPropertyValue(variavel);
+    if (v && String(v).trim()) return String(v).trim();
+    v = win.getComputedStyle(doc.documentElement).getPropertyValue(variavel);
+    if (v && String(v).trim()) return String(v).trim();
   } catch {
-    return padrao;
+    // ignore
   }
+  return padrao;
 }
 
 export function svgParaPng(svgEl, { titulo = "", sub = "", rodape = "", escala = 2, doc = document, win = window } = {}) {
@@ -198,15 +240,18 @@ export function svgParaPng(svgEl, { titulo = "", sub = "", rodape = "", escala =
     canvas.width = totalW * escala;
     canvas.height = totalH * escala;
     ctx.scale(escala, escala);
-    const fundo = corDoTema(doc, win, "--panel", "#ffffff");
+    const fundoBg = corDoTema(doc, win, "--bg", "#ffffff");
+    const fundoPanel = corDoTema(doc, win, "--panel", "#ffffff");
     const texto = corDoTema(doc, win, "--text", "#111111");
     const fonte = "Inter, system-ui, -apple-system, Segoe UI, Roboto, sans-serif";
-    ctx.fillStyle = fundo;
+    ctx.fillStyle = fundoBg;
+    ctx.fillRect(0, 0, totalW, totalH);
+    ctx.fillStyle = fundoPanel;
     ctx.fillRect(0, 0, totalW, totalH);
     ctx.fillStyle = texto;
     let y = 16;
     if (titulo) { ctx.font = `700 16px ${fonte}`; ctx.fillText(titulo, padX, y + 16); y += alturaTitulo; }
-    if (sub) { ctx.font = `400 12px ${fonte}`; ctx.fillText(sub, padX, y + 12); y += alturaSub; }
+    if (sub) { ctx.font = `400 12px ${fonte}`; ctx.fillText(sub, padX, y + 12); }
     carregarImagem(svgParaDataUrl(clone, win), win)
       .then((img) => {
         ctx.drawImage(img, padX, topo, largura, altura);
