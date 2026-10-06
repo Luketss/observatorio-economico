@@ -18,6 +18,8 @@ contrato de prestação de serviços firmado entre as partes. A operadora não
 utiliza os dados pessoais tratados na plataforma para finalidade própria,
 alheia ao objeto do contrato.
 
+Para o envio de e-mails transacionais (redefinição de senha e códigos de verificação), a operadora utiliza o Resend como **suboperador**. São compartilhados com ele apenas o endereço de e-mail, o nome do usuário e o conteúdo da mensagem. Os servidores do Resend ficam nos Estados Unidos; a transferência internacional se apoia nas cláusulas contratuais padrão oferecidas pelo provedor (art. 33, II, "b"). Não há rastreamento de abertura ou de clique.
+
 ## 2. Inventário de dados pessoais tratados (art. 37)
 
 A plataforma trata três classes de dados pessoais:
@@ -29,6 +31,8 @@ login. Quando o usuário ativa a verificação em duas etapas, a plataforma guar
 também o segredo TOTP cifrado em repouso (Fernet, chave fora do banco) e hashes
 bcrypt dos códigos de recuperação; nenhum dos dois é legível por quem acessa o
 banco.
+
+Pedidos de redefinição de senha e códigos de verificação enviados por e-mail são guardados somente como hash (SHA-256 e HMAC-SHA256, respectivamente), nunca em texto claro.
 
 **(b) Registros de acesso e ações.** A plataforma mantém uma trilha de
 auditoria composta por duas tabelas: `login_audit`, que registra as
@@ -78,6 +82,8 @@ inicialização da aplicação, definida em
 código são mantidos em sincronia: qualquer alteração de prazo é refletida
 nos dois lugares. Para efeito de cálculo, a rotina aproxima 12 meses a 365
 dias e 5 anos a 1.825 dias.
+
+Os tokens de redefinição de senha (`redefinicao_senha`) são apagados 24 horas depois de criados, pela mesma rotina de purga (constante `RETENCAO_REDEFINICAO_HORAS` em `backend/app/services/audit_service.py`). O código de verificação por e-mail é descartado ao ser usado ou ao expirar (10 minutos).
 
 Quando uma conta de usuário é excluída, seu cadastro é removido em
 definitivo da plataforma. A trilha de auditoria, no entanto, preserva o

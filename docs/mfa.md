@@ -63,3 +63,11 @@ lado de "Alterar senha"). Spec: `docs/superpowers/specs/2026-10-06-mfa-totp-admi
 
 - Contador de falhas em memória por processo (com N réplicas, até 5×N tentativas por tentativa de login).
 - Só TOTP nesta frente; código por e-mail chega com a frente de e-mail.
+
+## Método por e-mail
+
+Ao ativar, o ADMIN_GLOBAL escolhe "App autenticador" ou "Código por e-mail". No método e-mail
+não há segredo TOTP nem `MFA_ENCRYPTION_KEY` envolvida: a cada login a API envia um código de
+6 dígitos (10 min, 5 tentativas, "Reenviar" a cada 60 s até 3 vezes). Para desativar, o modal
+envia um código novo (`POST /auth/mfa/enviar-codigo`). Exige o Resend configurado (`docs/email.md`);
+se o envio falhar, o login mostra o aviso e o usuário pode reenviar ou usar um código de recuperação.

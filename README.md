@@ -161,6 +161,14 @@ ENVIRONMENT=production
 
 # AI Insights (required to generate insights)
 ANTHROPIC_API_KEY=sk-ant-...
+
+# MFA (optional; required for ADMIN_GLOBAL to enable MFA)
+MFA_ENCRYPTION_KEY=<fernet key — python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())">
+
+# Email (optional; for password reset and MFA email codes)
+RESEND_API_KEY=re_...            # vazio = modo seco (nada e enviado)
+EMAIL_REMETENTE=UAIZI NID <nao-responda@uaizi.com.br>
+FRONTEND_URL=https://nid.uaizi.com.br
 ```
 
 For local development (ingestion scripts, local API), create `.env.local` which overrides `.env`:
@@ -428,9 +436,14 @@ REFRESH_TOKEN_EXPIRE_DAYS=7
 ENVIRONMENT=production
 ANTHROPIC_API_KEY=sk-ant-...
 MFA_ENCRYPTION_KEY=<fernet key — python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())">
+RESEND_API_KEY=re_...
+EMAIL_REMETENTE=UAIZI NID <nao-responda@uaizi.com.br>
+FRONTEND_URL=https://nid.uaizi.com.br
 ```
 
 MFA (TOTP) is optional and only ADMIN_GLOBAL can enroll; without MFA_ENCRYPTION_KEY the MFA endpoints answer 503 and plain login keeps working. See [docs/mfa.md](docs/mfa.md).
+
+Transactional e-mail (password reset and MFA codes by e-mail) goes through Resend; without RESEND_API_KEY it runs in dry mode. See [docs/email.md](docs/email.md).
 
 ### Frontend environment variables
 

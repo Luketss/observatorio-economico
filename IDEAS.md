@@ -110,11 +110,21 @@ Versão read-only do dashboard sem necessidade de login, compartilhável com cid
 - Pode ser usado como argumento de venda ("portal de transparência incluso")
 
 ### Alertas Automáticos por Email
+> **Infra de e-mail pronta (docs/email.md)**
+
 Notificações automáticas quando indicadores atingem thresholds críticos.
 - Exemplos: saldo CAGED negativo por 3 meses consecutivos, Bolsa Família cresce >20%, arrecadação cai >15%
 - Email para o admin do município configurável
 - Thresholds configuráveis por município
 - Biblioteca sugerida: `fastapi-mail` ou integração com SendGrid/Resend
+
+### Convite/Boas-vindas por E-mail ao Criar Usuário
+> **Infra de e-mail pronta (docs/email.md)**
+
+Ao criar uma nova conta de usuário (ADMIN_GLOBAL ou ADMIN_MUNICIPIO), o sistema envia automaticamente um e-mail de boas-vindas com o link de primeiro acesso.
+- E-mail com credenciais temporárias ou link de definição de senha
+- Reduz fricção do onboarding de novos admins
+- Reutiliza a infra de `redefinir-senha` existente (mesmos tokens e validação)
 
 ### Comparativo de Municípios Aprimorado
 Evolução da página `/comparativo` com visualizações mais ricas.
@@ -124,6 +134,8 @@ Evolução da página `/comparativo` com visualizações mais ricas.
 - Identifica o município com melhor desempenho em cada indicador
 
 ### Relatório Executivo Automático Mensal (PDF por Email)
+> **Infra de e-mail pronta (docs/email.md)**
+
 Todo mês, o sistema gera e envia automaticamente um relatório PDF completo para o admin do município.
 - Job agendado (APScheduler ou cron Railway) dispara no dia 15 de cada mês
 - Coleta todos os insights ativos + KPIs principais + variações YoY
