@@ -99,11 +99,32 @@ def test_celula_numero_aceita_string_com_virgula_e_devolve_none_para_vazio():
     assert _celula(float("inf"), "numero") is None
 
 
+def test_celula_numero_string_nao_finita():
+    assert _celula("nan", "numero") is None
+    assert _celula("Infinity", "numero") is None
+    assert _celula("1e999", "numero") is None
+
+
+def test_celula_numero_com_separador_de_milhar():
+    assert _celula("1.500,25", "numero") == 1500.25
+    assert _celula("1500.25", "numero") == 1500.25
+
+
+def test_celula_numero_bool():
+    assert _celula(True, "numero") == 1
+    assert _celula(False, "numero") == 0
+
+
 def test_celula_ano_vira_int_e_texto_vira_str():
     assert _celula("2022", "ano") == 2022
     assert _celula(2023, "ano") == 2023
     assert _celula("n/d", "ano") == "n/d"
     assert _celula(42, "texto") == "42"
+
+
+def test_celula_ano_overflow():
+    assert _celula(float("inf"), "ano") == "inf"
+    assert isinstance(_celula(float("inf"), "ano"), str)
 
 
 # ---------- gerar_xlsx ----------
@@ -150,6 +171,44 @@ def test_gerar_xlsx_largura_de_coluna_limitada_a_60():
     ws = load_workbook(BytesIO(gerar_xlsx(dados)))["Dados"]
     assert ws.column_dimensions["C"].width == 60
     assert ws.column_dimensions["A"].width >= 8
+
+
+def test_gerar_xlsx_largura_minima_8():
+    dados = _dados(
+        colunas=[ColunaExport(chave="x", rotulo="A", tipo="texto")],
+        linhas=[{"x": "B"}]
+    )
+    ws = load_workbook(BytesIO(gerar_xlsx(dados)))["Dados"]
+    assert ws.column_dimensions["A"].width == 8
+
+
+def test_gerar_xlsx_formula_injection_protecao():
+    dados = _dados(
+        colunas=[
+            ColunaExport(chave="periodo", rotulo="=1+1", tipo="ano"),
+            ColunaExport(chave="valor", rotulo="PIB", tipo="numero"),
+            ColunaExport(chave="obs", rotulo="Obs", tipo="texto"),
+        ],
+        linhas=[
+            {"periodo": 2021, "valor": 100, "obs": '=HYPERLINK("http://x")'},
+        ],
+    )
+    conteudo = gerar_xlsx(dados)
+    wb = load_workbook(BytesIO(conteudo))
+    ws = wb["Dados"]
+    assert ws["A7"].value == "=1+1"
+    assert ws["A7"].data_type == "s"
+    assert ws["C8"].value == '=HYPERLINK("http://x")'
+    assert ws["C8"].data_type == "s"
+    assert ws["A1"].data_type == "s"
+
+
+def test_gerar_xlsx_illegal_characters_removidos():
+    dados = _dados(
+        linhas=[{"periodo": 2021, "valor": 100, "obs": "a\x00b"}],
+    )
+    ws = load_workbook(BytesIO(gerar_xlsx(dados)))["Dados"]
+    assert ws["C8"].value == "ab"
 
 
 def test_media_type_xlsx():

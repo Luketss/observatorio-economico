@@ -8,6 +8,7 @@ import math
 from io import BytesIO
 
 from openpyxl import Workbook
+from openpyxl.cell.cell import ILLEGAL_CHARACTERS_RE
 from openpyxl.styles import Font, PatternFill
 from openpyxl.utils import get_column_letter
 
@@ -19,6 +20,16 @@ MEDIA_XLSX = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
 LINHA_CABECALHO = 7
 LARGURA_MIN = 8
 LARGURA_MAX = 60
+
+
+def _escrever_texto(celula, texto: str) -> None:
+    """Escreve texto e força data_type='s' para evitar injecao de formulas (=...).
+
+    Tambem remove caracteres XML ilegais.
+    """
+    texto_limpo = ILLEGAL_CHARACTERS_RE.sub("", texto)
+    celula.value = texto_limpo
+    celula.data_type = "s"
 
 
 def _celula(valor, tipo: str):
@@ -33,13 +44,19 @@ def _celula(valor, tipo: str):
                 return None
             return valor
         try:
-            return float(str(valor).replace(".", "").replace(",", ".")) if "," in str(valor) else float(str(valor))
+            valor_str = str(valor)
+            if "," in valor_str:
+                valor_str = valor_str.replace(".", "").replace(",", ".")
+            parsed = float(valor_str)
+            if not math.isfinite(parsed):
+                return None
+            return parsed
         except ValueError:
             return str(valor)
     if tipo == "ano":
         try:
             return int(valor)
-        except (TypeError, ValueError):
+        except (TypeError, ValueError, OverflowError):
             return str(valor)
     return str(valor)
 
@@ -60,21 +77,22 @@ def gerar_xlsx(dados: ExportXlsxIn) -> bytes:
     ws = wb.active
     ws.title = "Dados"
 
-    ws["A1"] = dados.titulo
+    _escrever_texto(ws["A1"], dados.titulo)
     ws["A1"].font = Font(bold=True, size=14)
     if dados.subtitulo:
-        ws["A2"] = dados.subtitulo
+        _escrever_texto(ws["A2"], dados.subtitulo)
     if dados.municipio:
-        ws["A3"] = f"Município: {dados.municipio}"
+        _escrever_texto(ws["A3"], f"Município: {dados.municipio}")
     if dados.fonte:
-        ws["A4"] = f"Fonte: {dados.fonte}"
-    ws["A5"] = "Gerado em " + agora_local().strftime("%d/%m/%Y %H:%M") + " (UTC-3)"
+        _escrever_texto(ws["A4"], f"Fonte: {dados.fonte}")
+    _escrever_texto(ws["A5"], "Gerado em " + agora_local().strftime("%d/%m/%Y %H:%M") + " (UTC-3)")
 
     negrito = Font(bold=True)
     cinza = PatternFill("solid", fgColor="EEEEEE")
     larguras = []
     for ci, col in enumerate(dados.colunas, start=1):
-        celula = ws.cell(row=LINHA_CABECALHO, column=ci, value=col.rotulo)
+        celula = ws.cell(row=LINHA_CABECALHO, column=ci)
+        _escrever_texto(celula, col.rotulo)
         celula.font = negrito
         celula.fill = cinza
         larguras.append(len(col.rotulo))
@@ -82,7 +100,11 @@ def gerar_xlsx(dados: ExportXlsxIn) -> bytes:
     for ri, linha in enumerate(dados.linhas, start=LINHA_CABECALHO + 1):
         for ci, col in enumerate(dados.colunas, start=1):
             valor = _celula(linha.get(col.chave), col.tipo)
-            celula = ws.cell(row=ri, column=ci, value=valor)
+            celula = ws.cell(row=ri, column=ci)
+            if isinstance(valor, str):
+                _escrever_texto(celula, valor)
+            else:
+                celula.value = valor
             if col.tipo == "numero" and isinstance(valor, (int, float)):
                 celula.number_format = "#,##0.00"
             elif col.tipo == "ano" and isinstance(valor, int):
