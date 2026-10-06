@@ -22,7 +22,7 @@
 - Erros no envelope `{error:{code,message}}` via `AppException(code, message, status_code)`; RBAC via `Depends(require_role(...))`; multi-tenant não se aplica (rotas de conta própria).
 - Python: aspas ASCII retas; strings do backend sem acento (padrão do repo: "Codigo invalido"); SQLAlchemy 2.0 `Mapped`; Alembic `0043_redefinicao_senha` (down `0042_usuario_mfa`) e `0044_usuario_mfa_email` (down `0043_redefinicao_senha`).
 - Frontend: funcional + hooks; API só via `src/services/api.js`; Tailwind; ESLint ecmaVersion 2020 (sem `??=`/`||=`); testes com `// @vitest-environment jsdom`; textos pt-BR com acento no JSX.
-- Commits em ASCII terminando com `Co-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>`. Nunca stagear `.claude/settings.local.json`, `dados/`, `node_modules/`, `docs/superpowers/plans/2026-05-06-ips-feature.md`.
+- Commits em ASCII terminando com `Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>`. Nunca stagear `.claude/settings.local.json`, `dados/`, `node_modules/`, `docs/superpowers/plans/2026-05-06-ips-feature.md`.
 
 ## Decisões de plano (esclarecimentos à spec, não contradições)
 
@@ -41,7 +41,7 @@
 2. Link colado com espaço no fim ou token desconhecido → 410, nunca 500 — `test_validar_token_com_espacos_e_desconhecido` (Task 3).
 3. Usuário desativado entre pedir e clicar o link → 410 e senha não muda — `test_redefinir_usuario_inativo_410` (Task 3).
 4. `FRONTEND_URL` com barra final não gera `//redefinir-senha` — `test_link_sem_barra_dupla` (Task 3).
-5. Login com MFA e-mail e Resend fora: resposta traz `enviado: false` mas o `mfa_token` vale e o reenviar funciona — `test_login_email_envio_falho_enviado_false` (Task 6) e aviso na UI (Task 7).
+5. Login com MFA e-mail e Resend fora: resposta traz `enviado: false` mas o `mfa_token` vale e o reenviar funciona — `test_login_email_envio_falho_enviado_false_e_reenviar_depois_funciona` (Task 6) e aviso na UI (Task 7).
 
 ---
 
@@ -417,7 +417,7 @@ Run: `venv/Scripts/python -m pytest backend/tests -o addopts="" -q` → 0 falhas
 git add backend/app/core/config.py backend/app/services/email_service.py backend/app/services/email_templates.py backend/app/templates/email backend/tests/test_email_service.py
 git commit -m "feat(email): servico de envio via Resend (modo seco sem chave), templates e envs
 
-Co-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>"
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>"
 ```
 
 ### Task 2: Modelo `RedefinicaoSenha`, migração 0043, `garantir_utc` e purga de 24 h
@@ -700,7 +700,7 @@ Run: `venv/Scripts/python -m pytest backend/tests -o addopts="" -q` → 0 falhas
 git add backend/app/models/redefinicao_senha.py backend/app/models/__init__.py backend/alembic/env.py backend/alembic/versions/0043_redefinicao_senha.py backend/app/core/datas.py backend/app/services/audit_service.py backend/tests/test_redefinicao_senha.py
 git commit -m "feat(email): modelo redefinicao_senha, migracao 0043, garantir_utc e purga de 24h
 
-Co-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>"
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>"
 ```
 
 ---
@@ -1092,7 +1092,7 @@ Run: `venv/Scripts/python -m pytest backend/tests -o addopts="" -q` → 0 falhas
 git add backend/app/services/redefinicao_senha_service.py backend/app/schemas/redefinicao_senha.py backend/app/api/v1/routers/auth.py backend/tests/test_redefinicao_senha.py
 git commit -m "feat(email): esqueci minha senha - token de uso unico por e-mail, validar e redefinir (202/410, anti-enumeracao)
 
-Co-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>"
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>"
 ```
 
 ### Task 4: Frontend — `LoginShell`, páginas `/esqueci-senha` e `/redefinir-senha`, link na `LoginPage`
@@ -1575,7 +1575,6 @@ export default function RedefinirSenhaPage() {
   useEffect(() => {
     if (!token) return undefined;
     let vivo = true;
-    setEstado("validando");
     api.get("/auth/redefinir-senha/validar", { params: { token } })
       .then((r) => {
         if (!vivo) return;
@@ -1634,7 +1633,7 @@ export default function RedefinirSenhaPage() {
       {estado === "erro" && (
         <div className="space-y-4 text-sm text-slate-600">
           <p>Não foi possível validar o link agora. Verifique sua conexão e tente de novo.</p>
-          <button type="button" onClick={() => setTentativa((t) => t + 1)} className={btnPrimarioCls}>Tentar de novo</button>
+          <button type="button" onClick={() => { setEstado("validando"); setTentativa((n) => n + 1); }} className={btnPrimarioCls}>Tentar de novo</button>
         </div>
       )}
 
@@ -1697,7 +1696,7 @@ Run: `npx vite build` → sucesso.
 git add frontend-observatorio/src/pages/login frontend-observatorio/src/app/router/AppRouter.jsx
 git commit -m "feat(email): paginas esqueci minha senha e redefinir senha, LoginShell compartilhado e link no login
 
-Co-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>"
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>"
 ```
 
 ### Task 5: MFA por e-mail no `MfaService` — migração 0044, modelo, código HMAC, configurar/ativar/reenviar
@@ -1765,28 +1764,34 @@ def ambiente(monkeypatch):
     auth_mod._FALHAS_MFA.clear()
 
 
+class _Espiao:
+    """Substitui mfa_service.enviar. `falhar = True` simula Resend fora (devolve None)."""
+
+    def __init__(self):
+        self.lista = []
+        self.falhar = False
+
+    def __call__(self, para, assunto, html, texto):
+        self.lista.append({"para": para, "assunto": assunto, "html": html, "texto": texto})
+        return None if self.falhar else "id-fake"
+
+    def __getitem__(self, i):
+        return self.lista[i]
+
+    @property
+    def total(self):
+        return len(self.lista)
+
+    @property
+    def ultimo_codigo(self):
+        return re.search(r"\b(\d{6})\b", self.lista[-1]["texto"]).group(1)
+
+
 @pytest.fixture()
 def enviados(monkeypatch):
-    """Espiona mfa_service.enviar. `enviados.falhar = True` simula Resend fora (devolve None)."""
-    lista = []
-    estado = {"falhar": False}
-
-    def fake_enviar(para, assunto, html, texto):
-        lista.append({"para": para, "assunto": assunto, "html": html, "texto": texto})
-        return None if estado["falhar"] else "id-fake"
-
-    monkeypatch.setattr(mfa_mod, "enviar", fake_enviar)
-    monkeypatch.setattr(auth_mod, "mascarar_email", mfa_mod.mascarar_email, raising=False)
-
-    class _Enviados(list):
-        pass
-
-    e = _Enviados(lista)
-    e._lista = lista
-    e.__class__.falhar = property(lambda self: estado["falhar"], lambda self, v: estado.__setitem__("falhar", v))
-    e.__class__.ultimo_codigo = property(lambda self: re.search(r"\b(\d{6})\b", lista[-1]["texto"]).group(1))
-    e.__class__.total = property(lambda self: len(lista))
-    return e
+    espiao = _Espiao()
+    monkeypatch.setattr(mfa_mod, "enviar", espiao)
+    return espiao
 
 
 @pytest.fixture()
@@ -2285,7 +2290,7 @@ Run: `venv/Scripts/python -m pytest backend/tests -o addopts="" -q` → 0 falhas
 git add backend/alembic/versions/0044_usuario_mfa_email.py backend/app/models/usuario_mfa.py backend/app/services/mfa_service.py backend/tests/test_mfa_email.py backend/tests/test_mfa_service.py backend/tests/test_mfa_login.py
 git commit -m "feat(mfa): metodo email no MfaService - codigo HMAC de 6 digitos (10 min, 5 tentativas, 3 reenvios), migracao 0044
 
-Co-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>"
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>"
 ```
 (Incluir `test_mfa_service.py`/`test_mfa_login.py` no `git add` só se foram ajustados.)
 
@@ -2661,16 +2666,553 @@ Run: `venv/Scripts/python -m pytest backend/tests -o addopts="" -q` → 0 falhas
 git add backend/app/services/auth_service.py backend/app/services/mfa_service.py backend/app/schemas/mfa.py backend/app/api/v1/routers/mfa.py backend/tests/test_mfa_email.py
 git commit -m "feat(mfa): login em duas etapas por e-mail - envio no login, POST /auth/mfa/reenviar e /enviar-codigo, configurar com metodo
 
-Co-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>"
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>"
 ```
 
 ---
 
-## RASCUNHO INCOMPLETO — não executar ainda
+### Task 7: Frontend — `AuthContext` e `LoginPage` com código por e-mail e "Reenviar"
 
-Tasks 1–6 (backend completo + páginas de redefinição) estão escritas acima. Faltam, na próxima sessão:
+**Files:**
+- Modify: `frontend-observatorio/src/context/AuthContext.jsx`, `AuthContext.test.jsx` (+2)
+- Modify: `frontend-observatorio/src/pages/login/LoginPage.jsx`, `LoginPage.test.jsx` (+3)
 
-- **Task 7:** Frontend — `AuthContext.login` devolve `{ mfa, mfaToken, metodo, enviadoPara, enviado }` e ganha `reenviarCodigoMfa(mfaToken)` (`POST /auth/mfa/reenviar`, dict cru); `LoginPage` etapa de código com `metodo === "email"`: texto "Enviamos um código para {enviadoPara}", botão "Reenviar código" com cooldown de 60 s (some após 3 reenvios ou 429 `LIMITE_REENVIO`), aviso quando `enviado === false`; testes em `AuthContext.test.jsx` (+2) e `LoginPage.test.jsx` (+3, com `vi.useFakeTimers({ shouldAdvanceTime: true })` para o cooldown).
-- **Task 8:** Frontend — `MfaModal`: botão "Ativar verificação em duas etapas" abre passo `metodo` com "App autenticador" e `Código por e-mail (${user.email})` (`useAuth().user.email`; mock de `../context/AuthContext` no teste); e-mail → `POST /auth/mfa/configurar {metodo:"email"}` → passo `codigo_email` ("Enviamos um código para…", campo, Confirmar); status ativo mostra o método; "Desativar" com método e-mail chama `POST /auth/mfa/enviar-codigo` antes de pedir senha + código. Ajustar os 2 testes existentes (clicar "App autenticador" depois de "Ativar"; `toHaveBeenCalledWith("/auth/mfa/configurar", { metodo: "totp" })`) e acrescentar 2 (escolha do método; e-mail pula o QR).
-- **Task 9:** Docs — `docs/email.md` (runbook: conta Resend, domínio `uaizi.com.br`, SPF/DKIM/DMARC `p=none`, API key, envs `RESEND_API_KEY`/`EMAIL_REMETENTE`/`FRONTEND_URL` no serviço `api`, teste real, spam), `README.md` e `AGENTS.md` §14 (3 envs), `docs/lgpd.md` §1 (Resend suboperador, EUA, cláusulas contratuais), §2 (tokens/códigos só como hash, 24 h), §4 (retenção 24 h; `RETENCAO_REDEFINICAO_HORAS`), `docs/mfa.md` (método e-mail), `IDEAS.md` (convite ao criar usuário, alertas por limiar, relatório mensal em PDF).
-- **Self-review** do plano (cobertura da spec, placeholders, consistência de nomes entre Tasks 5–8) e checklist manual.
+**Interfaces:**
+- Consumes: `POST /auth/login` → `{mfa_obrigatorio, mfa_token, metodo, enviado_para?, enviado?}`; `POST /auth/mfa/reenviar {mfa_token}` → `{enviado_para}` (dict cru) | 429 `AGUARDE` ("Aguarde N s para reenviar") / `LIMITE_REENVIO` | 502 `EMAIL_NAO_ENVIADO` | 401 `MFA_SESSAO_INVALIDA`/`MFA_TOKEN_INVALIDADO` (Task 6).
+- Produces: `useAuth().login(email, senha)` → `{ mfa: true, mfaToken, metodo, enviadoPara, enviado }` (chaves ausentes na resposta ficam `undefined`) ou `{ mfa: false }`; `useAuth().reenviarCodigoMfa(mfaToken) → Promise<{ enviado_para }>`.
+
+- [ ] **Step 1: Escrever os testes (falhando)**
+
+Em `frontend-observatorio/src/context/AuthContext.test.jsx`, dentro do `describe("AuthContext — login em duas etapas (MFA)", ...)` existente, acrescentar ao final (o componente `ProbeMfa` existente já renderiza o retorno do `login` em `data-testid="res"`):
+
+```jsx
+  it("login com metodo email devolve metodo, enviadoPara e enviado", async () => {
+    api.post.mockResolvedValueOnce({ data: { mfa_obrigatorio: true, mfa_token: "tok-mfa", metodo: "email", enviado_para: "a***@x.com", enviado: false } });
+    render(<AuthProvider><ProbeMfa /></AuthProvider>);
+    await screen.findByText("sem-user");
+    fireEvent.click(screen.getByText("login"));
+    await waitFor(() => expect(screen.getByTestId("res").textContent).toBe(
+      JSON.stringify({ mfa: true, mfaToken: "tok-mfa", metodo: "email", enviadoPara: "a***@x.com", enviado: false })
+    ));
+    expect(localStorage.getItem("access_token")).toBeNull();
+  });
+
+  it("reenviarCodigoMfa chama /auth/mfa/reenviar e devolve o corpo", async () => {
+    function ProbeReenviar() {
+      const { reenviarCodigoMfa } = useAuth();
+      const [r, setR] = useState(null);
+      return (
+        <>
+          <button onClick={async () => setR(await reenviarCodigoMfa("tok-mfa"))}>reenviar</button>
+          <div data-testid="r">{r ? JSON.stringify(r) : ""}</div>
+        </>
+      );
+    }
+    api.post.mockResolvedValueOnce({ data: { enviado_para: "a***@x.com" } });
+    render(<AuthProvider><ProbeReenviar /></AuthProvider>);
+    fireEvent.click(await screen.findByText("reenviar"));
+    await waitFor(() => expect(screen.getByTestId("r").textContent).toBe(JSON.stringify({ enviado_para: "a***@x.com" })));
+    expect(api.post).toHaveBeenCalledWith("/auth/mfa/reenviar", { mfa_token: "tok-mfa" });
+  });
+```
+
+Em `frontend-observatorio/src/pages/login/LoginPage.test.jsx`:
+1. Trocar a primeira linha de import de RTL por `import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";` e a de vitest por `import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";`.
+2. Trocar `const auth = { login: vi.fn(), verificarMfa: vi.fn(), user: null, loading: false };` por `const auth = { login: vi.fn(), verificarMfa: vi.fn(), reenviarCodigoMfa: vi.fn(), user: null, loading: false };`.
+3. Após o `beforeEach` existente, acrescentar `afterEach(() => vi.useRealTimers());`.
+4. Acrescentar um `describe` novo ao final do arquivo:
+
+```jsx
+describe("LoginPage — codigo por e-mail", () => {
+  const RESP_EMAIL = { mfa: true, mfaToken: "tok", metodo: "email", enviadoPara: "a***@x.gov.br", enviado: true };
+
+  it("mostra o endereco mascarado; Reenviar fica bloqueado 60 s e depois reenvia", async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    auth.login.mockResolvedValueOnce(RESP_EMAIL);
+    auth.reenviarCodigoMfa.mockResolvedValueOnce({ enviado_para: "a***@x.gov.br" });
+    montar();
+    await preencherELogar();
+    expect(await screen.findByText(/Enviamos um código para a\*\*\*@x\.gov\.br/)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /Reenviar código/ })).toBeDisabled();
+    act(() => { vi.advanceTimersByTime(60000); });
+    await waitFor(() => expect(screen.getByRole("button", { name: /Reenviar código/ })).not.toBeDisabled());
+    fireEvent.click(screen.getByRole("button", { name: /Reenviar código/ }));
+    await waitFor(() => expect(auth.reenviarCodigoMfa).toHaveBeenCalledWith("tok"));
+    expect(await screen.findByRole("status")).toHaveTextContent(/novo código/i);
+    expect(screen.getByRole("button", { name: /Reenviar código/ })).toBeDisabled();
+  });
+
+  it("enviado false mostra aviso e libera Reenviar na hora", async () => {
+    auth.login.mockResolvedValueOnce({ ...RESP_EMAIL, enviado: false });
+    montar();
+    await preencherELogar();
+    expect(await screen.findByText(/Não conseguimos enviar o e-mail/)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /Reenviar código/ })).not.toBeDisabled();
+  });
+
+  it("LIMITE_REENVIO esconde o botao e mostra a mensagem", async () => {
+    auth.login.mockResolvedValueOnce({ ...RESP_EMAIL, enviado: false });
+    auth.reenviarCodigoMfa.mockRejectedValueOnce({ response: { status: 429, data: { error: { code: "LIMITE_REENVIO", message: "Limite de reenvios atingido; aguarde 10 minutos e tente de novo" } } } });
+    montar();
+    await preencherELogar();
+    fireEvent.click(await screen.findByRole("button", { name: /Reenviar código/ }));
+    expect(await screen.findByRole("alert")).toHaveTextContent(/Limite de reenvios/);
+    expect(screen.queryByRole("button", { name: /Reenviar código/ })).toBeNull();
+  });
+});
+```
+
+- [ ] **Step 2: Rodar para ver falhar**
+
+Run (em `frontend-observatorio/`): `npx vitest run src/context/AuthContext.test.jsx src/pages/login/LoginPage.test.jsx`
+Expected: os 5 testes novos falham (campos ausentes, `reenviarCodigoMfa` não existe, texto/botão ausentes); os antigos passam.
+
+- [ ] **Step 3: `AuthContext.jsx`**
+
+No `login`, trocar as duas linhas
+```jsx
+    const { access_token, mfa_obrigatorio, mfa_token } = response.data;
+    if (mfa_obrigatorio) return { mfa: true, mfaToken: mfa_token };
+```
+por
+```jsx
+    const { access_token, mfa_obrigatorio, mfa_token, metodo, enviado_para, enviado } = response.data;
+    if (mfa_obrigatorio) {
+      return { mfa: true, mfaToken: mfa_token, metodo, enviadoPara: enviado_para, enviado };
+    }
+```
+Após `verificarMfa`, acrescentar:
+```jsx
+  // Novo código por e-mail para o login em andamento (só o mfa_token identifica).
+  const reenviarCodigoMfa = async (mfaToken) => {
+    const response = await api.post("/auth/mfa/reenviar", { mfa_token: mfaToken });
+    return response.data;
+  };
+```
+e incluir `reenviarCodigoMfa` no `value` do provider: `value={{ user, login, verificarMfa, reenviarCodigoMfa, logout, loading }}`.
+
+- [ ] **Step 4: `LoginPage.jsx`**
+
+1. Desestruturar também `reenviarCodigoMfa` de `useAuth()`.
+2. Novos estados, logo após `usarRecuperacao`:
+```jsx
+  const [metodo, setMetodo] = useState("totp");        // "totp" | "email"
+  const [enviadoPara, setEnviadoPara] = useState("");
+  const [envioFalhou, setEnvioFalhou] = useState(false);
+  const [cooldown, setCooldown] = useState(0);         // segundos até liberar "Reenviar"
+  const [reenvios, setReenvios] = useState(0);
+  const [reenviando, setReenviando] = useState(false);
+  const [aviso, setAviso] = useState("");
+```
+3. Constantes no topo do arquivo (fora do componente): `const COOLDOWN_REENVIO = 60;` e `const MAX_REENVIOS = 3;`.
+4. Contador (o `setInterval` segue rodando entre renders; só é recriado quando entra ou sai do cooldown):
+```jsx
+  const emCooldown = cooldown > 0;
+  useEffect(() => {
+    if (!emCooldown) return undefined;
+    const id = setInterval(() => setCooldown((c) => (c <= 1 ? 0 : c - 1)), 1000);
+    return () => clearInterval(id);
+  }, [emCooldown]);
+```
+5. Em `handleSubmit`, dentro do `if (r && r.mfa) {`, depois de `setUsarRecuperacao(false);`:
+```jsx
+        const porEmail = r.metodo === "email";
+        setMetodo(porEmail ? "email" : "totp");
+        setEnviadoPara(r.enviadoPara || "");
+        setEnvioFalhou(porEmail && r.enviado === false);
+        setCooldown(porEmail && r.enviado !== false ? COOLDOWN_REENVIO : 0);
+        setReenvios(0);
+        setAviso("");
+```
+6. Em `voltarParaSenha`, acrescentar `setMetodo("totp"); setEnviadoPara(""); setEnvioFalhou(false); setCooldown(0); setReenvios(0); setAviso("");`.
+7. Em `handleVerificar`, no ramo `code === "UNAUTHORIZED"`, trocar a mensagem fixa por:
+```jsx
+        setError(metodo === "email"
+          ? "Código inválido ou expirado. Confira o e-mail ou peça um novo código."
+          : "Código inválido. Confira o app autenticador e tente de novo.");
+```
+8. Handler novo (após `handleVerificar`):
+```jsx
+  const handleReenviar = async () => {
+    setReenviando(true);
+    setError("");
+    setAviso("");
+    try {
+      const r = await reenviarCodigoMfa(mfaToken);
+      if (r && r.enviado_para) setEnviadoPara(r.enviado_para);
+      setEnvioFalhou(false);
+      setReenvios((n) => n + 1);
+      setCooldown(COOLDOWN_REENVIO);
+      setAviso("Enviamos um novo código. O anterior deixou de valer.");
+    } catch (err) {
+      const code = err?.response?.data?.error?.code;
+      const msg = mensagemDoErro(err, "Não foi possível reenviar o código.");
+      if (code === "MFA_TOKEN_INVALIDADO" || code === "MFA_SESSAO_INVALIDA") {
+        voltarParaSenha("Sessão de verificação encerrada. Faça login de novo.");
+      } else if (code === "LIMITE_REENVIO") {
+        setReenvios(MAX_REENVIOS);
+        setError(msg);
+      } else if (code === "AGUARDE") {
+        const m = /(\d+)/.exec(msg);
+        setCooldown(m ? Number(m[1]) : COOLDOWN_REENVIO);
+        setError(msg);
+      } else if (err?.response?.status === 502) {
+        setError("Não foi possível enviar o e-mail agora. Tente de novo em instantes.");
+      } else {
+        setError(msg);
+      }
+    } finally {
+      setReenviando(false);
+    }
+  };
+```
+9. JSX da etapa de código:
+   - No `LoginShell`, trocar o `subtitulo` por `etapa === "codigo" ? (metodo === "email" ? "Código enviado por e-mail" : "Código do app autenticador") : "Insira suas credenciais para continuar"`.
+   - Trocar o `<p className="text-xs text-slate-500">Sua conta tem verificação…</p>` por:
+```jsx
+          {metodo === "email" ? (
+            <p className="text-xs text-slate-500">
+              Enviamos um código para <strong>{enviadoPara}</strong>. Ele vale por 10 minutos.
+            </p>
+          ) : (
+            <p className="text-xs text-slate-500">
+              Sua conta tem verificação em duas etapas. Digite o código do app autenticador.
+            </p>
+          )}
+          {envioFalhou && (
+            <p className="text-xs bg-amber-50 border border-amber-100 text-amber-800 px-4 py-3 rounded-xl">
+              Não conseguimos enviar o e-mail agora. Use "Reenviar código" para tentar de novo.
+            </p>
+          )}
+          {aviso && (
+            <p role="status" className="text-xs bg-emerald-50 border border-emerald-100 text-emerald-800 px-4 py-3 rounded-xl">{aviso}</p>
+          )}
+```
+   - Logo depois do botão "Verificar", antes da linha com "Voltar"/"Usar código de recuperação", inserir:
+```jsx
+          {metodo === "email" && reenvios < MAX_REENVIOS && (
+            <button type="button" onClick={handleReenviar} disabled={reenviando || cooldown > 0}
+              className="w-full text-xs text-blue-600 hover:text-blue-700 disabled:text-slate-400 disabled:cursor-not-allowed cursor-pointer">
+              {cooldown > 0 ? `Reenviar código (${cooldown}s)` : reenviando ? "Reenviando..." : "Reenviar código"}
+            </button>
+          )}
+```
+   - No botão que alterna recuperação, trocar o texto por `{usarRecuperacao ? (metodo === "email" ? "Usar código do e-mail" : "Usar código do app") : "Usar código de recuperação"}`.
+
+- [ ] **Step 5: Rodar testes, lint e build**
+
+Run: `npx vitest run src/context/AuthContext.test.jsx src/pages/login/LoginPage.test.jsx` → todos verdes (AuthContext 10, LoginPage 11).
+Run: `npx vitest run` → 0 falhas (o flake conhecido de `AuthContext.test.jsx` só na suíte completa: se aparecer, rodar o arquivo isolado e registrar).
+Run: `npx eslint src/context/AuthContext.jsx src/pages/login/LoginPage.jsx` → só os erros pré-existentes (`set-state-in-effect` e `only-export-components` no AuthContext).
+Run: `npx vite build` → sucesso.
+
+- [ ] **Step 6: Commit**
+
+```bash
+git add frontend-observatorio/src/context/AuthContext.jsx frontend-observatorio/src/context/AuthContext.test.jsx frontend-observatorio/src/pages/login/LoginPage.jsx frontend-observatorio/src/pages/login/LoginPage.test.jsx
+git commit -m "feat(mfa): etapa de codigo por e-mail no login - endereco mascarado, Reenviar com cooldown de 60s e aviso de envio falho
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>"
+```
+
+---
+
+### Task 8: Frontend — `MfaModal` com escolha do método (app ou e-mail)
+
+**Files:**
+- Modify: `frontend-observatorio/src/components/MfaModal.jsx`, `MfaModal.test.jsx` (ajusta 4, +3)
+- Modify: `frontend-observatorio/src/app/layouts/DashboardLayout.jsx` (passa `emailUsuario`)
+
+**Interfaces:**
+- Consumes: `GET /auth/mfa/status` → `data.data.metodo` ("totp"|"email"|null); `POST /auth/mfa/configurar {metodo}` → `data.data` = `{metodo:"totp", otpauth_url, segredo, qr_svg}` | `{metodo:"email", enviado_para}` | 502 `EMAIL_NAO_ENVIADO`; `POST /auth/mfa/ativar {codigo}`; `POST /auth/mfa/enviar-codigo` → `{enviado_para}` (dict cru) | 429; `POST /auth/mfa/desativar` (Task 6).
+- Produces: `MfaModal({ open, onClose, emailUsuario })`.
+
+- [ ] **Step 1: Ajustar e escrever os testes (falhando)**
+
+Em `frontend-observatorio/src/components/MfaModal.test.jsx`:
+1. Nos testes "inativo: mostra Ativar; fluxo QR…", "marcar 'ja guardei'…", "codigo errado no confirmar…" e "409 ao configurar…", logo depois de `fireEvent.click(await screen.findByRole("button", { name: /Ativar verificação/i }));` inserir `fireEvent.click(screen.getByRole("button", { name: /App autenticador/i }));`.
+2. No primeiro teste, trocar `expect(api.post).toHaveBeenCalledWith("/auth/mfa/configurar");` por `expect(api.post).toHaveBeenCalledWith("/auth/mfa/configurar", { metodo: "totp" });`.
+3. Acrescentar ao final do `describe`:
+
+```jsx
+  it("Ativar mostra as duas opcoes com o e-mail do usuario", async () => {
+    api.get.mockResolvedValueOnce(statusInativo);
+    render(<MfaModal open onClose={() => {}} emailUsuario="ana@x.gov.br" />);
+    fireEvent.click(await screen.findByRole("button", { name: /Ativar verificação/i }));
+    expect(screen.getByRole("button", { name: /App autenticador/i })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /Código por e-mail \(ana@x\.gov\.br\)/i })).toBeInTheDocument();
+    expect(api.post).not.toHaveBeenCalled();
+  });
+
+  it("metodo e-mail pula o QR: envia o codigo, confirma e mostra os codigos de recuperacao", async () => {
+    api.get.mockResolvedValueOnce(statusInativo);
+    api.post.mockResolvedValueOnce({ data: { data: { metodo: "email", enviado_para: "a***@x.gov.br" } } });
+    api.post.mockResolvedValueOnce({ data: { data: { codigos_recuperacao: ["AAAA-1111"] } } });
+    render(<MfaModal open onClose={() => {}} emailUsuario="ana@x.gov.br" />);
+    fireEvent.click(await screen.findByRole("button", { name: /Ativar verificação/i }));
+    fireEvent.click(screen.getByRole("button", { name: /Código por e-mail/i }));
+    expect(await screen.findByText(/Enviamos um código para a\*\*\*@x\.gov\.br/)).toBeInTheDocument();
+    expect(api.post).toHaveBeenCalledWith("/auth/mfa/configurar", { metodo: "email" });
+    expect(screen.queryByText(/Leia o QR/)).toBeNull();
+    fireEvent.change(screen.getByLabelText(/Código do e-mail/i), { target: { value: "123456" } });
+    fireEvent.click(screen.getByRole("button", { name: "Confirmar" }));
+    await screen.findByText("AAAA-1111");
+    expect(api.post).toHaveBeenLastCalledWith("/auth/mfa/ativar", { codigo: "123456" });
+  });
+
+  it("ativo por e-mail mostra o metodo e Desativar pede o codigo por e-mail antes", async () => {
+    api.get.mockResolvedValueOnce({ data: { data: { ativo: true, ativado_em: "2026-10-06T10:00:00Z", codigos_restantes: 9, metodo: "email" } } });
+    api.post.mockResolvedValueOnce({ data: { enviado_para: "a***@x.gov.br" } });
+    api.post.mockResolvedValueOnce({ data: { ok: true } });
+    render(<MfaModal open onClose={() => {}} emailUsuario="ana@x.gov.br" />);
+    expect(await screen.findByText(/código por e-mail/i)).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: /Desativar/i }));
+    await waitFor(() => expect(api.post).toHaveBeenCalledWith("/auth/mfa/enviar-codigo"));
+    expect(await screen.findByText(/Enviamos um código para a\*\*\*@x\.gov\.br/)).toBeInTheDocument();
+    fireEvent.change(screen.getByLabelText("Senha atual"), { target: { value: "senha" } });
+    fireEvent.change(screen.getByLabelText(/^Código$/), { target: { value: "654321" } });
+    fireEvent.click(screen.getByRole("button", { name: /Confirmar desativação/i }));
+    await waitFor(() => expect(api.post).toHaveBeenLastCalledWith("/auth/mfa/desativar", { senha_atual: "senha", codigo: "654321" }));
+  });
+```
+
+- [ ] **Step 2: Rodar para ver falhar**
+
+Run: `npx vitest run src/components/MfaModal.test.jsx` → os testes ajustados e os 3 novos falham (não há passo de escolha).
+
+- [ ] **Step 3: `MfaModal.jsx`**
+
+1. Assinatura: `export default function MfaModal({ open, onClose, emailUsuario })`. Atualizar o comentário do topo: `// Passos: status → metodo (app ou e-mail) → qr (QR + confirmar) | codigo_email → codigos.`
+2. Estado novo: `const [enviadoPara, setEnviadoPara] = useState("");` e, em `fechar`, acrescentar `setEnviadoPara("");`.
+3. Substituir `iniciar()` por:
+```jsx
+  async function iniciar(metodo) {
+    setErro(""); setCarregando(true);
+    try {
+      const r = await api.post("/auth/mfa/configurar", { metodo });
+      const dados = r.data.data;
+      setCodigo("");
+      if (dados.metodo === "email") {
+        setEnviadoPara(dados.enviado_para || "");
+        setPasso("codigo_email");
+      } else {
+        setConfig(dados);
+        setPasso("qr");
+      }
+    } catch (err) {
+      if (err?.response?.status === 503) setIndisponivel(true);
+      setErro(mensagemDoErro(err, "Não foi possível iniciar a configuração."));
+    } finally { setCarregando(false); }
+  }
+
+  async function abrirDesativar() {
+    setErro(""); setCodigo(""); setSenhaAtual(""); setEnviadoPara("");
+    setPasso("desativar");
+    if (status && status.metodo === "email") {
+      try {
+        const r = await api.post("/auth/mfa/enviar-codigo");
+        setEnviadoPara((r.data && r.data.enviado_para) || "");
+      } catch (err) {
+        setErro(mensagemDoErro(err, "Não foi possível enviar o código por e-mail."));
+      }
+    }
+  }
+```
+4. No passo `status`, inativo: o botão "Ativar verificação em duas etapas" passa a fazer `onClick={() => { setErro(""); setPasso("metodo"); }}` (sem `disabled={carregando}` e com o texto fixo "Ativar verificação em duas etapas"); trocar o parágrafo explicativo por `<p>Proteja sua conta exigindo um código depois da senha: pelo app autenticador ou por e-mail.</p>`.
+5. No passo `status`, ativo: depois do parágrafo "Ativa desde…", acrescentar `<p>Método: {status.metodo === "email" ? "código por e-mail" : "app autenticador"}.</p>`; o botão "Desativar" passa a `onClick={abrirDesativar}`.
+6. Novo passo, antes do bloco `passo === "qr"`:
+```jsx
+            {passo === "metodo" && (
+              <div className="space-y-3 text-sm text-[var(--text-dim)]">
+                <p>Como você quer receber o código de verificação?</p>
+                <button type="button" onClick={() => iniciar("totp")} disabled={carregando} className={`${btnSecundario} w-full text-left`}>
+                  <strong className="block text-[var(--text)]">App autenticador</strong>
+                  <span className="text-xs">Google Authenticator, Authy, 1Password… Funciona sem internet.</span>
+                </button>
+                <button type="button" onClick={() => iniciar("email")} disabled={carregando} className={`${btnSecundario} w-full text-left`}>
+                  <strong className="block text-[var(--text)]">{emailUsuario ? `Código por e-mail (${emailUsuario})` : "Código por e-mail"}</strong>
+                  <span className="text-xs">Enviamos um código de 6 dígitos a cada login.</span>
+                </button>
+                {alerta}
+                <button type="button" className={btnSecundario} onClick={() => { setErro(""); setPasso("status"); }}>Voltar</button>
+              </div>
+            )}
+```
+7. Novo passo, depois do bloco `passo === "qr"`:
+```jsx
+            {passo === "codigo_email" && (
+              <form onSubmit={confirmar} className="space-y-3 text-sm text-[var(--text-dim)]">
+                <p>Enviamos um código para <strong className="text-[var(--text)]">{enviadoPara}</strong>. Ele vale por 10 minutos.</p>
+                <input type="text" inputMode="numeric" autoComplete="one-time-code" aria-label="Código do e-mail" placeholder="000000"
+                  value={codigo} onChange={(e) => setCodigo(e.target.value)} required maxLength={7} className={inputCls} />
+                {alerta}
+                <button type="button" onClick={() => iniciar("email")} disabled={carregando} className="text-xs text-blue-600 hover:text-blue-700 cursor-pointer disabled:text-[var(--text-mute)]">
+                  Enviar outro código
+                </button>
+                <div className="flex gap-2">
+                  <button type="button" className={btnSecundario} onClick={() => { setErro(""); setPasso("metodo"); }}>Voltar</button>
+                  <button type="submit" disabled={carregando || codigo.trim().length < 6} className={btnPrimario} style={{ background: "var(--accent-1)", color: "var(--bg)" }}>
+                    {carregando ? "Verificando..." : "Confirmar"}
+                  </button>
+                </div>
+              </form>
+            )}
+```
+8. No bloco `passo === "qr"`, o "Voltar" passa a voltar para `"metodo"`: `onClick={() => { setErro(""); setConfig(null); setPasso("metodo"); }}`.
+9. No passo `desativar`, trocar o parágrafo e o placeholder do código:
+```jsx
+                <p>
+                  {status && status.metodo === "email"
+                    ? (enviadoPara ? `Enviamos um código para ${enviadoPara}. ` : "") + "Confirme sua senha e o código do e-mail (ou um código de recuperação)."
+                    : "Para desativar, confirme sua senha e um código do app (ou um código de recuperação)."}
+                </p>
+```
+e `placeholder={status && status.metodo === "email" ? "Código do e-mail ou XXXX-XXXX" : "Código do app ou XXXX-XXXX"}` no input de `aria-label="Código"`.
+10. O texto do passo `codigos` ("…se você perder o app.") passa a "…se você perder o acesso ao app ou ao e-mail."
+
+Em `frontend-observatorio/src/app/layouts/DashboardLayout.jsx`, trocar `{isGlobal && <MfaModal open={mfaOpen} onClose={() => setMfaOpen(false)} />}` por `{isGlobal && <MfaModal open={mfaOpen} onClose={() => setMfaOpen(false)} emailUsuario={user?.email} />}`.
+
+- [ ] **Step 4: Rodar testes, lint e build**
+
+Run: `npx vitest run src/components/MfaModal.test.jsx` → `9 passed`.
+Run: `npx vitest run` → 0 falhas.
+Run: `npx eslint src/components/MfaModal.jsx src/components/MfaModal.test.jsx src/app/layouts/DashboardLayout.jsx` → só os erros pré-existentes (comparar com `git show HEAD:<arquivo> | npx eslint --stdin --stdin-filename <arquivo>`).
+Run: `npx vite build` → sucesso.
+
+- [ ] **Step 5: Commit**
+
+```bash
+git add frontend-observatorio/src/components/MfaModal.jsx frontend-observatorio/src/components/MfaModal.test.jsx frontend-observatorio/src/app/layouts/DashboardLayout.jsx
+git commit -m "feat(mfa): MfaModal com escolha entre app autenticador e codigo por e-mail; desativar por e-mail pede o codigo antes
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>"
+```
+
+---
+
+### Task 9: Documentação — runbook do e-mail, envs, LGPD, MFA e backlog
+
+**Files:**
+- Create: `docs/email.md`
+- Modify: `README.md`, `AGENTS.md` (§14), `docs/lgpd.md` (§1, §2(a), §4), `docs/mfa.md`, `IDEAS.md`
+
+**Interfaces:** nenhuma de código. Fatos a citar exatamente: envs `RESEND_API_KEY`, `EMAIL_REMETENTE` (default `UAIZI NID <nao-responda@uaizi.com.br>`), `FRONTEND_URL` (produção `https://nid.uaizi.com.br`); constante `RETENCAO_REDEFINICAO_HORAS = 24`; rotas `POST /auth/esqueci-senha` (3/min), `GET /auth/redefinir-senha/validar`, `POST /auth/redefinir-senha` (5/min), `POST /auth/mfa/reenviar` (3/min), `POST /auth/mfa/enviar-codigo` (3/min); migrações `0043_redefinicao_senha`, `0044_usuario_mfa_email`.
+
+- [ ] **Step 1: `docs/email.md`**
+
+```markdown
+# E-mail transacional (Resend) — runbook
+
+Usos: "Esqueci minha senha" (qualquer usuário) e código de verificação por e-mail como segundo
+fator (ADMIN_GLOBAL que escolher e-mail no lugar do app). Spec:
+`docs/superpowers/specs/2026-10-06-email-resend-redefinicao-mfa-design.md`.
+
+## 1. Configurar o Resend (uma vez)
+
+1. Criar a conta em resend.com (plano grátis: 3 mil e-mails/mês).
+2. Domains → Add Domain → `uaizi.com.br`.
+3. Publicar no DNS de `uaizi.com.br` os registros que o Resend mostrar: SPF (`TXT`), DKIM
+   (`TXT`/`CNAME`) e, para começar, DMARC `TXT _dmarc` com `v=DMARC1; p=none`.
+4. Esperar o status "Verified". Sem domínio verificado o Resend responde 403 e nada sai.
+5. API Keys → Create → permissão **Sending access** (só envio).
+
+## 2. Variáveis no Railway (serviço `api`)
+
+| Variável | Valor |
+|---|---|
+| `RESEND_API_KEY` | a chave `re_...` do passo 1.5 |
+| `EMAIL_REMETENTE` | `UAIZI NID <nao-responda@uaizi.com.br>` (default; só mudar se trocar o domínio) |
+| `FRONTEND_URL` | `https://nid.uaizi.com.br` — **obrigatória**: monta o link do e-mail de redefinição |
+
+O serviço `worker` não envia e-mail. Sem `RESEND_API_KEY` a API roda em **modo seco**: nada é
+enviado, o corpo do e-mail vai para o log (fora de produção) e os fluxos seguem como se tivessem
+enviado — útil em desenvolvimento.
+
+## 3. Testar em produção
+
+1. Em `/login` → "Esqueci minha senha" → informar a própria conta.
+2. Conferir a caixa de entrada (e o spam) e o log de envios no painel do Resend.
+3. Abrir o link, definir uma senha nova e entrar com ela.
+
+## 4. Regras que valem saber
+
+- Link de redefinição: 30 minutos, uso único; pedir de novo invalida o anterior; até 3 pedidos
+  por conta por hora (os seguintes respondem igual, sem enviar). A resposta é sempre a mesma,
+  exista ou não a conta.
+- Código MFA por e-mail: 6 dígitos, 10 minutos, 5 tentativas; "Reenviar" a cada 60 s, até 3 vezes
+  por login. Códigos de recuperação continuam valendo.
+- Tokens e códigos ficam no banco só como hash e os tokens de redefinição são apagados 24 h
+  depois (`RETENCAO_REDEFINICAO_HORAS`).
+- Rotas: `POST /auth/esqueci-senha` (3/min), `GET /auth/redefinir-senha/validar`,
+  `POST /auth/redefinir-senha` (5/min), `POST /auth/mfa/reenviar` (3/min),
+  `POST /auth/mfa/enviar-codigo` (3/min, ADMIN_GLOBAL). Migrações `0043_redefinicao_senha` e
+  `0044_usuario_mfa_email`.
+
+## 5. Problemas comuns
+
+- **Caiu no spam**: confirme SPF e DKIM "Verified"; publique DMARC; evite mudar o remetente.
+- **Link aponta para localhost**: `FRONTEND_URL` não foi definida no serviço `api`.
+- **Nada chega e o log diz "HTTP 403"**: domínio não verificado ou chave sem permissão de envio.
+- **Login por e-mail mostra "Não conseguimos enviar o e-mail"**: o Resend falhou ou demorou mais
+  de 10 s; o usuário pode usar "Reenviar código" ou um código de recuperação.
+```
+
+- [ ] **Step 2: README e AGENTS**
+
+`README.md`, no bloco de envs do backend, logo após a linha `MFA_ENCRYPTION_KEY=...`, acrescentar:
+```
+RESEND_API_KEY=re_...            # vazio = modo seco (nada e enviado)
+EMAIL_REMETENTE=UAIZI NID <nao-responda@uaizi.com.br>
+FRONTEND_URL=https://nid.uaizi.com.br
+```
+e, depois do parágrafo do MFA abaixo do bloco, a frase: `Transactional e-mail (password reset and MFA codes by e-mail) goes through Resend; without RESEND_API_KEY it runs in dry mode. See [docs/email.md](docs/email.md).`
+
+`AGENTS.md` §14, na linha **Env vars**, depois de `MFA_ENCRYPTION_KEY (...)`, acrescentar: `, \`RESEND_API_KEY\`, \`EMAIL_REMETENTE\`, \`FRONTEND_URL\` (e-mail transacional via Resend; \`FRONTEND_URL\` obrigatória em produção, ver \`docs/email.md\`)`.
+
+- [ ] **Step 3: LGPD**
+
+Em `docs/lgpd.md`:
+- §1, ao final da seção, novo parágrafo:
+  > Para o envio de e-mails transacionais (redefinição de senha e códigos de verificação), a operadora utiliza o Resend como **suboperador**. São compartilhados com ele apenas o endereço de e-mail, o nome do usuário e o conteúdo da mensagem. Os servidores do Resend ficam nos Estados Unidos; a transferência internacional se apoia nas cláusulas contratuais padrão oferecidas pelo provedor (art. 33, II, "b"). Não há rastreamento de abertura ou de clique.
+- §2 (a), ao final do parágrafo de contas de usuário:
+  > Pedidos de redefinição de senha e códigos de verificação enviados por e-mail são guardados somente como hash (SHA-256 e HMAC-SHA256, respectivamente), nunca em texto claro.
+- §4, depois do primeiro parágrafo:
+  > Os tokens de redefinição de senha (`redefinicao_senha`) são apagados 24 horas depois de criados, pela mesma rotina de purga (constante `RETENCAO_REDEFINICAO_HORAS` em `backend/app/services/audit_service.py`). O código de verificação por e-mail é descartado ao ser usado ou ao expirar (10 minutos).
+
+- [ ] **Step 4: `docs/mfa.md` e `IDEAS.md`**
+
+`docs/mfa.md`, nova seção ao final:
+```markdown
+## Método por e-mail
+
+Ao ativar, o ADMIN_GLOBAL escolhe "App autenticador" ou "Código por e-mail". No método e-mail
+não há segredo TOTP nem `MFA_ENCRYPTION_KEY` envolvida: a cada login a API envia um código de
+6 dígitos (10 min, 5 tentativas, "Reenviar" a cada 60 s até 3 vezes). Para desativar, o modal
+envia um código novo (`POST /auth/mfa/enviar-codigo`). Exige o Resend configurado (`docs/email.md`);
+se o envio falhar, o login mostra o aviso e o usuário pode reenviar ou usar um código de recuperação.
+```
+
+`IDEAS.md`: acrescentar (na seção de backlog, mesmo formato das demais entradas) três itens que reaproveitam a infra de e-mail — "Convite/boas-vindas por e-mail ao criar usuário", "Alertas por limiar por e-mail" e "Relatório executivo mensal em PDF por e-mail" — se ainda não existirem; se existirem, anotar ao lado "infra de e-mail pronta (docs/email.md)".
+
+- [ ] **Step 5: Revisar e commitar**
+
+Conferir que os blocos de código fecham e que nenhum arquivo de código mudou (`git status`).
+
+```bash
+git add docs/email.md README.md AGENTS.md docs/lgpd.md docs/mfa.md IDEAS.md
+git commit -m "docs(email): runbook do Resend, envs, LGPD (suboperador, hash, purga 24h), MFA por e-mail e backlog
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>"
+```
+
+---
+
+## Checklist manual (usuário, depois do deploy)
+
+1. Resend: domínio `uaizi.com.br` "Verified"; `RESEND_API_KEY`, `FRONTEND_URL` no serviço `api`.
+2. `/login` → "Esqueci minha senha" com e-mail inexistente → mesma mensagem, nada chega.
+3. Com a própria conta → e-mail chega em segundos; link abre `/redefinir-senha`; senha nova funciona; o link usado de novo mostra "expirou ou já foi usado".
+4. Pedir duas vezes → só o segundo link vale.
+5. ADMIN_GLOBAL → Segurança → "Código por e-mail" → código chega → ativar → guardar códigos de recuperação.
+6. Sair e entrar → código por e-mail na etapa 2; "Reenviar" bloqueado 60 s; código antigo não vale depois do reenvio.
+7. Segurança → Desativar → código chega → senha + código → desativado.
