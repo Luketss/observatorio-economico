@@ -137,12 +137,21 @@ describe("ExportMenu — itens e ações", () => {
     });
     expect(exportar.baixarBlob.mock.calls[0][1]).toMatch(/\.xlsx$/);
   });
-  it("XLSX 422 → toast de limite; outro erro → toast genérico", async () => {
+  it("XLSX acima dos limites → toast de limite sem chamar a API", async () => {
+    const grande = Array.from({ length: 5001 }, (_, i) => ({ periodo: String(i), valor: i }));
+    montar({}, <Grafico linhas={grande} />);
+    fireEvent.click(screen.getByRole("button", { name: /exportar/i }));
+    fireEvent.click(screen.getByRole("menuitem", { name: "XLSX" }));
+    await waitFor(() => expect(addToast).toHaveBeenCalledWith("Tabela grande demais para exportar (limite de 50 mil células)", "error"));
+    expect(api.post).not.toHaveBeenCalled();
+    expect(exportar.baixarBlob).not.toHaveBeenCalled();
+  });
+  it("XLSX 422 do servidor → toast de dados inválidos; outro erro → toast genérico", async () => {
     api.post.mockRejectedValueOnce({ response: { status: 422 } });
     montar();
     fireEvent.click(screen.getByRole("button", { name: /exportar/i }));
     fireEvent.click(screen.getByRole("menuitem", { name: "XLSX" }));
-    await waitFor(() => expect(addToast).toHaveBeenCalledWith("Tabela grande demais para exportar (limite de 50 mil células)", "error"));
+    await waitFor(() => expect(addToast).toHaveBeenCalledWith("Dados inválidos para a planilha", "error"));
     api.post.mockRejectedValueOnce(new Error("Network Error"));
     fireEvent.click(screen.getByRole("button", { name: /exportar/i }));
     fireEvent.click(screen.getByRole("menuitem", { name: "XLSX" }));
@@ -196,6 +205,13 @@ describe("ExportMenu — teclado e foco", () => {
     fireEvent.click(botao);
     fireEvent.mouseDown(document.body);
     expect(screen.queryByRole("menu")).toBeNull();
+  });
+  it("depois de escolher um item o foco volta ao botão", () => {
+    montar();
+    const botao = screen.getByRole("button", { name: /exportar/i });
+    fireEvent.click(botao);
+    fireEvent.click(screen.getByRole("menuitem", { name: "CSV" }));
+    expect(document.activeElement).toBe(botao);
   });
   it("botão tem aria-haspopup e aria-expanded", () => {
     montar();

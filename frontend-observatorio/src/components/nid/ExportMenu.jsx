@@ -13,6 +13,17 @@ import { FONTES_DATASET, baixarBlob, datasetDe, gerarCsv, nomeArquivo, rodapePng
 
 const MSG_LIMITE = "Tabela grande demais para exportar (limite de 50 mil células)";
 const MSG_XLSX = "Falha ao gerar a planilha. Tente novamente.";
+const MSG_INVALIDO = "Dados inválidos para a planilha";
+
+// Espelha os limites do backend (POST /export/xlsx) para evitar viagem inutil.
+const LIMITE_COLUNAS = 50;
+const LIMITE_LINHAS = 5000;
+const LIMITE_CELULAS = 50000;
+function excedeLimites(reg) {
+  const c = reg.colunas.length;
+  const l = reg.linhas.length;
+  return c > LIMITE_COLUNAS || l > LIMITE_LINHAS || c * l > LIMITE_CELULAS;
+}
 
 // useViewAs lanca fora do ViewAsProvider; exportar e best-effort, entao o menu segue sem municipio.
 // O hook e chamado sempre (mesma ordem de hooks); so o erro e engolido.
@@ -67,6 +78,10 @@ export default function ExportMenu({ titulo, sub, dataset }) {
   };
 
   const exportarXlsx = async (reg) => {
+    if (excedeLimites(reg)) {
+      addToast(MSG_LIMITE, "error");
+      return;
+    }
     try {
       const res = await api.post(
         "/export/xlsx",
@@ -83,7 +98,7 @@ export default function ExportMenu({ titulo, sub, dataset }) {
       );
       baixarBlob(res.data, nome("xlsx"));
     } catch (err) {
-      addToast(err?.response?.status === 422 ? MSG_LIMITE : MSG_XLSX, "error");
+      addToast(err?.response?.status === 422 ? MSG_INVALIDO : MSG_XLSX, "error");
     }
   };
 
@@ -102,7 +117,7 @@ export default function ExportMenu({ titulo, sub, dataset }) {
 
   // Busca o registro no clique: svgRef.current so e lido em handler, nunca no render.
   const agir = (fn, id) => {
-    fechar(false);
+    fechar(true);
     const reg = registros.find((r) => r.id === id);
     if (reg) fn(reg);
   };
