@@ -41,7 +41,7 @@ TEMPO_FIXO = 1_900_000_000.0  # relogio congelado: TOTP e janela ficam determini
 @pytest.fixture(autouse=True)
 def chave(monkeypatch):
     monkeypatch.setattr(mfa_crypto.settings, "MFA_ENCRYPTION_KEY", Fernet.generate_key().decode())
-    # pyotp.now() e o servico usam time.time(); congelar evita flake na virada de passo (30 s)
+    # o servico usa time.time(); pyotp.now() usa datetime.now() (NAO congela) -> testes geram codigos com .at(int(time.time()))
     monkeypatch.setattr(time, "time", lambda: TEMPO_FIXO)
 
 
@@ -75,7 +75,7 @@ def _admin(db):
 def _ativar(db, user):
     svc = MfaService(db)
     cfg = svc.configurar(user)
-    codigo = pyotp.TOTP(cfg["segredo"]).now()
+    codigo = pyotp.TOTP(cfg["segredo"]).at(int(time.time()))
     codigos = svc.ativar(user, codigo, request=_FakeRequest())
     return svc, cfg["segredo"], codigos
 
