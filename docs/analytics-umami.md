@@ -1,7 +1,7 @@
 # Analytics de uso — Umami compartilhado (NID + LEGIS)
 
 Runbook da instância única de [Umami](https://umami.is) que mede o uso do NID
-(`app.uaizi.com.br`) e do LEGIS (`legis.uaizi.com.br`). Documento canônico: o repo do LEGIS
+(`nid.uaizi.com.br`) e do LEGIS (`legis.uaizi.com.br`). Documento canônico: o repo do LEGIS
 (`Uaiizi/camara`) aponta para cá.
 Spec: `docs/superpowers/specs/2026-10-05-umami-analytics-compartilhado-design.md`.
 
@@ -21,9 +21,10 @@ propósito: backup, restore e upgrade do Umami não se misturam com os bancos do
    | `APP_SECRET` | saída de `openssl rand -base64 32`. **Nunca rotacionar**: muda os hashes de visitantes e desloga o admin. |
    | `DISABLE_TELEMETRY` | `1` |
 
-   Não definir `PORT` a princípio: a imagem respeita a porta injetada pela Railway. Se o
-   domínio responder 502, definir `PORT=3000` e redeployar.
-3. Settings → Networking → **Generate Domain**. Anotar a URL
+   Definir também **`PORT=3000`**: a Railway injeta `PORT=8080` e a imagem obedece, mas o
+   domínio gerado no passo 3 aponta para a porta 3000 — sem essa variável o domínio responde
+   502 "Application failed to respond" (confirmado no primeiro deploy, 05/10/2026).
+3. Settings → Networking → **Generate Domain** (porta de destino **3000**; pela CLI: `railway domain --service umami --port 3000`). Anotar a URL
    (ex.: `https://umami-production-xxxx.up.railway.app`). Ela é o `VITE_UMAMI_SRC` dos dois
    apps, **sem barra final**.
 4. Aguardar o deploy. O log mostra as migrações do Prisma e depois o servidor pronto.
@@ -35,7 +36,7 @@ propósito: backup, restore e upgrade do Umami não se misturam com os bancos do
 
 1. Abrir a URL → login `admin` / `umami` → Settings → Profile → **trocar a senha**.
 2. Settings → Websites → **Add website**:
-   - Name `NID`, Domain `app.uaizi.com.br`
+   - Name `NID`, Domain `nid.uaizi.com.br`
    - Name `LEGIS`, Domain `legis.uaizi.com.br`
 3. Em cada website, Edit → copiar o **Website ID**.
 4. Guardar senha e IDs no cofre de credenciais do admin, fora dos repositórios.

@@ -7,7 +7,7 @@ fonte única para os dois; cada repo terá seu próprio plano de implementação
 
 ## Objetivo
 
-Medir o uso real dos dois produtos UAIZI (NID em `app.uaizi.com.br`, LEGIS em
+Medir o uso real dos dois produtos UAIZI (NID em `nid.uaizi.com.br`, LEGIS em
 `legis.uaizi.com.br`) com **uma única instância** de Umami self-hosted na Railway, sabendo
 **qual município e qual papel** está usando cada página, sem introduzir dado pessoal no
 analytics e com o menor custo fixo possível.
@@ -54,7 +54,7 @@ Railway: projeto uaizi-analytics
 └── umami     (ghcr.io/umami-software/umami:postgresql-<tag>)  → https://umami-xxxx.up.railway.app
         ▲ script.js + /api/send                ▲ script.js + /api/send
         │                                      │
-  app.uaizi.com.br (NID, website A)      legis.uaizi.com.br (LEGIS, website B)
+  nid.uaizi.com.br (NID, website A)      legis.uaizi.com.br (LEGIS, website B)
   frontend-observatorio/src/services/    frontend/src/lib/analytics.js
   analytics.js
 ```
@@ -86,7 +86,7 @@ Fluxo em cada app: `main.jsx` chama `iniciarAnalytics(...)` → tag `<script def
 
 1. Settings → Networking → Generate Domain. Essa URL é o `VITE_UMAMI_SRC` dos dois apps.
 2. Login `admin` / `umami` → trocar a senha imediatamente.
-3. Criar dois websites: `NID` (domínio `app.uaizi.com.br`) e `LEGIS` (domínio
+3. Criar dois websites: `NID` (domínio `nid.uaizi.com.br`) e `LEGIS` (domínio
    `legis.uaizi.com.br`). Copiar os dois website IDs.
 4. Guardar senha e IDs no cofre de credenciais do usuário (fora do repo).
 
