@@ -63,7 +63,7 @@ describe("LoginPage — etapa de codigo (MFA)", () => {
 
   it("token invalidado por muitas tentativas volta a etapa da senha com aviso", async () => {
     auth.login.mockResolvedValueOnce({ mfa: true, mfaToken: "tok" });
-    auth.verificarMfa.mockRejectedValueOnce({ response: { status: 401, data: { error: { code: "UNAUTHORIZED", message: "Muitas tentativas; faca login de novo" } } } });
+    auth.verificarMfa.mockRejectedValueOnce({ response: { status: 401, data: { error: { code: "MFA_TOKEN_INVALIDADO", message: "Muitas tentativas; faca login de novo" } } } });
     montar();
     await preencherELogar();
     const campo = await screen.findByLabelText(/Código de verificação/i);
@@ -95,5 +95,16 @@ describe("LoginPage — etapa de codigo (MFA)", () => {
     fireEvent.change(campo, { target: { value: "123456" } });
     fireEvent.click(screen.getByRole("button", { name: "Verificar" }));
     expect(await screen.findByRole("alert")).toHaveTextContent(/indispon/i);
+  });
+
+  it("codigo de erro desconhecido mostra a mensagem do backend", async () => {
+    auth.login.mockResolvedValueOnce({ mfa: true, mfaToken: "tok" });
+    auth.verificarMfa.mockRejectedValueOnce({ response: { status: 401, data: { error: { code: "MFA_SEGREDO_INVALIDO", message: "Segredo MFA invalido; zere e recadastre o MFA" } } } });
+    montar();
+    await preencherELogar();
+    const campo = await screen.findByLabelText(/Código de verificação/i);
+    fireEvent.change(campo, { target: { value: "123456" } });
+    fireEvent.click(screen.getByRole("button", { name: "Verificar" }));
+    expect(await screen.findByRole("alert")).toHaveTextContent("Segredo MFA invalido; zere e recadastre o MFA");
   });
 });

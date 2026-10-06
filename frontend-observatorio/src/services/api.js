@@ -37,7 +37,8 @@ api.interceptors.request.use((config) => {
 // expira em 30min e o front nunca chama /auth/refresh (o refresh_token que o
 // login devolve é ignorado). Também engolia o erro de credencial inválida do
 // /auth/login — o reload disparava antes da mensagem aparecer. Ao reativar,
-// implementar o fluxo de refresh e manter /auth/login fora do redirect.
+// implementar o fluxo de refresh e manter /auth/login e /auth/mfa/* fora do
+// redirect (codigo/senha errados em verificar/ativar/desativar devolvem 401).
 const DELOGAR_AUTOMATICO_ATIVO = false;
 
 api.interceptors.response.use(
@@ -46,7 +47,8 @@ api.interceptors.response.use(
     if (
       DELOGAR_AUTOMATICO_ATIVO &&
       error.response?.status === 401 &&
-      !error.config?.url?.includes("/auth/login")
+      !error.config?.url?.includes("/auth/login") &&
+      !error.config?.url?.includes("/auth/mfa/")
     ) {
       localStorage.removeItem("access_token");
       window.location.href = "/login";

@@ -73,6 +73,21 @@ class AuthService:
         except Exception:
             self.session.rollback()
 
+    def _emitir_tokens(self, user: Usuario) -> dict:
+        access_token = create_access_token(
+            subject=str(user.id),
+            extra_data={
+                "role": user.role.nome,
+                "municipio_id": user.municipio_id,
+            },
+        )
+        refresh_token = create_refresh_token(subject=str(user.id))
+        return {
+            "access_token": access_token,
+            "refresh_token": refresh_token,
+            "token_type": "bearer",
+        }
+
     def authenticate(
         self,
         email: str,
@@ -106,26 +121,14 @@ class AuthService:
         if user.mfa is not None and user.mfa.ativo:
             return {"mfa_obrigatorio": True, "mfa_token": create_mfa_token(str(user.id))}
 
-        access_token = create_access_token(
-            subject=str(user.id),
-            extra_data={
-                "role": user.role.nome,
-                "municipio_id": user.municipio_id,
-            },
-        )
-
-        refresh_token = create_refresh_token(subject=str(user.id))
+        tokens = self._emitir_tokens(user)
 
         # Update last_login and record the successful attempt in one commit.
         user.last_login = datetime.now(timezone.utc)
         self.session.add(user)
         self._record_attempt(user.id, email, True, "ok", ip, user_agent)
 
-        return {
-            "access_token": access_token,
-            "refresh_token": refresh_token,
-            "token_type": "bearer",
-        }
+        return tokens
 
     def refresh(self, refresh_token: str) -> dict:
         payload = decode_token(refresh_token)
@@ -160,34 +163,39 @@ class AuthService:
     def verificar_mfa(self, mfa_token: str, codigo: str, ip: str | None, user_agent: str | None) -> dict:
         payload = decode_token(mfa_token)
         if not payload or payload.get("type") != "mfa" or not payload.get("jti"):
-            raise UnauthorizedException("Sessao de verificacao invalida ou expirada; faca login de novo")
+            raise AppException(
+                code="MFA_SESSAO_INVALIDA",
+                message="Sessao de verificacao invalida ou expirada; faca login de novo",
+                status_code=401,
+            )
         jti = payload["jti"]
         if _token_mfa_invalidado(jti):
-            raise UnauthorizedException("Muitas tentativas; faca login de novo")
+            raise AppException(
+                code="MFA_TOKEN_INVALIDADO", message="Muitas tentativas; faca login de novo", status_code=401
+            )
         try:
             uid = int(payload.get("sub"))
         except (TypeError, ValueError):
-            raise UnauthorizedException("Sessao de verificacao invalida")
+            raise AppException(code="MFA_SESSAO_INVALIDA", message="Sessao de verificacao invalida", status_code=401)
         user = self.session.get(Usuario, uid)
         if not user or not user.ativo or user.mfa is None or not user.mfa.ativo:
-            raise UnauthorizedException("Sessao de verificacao invalida")
+            raise AppException(code="MFA_SESSAO_INVALIDA", message="Sessao de verificacao invalida", status_code=401)
         exigir_chave()
         if not MfaService(self.session).codigo_valido(user.mfa, codigo):
             self._record_attempt(user.id, user.email, False, "mfa_invalido", ip, user_agent)
             n = _registrar_falha_mfa(jti)
             if n >= MFA_MAX_FALHAS:
-                raise UnauthorizedException("Muitas tentativas; faca login de novo")
+                raise AppException(
+                code="MFA_TOKEN_INVALIDADO", message="Muitas tentativas; faca login de novo", status_code=401
+            )
             raise UnauthorizedException("Codigo invalido")
-        _FALHAS_MFA.pop(jti, None)
-        access_token = create_access_token(
-            subject=str(user.id),
-            extra_data={"role": user.role.nome, "municipio_id": user.municipio_id},
-        )
-        refresh_token = create_refresh_token(subject=str(user.id))
+        # Uso unico: marca o jti como consumido ate expirar (reuso cai no pre-check).
+        _FALHAS_MFA[jti] = (MFA_MAX_FALHAS, payload["exp"])
+        tokens = self._emitir_tokens(user)
         user.last_login = datetime.now(timezone.utc)
         self.session.add(user)
         self._record_attempt(user.id, user.email, True, "mfa_ok", ip, user_agent)
-        return {"access_token": access_token, "refresh_token": refresh_token, "token_type": "bearer"}
+        return tokens
 
     def alterar_senha(self, user, senha_atual: str, nova_senha: str) -> None:
         if not verify_password(senha_atual, user.senha_hash):

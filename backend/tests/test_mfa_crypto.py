@@ -51,10 +51,19 @@ def test_chave_invalida_levanta_503(monkeypatch):
         mfa_crypto.cifrar("x")
 
 
-def test_token_corrompido_levanta_unauthorized(com_chave):
-    from app.core.exceptions import UnauthorizedException
-    with pytest.raises(UnauthorizedException):
+def test_token_corrompido_levanta_401_com_codigo_proprio(com_chave):
+    with pytest.raises(AppException) as exc:
         mfa_crypto.decifrar("gAAAAABtoken-invalido")
+    assert exc.value.status_code == 401
+    assert exc.value.code == "MFA_SEGREDO_INVALIDO"
+
+
+def test_chave_so_com_espacos_nao_conta_como_configurada(monkeypatch):
+    monkeypatch.setattr(mfa_crypto.settings, "MFA_ENCRYPTION_KEY", "   ")
+    assert mfa_crypto.chave_configurada() is False
+    with pytest.raises(mfa_crypto.MfaIndisponivel) as exc:
+        mfa_crypto.exigir_chave()
+    assert exc.value.status_code == 503
 
 
 def test_modelo_usuario_mfa_registrado():

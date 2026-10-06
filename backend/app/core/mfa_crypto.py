@@ -2,7 +2,7 @@
 from cryptography.fernet import Fernet, InvalidToken
 
 from app.core.config import settings
-from app.core.exceptions import AppException, UnauthorizedException
+from app.core.exceptions import AppException
 
 
 class MfaIndisponivel(AppException):
@@ -35,4 +35,8 @@ def decifrar(token: str) -> str:
     try:
         return _fernet().decrypt(token.encode()).decode()
     except InvalidToken as exc:
-        raise UnauthorizedException("Segredo MFA invalido; zere e recadastre o MFA") from exc
+        raise AppException(
+            code="MFA_SEGREDO_INVALIDO",
+            message="Segredo MFA invalido; zere e recadastre o MFA",
+            status_code=401,
+        ) from exc

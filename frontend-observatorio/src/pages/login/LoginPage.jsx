@@ -73,13 +73,16 @@ export default function LoginPage() {
     try {
       await verificarMfa(mfaToken, codigo);
     } catch (err) {
-      const msg = mensagemDoErro(err, "Código inválido");
-      if (/login de novo|expirad/i.test(msg)) {
+      const code = err?.response?.data?.error?.code;
+      const status = err?.response?.status;
+      if (code === "MFA_TOKEN_INVALIDADO" || code === "MFA_SESSAO_INVALIDA") {
         voltarParaSenha("Sessão de verificação encerrada. Faça login de novo.");
-      } else if (/indispon/i.test(msg)) {
+      } else if (status === 503 || code === "MFA_INDISPONIVEL") {
         setError("MFA indisponível no servidor. Avise o administrador.");
-      } else {
+      } else if (code === "UNAUTHORIZED") {
         setError("Código inválido. Confira o app autenticador e tente de novo.");
+      } else {
+        setError(mensagemDoErro(err, "Não foi possível verificar o código."));
       }
     } finally {
       setLoading(false);
