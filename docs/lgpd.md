@@ -25,7 +25,10 @@ A plataforma trata três classes de dados pessoais:
 **(a) Contas de usuário.** Para cada servidor com acesso ao sistema: nome,
 e-mail, hash de senha (com o algoritmo bcrypt — a senha em texto claro nunca
 é armazenada), papel de acesso (role), município de vínculo e data do último
-login.
+login. Quando o usuário ativa a verificação em duas etapas, a plataforma guarda
+também o segredo TOTP cifrado em repouso (Fernet, chave fora do banco) e hashes
+bcrypt dos códigos de recuperação; nenhum dos dois é legível por quem acessa o
+banco.
 
 **(b) Registros de acesso e ações.** A plataforma mantém uma trilha de
 auditoria composta por duas tabelas: `login_audit`, que registra as
@@ -98,6 +101,9 @@ A plataforma adota as seguintes medidas técnicas e organizacionais:
 - Limitação de taxa de requisições (rate limiting) em rotas sensíveis.
 - Criptografia em trânsito (TLS), provida pela infraestrutura de hospedagem
   (Railway).
+- Segundo fator opcional por app autenticador (TOTP) para administradores da
+  plataforma, com códigos de recuperação de uso único e registro das tentativas
+  na trilha de logins.
 - Documentação interativa da API (Swagger/OpenAPI) desabilitada em
   produção, para reduzir a superfície de informação exposta publicamente.
 - Trilha de auditoria de tentativas de login, ações administrativas e

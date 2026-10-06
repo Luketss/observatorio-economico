@@ -427,7 +427,10 @@ ACCESS_TOKEN_EXPIRE_MINUTES=60
 REFRESH_TOKEN_EXPIRE_DAYS=7
 ENVIRONMENT=production
 ANTHROPIC_API_KEY=sk-ant-...
+MFA_ENCRYPTION_KEY=<fernet key — python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())">
 ```
+
+MFA (TOTP) is optional and only ADMIN_GLOBAL can enroll; without MFA_ENCRYPTION_KEY the MFA endpoints answer 503 and plain login keeps working. See [docs/mfa.md](docs/mfa.md).
 
 ### Frontend environment variables
 
