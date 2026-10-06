@@ -903,6 +903,10 @@ TEMPO_FIXO = 1_900_000_000.0
 def chave(monkeypatch):
     monkeypatch.setattr(mfa_crypto.settings, "MFA_ENCRYPTION_KEY", Fernet.generate_key().decode())
     monkeypatch.setattr(time, "time", lambda: TEMPO_FIXO)  # TOTP deterministico
+    # Os handlers sao decorados com @limiter.limit; chamados direto com um Request
+    # falso (sem .state/.app), o slowapi so e inofensivo com o limiter desligado.
+    from app.core.rate_limit import limiter
+    monkeypatch.setattr(limiter, "enabled", False)
     auth_mod._FALHAS_MFA.clear()
 
 
