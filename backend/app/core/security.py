@@ -1,4 +1,5 @@
 import secrets
+import uuid
 from datetime import datetime, timedelta, timezone
 from typing import Any, Dict
 
@@ -79,6 +80,23 @@ def create_refresh_token(subject: str) -> str:
     )
 
     return encoded_jwt
+
+
+MFA_TOKEN_EXPIRE_MINUTES = 5
+
+
+def create_mfa_token(subject: str) -> str:
+    """Token intermediario do login em duas etapas. type="mfa": get_current_user
+    o rejeita, entao ele so serve para POST /auth/mfa/verificar."""
+    now = datetime.now(timezone.utc)
+    to_encode: Dict[str, Any] = {
+        "sub": subject,
+        "type": "mfa",
+        "jti": uuid.uuid4().hex,
+        "exp": now + timedelta(minutes=MFA_TOKEN_EXPIRE_MINUTES),
+        "iat": now,
+    }
+    return jwt.encode(to_encode, settings.SECRET_KEY, algorithm=ALGORITHM)
 
 
 def decode_token(token: str) -> Dict[str, Any] | None:
