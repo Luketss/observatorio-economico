@@ -62,7 +62,7 @@ lado de "Alterar senha"). Spec: `docs/superpowers/specs/2026-10-06-mfa-totp-admi
 ## 5. Limites conhecidos
 
 - Contador de falhas em memória por processo (com N réplicas, até 5×N tentativas por tentativa de login).
-- Só TOTP nesta frente; código por e-mail chega com a frente de e-mail.
+- O código por e-mail depende do Resend configurado (`docs/email.md`); sem a chave em produção o envio falha (502 no cadastro, `enviado: false` no login).
 
 ## Método por e-mail
 
@@ -71,3 +71,5 @@ não há segredo TOTP nem `MFA_ENCRYPTION_KEY` envolvida: a cada login a API env
 6 dígitos (10 min, 5 tentativas, "Reenviar" a cada 60 s até 3 vezes). Para desativar, o modal
 envia um código novo (`POST /auth/mfa/enviar-codigo`). Exige o Resend configurado (`docs/email.md`);
 se o envio falhar, o login mostra o aviso e o usuário pode reenviar ou usar um código de recuperação.
+
+Rollback da migração 0044 apaga os cadastros por e-mail (sem segredo TOTP): esses ADMIN_GLOBAL voltam a entrar só com a senha e precisam recadastrar.
