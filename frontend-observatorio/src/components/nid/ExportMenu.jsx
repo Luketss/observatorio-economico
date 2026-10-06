@@ -14,9 +14,19 @@ import { FONTES_DATASET, baixarBlob, datasetDe, gerarCsv, nomeArquivo, rodapePng
 const MSG_LIMITE = "Tabela grande demais para exportar (limite de 50 mil células)";
 const MSG_XLSX = "Falha ao gerar a planilha. Tente novamente.";
 
+// useViewAs lanca fora do ViewAsProvider; exportar e best-effort, entao o menu segue sem municipio.
+// O hook e chamado sempre (mesma ordem de hooks); so o erro e engolido.
+function useViewAsSeguro() {
+  try {
+    return useViewAs() || {};
+  } catch {
+    return {};
+  }
+}
+
 export default function ExportMenu({ titulo, sub, dataset }) {
   const { user } = useAuth() || {};
-  const viewAs = useViewAs() || {};
+  const viewAs = useViewAsSeguro();
   const { addToast } = useToast();
   const registros = useExportacoes();
   const [aberto, setAberto] = useState(false);
@@ -90,19 +100,21 @@ export default function ExportMenu({ titulo, sub, dataset }) {
     }
   };
 
-  const agir = (fn, reg) => {
+  // Busca o registro no clique: svgRef.current so e lido em handler, nunca no render.
+  const agir = (fn, id) => {
     fechar(false);
-    fn(reg);
+    const reg = registros.find((r) => r.id === id);
+    if (reg) fn(reg);
   };
 
   const itens = [];
-  // svgRef.current so e lido dentro do onClick (exportarPng), nunca no render: falso positivo do lint.
+  // Falso positivo do lint: so se testa se svgRef existe; .current e lido apenas no clique.
   // eslint-disable-next-line react-hooks/refs
   prontos.forEach((reg) => {
     const sufixo = varios ? ` · ${reg.rotulo}` : "";
-    itens.push({ chave: `csv-${reg.id}`, texto: `CSV${sufixo}`, onClick: () => agir(exportarCsv, reg) });
-    itens.push({ chave: `xlsx-${reg.id}`, texto: `XLSX${sufixo}`, onClick: () => agir(exportarXlsx, reg) });
-    if (reg.svgRef) itens.push({ chave: `png-${reg.id}`, texto: `PNG${sufixo}`, onClick: () => agir(exportarPng, reg) });
+    itens.push({ chave: `csv-${reg.id}`, texto: `CSV${sufixo}`, onClick: () => agir(exportarCsv, reg.id) });
+    itens.push({ chave: `xlsx-${reg.id}`, texto: `XLSX${sufixo}`, onClick: () => agir(exportarXlsx, reg.id) });
+    if (reg.svgRef) itens.push({ chave: `png-${reg.id}`, texto: `PNG${sufixo}`, onClick: () => agir(exportarPng, reg.id) });
   });
 
   return (

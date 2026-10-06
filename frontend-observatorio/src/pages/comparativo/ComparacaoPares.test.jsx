@@ -2,7 +2,6 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen, waitFor, fireEvent } from "@testing-library/react";
 
-vi.mock("../../components/nid/ExportMenu", () => ({ default: () => null }));
 vi.mock("../../context/AuthContext", () => ({
   useAuth: () => ({ user: { role: "PREFEITO" } }),
 }));

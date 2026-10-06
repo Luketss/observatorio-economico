@@ -10,7 +10,13 @@ import * as exportar from "../../utils/exportar";
 const auth = { user: { id: 1, role: "ADMIN_GLOBAL" } };
 vi.mock("../../context/AuthContext", () => ({ useAuth: () => auth }));
 const viewAs = { viewAsId: null, viewAsNome: null };
-vi.mock("../../context/ViewAsContext", () => ({ useViewAs: () => viewAs }));
+const semProvider = { ativo: false };
+vi.mock("../../context/ViewAsContext", () => ({
+  useViewAs: () => {
+    if (semProvider.ativo) throw new Error("useViewAs must be used inside <ViewAsProvider>");
+    return viewAs;
+  },
+}));
 const addToast = vi.fn();
 vi.mock("../../context/ToastContext", () => ({ useToast: () => ({ addToast }) }));
 vi.mock("../../services/api", () => ({ default: { post: vi.fn() } }));
@@ -39,6 +45,7 @@ beforeEach(() => {
   vi.clearAllMocks();
   auth.user = { id: 1, role: "ADMIN_GLOBAL" };
   viewAs.viewAsNome = null;
+  semProvider.ativo = false;
   window.history.replaceState({}, "", "/app/pib");
 });
 
@@ -102,6 +109,13 @@ describe("ExportMenu — itens e ações", () => {
     expect(blob.type).toBe("text/csv;charset=utf-8");
     expect(nome).toMatch(/^nid_pib_evolucao-anual-do-pib_divinopolis_\d{4}-\d{2}-\d{2}\.csv$/);
     expect(screen.queryByRole("menu")).toBeNull(); // fecha após agir
+  });
+  it("renderiza sem ViewAsProvider (nome de arquivo sem município)", () => {
+    semProvider.ativo = true;
+    montar();
+    fireEvent.click(screen.getByRole("button", { name: /exportar/i }));
+    fireEvent.click(screen.getByRole("menuitem", { name: "CSV" }));
+    expect(exportar.baixarBlob.mock.calls[0][1]).toMatch(/^nid_pib_evolucao-anual-do-pib_\d{4}-\d{2}-\d{2}\.csv$/);
   });
   it("XLSX chama POST /export/xlsx com colunas, linhas, fonte e dataset, e baixa o blob", async () => {
     api.post.mockResolvedValueOnce({ data: new Blob(["x"], { type: "application/octet-stream" }) });
