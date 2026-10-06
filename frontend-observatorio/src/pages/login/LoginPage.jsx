@@ -12,8 +12,12 @@ import bg from "../../assets/bg.jpeg";
 import nidLogo from "../../assets/nid_fundo_transparente.png";
 import logo from "../../assets/logo_uaizi.png";
 
+function mensagemDoErro(err, padrao) {
+  return err?.response?.data?.error?.message || err?.response?.data?.detail || padrao;
+}
+
 export default function LoginPage() {
-  const { login, user, loading: authLoading } = useAuth();
+  const { login, verificarMfa, user, loading: authLoading } = useAuth();
   const navigate = useNavigate();
 
   const [email, setEmail] = useState("");
@@ -21,6 +25,10 @@ export default function LoginPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const [etapa, setEtapa] = useState("senha");       // "senha" | "codigo"
+  const [mfaToken, setMfaToken] = useState(null);
+  const [codigo, setCodigo] = useState("");
+  const [usarRecuperacao, setUsarRecuperacao] = useState(false);
 
   // Navigate only after React has committed the user state — avoids
   // the ProtectedRoute seeing user===null and bouncing back to /login.
@@ -33,11 +41,46 @@ export default function LoginPage() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
+    setError("");
     try {
-      await login(email, senha);
-      // Navigation is handled by the useEffect above once user state is committed.
+      const r = await login(email, senha);
+      if (r && r.mfa) {
+        setMfaToken(r.mfaToken);
+        setCodigo("");
+        setUsarRecuperacao(false);
+        setEtapa("codigo");
+      }
     } catch {
       setError("Email ou senha incorretos. Verifique suas credenciais e tente novamente.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const voltarParaSenha = (aviso = "") => {
+    setEtapa("senha");
+    setMfaToken(null);
+    setCodigo("");
+    setUsarRecuperacao(false);
+    setSenha("");
+    setError(aviso);
+  };
+
+  const handleVerificar = async (e) => {
+    e.preventDefault();
+    setLoading(true);
+    setError("");
+    try {
+      await verificarMfa(mfaToken, codigo);
+    } catch (err) {
+      const msg = mensagemDoErro(err, "Código inválido");
+      if (/login de novo|expirad/i.test(msg)) {
+        voltarParaSenha("Sessão de verificação encerrada. Faça login de novo.");
+      } else if (/indispon/i.test(msg)) {
+        setError("MFA indisponível no servidor. Avise o administrador.");
+      } else {
+        setError("Código inválido. Confira o app autenticador e tente de novo.");
+      }
     } finally {
       setLoading(false);
     }
@@ -103,10 +146,54 @@ export default function LoginPage() {
           <div className="w-full bg-white/[0.97] backdrop-blur-md rounded-2xl shadow-2xl shadow-black/40 border border-white/20 p-8">
             {/* Card header */}
             <div className="mb-7 text-center">
-              <h1 className="text-lg font-bold text-slate-800 tracking-tight">Acesse sua conta</h1>
-              <p className="text-slate-400 text-xs mt-1">Insira suas credenciais para continuar</p>
+              <h1 className="text-lg font-bold text-slate-800 tracking-tight">{etapa === "codigo" ? "Verificação em duas etapas" : "Acesse sua conta"}</h1>
+              <p className="text-slate-400 text-xs mt-1">{etapa === "codigo" ? "Código do app autenticador" : "Insira suas credenciais para continuar"}</p>
             </div>
 
+            {etapa === "codigo" ? (
+            <form onSubmit={handleVerificar} className="space-y-4" noValidate>
+              <p className="text-xs text-slate-500">
+                Sua conta tem verificação em duas etapas. Digite o código do app autenticador.
+              </p>
+              <div className="flex flex-col gap-1.5">
+                <label htmlFor="login-codigo" className="text-xs font-semibold text-slate-500 uppercase tracking-wider">
+                  {usarRecuperacao ? "Código de recuperação" : "Código de verificação"}
+                </label>
+                <input
+                  id="login-codigo"
+                  type="text"
+                  value={codigo}
+                  onChange={(e) => { setCodigo(e.target.value); if (error) setError(""); }}
+                  required
+                  autoFocus
+                  inputMode={usarRecuperacao ? "text" : "numeric"}
+                  autoComplete="one-time-code"
+                  placeholder={usarRecuperacao ? "XXXX-XXXX" : "000000"}
+                  maxLength={usarRecuperacao ? 9 : 7}
+                  className="w-full px-4 py-3 rounded-xl border border-slate-200 bg-white text-sm text-slate-800 placeholder-slate-300 tracking-[0.3em] text-center focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-shadow"
+                  aria-required="true"
+                />
+              </div>
+              {error && (
+                <div role="alert" aria-live="polite" className="flex items-start gap-2.5 bg-red-50 border border-red-100 text-red-700 text-xs px-4 py-3 rounded-xl">
+                  <ExclamationCircleIcon className="w-4 h-4 shrink-0 mt-0.5 text-red-500" aria-hidden="true" />
+                  {error}
+                </div>
+              )}
+              <button type="submit" disabled={loading || codigo.trim().length < 6} aria-busy={loading}
+                className="w-full flex items-center justify-center gap-2 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-500 hover:to-blue-600 disabled:opacity-60 disabled:cursor-not-allowed text-white font-semibold py-3 rounded-xl text-sm transition-all duration-200 shadow-lg shadow-blue-500/20 focus:outline-none focus:ring-2 focus:ring-blue-400/50 cursor-pointer mt-2">
+                {loading ? "Verificando..." : "Verificar"}
+              </button>
+              <div className="flex items-center justify-between text-xs">
+                <button type="button" onClick={() => voltarParaSenha("")} className="text-slate-500 hover:text-slate-700 cursor-pointer">
+                  Voltar
+                </button>
+                <button type="button" onClick={() => { setUsarRecuperacao((v) => !v); setCodigo(""); setError(""); }} className="text-blue-600 hover:text-blue-700 cursor-pointer">
+                  {usarRecuperacao ? "Usar código do app" : "Usar código de recuperação"}
+                </button>
+              </div>
+            </form>
+            ) : (
             <form onSubmit={handleSubmit} className="space-y-4" noValidate>
 
               {/* Email */}
@@ -196,6 +283,7 @@ export default function LoginPage() {
                 )}
               </button>
             </form>
+            )}
           </div>
         </motion.div>
 

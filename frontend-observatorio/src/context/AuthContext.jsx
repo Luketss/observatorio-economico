@@ -40,26 +40,30 @@ export function AuthProvider({ children }) {
     if (dados) identificarSessao(dados);
   }, [user]);
 
+  const carregarUsuario = async () => {
+    const me = await api.get("/auth/me");
+    setUser(me.data.data);
+  };
+
+  // Devolve { mfa: true, mfaToken } quando o backend exige o 2o fator; nesse
+  // caso nenhum token e gravado ate verificarMfa() concluir.
   const login = async (email, senha) => {
     const response = await api.post(
       "/auth/login",
-      new URLSearchParams({
-        username: email,
-        password: senha,
-      }),
-      {
-        headers: {
-          "Content-Type": "application/x-www-form-urlencoded",
-        },
-      }
+      new URLSearchParams({ username: email, password: senha }),
+      { headers: { "Content-Type": "application/x-www-form-urlencoded" } }
     );
-
-    const { access_token } = response.data;
-
+    const { access_token, mfa_obrigatorio, mfa_token } = response.data;
+    if (mfa_obrigatorio) return { mfa: true, mfaToken: mfa_token };
     localStorage.setItem("access_token", access_token);
+    await carregarUsuario();
+    return { mfa: false };
+  };
 
-    const me = await api.get("/auth/me");
-    setUser(me.data.data);
+  const verificarMfa = async (mfaToken, codigo) => {
+    const response = await api.post("/auth/mfa/verificar", { mfa_token: mfaToken, codigo });
+    localStorage.setItem("access_token", response.data.access_token);
+    await carregarUsuario();
   };
 
   const logout = () => {
@@ -68,7 +72,7 @@ export function AuthProvider({ children }) {
   };
 
   return (
-    <AuthContext.Provider value={{ user, login, logout, loading }}>
+    <AuthContext.Provider value={{ user, login, verificarMfa, logout, loading }}>
       {children}
     </AuthContext.Provider>
   );

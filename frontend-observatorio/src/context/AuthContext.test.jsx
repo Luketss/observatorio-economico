@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { fireEvent, render, screen } from "@testing-library/react";
+import { useState } from "react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { AuthProvider, useAuth } from "./AuthContext";
 import api from "../services/api";
 import { identificarSessao } from "../services/analytics";
@@ -137,5 +138,60 @@ describe("AuthContext — identificação da sessão no analytics", () => {
 
     expect(identificarSessao).toHaveBeenCalledTimes(2);
     expect(identificarSessao).toHaveBeenLastCalledWith({ municipio_id: 12, papel: "ADMIN_MUNICIPIO" });
+  });
+});
+
+function ProbeMfa() {
+  const { user, loading, login, verificarMfa } = useAuth();
+  const [res, setRes] = useState(null);
+  if (loading) return <div>carregando</div>;
+  return (
+    <div>
+      <div>{user ? user.nome : "sem-user"}</div>
+      <div data-testid="res">{res ? JSON.stringify(res) : ""}</div>
+      <button onClick={async () => setRes(await login("a@x", "s"))}>login</button>
+      <button onClick={() => verificarMfa("tok-mfa", "123456")}>verificar</button>
+    </div>
+  );
+}
+
+describe("AuthContext — login em duas etapas (MFA)", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    localStorage.removeItem("access_token");
+  });
+
+  it("login com mfa_obrigatorio devolve { mfa: true, mfaToken } e NAO grava token nem carrega /auth/me", async () => {
+    api.post.mockResolvedValueOnce({ data: { mfa_obrigatorio: true, mfa_token: "tok-mfa" } });
+    render(<AuthProvider><ProbeMfa /></AuthProvider>);
+    await screen.findByText("sem-user");
+    fireEvent.click(screen.getByText("login"));
+    await waitFor(() => expect(screen.getByTestId("res").textContent).toBe(JSON.stringify({ mfa: true, mfaToken: "tok-mfa" })));
+    expect(localStorage.getItem("access_token")).toBeNull();
+    expect(api.get).not.toHaveBeenCalled();
+    expect(identificarSessao).not.toHaveBeenCalled();
+  });
+
+  it("login sem MFA devolve { mfa: false } e segue como antes", async () => {
+    api.post.mockResolvedValueOnce({ data: { access_token: "t1" } });
+    api.get.mockResolvedValueOnce({ data: { data: { id: 1, nome: "Ana", municipio_id: 7, role: "VISUALIZADOR" } } });
+    render(<AuthProvider><ProbeMfa /></AuthProvider>);
+    await screen.findByText("sem-user");
+    fireEvent.click(screen.getByText("login"));
+    await screen.findByText("Ana");
+    expect(screen.getByTestId("res").textContent).toBe(JSON.stringify({ mfa: false }));
+    expect(localStorage.getItem("access_token")).toBe("t1");
+  });
+
+  it("verificarMfa chama /auth/mfa/verificar, grava o token e carrega o usuario", async () => {
+    api.post.mockResolvedValueOnce({ data: { access_token: "t2", refresh_token: "r2" } });
+    api.get.mockResolvedValueOnce({ data: { data: { id: 1, nome: "Bia", municipio_id: null, role: "ADMIN_GLOBAL" } } });
+    render(<AuthProvider><ProbeMfa /></AuthProvider>);
+    await screen.findByText("sem-user");
+    fireEvent.click(screen.getByText("verificar"));
+    await screen.findByText("Bia");
+    expect(api.post).toHaveBeenCalledWith("/auth/mfa/verificar", { mfa_token: "tok-mfa", codigo: "123456" });
+    expect(localStorage.getItem("access_token")).toBe("t2");
+    expect(identificarSessao).toHaveBeenCalledWith({ papel: "ADMIN_GLOBAL" });
   });
 });
