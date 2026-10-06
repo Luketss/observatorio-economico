@@ -61,5 +61,9 @@ def test_rota_registrada_no_app_com_prefixo_e_dependencia_de_papel():
     assert "/api/v1/export/xlsx" in rotas
     rota = rotas["/api/v1/export/xlsx"]
     assert rota.methods == {"POST"}
-    nomes = [getattr(d.call, "__qualname__", "") for d in rota.dependant.dependencies]
-    assert any("role_checker" in n for n in nomes), nomes
+    import inspect
+
+    checkers = [d.call for d in rota.dependant.dependencies if getattr(d.call, "__name__", "") == "role_checker"]
+    assert checkers, [getattr(d.call, "__qualname__", "") for d in rota.dependant.dependencies]
+    papeis = [inspect.getclosurevars(c).nonlocals.get("required_role") for c in checkers]
+    assert "ADMIN_GLOBAL" in papeis, papeis

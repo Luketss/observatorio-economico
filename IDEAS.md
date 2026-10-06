@@ -56,6 +56,7 @@ Score proprietário 0-100 (ou grade A-E) calculado automaticamente a partir de t
 ## Alto Impacto / Baixo Esforço
 
 ### Exportação PDF / Excel
+> **Parcialmente entregue (06/10/2026):** CSV, XLSX e PNG por gráfico para ADMIN_GLOBAL — spec `docs/superpowers/specs/2026-10-06-exportacao-graficos-design.md`. Resta PDF.
 Botão de exportação em cada página para gerar relatórios compartilháveis.
 - Prefeitos e secretários precisam apresentar dados em reuniões
 - PDF com gráficos renderizados + tabela de dados
