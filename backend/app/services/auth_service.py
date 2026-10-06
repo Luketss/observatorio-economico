@@ -186,8 +186,8 @@ class AuthService:
             n = _registrar_falha_mfa(jti)
             if n >= MFA_MAX_FALHAS:
                 raise AppException(
-                code="MFA_TOKEN_INVALIDADO", message="Muitas tentativas; faca login de novo", status_code=401
-            )
+                    code="MFA_TOKEN_INVALIDADO", message="Muitas tentativas; faca login de novo", status_code=401
+                )
             raise UnauthorizedException("Codigo invalido")
         # Uso unico: marca o jti como consumido ate expirar (reuso cai no pre-check).
         _FALHAS_MFA[jti] = (MFA_MAX_FALHAS, payload["exp"])
