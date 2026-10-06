@@ -1,0 +1,8 @@
+Olá, $nome.
+
+Recebemos um pedido para redefinir a senha da sua conta no UAIZI NID.
+Abra este endereço para definir a nova senha:
+
+$link
+
+O link vale por 30 minutos e pode ser usado uma única vez.

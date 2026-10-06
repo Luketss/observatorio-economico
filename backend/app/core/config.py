@@ -25,6 +25,14 @@ class Settings(BaseSettings):
     # codigos TOTP; os codigos de recuperacao (hash bcrypt) continuam valendo.
     MFA_ENCRYPTION_KEY: str = ""
 
+    # E-mail transacional (Resend, docs/email.md). Sem RESEND_API_KEY = modo seco:
+    # nada e enviado, o corpo vai para o log (fora de producao) e os fluxos seguem
+    # como se tivessem enviado. FRONTEND_URL monta os links dos e-mails
+    # (producao: https://nid.uaizi.com.br).
+    RESEND_API_KEY: str = ""
+    EMAIL_REMETENTE: str = "UAIZI NID <nao-responda@uaizi.com.br>"
+    FRONTEND_URL: str = "http://localhost:5173"
+
     # App
     ENVIRONMENT: str = "development"
     CORS_ORIGINS: str = "http://localhost:5173,http://localhost:3000"
