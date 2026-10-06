@@ -18,6 +18,12 @@ class Settings(BaseSettings):
     ACCESS_TOKEN_EXPIRE_MINUTES: int = Field(default=43200)
     REFRESH_TOKEN_EXPIRE_DAYS: int = Field(default=7)
 
+    # MFA (TOTP): chave Fernet para cifrar o segredo em repouso. Gerar uma vez com
+    #   python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"
+    # Vazia = MFA indisponivel (cadastro/verificacao respondem 503; login sem MFA segue normal).
+    # NUNCA rotacionar sem zerar os MFAs cadastrados (docs/mfa.md).
+    MFA_ENCRYPTION_KEY: str = ""
+
     # App
     ENVIRONMENT: str = "development"
     CORS_ORIGINS: str = "http://localhost:5173,http://localhost:3000"

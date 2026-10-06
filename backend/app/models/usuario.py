@@ -33,3 +33,7 @@ class Usuario(Base):
 
     municipio = relationship("Municipio", back_populates="usuarios")
     role = relationship("Role", back_populates="usuarios")
+    mfa = relationship(
+        "UsuarioMfa", back_populates="usuario", uselist=False,
+        cascade="all, delete-orphan", passive_deletes=True,
+    )

@@ -39,6 +39,7 @@ from app.models.rais import (
 )
 from app.models.role import Role
 from app.models.usuario import Usuario
+from app.models.usuario_mfa import UsuarioMfa
 from app.models.desenvolvimento_economico import (
     InvestimentoFunil,
     EmpresaRetencao,
@@ -55,6 +56,7 @@ from app.models.cidade_inteligente import CertificacaoCidade, CertificacaoRequis
 
 __all__ = [
     "Usuario",
+    "UsuarioMfa",
     "Role",
     "Municipio",
     "ArrecadacaoMensal",

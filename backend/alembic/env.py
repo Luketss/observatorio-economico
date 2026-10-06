@@ -29,6 +29,7 @@ from app.models import (  # noqa
     rais,
     role,
     usuario,
+    usuario_mfa,
 )
 from sqlalchemy import engine_from_config, pool
 
