@@ -6,9 +6,12 @@ import {
   datasetDe,
   formatarCelulaCsv,
   gerarCsv,
+  inlinarEstilosSvg,
   nomeArquivo,
+  resolverVars,
   rodapePng,
   slugify,
+  svgParaPng,
 } from "./exportar";
 
 describe("slugify", () => {
@@ -130,5 +133,130 @@ describe("FONTES_DATASET e rodapePng", () => {
     expect(rodapePng("pib", data)).toBe("Fonte: IBGE · UAIZI NID · 06/10/2026");
     expect(rodapePng("desconhecido", data)).toBe("UAIZI NID · 06/10/2026");
     expect(rodapePng("", data)).toBe("UAIZI NID · 06/10/2026");
+  });
+});
+
+describe("resolverVars", () => {
+  const raiz = { getPropertyValue: (n) => ({ "--accent-1": "#ff0000" }[n] || "") };
+  it("resolve pela raiz, usa fallback, ou devolve vazio", () => {
+    expect(resolverVars("var(--accent-1)", raiz)).toBe("#ff0000");
+    expect(resolverVars("var(--nada, #00ff00)", raiz)).toBe("#00ff00");
+    expect(resolverVars("var(--nada)", raiz)).toBe("");
+    expect(resolverVars("rgb(1, 2, 3)", raiz)).toBe("rgb(1, 2, 3)");
+    expect(resolverVars("", raiz)).toBe("");
+    expect(resolverVars(null, raiz)).toBe("");
+    expect(resolverVars("var(--accent-1)", null)).toBe("");
+  });
+});
+
+describe("inlinarEstilosSvg", () => {
+  // O jsdom não resolve var() em getComputedStyle de forma confiável, então o
+  // `win` é falso: `computados` é o que getComputedStyle devolve para qualquer
+  // elemento do svg, `raiz` é o que devolve para document.documentElement.
+  function winFake(computados = {}, raiz = {}) {
+    return {
+      getComputedStyle: (el) => ({
+        getPropertyValue: (p) => (el === document.documentElement ? raiz[p] ?? "" : computados[p] ?? ""),
+      }),
+    };
+  }
+  function svgComVar() {
+    document.body.innerHTML = `
+      <svg viewBox="0 0 100 50" width="100" height="50">
+        <path d="M0 0 L10 10" fill="var(--accent-1)" stroke="var(--accent-1, #00ff00)" class="nid-line"></path>
+        <text x="1" y="1" style="fill: var(--text); font-family: var(--font-mono), monospace">a</text>
+      </svg>`;
+    return document.querySelector("svg");
+  }
+  it("usa o estilo computado quando ele já vem resolvido", () => {
+    const { clone, largura, altura } = inlinarEstilosSvg(svgComVar(), winFake({ fill: "rgb(255, 0, 0)", stroke: "rgb(255, 0, 0)", "font-family": "Inter" }));
+    expect(largura).toBe(100);
+    expect(altura).toBe(50);
+    expect(clone.getAttribute("xmlns")).toBe("http://www.w3.org/2000/svg");
+    const path = clone.querySelector("path");
+    expect(path.getAttribute("fill")).toBe("rgb(255, 0, 0)");
+    expect(path.getAttribute("stroke")).toBe("rgb(255, 0, 0)");
+    expect(path.getAttribute("class")).toBeNull();
+    expect(clone.outerHTML).not.toMatch(/var\(/);
+  });
+  it("resolve var() pela raiz quando o computado vem cru", () => {
+    const { clone } = inlinarEstilosSvg(svgComVar(), winFake({ fill: "var(--accent-1)", stroke: "var(--accent-1, #00ff00)" }, { "--accent-1": "#ff0000", "--text": "#111111" }));
+    const path = clone.querySelector("path");
+    expect(path.getAttribute("fill")).toBe("#ff0000");
+    expect(path.getAttribute("stroke")).toBe("#ff0000");
+    expect(clone.outerHTML).not.toMatch(/var\(/);
+  });
+  it("sem computado e sem variável na raiz usa o fallback do var() ou remove o atributo", () => {
+    const { clone } = inlinarEstilosSvg(svgComVar(), winFake({}, {}));
+    const path = clone.querySelector("path");
+    expect(path.getAttribute("fill")).toBeNull();          // var(--accent-1) sem fallback → removido
+    expect(path.getAttribute("stroke")).toBe("#00ff00");    // var(--accent-1, #00ff00) → fallback
+    expect(clone.querySelector("text").getAttribute("style")).toBeNull(); // style com var() → removido
+    expect(clone.outerHTML).not.toMatch(/var\(/);
+  });
+  it("sem width/height usa o viewBox", () => {
+    document.body.innerHTML = `<svg viewBox="0 0 640 280"><rect width="1" height="1"/></svg>`;
+    const { largura, altura, clone } = inlinarEstilosSvg(document.querySelector("svg"), winFake());
+    expect(largura).toBe(640);
+    expect(altura).toBe(280);
+    expect(clone.getAttribute("width")).toBe("640");
+  });
+});
+
+describe("svgParaPng", () => {
+  function fakes({ comCanvas = true, falhaImagem = false } = {}) {
+    const ctx = { scale: vi.fn(), fillRect: vi.fn(), fillText: vi.fn(), drawImage: vi.fn(), fillStyle: "", font: "", globalAlpha: 1 };
+    const canvas = {
+      width: 0, height: 0,
+      getContext: vi.fn(() => (comCanvas ? ctx : null)),
+      toBlob: comCanvas ? vi.fn((cb) => cb(new Blob(["png"], { type: "image/png" }))) : undefined,
+    };
+    class Image {
+      set src(v) { this._src = v; setTimeout(() => (falhaImagem ? this.onerror?.(new Error("x")) : this.onload?.()), 0); }
+    }
+    const doc = { createElement: vi.fn(() => canvas), documentElement: document.documentElement };
+    const win = {
+      Image,
+      URL: window.URL,
+      getComputedStyle: (el) => window.getComputedStyle(el),
+      XMLSerializer: window.XMLSerializer,
+    };
+    return { ctx, canvas, doc, win };
+  }
+  function svg() {
+    document.body.innerHTML = `<style>:root{--panel:#fafafa;--text:#111111}</style><svg viewBox="0 0 100 50"><rect width="1" height="1" fill="red"/></svg>`;
+    return document.querySelector("svg");
+  }
+  it("desenha fundo, título, sub, gráfico e rodapé em escala 2x e devolve um Blob PNG", async () => {
+    const { ctx, canvas, doc, win } = fakes();
+    const blob = await svgParaPng(svg(), { titulo: "Evolução", sub: "PIB total", rodape: "Fonte: IBGE · UAIZI NID · 06/10/2026", doc, win });
+    expect(blob).toBeInstanceOf(Blob);
+    expect(blob.type).toBe("image/png");
+    expect(ctx.scale).toHaveBeenCalledWith(2, 2);
+    expect(canvas.width).toBeGreaterThan(100 * 2);
+    expect(ctx.fillRect).toHaveBeenCalledTimes(1);
+    const textos = ctx.fillText.mock.calls.map((c) => c[0]);
+    expect(textos).toEqual(["Evolução", "PIB total", "Fonte: IBGE · UAIZI NID · 06/10/2026"]);
+    expect(ctx.drawImage).toHaveBeenCalledTimes(1);
+    expect(canvas.toBlob.mock.calls[0][1]).toBe("image/png");
+  });
+  it("sem título/sub/rodapé não escreve texto", async () => {
+    const { ctx, doc, win } = fakes();
+    await svgParaPng(svg(), { doc, win });
+    expect(ctx.fillText).not.toHaveBeenCalled();
+  });
+  it("sem canvas → rejeita com mensagem legível, sem lançar síncrono", async () => {
+    const { doc, win } = fakes({ comCanvas: false });
+    const p = svgParaPng(svg(), { doc, win });
+    expect(p).toBeInstanceOf(Promise);
+    await expect(p).rejects.toThrow("Não foi possível gerar a imagem neste navegador");
+  });
+  it("svg nulo → rejeita", async () => {
+    const { doc, win } = fakes();
+    await expect(svgParaPng(null, { doc, win })).rejects.toThrow("Gráfico indisponível para exportar");
+  });
+  it("imagem que falha ao carregar → rejeita", async () => {
+    const { doc, win } = fakes({ falhaImagem: true });
+    await expect(svgParaPng(svg(), { doc, win })).rejects.toThrow("Falha ao renderizar o gráfico");
   });
 });
