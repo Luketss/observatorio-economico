@@ -10,12 +10,14 @@ import NotificationBell from "../../components/NotificationBell";
 import ViewAsBanner from "../../components/ViewAsBanner";
 import PlanLockedView from "../../components/PlanLockedView";
 import AlterarSenhaModal from "../../components/AlterarSenhaModal";
+import MfaModal from "../../components/MfaModal";
 import {
   PowerIcon,
   KeyIcon,
   XMarkIcon,
   Bars3Icon,
   SwatchIcon,
+  ShieldCheckIcon,
 } from "@heroicons/react/24/outline";
 import SidebarNav from "./SidebarNav";
 import { NAV_FLAT, isModuloLocked } from "./navStructure";
@@ -101,6 +103,7 @@ export default function DashboardLayout() {
   const [modulos, setModulos] = useState(null);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [senhaOpen, setSenhaOpen] = useState(false);
+  const [mfaOpen, setMfaOpen] = useState(false);
 
   const isGlobal = user?.role === "ADMIN_GLOBAL";
   const isLight = themeId === "light";
@@ -240,6 +243,17 @@ export default function DashboardLayout() {
               >
                 <KeyIcon className="w-4 h-4" />
               </button>
+              {isGlobal && (
+                <button
+                  onClick={() => setMfaOpen(true)}
+                  className="flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg text-xs cursor-pointer"
+                  style={{ background: "var(--panel-2)", border: "1px solid var(--border)", color: "var(--text-dim)" }}
+                  title="Segurança (verificação em duas etapas)"
+                  aria-label="Segurança"
+                >
+                  <ShieldCheckIcon className="w-4 h-4" />
+                </button>
+              )}
               <button
                 onClick={logout}
                 className="flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg text-xs cursor-pointer"
@@ -314,6 +328,7 @@ export default function DashboardLayout() {
         </main>
       </div>
       <AlterarSenhaModal open={senhaOpen} onClose={() => setSenhaOpen(false)} />
+      {isGlobal && <MfaModal open={mfaOpen} onClose={() => setMfaOpen(false)} />}
     </ToastProvider>
   );
 }
