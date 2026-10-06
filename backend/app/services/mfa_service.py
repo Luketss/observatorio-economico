@@ -260,3 +260,10 @@ class MfaService:
         if not self.enviar_codigo(mfa, user, finalidade):
             raise _erro_envio()
         return {"enviado_para": mascarar_email(user.email)}
+
+    def enviar_codigo_para_desativar(self, user: Usuario) -> dict:
+        """Modal "Desativar" com metodo e-mail: manda o codigo que o desativar vai exigir."""
+        mfa = user.mfa
+        if mfa is None or not mfa.ativo or mfa.metodo != "email":
+            raise AppException(code="MFA_NAO_EMAIL", message="A verificacao por e-mail nao esta ativa", status_code=409)
+        return self.reenviar_codigo(mfa, user, FINALIDADE_DESATIVAR)

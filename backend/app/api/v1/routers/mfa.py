@@ -5,8 +5,10 @@ from app.core.rate_limit import limiter
 from app.schemas.mfa import (
     MfaAtivarOut,
     MfaCodigoIn,
+    MfaConfigurarIn,
     MfaConfigurarOut,
     MfaDesativarIn,
+    MfaReenviarIn,
     MfaStatusOut,
     MfaVerificarIn,
 )
@@ -27,8 +29,14 @@ def mfa_status(request: Request, db: Session = Depends(get_db), current_user=Dep
 
 @router.post("/configurar", response_model=SuccessResponse[MfaConfigurarOut])
 @limiter.limit("5/minute")
-def mfa_configurar(request: Request, db: Session = Depends(get_db), current_user=Depends(require_role("ADMIN_GLOBAL"))):
-    return SuccessResponse(data=MfaConfigurarOut(**MfaService(db).configurar(current_user)))
+def mfa_configurar(
+    request: Request,
+    payload: MfaConfigurarIn | None = None,
+    db: Session = Depends(get_db),
+    current_user=Depends(require_role("ADMIN_GLOBAL")),
+):
+    metodo = payload.metodo if payload is not None else "totp"
+    return SuccessResponse(data=MfaConfigurarOut(**MfaService(db).configurar(current_user, metodo=metodo)))
 
 
 @router.post("/ativar", response_model=SuccessResponse[MfaAtivarOut])
@@ -50,3 +58,17 @@ def mfa_desativar(request: Request, payload: MfaDesativarIn, db: Session = Depen
 def mfa_verificar(request: Request, payload: MfaVerificarIn, db: Session = Depends(get_db)):
     ip, user_agent = origem_do_request(request)
     return AuthService(db).verificar_mfa(payload.mfa_token, payload.codigo, ip, user_agent)
+
+
+@router.post("/reenviar")
+@limiter.limit("3/minute")
+def mfa_reenviar(request: Request, payload: MfaReenviarIn, db: Session = Depends(get_db)):
+    """Novo codigo por e-mail para o login em andamento (publico: so o mfa_token identifica)."""
+    return AuthService(db).reenviar_codigo_mfa(payload.mfa_token)
+
+
+@router.post("/enviar-codigo")
+@limiter.limit("3/minute")
+def mfa_enviar_codigo(request: Request, db: Session = Depends(get_db), current_user=Depends(require_role("ADMIN_GLOBAL"))):
+    """Codigo por e-mail para confirmar a desativacao (metodo email ativo)."""
+    return MfaService(db).enviar_codigo_para_desativar(current_user)

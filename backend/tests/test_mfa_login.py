@@ -111,7 +111,7 @@ def test_login_com_mfa_devolve_mfa_token_e_nao_audita_nem_atualiza_last_login(db
     u = _user(db)
     _ativar(db, u)
     out = AuthService(db).authenticate("admin@x.com", "senha123", "1.1.1.1", "ua")
-    assert out == {"mfa_obrigatorio": True, "mfa_token": out["mfa_token"]}
+    assert out == {"mfa_obrigatorio": True, "mfa_token": out["mfa_token"], "metodo": "totp"}
     p = decode_token(out["mfa_token"])
     assert p["type"] == "mfa" and p["sub"] == str(u.id)
     assert db.query(LoginAudit).count() == 0

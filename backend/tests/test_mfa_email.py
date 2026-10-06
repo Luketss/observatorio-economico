@@ -21,6 +21,9 @@ from app.models.municipio import Municipio
 from app.models.role import Role
 from app.models.usuario import Usuario
 from app.models.usuario_mfa import UsuarioMfa
+from app.api.v1.routers.mfa import mfa_configurar, mfa_enviar_codigo, mfa_reenviar, mfa_status, mfa_verificar
+from app.schemas.mfa import MfaConfigurarIn, MfaReenviarIn, MfaVerificarIn
+from app.services.auth_service import AuthService
 from app.services.mfa_service import (
     FINALIDADE_ATIVAR,
     FINALIDADE_DESATIVAR,
@@ -310,3 +313,173 @@ def test_desativar_email_com_codigo_enviado(db, enviados):
     db.refresh(u)
     assert u.mfa is None
     assert db.query(AcaoAudit).filter(AcaoAudit.acao == "mfa_desativado").count() == 1
+
+
+# ---------- Task 6: login em duas etapas por e-mail, reenviar, enviar-codigo ----------
+
+def _login(db, email="admin@x.com"):
+    return AuthService(db).authenticate(email, "senha123", ip="1.1.1.1", user_agent="t")
+
+
+def test_login_email_envia_codigo_e_devolve_metodo_e_mascarado(db, enviados):
+    u = _admin(db)
+    _ativar_email(db, u, enviados)
+    antes = enviados.total
+    r = _login(db)
+    assert r["mfa_obrigatorio"] is True and r["mfa_token"]
+    assert r["metodo"] == "email" and r["enviado_para"] == "a***@x.com" and r["enviado"] is True
+    assert "access_token" not in r
+    assert enviados.total == antes + 1 and "entrar na plataforma" in enviados[-1]["texto"]
+    db.refresh(u)
+    assert u.mfa.codigo_reenvios == 0 and u.mfa.codigo_tentativas == 0
+    assert db.query(LoginAudit).count() == 0
+
+
+def test_login_totp_inclui_metodo_totp(db, enviados):
+    u = _admin(db)
+    MfaService(db).configurar(u)
+    # ativa direto no banco para nao depender do relogio TOTP neste arquivo
+    u.mfa.ativo = True
+    u.mfa.codigos_recuperacao = []
+    db.commit()
+    r = _login(db)
+    assert r["metodo"] == "totp" and "enviado_para" not in r
+    assert enviados.total == 0
+
+
+def test_login_email_envio_falho_enviado_false_e_reenviar_depois_funciona(db, enviados):
+    u = _admin(db)
+    _ativar_email(db, u, enviados)
+    enviados.falhar = True
+    r = _login(db)
+    assert r["enviado"] is False and r["mfa_token"]
+    enviados.falhar = False
+    db.refresh(u)
+    _voltar_envio(db, u.mfa)
+    assert AuthService(db).reenviar_codigo_mfa(r["mfa_token"]) == {"enviado_para": "a***@x.com"}
+    tokens = AuthService(db).verificar_mfa(r["mfa_token"], enviados.ultimo_codigo, "1.1.1.1", "t")
+    assert tokens["access_token"]
+
+
+def test_verificar_email_certo_emite_tokens_audita_e_limpa_codigo(db, enviados):
+    u = _admin(db)
+    _ativar_email(db, u, enviados)
+    r = _login(db)
+    tokens = AuthService(db).verificar_mfa(r["mfa_token"], enviados.ultimo_codigo, "1.1.1.1", "t")
+    assert tokens["access_token"] and tokens["refresh_token"] and tokens["token_type"] == "bearer"
+    db.refresh(u)
+    assert u.mfa.codigo_hash is None and u.last_login is not None
+    assert db.query(LoginAudit).filter(LoginAudit.motivo == "mfa_ok").count() == 1
+
+
+def test_verificar_email_errado_5x_invalida_token(db, enviados):
+    u = _admin(db)
+    _ativar_email(db, u, enviados)
+    r = _login(db)
+    svc = AuthService(db)
+    certo = enviados.ultimo_codigo
+    errado = "000000" if certo != "000000" else "111111"
+    for _ in range(4):
+        with pytest.raises(UnauthorizedException):
+            svc.verificar_mfa(r["mfa_token"], errado, "1.1.1.1", "t")
+    with pytest.raises(AppException) as exc:
+        svc.verificar_mfa(r["mfa_token"], errado, "1.1.1.1", "t")
+    assert exc.value.code == "MFA_TOKEN_INVALIDADO"
+    with pytest.raises(AppException) as exc:
+        svc.verificar_mfa(r["mfa_token"], certo, "1.1.1.1", "t")
+    assert exc.value.code == "MFA_TOKEN_INVALIDADO"
+    assert db.query(LoginAudit).filter(LoginAudit.motivo == "mfa_invalido").count() == 5
+
+
+def test_verificar_email_expirado_401(db, enviados):
+    u = _admin(db)
+    _ativar_email(db, u, enviados)
+    r = _login(db)
+    db.refresh(u)
+    u.mfa.codigo_expira_em = _agora() - timedelta(minutes=1)
+    db.commit()
+    with pytest.raises(UnauthorizedException):
+        AuthService(db).verificar_mfa(r["mfa_token"], enviados.ultimo_codigo, "1.1.1.1", "t")
+
+
+def test_codigo_recuperacao_no_login_email(db, enviados):
+    u = _admin(db)
+    _, codigos = _ativar_email(db, u, enviados)
+    r = _login(db)
+    assert AuthService(db).verificar_mfa(r["mfa_token"], codigos[0], "1.1.1.1", "t")["access_token"]
+
+
+def test_verificar_email_nao_exige_chave_fernet(db, enviados, monkeypatch):
+    u = _admin(db)
+    _ativar_email(db, u, enviados)
+    monkeypatch.setattr(mfa_crypto.settings, "MFA_ENCRYPTION_KEY", "")
+    r = _login(db)
+    assert AuthService(db).verificar_mfa(r["mfa_token"], enviados.ultimo_codigo, "1.1.1.1", "t")["access_token"]
+
+
+def test_reenviar_rota_limites_e_codigo_antigo_morre(db, enviados):
+    u = _admin(db)
+    _ativar_email(db, u, enviados)
+    r = _login(db)
+    req = _FakeRequest()
+    with pytest.raises(AppException) as exc:
+        mfa_reenviar(req, MfaReenviarIn(mfa_token=r["mfa_token"]), db=db)
+    assert exc.value.code == "AGUARDE"
+    antigo = enviados.ultimo_codigo
+    db.refresh(u)
+    _voltar_envio(db, u.mfa)
+    assert mfa_reenviar(req, MfaReenviarIn(mfa_token=r["mfa_token"]), db=db) == {"enviado_para": "a***@x.com"}
+    with pytest.raises(UnauthorizedException):
+        mfa_verificar(req, MfaVerificarIn(mfa_token=r["mfa_token"], codigo=antigo), db=db)
+    assert mfa_verificar(req, MfaVerificarIn(mfa_token=r["mfa_token"], codigo=enviados.ultimo_codigo), db=db)["access_token"]
+
+
+def test_reenviar_token_invalido_401_e_metodo_totp_409(db, enviados):
+    with pytest.raises(AppException) as exc:
+        AuthService(db).reenviar_codigo_mfa("nao-e-token")
+    assert exc.value.status_code == 401 and exc.value.code == "MFA_SESSAO_INVALIDA"
+    u = _admin(db)
+    MfaService(db).configurar(u)
+    u.mfa.ativo = True
+    db.commit()
+    r = _login(db)
+    with pytest.raises(AppException) as exc:
+        AuthService(db).reenviar_codigo_mfa(r["mfa_token"])
+    assert exc.value.status_code == 409 and exc.value.code == "METODO_NAO_EMAIL"
+
+
+def test_enviar_codigo_rota_para_desativar(db, enviados):
+    u = _admin(db)
+    svc, _ = _ativar_email(db, u, enviados)
+    req = _FakeRequest()
+    _voltar_envio(db, u.mfa)
+    assert mfa_enviar_codigo(req, db=db, current_user=u) == {"enviado_para": "a***@x.com"}
+    assert FINALIDADE_DESATIVAR in enviados[-1]["texto"]
+    svc.desativar(u, "senha123", enviados.ultimo_codigo, request=req)
+    db.refresh(u)
+    assert u.mfa is None
+    # usuario TOTP (ou sem MFA) nao tem o que enviar
+    v = _admin(db, email="totp@x.com")
+    MfaService(db).configurar(v)
+    v.mfa.ativo = True
+    db.commit()
+    with pytest.raises(AppException) as exc:
+        mfa_enviar_codigo(req, db=db, current_user=v)
+    assert exc.value.status_code == 409 and exc.value.code == "MFA_NAO_EMAIL"
+
+
+def test_handler_configurar_com_payload_email_e_status_com_metodo(db, enviados):
+    u = _admin(db)
+    req = _FakeRequest()
+    cfg = mfa_configurar(req, payload=MfaConfigurarIn(metodo="email"), db=db, current_user=u)
+    assert cfg.data.metodo == "email" and cfg.data.enviado_para == "a***@x.com" and cfg.data.qr_svg is None
+    db.refresh(u)
+    assert mfa_status(req, db=db, current_user=u).data.metodo is None
+    MfaService(db).ativar(u, enviados.ultimo_codigo, request=req)
+    db.refresh(u)
+    st = mfa_status(req, db=db, current_user=u).data
+    assert st.ativo is True and st.metodo == "email"
+    # sem payload continua TOTP (compatibilidade com o front atual)
+    w = _admin(db, email="w@x.com")
+    cfg2 = mfa_configurar(req, db=db, current_user=w)
+    assert cfg2.data.metodo == "totp" and cfg2.data.qr_svg

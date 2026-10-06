@@ -15,7 +15,8 @@ from app.core.security import (
 from app.db.repositories.usuario_repository import UsuarioRepository
 from app.models.login_audit import LoginAudit
 from app.models.usuario import Usuario
-from app.services.mfa_service import MfaService
+from app.services.email_service import mascarar_email
+from app.services.mfa_service import FINALIDADE_LOGIN, MfaService
 from sqlalchemy.orm import Session
 
 # Falhas de 2o fator por mfa_token (jti): 5 falhas invalidam o token. Em memoria,
@@ -119,7 +120,16 @@ class AuthService:
         # Segundo fator: nao emite tokens, nao audita, nao atualiza last_login
         # ate o codigo ser verificado em /auth/mfa/verificar.
         if user.mfa is not None and user.mfa.ativo:
-            return {"mfa_obrigatorio": True, "mfa_token": create_mfa_token(str(user.id))}
+            resposta = {
+                "mfa_obrigatorio": True,
+                "mfa_token": create_mfa_token(str(user.id)),
+                "metodo": user.mfa.metodo,
+            }
+            if user.mfa.metodo == "email":
+                user.mfa.codigo_reenvios = 0  # cada login comeca com 3 reenvios
+                enviado = MfaService(self.session).enviar_codigo(user.mfa, user, FINALIDADE_LOGIN)
+                resposta.update({"enviado_para": mascarar_email(user.email), "enviado": enviado})
+            return resposta
 
         tokens = self._emitir_tokens(user)
 
@@ -160,7 +170,8 @@ class AuthService:
             "token_type": "bearer",
         }
 
-    def verificar_mfa(self, mfa_token: str, codigo: str, ip: str | None, user_agent: str | None) -> dict:
+    def _usuario_do_mfa_token(self, mfa_token: str) -> tuple[Usuario, dict]:
+        """Valida o mfa_token (type, jti nao invalidado, sub) e devolve (usuario com MFA ativo, payload)."""
         payload = decode_token(mfa_token)
         if not payload or payload.get("type") != "mfa" or not payload.get("jti"):
             raise AppException(
@@ -168,8 +179,7 @@ class AuthService:
                 message="Sessao de verificacao invalida ou expirada; faca login de novo",
                 status_code=401,
             )
-        jti = payload["jti"]
-        if _token_mfa_invalidado(jti):
+        if _token_mfa_invalidado(payload["jti"]):
             raise AppException(
                 code="MFA_TOKEN_INVALIDADO", message="Muitas tentativas; faca login de novo", status_code=401
             )
@@ -180,7 +190,13 @@ class AuthService:
         user = self.session.get(Usuario, uid)
         if not user or not user.ativo or user.mfa is None or not user.mfa.ativo:
             raise AppException(code="MFA_SESSAO_INVALIDA", message="Sessao de verificacao invalida", status_code=401)
-        exigir_chave()
+        return user, payload
+
+    def verificar_mfa(self, mfa_token: str, codigo: str, ip: str | None, user_agent: str | None) -> dict:
+        user, payload = self._usuario_do_mfa_token(mfa_token)
+        jti = payload["jti"]
+        if user.mfa.metodo == "totp":
+            exigir_chave()  # so o TOTP precisa da chave Fernet
         if not MfaService(self.session).codigo_valido(user.mfa, codigo):
             self._record_attempt(user.id, user.email, False, "mfa_invalido", ip, user_agent)
             n = _registrar_falha_mfa(jti)
@@ -196,6 +212,15 @@ class AuthService:
         self.session.add(user)
         self._record_attempt(user.id, user.email, True, "mfa_ok", ip, user_agent)
         return tokens
+
+    def reenviar_codigo_mfa(self, mfa_token: str) -> dict:
+        """POST /auth/mfa/reenviar: novo codigo por e-mail para o login em andamento."""
+        user, _ = self._usuario_do_mfa_token(mfa_token)
+        if user.mfa.metodo != "email":
+            raise AppException(
+                code="METODO_NAO_EMAIL", message="Reenvio so vale para verificacao por e-mail", status_code=409
+            )
+        return MfaService(self.session).reenviar_codigo(user.mfa, user, FINALIDADE_LOGIN)
 
     def alterar_senha(self, user, senha_atual: str, nova_senha: str) -> None:
         if not verify_password(senha_atual, user.senha_hash):
