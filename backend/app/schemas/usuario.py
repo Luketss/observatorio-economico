@@ -35,6 +35,7 @@ class UsuarioOut(BaseModel):
     municipio_id: Optional[int]
     role: str
     ativo: bool
+    mfa_ativo: bool = False
 
     class Config:
         from_attributes = True

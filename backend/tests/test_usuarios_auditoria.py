@@ -16,6 +16,7 @@ from app.models.login_audit import LoginAudit
 from app.models.municipio import Municipio
 from app.models.role import Role
 from app.models.usuario import Usuario
+from app.models.usuario_mfa import UsuarioMfa
 from app.schemas.usuario import UsuarioCreate, UsuarioUpdate
 
 
@@ -39,7 +40,7 @@ def db():
     Base.metadata.create_all(
         engine,
         tables=[
-            Municipio.__table__, Role.__table__, Usuario.__table__,
+            Municipio.__table__, Role.__table__, Usuario.__table__, UsuarioMfa.__table__,
             LoginAudit.__table__, AcaoAudit.__table__,
         ],
     )

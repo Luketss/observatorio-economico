@@ -1,9 +1,10 @@
 from typing import List
 
-from app.api.deps import get_current_user, get_db, require_permissao
+from app.api.deps import get_current_user, get_db, require_permissao, require_role
 from app.api.pagination import PaginatedResponse
 from app.api.response import SuccessResponse
 from app.core.exceptions import (
+    AppException,
     ConflictException,
     ForbiddenException,
     NotFoundException,
@@ -70,6 +71,7 @@ def _to_out(u: Usuario) -> UsuarioOut:
         municipio_id=u.municipio_id,
         role=u.role.nome,
         ativo=u.ativo,
+        mfa_ativo=bool(u.mfa is not None and u.mfa.ativo),
     )
 
 
@@ -226,4 +228,27 @@ def deletar_usuario(
         detalhe=f"usuario_id: {user_id} | role: {alvo_role}",
         request=request,
     )
+    return {"ok": True}
+
+
+@router.post("/{user_id}/mfa/zerar")
+def zerar_mfa(
+    user_id: int,
+    request: Request,
+    db: Session = Depends(get_db),
+    current_user: Usuario = Depends(require_role("ADMIN_GLOBAL")),
+):
+    """Caminho de emergencia: remove o 2o fator de outro usuario (perdeu o app e os
+    codigos). Para a propria conta use /auth/mfa/desativar (exige senha + codigo)."""
+    if user_id == current_user.id:
+        raise AppException(code="MFA_PROPRIO", message="Use /auth/mfa/desativar para a propria conta.", status_code=400)
+    alvo = db.get(Usuario, user_id)
+    if not alvo:
+        raise NotFoundException("Usuario nao encontrado")
+    if alvo.mfa is None:
+        return {"ok": True}
+    db.delete(alvo.mfa)
+    alvo.mfa = None
+    db.commit()
+    registrar_acao(db, categoria="acao", acao="mfa_zerado", ator=current_user, alvo=alvo, request=request)
     return {"ok": True}
