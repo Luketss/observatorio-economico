@@ -23,3 +23,8 @@ def data_local(dt: datetime | None) -> date | None:
     if dt.tzinfo is None:
         dt = dt.replace(tzinfo=timezone.utc)
     return dt.astimezone(FUSO_BRASIL).date()
+
+
+def agora_local() -> datetime:
+    """Instante atual no fuso do Brasil (tz-aware). Para carimbos "gerado em"."""
+    return datetime.now(FUSO_BRASIL)
