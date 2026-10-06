@@ -8,12 +8,14 @@ from datetime import datetime, timedelta, timezone
 
 from app.models.acao_audit import AcaoAudit
 from app.models.login_audit import LoginAudit
+from app.models.redefinicao_senha import RedefinicaoSenha
 
 logger = logging.getLogger("app.audit")
 
 # Prazos de retenção — docs/lgpd.md referencia estes nomes; mudar lá junto.
 RETENCAO_ACESSOS_MESES = 12  # login_audit + acao_audit categoria 'leitura'
 RETENCAO_ACOES_ANOS = 5      # acao_audit categoria 'acao'
+RETENCAO_REDEFINICAO_HORAS = 24  # tokens de "esqueci minha senha" (docs/lgpd.md secao 4)
 
 
 def origem_do_request(request) -> tuple[str | None, str | None]:
@@ -101,6 +103,7 @@ def purgar_auditoria(db, agora: datetime | None = None) -> dict:
     """Aplica a retenção (RETENCAO_ACESSOS_MESES / RETENCAO_ACOES_ANOS).
     Devolve contagens por classe; {} em falha (logada, nunca propaga)."""
     try:
+        agora = agora or datetime.now(timezone.utc)
         corte_acessos, corte_acoes = cortes_retencao(agora)
         n_login = (
             db.query(LoginAudit)
@@ -119,13 +122,18 @@ def purgar_auditoria(db, agora: datetime | None = None) -> dict:
                     AcaoAudit.criado_em < corte_acoes)
             .delete(synchronize_session=False)
         )
+        n_redef = (
+            db.query(RedefinicaoSenha)
+            .filter(RedefinicaoSenha.criado_em < agora - timedelta(hours=RETENCAO_REDEFINICAO_HORAS))
+            .delete(synchronize_session=False)
+        )
         db.commit()
-        if n_login or n_leituras or n_acoes:
+        if n_login or n_leituras or n_acoes or n_redef:
             logger.info(
-                "Purga de auditoria: login=%s leituras=%s acoes=%s",
-                n_login, n_leituras, n_acoes,
+                "Purga de auditoria: login=%s leituras=%s acoes=%s redefinicoes=%s",
+                n_login, n_leituras, n_acoes, n_redef,
             )
-        return {"login_audit": n_login, "leituras": n_leituras, "acoes": n_acoes}
+        return {"login_audit": n_login, "leituras": n_leituras, "acoes": n_acoes, "redefinicoes": n_redef}
     except Exception:
         logger.exception("Purga de auditoria falhou")
         try:

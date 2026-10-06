@@ -10,6 +10,7 @@ from app.db.base import Base
 from app.models.acao_audit import AcaoAudit
 from app.models.login_audit import LoginAudit
 from app.models.municipio import Municipio
+from app.models.redefinicao_senha import RedefinicaoSenha
 from app.models.role import Role
 from app.models.usuario import Usuario
 from app.services.audit_service import cortes_retencao, purgar_auditoria
@@ -24,7 +25,7 @@ def db():
         engine,
         tables=[
             Municipio.__table__, Role.__table__, Usuario.__table__,
-            LoginAudit.__table__, AcaoAudit.__table__,
+            RedefinicaoSenha.__table__, LoginAudit.__table__, AcaoAudit.__table__,
         ],
     )
     session = sessionmaker(bind=engine)()
@@ -58,7 +59,7 @@ def test_purga_respeita_os_dois_prazos(db):
 
     contagens = purgar_auditoria(db, agora=AGORA)
 
-    assert contagens == {"login_audit": 1, "leituras": 1, "acoes": 1}
+    assert contagens == {"login_audit": 1, "leituras": 1, "acoes": 1, "redefinicoes": 0}
     esperados = {
         ("leitura", AGORA - timedelta(days=30 * 1)),
         ("acao", AGORA - timedelta(days=30 * 13)),

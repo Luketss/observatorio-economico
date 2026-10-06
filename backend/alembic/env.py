@@ -27,6 +27,7 @@ from app.models import (  # noqa
     pix,
     plano_config,
     rais,
+    redefinicao_senha,
     role,
     usuario,
     usuario_mfa,

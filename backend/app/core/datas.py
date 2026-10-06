@@ -28,3 +28,11 @@ def data_local(dt: datetime | None) -> date | None:
 def agora_local() -> datetime:
     """Instante atual no fuso do Brasil (tz-aware). Para carimbos "gerado em"."""
     return datetime.now(FUSO_BRASIL)
+
+
+def garantir_utc(dt: datetime | None) -> datetime | None:
+    """Normaliza para tz-aware UTC. SQLite devolve o UTC gravado como naive;
+    Postgres devolve aware. Comparar naive com aware em Python lanca TypeError."""
+    if dt is None:
+        return None
+    return dt if dt.tzinfo is not None else dt.replace(tzinfo=timezone.utc)
