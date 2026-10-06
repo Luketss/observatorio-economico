@@ -227,7 +227,11 @@ def _executar_sequencia_todas(db, filtros: dict, usuario_id, progresso) -> list[
     return itens
 
 
-def iniciar_job(db, dataset_key: str, filtros: dict, usuario_id: int):
+def criar_job(db, dataset_key: str, filtros: dict, usuario_id: int, *, reivindicado: bool = False):
+    """Valida e cria a linha do job (commit incluso), sem disparar execucao.
+    `reivindicado=False` -> 'pendente' (worker/thread reivindica depois);
+    `reivindicado=True` -> ja nasce 'executando' com heartbeat, para quem vai
+    executa-lo na propria thread (comando local) sem o worker o reivindicar."""
     from app.models.ingestao_job import IngestaoJob
 
     fonte = FONTES_AUTOMATICAS.get(dataset_key)
@@ -270,11 +274,20 @@ def iniciar_job(db, dataset_key: str, filtros: dict, usuario_id: int):
             detail=f"Já existe uma execução em andamento ({ativo.dataset}, job {ativo.id}). Aguarde terminar.",
         )
 
-    job = IngestaoJob(dataset=dataset_key, status="pendente", filtros=filtros, usuario_id=usuario_id)
+    if reivindicado:
+        agora = _agora()
+        job = IngestaoJob(dataset=dataset_key, status="executando", filtros=filtros,
+                          usuario_id=usuario_id, iniciado_em=agora, atualizado_em=agora)
+    else:
+        job = IngestaoJob(dataset=dataset_key, status="pendente", filtros=filtros, usuario_id=usuario_id)
     db.add(job)
     db.commit()   # único commit: persiste aborto de órfãos + job novo e libera o lock
     db.refresh(job)
+    return job
 
+
+def iniciar_job(db, dataset_key: str, filtros: dict, usuario_id: int):
+    job = criar_job(db, dataset_key, filtros, usuario_id, reivindicado=False)
     if _modo_worker():
         # o processo worker reivindica o 'pendente' mais antigo e executa
         return job
