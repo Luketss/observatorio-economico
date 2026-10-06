@@ -1,11 +1,12 @@
 """Fonte automática Empresas/CNPJ — snapshot mensal dos dados abertos da RFB.
 
-Share Nextcloud/SERPRO (WebDAV público; a URL antiga morreu em jan/2026), com
-o índice HTTP oficial (`/dados/cnpj/dados_abertos_cnpj/`) como espelho de
-fallback — mesmos nomes de zip, mesma pasta por mês. Transporte tolerante:
-User-Agent de navegador (hosts gov.br derrubam a conexão do UA padrão do
-requests sem resposta — "RemoteDisconnected"), re-tentativas com backoff na
-listagem e no download, e troca de endpoint quando o primeiro esgota.
+Share Nextcloud/SERPRO (WebDAV público; a URL antiga morreu em jan/2026; o
+índice HTTP antigo `/dados/cnpj/dados_abertos_cnpj/` também não existe mais).
+O host da RFB RECUSA conexões vindas da faixa de IPs da Railway (derruba sem
+resposta — "RemoteDisconnected"), então a coleta roda de uma máquina no Brasil
+pelo comando `python -m app.coletar_cnpj` (docs/coleta-cnpj.md). Transporte
+tolerante: User-Agent de navegador (hosts gov.br também derrubam a conexão do
+UA padrão do requests) e re-tentativas com backoff na listagem e no download.
 Arquivos nacionais SEM header, CSV ';' com aspas, latin-1, posicionais:
 Estabelecimentos (30 colunas, único com município — código TOM da RFB, não
 IBGE), Empresas (7), Simples (7), auxiliar Municípios (2: TOM -> nome, SEM UF).
@@ -51,9 +52,6 @@ logger = logging.getLogger(__name__)
 # publicada, não é segredo.
 WEBDAV = "https://arquivos.receitafederal.gov.br/public.php/webdav"
 SHARE_TOKEN = "YggdBLfdninEJX9"
-# Espelho: índice HTTP (autoindex) dos mesmos arquivos, publicado na página
-# "Dados Abertos CNPJ" da RFB. Pastas por mês ("2026-08/") e zips de mesmo nome.
-HTTP_INDEX = "https://arquivos.receitafederal.gov.br/dados/cnpj/dados_abertos_cnpj"
 
 # Paridade com as demais fontes (util.baixar_zip, estban, arrecadacao_*): os
 # hosts gov.br fecham a conexão sem resposta para o User-Agent padrão do
@@ -253,15 +251,14 @@ def montar_linhas(colhidas, dados_emp, dados_simples) -> dict:
     return por_mid
 
 
-# ── Transporte (share WebDAV da RFB + espelho HTTP, tolerante a falhas) ─────
+# ── Transporte (share WebDAV da RFB, tolerante a falhas) ─────
 
 _RE_MES = re.compile(r"(?<![\d-])(20\d{2}-(?:0[1-9]|1[0-2]))/")
 
 
 def extrair_meses(texto: str) -> list[str]:
-    """Meses ("AAAA-MM") presentes numa listagem — serve tanto para o XML do
-    PROPFIND (hrefs ".../webdav/2026-07/") quanto para o autoindex HTML do
-    espelho (href="2026-07/")."""
+    """Meses ("AAAA-MM") presentes numa listagem — o XML do PROPFIND (hrefs
+    ".../webdav/2026-07/"); também aceita autoindex HTML (href="2026-07/")."""
     meses = sorted(set(_RE_MES.findall(texto)))
     if not meses:
         raise ValueError("nenhum mês encontrado na listagem — layout mudou?")
@@ -294,10 +291,9 @@ class Transporte:
 TRANSPORTE_WEBDAV = Transporte(
     "share WebDAV", WEBDAV, auth=(SHARE_TOKEN, ""), metodo="PROPFIND",
     headers={"Depth": "1"})
-TRANSPORTE_HTTP = Transporte("índice HTTP", HTTP_INDEX)
-# Ordem de preferência: o share (verificado em 2026-08) e, se ele esgotar as
-# tentativas, o espelho HTTP.
-TRANSPORTES = (TRANSPORTE_WEBDAV, TRANSPORTE_HTTP)
+# Único endpoint vivo (verificado em 2026-10). O host recusa a faixa de IPs da
+# Railway; a coleta roda pelo comando local `python -m app.coletar_cnpj`.
+TRANSPORTES = (TRANSPORTE_WEBDAV,)
 
 
 def _esperar(tentativa: int, dormir) -> None:
@@ -335,17 +331,25 @@ def listar_meses(transporte: Transporte = TRANSPORTE_WEBDAV, dormir=time.sleep) 
 def localizar_snapshot(transportes=TRANSPORTES, dormir=time.sleep) -> tuple[Transporte, str]:
     """(transporte, mês mais recente) do primeiro endpoint que responder.
     Todos esgotados -> FonteIndisponivel com o diagnóstico de cada um (URL +
-    motivo), para o admin conferir no navegador se o share/índice mudou."""
+    motivo); se foram só conexões derrubadas, diz a causa (bloqueio da Railway)."""
     falhas = []
+    so_conexao = True
     for transporte in transportes:
         try:
             return transporte, listar_meses(transporte, dormir)[-1]
         except (requests.RequestException, ValueError) as exc:
             falhas.append(f"{transporte.nome} {transporte.url_listagem()}: {_descrever(exc)}")
+            if not isinstance(exc, requests.ConnectionError):
+                so_conexao = False
+    base = (f"nenhum endpoint da RFB respondeu após {TENTATIVAS} tentativa(s) em cada — "
+            + "; ".join(falhas))
+    if so_conexao:
+        raise FonteIndisponivel(
+            base + " — o servidor da RFB derrubou a conexão sem responder: ele recusa "
+            "conexões vindas da Railway. Rode a coleta de uma máquina no Brasil: "
+            "python -m app.coletar_cnpj (docs/coleta-cnpj.md)")
     raise FonteIndisponivel(
-        f"nenhum endpoint da RFB respondeu após {TENTATIVAS} tentativa(s) em cada — "
-        + "; ".join(falhas)
-        + " — confira as URLs no navegador: o share ou o caminho podem ter mudado")
+        base + " — confira as URLs no navegador: o share ou o caminho podem ter mudado")
 
 
 def nomes_zips() -> list[str]:

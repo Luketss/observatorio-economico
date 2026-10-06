@@ -198,7 +198,7 @@ def test_extrair_meses_vazio_e_erro_audivel():
 
 
 def test_extrair_meses_do_autoindex_http():
-    """O espelho HTTP é um autoindex: href="2026-08/". Datas de modificação
+    """Autoindex HTML (href="2026-08/") continua aceito. Datas de modificação
     ("2026-08-05 10:00") e links para fora não viram mês."""
     html = ('<a href="../">Parent</a> <a href="2026-07/">2026-07/</a> 2026-07-05 10:00'
             ' <a href="2026-08/">2026-08/</a> 2026-08-05 10:00 <a href="2026-13/">x</a>')
@@ -220,7 +220,6 @@ def _remote_disconnected():
 
 
 XML_OK = "<d:href>/public.php/webdav/2026-08/</d:href><d:href>/public.php/webdav/2026-09/</d:href>"
-HTML_OK = '<a href="2026-08/">2026-08/</a>'
 
 
 def test_todas_as_requisicoes_mandam_user_agent_de_navegador():
@@ -235,13 +234,6 @@ def test_todas_as_requisicoes_mandam_user_agent_de_navegador():
     assert kw["headers"]["User-Agent"].startswith("Mozilla/5.0")
     assert kw["headers"]["Depth"] == "1"
     assert kw["auth"] == (cnpj_rfb.SHARE_TOKEN, "")
-
-    with patch.object(cnpj_rfb.requests, "request", return_value=_resp(HTML_OK)) as req:
-        cnpj_rfb.TRANSPORTE_HTTP.listar_meses()
-    metodo, url = req.call_args.args
-    assert (metodo, url) == ("GET", cnpj_rfb.HTTP_INDEX + "/")
-    assert req.call_args.kwargs["headers"]["User-Agent"].startswith("Mozilla/5.0")
-    assert req.call_args.kwargs["auth"] is None
 
 
 def test_listar_meses_retenta_com_backoff_em_falha_transitoria():
@@ -265,57 +257,56 @@ def test_listar_meses_esgota_tentativas_e_propaga():
     assert [c.args[0] for c in dormir.call_args_list] == [2.0, 4.0]
 
 
-def test_localizar_snapshot_cai_para_o_indice_http_quando_o_share_esgota():
-    """Share WebDAV fechando a conexão em todas as tentativas -> o índice HTTP
-    responde e o snapshot vem de lá, com o mês mais recente."""
-    def fake_request(metodo, url, **kw):
-        if metodo == "PROPFIND":
-            raise _remote_disconnected()
-        return _resp('<a href="2026-07/"></a><a href="2026-09/"></a>')
-
-    with patch.object(cnpj_rfb.requests, "request", side_effect=fake_request) as req:
-        transporte, mes = cnpj_rfb.localizar_snapshot(dormir=MagicMock())
-    assert transporte is cnpj_rfb.TRANSPORTE_HTTP and mes == "2026-09"
-    assert req.call_count == cnpj_rfb.TENTATIVAS + 1
+def test_so_ha_o_transporte_webdav():
+    """O espelho HTTP morreu (404 de qualquer lugar) — so o share resta."""
+    assert cnpj_rfb.TRANSPORTES == (cnpj_rfb.TRANSPORTE_WEBDAV,)
+    assert not hasattr(cnpj_rfb, "TRANSPORTE_HTTP") and not hasattr(cnpj_rfb, "HTTP_INDEX")
 
 
-def test_localizar_snapshot_prefere_o_share_quando_ele_responde():
+def test_localizar_snapshot_usa_o_share_quando_ele_responde():
     with patch.object(cnpj_rfb.requests, "request", return_value=_resp(XML_OK)) as req:
         transporte, mes = cnpj_rfb.localizar_snapshot(dormir=MagicMock())
     assert transporte is cnpj_rfb.TRANSPORTE_WEBDAV and mes == "2026-09"
     assert req.call_count == 1
 
 
-def test_localizar_snapshot_todos_esgotados_diagnostico_por_endpoint():
-    """Erro audível com URL + motivo de CADA endpoint e a dica de conferir no
-    navegador — em vez do '(Connection aborted., RemoteDisconnected(...))' cru."""
-    http_404 = requests.HTTPError("404")
-    http_404.response = _resp(status=404)
+DICA_REDE = ("— o servidor da RFB derrubou a conexão sem responder: ele recusa conexões "
+             "vindas da Railway. Rode a coleta de uma máquina no Brasil: "
+             "python -m app.coletar_cnpj (docs/coleta-cnpj.md)")
 
-    def fake_request(metodo, url, **kw):
-        if metodo == "PROPFIND":
-            raise _remote_disconnected()
-        raise http_404
 
-    with patch.object(cnpj_rfb.requests, "request", side_effect=fake_request):
+def test_localizar_snapshot_conexao_derrubada_diz_a_causa():
+    """Todas as falhas de conexão (RemoteDisconnected/reset) -> mensagem com URL,
+    motivo e a orientação de rodar a coleta local."""
+    with patch.object(cnpj_rfb.requests, "request", side_effect=_remote_disconnected()):
         with pytest.raises(cnpj_rfb.FonteIndisponivel) as info:
             cnpj_rfb.localizar_snapshot(dormir=MagicMock())
     msg = str(info.value)
     assert f"{cnpj_rfb.TENTATIVAS} tentativa" in msg
     assert cnpj_rfb.WEBDAV + "/" in msg and "RemoteDisconnected" in msg
-    assert cnpj_rfb.HTTP_INDEX + "/" in msg and "HTTP 404" in msg
-    assert "navegador" in msg
+    assert msg.endswith(DICA_REDE)
+    assert "navegador" not in msg
 
 
-def test_listagem_sem_meses_tambem_cai_para_o_proximo_endpoint():
-    """Share respondendo 200 com corpo sem meses (ex.: página de erro do WAF)
-    conta como falha do endpoint, não como sucesso vazio."""
-    def fake_request(metodo, url, **kw):
-        return _resp("<html>bloqueado</html>" if metodo == "PROPFIND" else HTML_OK)
+def test_localizar_snapshot_http_4xx_mantem_a_dica_do_navegador():
+    http_404 = requests.HTTPError("404")
+    http_404.response = _resp(status=404)
+    with patch.object(cnpj_rfb.requests, "request", side_effect=http_404):
+        with pytest.raises(cnpj_rfb.FonteIndisponivel) as info:
+            cnpj_rfb.localizar_snapshot(dormir=MagicMock())
+    msg = str(info.value)
+    assert cnpj_rfb.WEBDAV + "/" in msg and "HTTP 404" in msg
+    assert "navegador" in msg and "Railway" not in msg
 
-    with patch.object(cnpj_rfb.requests, "request", side_effect=fake_request):
-        transporte, mes = cnpj_rfb.localizar_snapshot(dormir=MagicMock())
-    assert transporte is cnpj_rfb.TRANSPORTE_HTTP and mes == "2026-08"
+
+def test_listagem_sem_meses_mantem_a_dica_do_navegador():
+    """Share respondendo 200 com corpo sem meses (ex.: pagina de erro do WAF)
+    conta como falha do endpoint, nao como sucesso vazio."""
+    with patch.object(cnpj_rfb.requests, "request", return_value=_resp("<html>bloqueado</html>")):
+        with pytest.raises(cnpj_rfb.FonteIndisponivel) as info:
+            cnpj_rfb.localizar_snapshot(dormir=MagicMock())
+    msg = str(info.value)
+    assert "nenhum mês" in msg and "navegador" in msg and "Railway" not in msg
 
 
 def test_baixar_zip_usa_url_auth_e_headers_do_transporte_e_retenta(tmp_path):
@@ -327,13 +318,13 @@ def test_baixar_zip_usa_url_auth_e_headers_do_transporte_e_retenta(tmp_path):
     with patch.object(cnpj_rfb.requests, "get",
                       side_effect=[_remote_disconnected(), ok]) as get:
         caminho, erro = cnpj_rfb.baixar_zip(
-            cnpj_rfb.TRANSPORTE_HTTP, "2026-09", "Municipios.zip", str(tmp_path), dormir=dormir)
+            cnpj_rfb.TRANSPORTE_WEBDAV, "2026-09", "Municipios.zip", str(tmp_path), dormir=dormir)
     assert erro is None
     assert open(caminho, "rb").read() == b"abcdef"
     assert get.call_count == 2
     url = get.call_args.args[0]
-    assert url == f"{cnpj_rfb.HTTP_INDEX}/2026-09/Municipios.zip"
-    assert get.call_args.kwargs["auth"] is None
+    assert url == f"{cnpj_rfb.WEBDAV}/2026-09/Municipios.zip"
+    assert get.call_args.kwargs["auth"] == (cnpj_rfb.SHARE_TOKEN, "")
     assert get.call_args.kwargs["headers"]["User-Agent"].startswith("Mozilla/5.0")
     dormir.assert_called_once_with(cnpj_rfb.ESPERA_BASE_S)
 
