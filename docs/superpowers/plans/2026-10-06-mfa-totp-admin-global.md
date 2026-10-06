@@ -382,7 +382,7 @@ TEMPO_FIXO = 1_900_000_000.0  # relogio congelado: TOTP e janela ficam determini
 @pytest.fixture(autouse=True)
 def chave(monkeypatch):
     monkeypatch.setattr(mfa_crypto.settings, "MFA_ENCRYPTION_KEY", Fernet.generate_key().decode())
-    # pyotp.now() e o servico usam time.time(); congelar evita flake na virada de passo (30 s)
+    # o servico usa time.time(); pyotp.now() usa datetime.now() (NAO congela) -> testes geram codigos com .at(int(time.time()))
     monkeypatch.setattr(time, "time", lambda: TEMPO_FIXO)
 
 
@@ -416,7 +416,7 @@ def _admin(db):
 def _ativar(db, user):
     svc = MfaService(db)
     cfg = svc.configurar(user)
-    codigo = pyotp.TOTP(cfg["segredo"]).now()
+    codigo = pyotp.TOTP(cfg["segredo"]).at(int(time.time()))
     codigos = svc.ativar(user, codigo, request=_FakeRequest())
     return svc, cfg["segredo"], codigos
 
@@ -902,7 +902,7 @@ TEMPO_FIXO = 1_900_000_000.0
 @pytest.fixture(autouse=True)
 def chave(monkeypatch):
     monkeypatch.setattr(mfa_crypto.settings, "MFA_ENCRYPTION_KEY", Fernet.generate_key().decode())
-    monkeypatch.setattr(time, "time", lambda: TEMPO_FIXO)  # TOTP deterministico
+    monkeypatch.setattr(time, "time", lambda: TEMPO_FIXO)  # TOTP deterministico; gerar codigos com .at(int(time.time())), nunca .now()
     # Os handlers sao decorados com @limiter.limit; chamados direto com um Request
     # falso (sem .state/.app), o slowapi so e inofensivo com o limiter desligado.
     from app.core.rate_limit import limiter
@@ -941,7 +941,7 @@ def _user(db, role="ADMIN_GLOBAL", email="admin@x.com"):
 def _ativar(db, user):
     svc = MfaService(db)
     seg = svc.configurar(user)["segredo"]
-    codigos = svc.ativar(user, pyotp.TOTP(seg).now())
+    codigos = svc.ativar(user, pyotp.TOTP(seg).at(int(time.time())))
     db.refresh(user)
     return seg, codigos
 
@@ -1084,7 +1084,7 @@ def test_handlers_configurar_ativar_status_desativar(db):
     assert cfg.data.otpauth_url.startswith("otpauth://")
     st = mfa_status(req, db=db, current_user=u)
     assert st.data.ativo is False
-    codigo = pyotp.TOTP(cfg.data.segredo).now()
+    codigo = pyotp.TOTP(cfg.data.segredo).at(int(time.time()))
     ativ = mfa_ativar(req, MfaCodigoIn(codigo=codigo), db=db, current_user=u)
     assert len(ativ.data.codigos_recuperacao) == 10
     db.refresh(u)
@@ -1283,6 +1283,8 @@ Criar `backend/tests/test_mfa_zerar.py`:
 
 ```python
 """POST /usuarios/{id}/mfa/zerar e campo mfa_ativo na listagem."""
+import time
+
 import pyotp
 import pytest
 from cryptography.fernet import Fernet
@@ -1348,7 +1350,7 @@ def _admin(db, email):
 def _ativar(db, u):
     svc = MfaService(db)
     seg = svc.configurar(u)["segredo"]
-    svc.ativar(u, pyotp.TOTP(seg).now())
+    svc.ativar(u, pyotp.TOTP(seg).at(int(time.time())))
     db.refresh(u)
 
 
@@ -2409,3 +2411,9 @@ Co-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>"
 
 - Deploy: **migração 0042** roda no boot da `api`; setar `MFA_ENCRYPTION_KEY` no serviço `api` (Railway) antes ou depois do deploy (sem ela, 503 só nas rotas de MFA).
 - Espelho no LEGIS e código por e-mail: frentes próprias.
+
+---
+
+## Errata de execução
+
+- **Ruling 3 (Task 2, 06/10/2026):** `pyotp.TOTP.now()` usa `datetime.datetime.now()`, que NÃO é afetado por `monkeypatch.setattr(time, "time", ...)`; o serviço usa `time.time()`. Com o relógio congelado os códigos divergiam e 6 testes da Task 2 falhavam. Correção: todos os testes do plano geram códigos com `pyotp.TOTP(seg).at(int(time.time()))` (Tasks 2, 3 e 4) — mesma base de tempo do serviço, determinístico quando congelado e sem flake na virada de passo quando não congelado. O serviço (`_totp_valido` com `totp.at(passo * 30)`) está correto e não muda.
