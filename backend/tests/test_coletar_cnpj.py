@@ -144,3 +144,9 @@ def test_criar_job_nao_reivindicado_continua_pendente(Sessao):
     job = criar_job(db, "cnpj", {"municipio_ids": [12]}, usuario_id=None, reivindicado=False)
     assert job.status == "pendente" and job.iniciado_em is None
     db.close()
+
+
+def test_email_com_maiusculas_e_espacos_acha_o_admin(Sessao):
+    with patch.object(cmd, "_executar_job") as ex:
+        cmd.main(["--email", "  ADMIN@X.com ", "--municipio-id", "12"])
+    assert ex.call_count == 1

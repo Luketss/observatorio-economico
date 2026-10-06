@@ -16,6 +16,7 @@ import sys
 # popular o registry de fontes (cada import de fonte se auto-registra), como o worker
 import app.services.ingestao_automatica  # noqa: F401
 from fastapi import HTTPException
+from sqlalchemy import func
 
 from app.db.session import SessionLocal
 from app.services.ingestao_automatica.runner import _executar_job, criar_job
@@ -86,7 +87,8 @@ def main(argv=None) -> int:
 
     db = SessionLocal()
     try:
-        usuario = db.query(Usuario).filter(Usuario.email == args.email).first()
+        email = args.email.strip().lower()
+        usuario = db.query(Usuario).filter(func.lower(Usuario.email) == email).first()
         if (usuario is None or not usuario.ativo
                 or usuario.role is None or usuario.role.nome != "ADMIN_GLOBAL"):
             print(f"Usuario '{args.email}' nao existe, esta inativo ou nao e ADMIN_GLOBAL.",

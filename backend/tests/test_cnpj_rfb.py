@@ -391,3 +391,13 @@ def test_fonte_registrada_declara_o_teto_de_municipios():
     from app.services.ingestao_automatica.base import FONTES_AUTOMATICAS
 
     assert FONTES_AUTOMATICAS["cnpj"].max_municipios == MAX_MUNICIPIOS_POR_EXECUCAO
+
+
+def test_localizar_snapshot_timeout_mantem_a_dica_do_navegador():
+    """ConnectTimeout herda de ConnectionError, mas timeout nao e a recusa da
+    Railway: mantem a dica de conferir no navegador."""
+    with patch.object(cnpj_rfb.requests, "request", side_effect=requests.ConnectTimeout("timeout")):
+        with pytest.raises(cnpj_rfb.FonteIndisponivel) as info:
+            cnpj_rfb.localizar_snapshot(dormir=MagicMock())
+    msg = str(info.value)
+    assert "navegador" in msg and "Railway" not in msg

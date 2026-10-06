@@ -339,7 +339,7 @@ def localizar_snapshot(transportes=TRANSPORTES, dormir=time.sleep) -> tuple[Tran
             return transporte, listar_meses(transporte, dormir)[-1]
         except (requests.RequestException, ValueError) as exc:
             falhas.append(f"{transporte.nome} {transporte.url_listagem()}: {_descrever(exc)}")
-            if not isinstance(exc, requests.ConnectionError):
+            if not isinstance(exc, requests.ConnectionError) or isinstance(exc, requests.Timeout):
                 so_conexao = False
     base = (f"nenhum endpoint da RFB respondeu após {TENTATIVAS} tentativa(s) em cada — "
             + "; ".join(falhas))
