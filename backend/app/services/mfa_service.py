@@ -21,7 +21,6 @@ from app.services.audit_service import registrar_acao
 
 EMISSOR = "UAIZI NID"
 PASSO_SEGUNDOS = 30
-JANELA_PASSOS = 1
 N_CODIGOS_RECUPERACAO = 10
 ALFABETO_RECUPERACAO = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"  # sem 0/O/1/I
 _RE_RECUPERACAO = re.compile(r"^[A-Z2-9]{8}$")
@@ -119,6 +118,7 @@ class MfaService:
             return self._recuperacao_valida(mfa, codigo)
         return self._totp_valido(mfa, codigo)
 
+    # Por design, os validadores abaixo persistem (commit) o passo/codigo consumido.
     def _totp_valido(self, mfa: UsuarioMfa, codigo: str) -> bool:
         digitos = normalizar_codigo(codigo)
         if not digitos.isdigit() or len(digitos) != 6:

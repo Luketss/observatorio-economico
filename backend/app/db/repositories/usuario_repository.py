@@ -3,7 +3,7 @@ from typing import Optional
 from app.db.repositories.base_repository import BaseRepository
 from app.models.usuario import Usuario
 from sqlalchemy import select
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, selectinload
 
 
 class UsuarioRepository(BaseRepository[Usuario]):
@@ -33,7 +33,9 @@ class UsuarioRepository(BaseRepository[Usuario]):
         ativo: bool | None = None,
         role_id: int | None = None,
     ) -> tuple[list[Usuario], int]:
-        query = self.session.query(Usuario)
+        query = self.session.query(Usuario).options(
+            selectinload(Usuario.role), selectinload(Usuario.mfa)
+        )
 
         if municipio_id is not None:
             query = query.filter(Usuario.municipio_id == municipio_id)

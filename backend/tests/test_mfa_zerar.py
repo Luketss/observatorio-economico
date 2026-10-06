@@ -77,6 +77,14 @@ def test_to_out_expoe_mfa_ativo(db):
     assert _to_out(u).mfa_ativo is True
 
 
+def test_to_out_mfa_pendente_nao_conta_como_ativo(db):
+    u = _admin(db, "p@x.com")
+    MfaService(db).configurar(u)
+    db.refresh(u)
+    assert u.mfa is not None
+    assert _to_out(u).mfa_ativo is False
+
+
 def test_zerar_apaga_mfa_e_audita(db):
     ator = _admin(db, "ator@x.com")
     alvo = _admin(db, "alvo@x.com")

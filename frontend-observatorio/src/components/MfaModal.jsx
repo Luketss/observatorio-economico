@@ -155,7 +155,7 @@ export default function MfaModal({ open, onClose }) {
                 <div className="flex justify-center bg-white rounded-xl p-3 [&>svg]:w-44 [&>svg]:h-44" dangerouslySetInnerHTML={{ __html: config.qr_svg }} />
                 <div className="flex items-center gap-2">
                   <code className="flex-1 text-xs break-all px-2 py-1 rounded bg-[var(--panel-2)] text-[var(--text)]">{config.segredo}</code>
-                  <button type="button" className={btnSecundario} onClick={async () => { try { await navigator.clipboard.writeText(config.segredo); } catch { /* sem clipboard */ } }}>Copiar</button>
+                  <button type="button" className={btnSecundario} onClick={async () => { try { await navigator.clipboard.writeText(config.segredo); addToast("Segredo copiado.", "success"); } catch { setErro("Não foi possível copiar. Digite o segredo manualmente."); } }}>Copiar</button>
                 </div>
                 <p>2. Digite o código de 6 dígitos que o app mostra agora.</p>
                 <input type="text" inputMode="numeric" autoComplete="one-time-code" aria-label="Código do app" placeholder="000000"

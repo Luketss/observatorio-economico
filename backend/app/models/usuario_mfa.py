@@ -1,7 +1,7 @@
 from datetime import datetime
 
 from app.db.base import Base
-from sqlalchemy import JSON, BigInteger, Boolean, DateTime, ForeignKey, Integer, Text, func
+from sqlalchemy import JSON, BigInteger, Boolean, DateTime, ForeignKey, Integer, Text, false, func
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 
@@ -15,7 +15,7 @@ class UsuarioMfa(Base):
         Integer, ForeignKey("usuarios.id", ondelete="CASCADE"), primary_key=True
     )
     segredo_cifrado: Mapped[str] = mapped_column(Text, nullable=False)
-    ativo: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False, server_default="0")
+    ativo: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False, server_default=false())
     ativado_em: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     ultimo_passo_usado: Mapped[int | None] = mapped_column(BigInteger, nullable=True)
     codigos_recuperacao: Mapped[list] = mapped_column(JSON, nullable=False, default=list)
