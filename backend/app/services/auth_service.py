@@ -1,9 +1,12 @@
+import time
 from datetime import datetime, timezone
 
 from app.core.exceptions import AppException, UnauthorizedException
+from app.core.mfa_crypto import exigir_chave
 from app.core.security import (
     DUMMY_PASSWORD_HASH,
     create_access_token,
+    create_mfa_token,
     create_refresh_token,
     decode_token,
     hash_password,
@@ -11,7 +14,29 @@ from app.core.security import (
 )
 from app.db.repositories.usuario_repository import UsuarioRepository
 from app.models.login_audit import LoginAudit
+from app.models.usuario import Usuario
+from app.services.mfa_service import MfaService
 from sqlalchemy.orm import Session
+
+# Falhas de 2o fator por mfa_token (jti): 5 falhas invalidam o token. Em memoria,
+# por processo, TTL 5 min (= validade do token). Aceito pela spec (volume baixo).
+MFA_MAX_FALHAS = 5
+_FALHAS_MFA: dict[str, tuple[int, float]] = {}
+
+
+def _registrar_falha_mfa(jti: str) -> int:
+    agora = time.time()
+    for k, (_, exp) in list(_FALHAS_MFA.items()):
+        if exp < agora:
+            _FALHAS_MFA.pop(k, None)
+    n, exp = _FALHAS_MFA.get(jti, (0, agora + 300))
+    _FALHAS_MFA[jti] = (n + 1, exp)
+    return n + 1
+
+
+def _token_mfa_invalidado(jti: str) -> bool:
+    n, exp = _FALHAS_MFA.get(jti, (0, 0))
+    return exp >= time.time() and n >= MFA_MAX_FALHAS
 
 
 class AuthService:
@@ -76,6 +101,11 @@ class AuthService:
             self._record_attempt(user.id, email, False, "inactive", ip, user_agent)
             raise UnauthorizedException("User is inactive")
 
+        # Segundo fator: nao emite tokens, nao audita, nao atualiza last_login
+        # ate o codigo ser verificado em /auth/mfa/verificar.
+        if user.mfa is not None and user.mfa.ativo:
+            return {"mfa_obrigatorio": True, "mfa_token": create_mfa_token(str(user.id))}
+
         access_token = create_access_token(
             subject=str(user.id),
             extra_data={
@@ -126,6 +156,38 @@ class AuthService:
             "access_token": new_access_token,
             "token_type": "bearer",
         }
+
+    def verificar_mfa(self, mfa_token: str, codigo: str, ip: str | None, user_agent: str | None) -> dict:
+        payload = decode_token(mfa_token)
+        if not payload or payload.get("type") != "mfa" or not payload.get("jti"):
+            raise UnauthorizedException("Sessao de verificacao invalida ou expirada; faca login de novo")
+        jti = payload["jti"]
+        if _token_mfa_invalidado(jti):
+            raise UnauthorizedException("Muitas tentativas; faca login de novo")
+        try:
+            uid = int(payload.get("sub"))
+        except (TypeError, ValueError):
+            raise UnauthorizedException("Sessao de verificacao invalida")
+        user = self.session.get(Usuario, uid)
+        if not user or not user.ativo or user.mfa is None or not user.mfa.ativo:
+            raise UnauthorizedException("Sessao de verificacao invalida")
+        exigir_chave()
+        if not MfaService(self.session).codigo_valido(user.mfa, codigo):
+            self._record_attempt(user.id, user.email, False, "mfa_invalido", ip, user_agent)
+            n = _registrar_falha_mfa(jti)
+            if n >= MFA_MAX_FALHAS:
+                raise UnauthorizedException("Muitas tentativas; faca login de novo")
+            raise UnauthorizedException("Codigo invalido")
+        _FALHAS_MFA.pop(jti, None)
+        access_token = create_access_token(
+            subject=str(user.id),
+            extra_data={"role": user.role.nome, "municipio_id": user.municipio_id},
+        )
+        refresh_token = create_refresh_token(subject=str(user.id))
+        user.last_login = datetime.now(timezone.utc)
+        self.session.add(user)
+        self._record_attempt(user.id, user.email, True, "mfa_ok", ip, user_agent)
+        return {"access_token": access_token, "refresh_token": refresh_token, "token_type": "bearer"}
 
     def alterar_senha(self, user, senha_atual: str, nova_senha: str) -> None:
         if not verify_password(senha_atual, user.senha_hash):

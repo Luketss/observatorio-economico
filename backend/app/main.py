@@ -28,6 +28,7 @@ import app.api.v1.routers.ingestao_automatica as ingestao_automatica
 import app.api.v1.routers.captacao_federal as captacao_federal
 import app.api.v1.routers.emendas as emendas
 import app.api.v1.routers.export as export
+import app.api.v1.routers.mfa as mfa
 import app.api.v1.routers.estban as estban
 import app.api.v1.routers.inss as inss
 import app.api.v1.routers.municipios as municipios
@@ -114,6 +115,7 @@ app.add_middleware(AuditMiddleware)
 API_PREFIX = "/api/v1"
 
 app.include_router(auth.router, prefix=API_PREFIX)
+app.include_router(mfa.router, prefix=API_PREFIX)
 app.include_router(export.router, prefix=API_PREFIX)
 app.include_router(usuarios.router, prefix=API_PREFIX)
 app.include_router(roles.router, prefix=API_PREFIX)
