@@ -1,9 +1,18 @@
-import { useEffect, useId, useRef, useState } from "react";
+import { useEffect, useId, useMemo, useRef, useState } from "react";
 import React from "react";
 import ChartState from "./ChartState.jsx";
 import { useChartHover } from "./ChartHoverContext.jsx";
 import { viewBoxXFromOverlay, nearestIndexByX } from "../../utils/chartHover.js";
 import { niceTicks, yBounds } from "../../utils/chartScale.js";
+import { useRegistrarExportacao } from "./ExportContext.jsx";
+import {
+  exportacaoArea,
+  exportacaoDonut,
+  exportacaoEmpilhado,
+  exportacaoMultiLinha,
+  exportacaoRanking,
+  exportacaoTwin,
+} from "../../utils/exportarColunas.js";
 
 // ────────── glow resolver ──────────
 function resolveGlow(glow) {
@@ -199,6 +208,11 @@ export function AreaLineChart({
 }) {
   const id = useId().replace(/:/g, "");
   const [wrapRef, w] = useContainerWidth(800);
+  // Exportação (menu do NidPanel): registra a tabela desenhada e a ref do svg.
+  const exportId = useId();
+  const svgRef = useRef(null);
+  const exportacao = useMemo(() => exportacaoArea(data, label), [data, label]);
+  useRegistrarExportacao({ id: exportId, rotulo: label, colunas: exportacao.colunas, linhas: exportacao.linhas, svgRef, carregando: Boolean(loading) });
   const [localHover, setLocalHover] = useState(null);
   const [externalLabel, setExternalLabel] = useChartHover(syncGroup);
 
@@ -300,7 +314,7 @@ export function AreaLineChart({
 
   return (
     <div className="nid-chart-wrap" ref={wrapRef} onMouseLeave={() => setLocalHover(null)}>
-      <svg viewBox={`0 0 ${w} ${height}`}>
+      <svg ref={svgRef} viewBox={`0 0 ${w} ${height}`}>
         <defs>
           <linearGradient id={`area-${id}`} x1="0" y1="0" x2="0" y2="1">
             <stop offset="0%" stopColor={color} stopOpacity="0.45" />
@@ -537,6 +551,10 @@ export function StackedBarChart({
   const id = useId().replace(/:/g, "");
   const [wrapRef, w] = useContainerWidth(800);
   const [hover, setHover] = useState(null);
+  const exportId = useId();
+  const svgRef = useRef(null);
+  const exportacao = useMemo(() => exportacaoEmpilhado(data, keys, Boolean(showTotalLabel)), [data, keys, showTotalLabel]);
+  useRegistrarExportacao({ id: exportId, rotulo: "Composição", colunas: exportacao.colunas, linhas: exportacao.linhas, svgRef, carregando: Boolean(loading) });
   if (loading) return <ChartState kind="loading" shape="stacked" height={height} />;
   if (!data || data.length === 0) return <EmptyChart h={height} shape="stacked" message={emptyMessage} action={emptyAction} />;
   const glowMode = resolveGlow(glow);
@@ -563,7 +581,7 @@ export function StackedBarChart({
 
   return (
     <div className="nid-chart-wrap" ref={wrapRef} onMouseLeave={() => setHover(null)}>
-      <svg viewBox={`0 0 ${w} ${height}`}>
+      <svg ref={svgRef} viewBox={`0 0 ${w} ${height}`}>
         <defs>
           {!baseColor && resolvedColors.map((c, i) => (
             <filter key={i} id={`bglow-${id}-${i}`} x="-50%" y="-50%" width="200%" height="200%">
@@ -714,6 +732,10 @@ export function MultiLineChart({
   const [localHover, setLocalHover] = useState(null);
   const [hoverSeries, setHoverSeries] = useState(null);
   const [externalLabel, setExternalLabel] = useChartHover(syncGroup);
+  const exportId = useId();
+  const svgRef = useRef(null);
+  const exportacao = useMemo(() => exportacaoMultiLinha(data, series), [data, series]);
+  useRegistrarExportacao({ id: exportId, rotulo: "Séries", colunas: exportacao.colunas, linhas: exportacao.linhas, svgRef, carregando: Boolean(loading) });
 
   const externalIdx =
     externalLabel != null && data
@@ -883,7 +905,7 @@ export function MultiLineChart({
 
   return (
     <div className="nid-chart-wrap" ref={wrapRef} onMouseLeave={() => { setLocalHover(null); setHoverSeries(null); }}>
-      <svg viewBox={`0 0 ${w} ${height}`}>
+      <svg ref={svgRef} viewBox={`0 0 ${w} ${height}`}>
         <defs>
           {(colors || []).map((c, i) => (
             <filter key={i} id={`mglow-${id}-${i}`} x="-50%" y="-50%" width="200%" height="200%">
@@ -1290,6 +1312,7 @@ function TwinBarBrutoChart({
   colorUp, colorDown,
   yCaption,
   syncGroup,
+  svgRef,
 }) {
   const id = useId().replace(/:/g, "");
   const [wrapRef, w] = useContainerWidth(800);
@@ -1326,7 +1349,7 @@ function TwinBarBrutoChart({
 
   return (
     <div className="nid-chart-wrap" ref={wrapRef} onMouseLeave={() => setLocalHover(null)}>
-      <svg viewBox={`0 0 ${w} ${height}`}>
+      <svg ref={svgRef} viewBox={`0 0 ${w} ${height}`}>
         <defs>
           <linearGradient id={`tup-${id}`} x1="0" y1="0" x2="0" y2="1">
             <stop offset="0%" stopColor={colorUp} stopOpacity="0.95" />
@@ -1413,6 +1436,7 @@ function TwinBarSaldoChart({
   colorUp, colorDown,
   yCaption, showCumulative,
   syncGroup,
+  svgRef,
 }) {
   const id = useId().replace(/:/g, "");
   const [wrapRef, w] = useContainerWidth(800);
@@ -1471,7 +1495,7 @@ function TwinBarSaldoChart({
 
   return (
     <div className="nid-chart-wrap" ref={wrapRef} onMouseLeave={() => setLocalHover(null)}>
-      <svg viewBox={`0 0 ${w} ${height}`}>
+      <svg ref={svgRef} viewBox={`0 0 ${w} ${height}`}>
         <defs>
           <filter id={`sglow-${id}`}>
             <feGaussianBlur stdDeviation="3" />
@@ -1607,6 +1631,18 @@ export function TwinBarChart({
   emptyAction,
   syncGroup,    // ticket 14: cross-chart hover sync
 }) {
+  const exportId = useId();
+  const svgRef = useRef(null);
+  const cumulativoExport = showCumulative != null ? showCumulative : mode === "saldo";
+  const exportacao = useMemo(() => exportacaoTwin(data, { acumulado: Boolean(cumulativoExport) }), [data, cumulativoExport]);
+  useRegistrarExportacao({
+    id: exportId,
+    rotulo: mode === "bruto" ? "Admissões e desligamentos" : "Saldo",
+    colunas: exportacao.colunas,
+    linhas: exportacao.linhas,
+    svgRef,
+    carregando: Boolean(loading),
+  });
   if (loading) return <ChartState kind="loading" shape="twin" height={height} />;
   if (!data || data.length === 0) return <EmptyChart h={height} shape="twin" message={emptyMessage} action={emptyAction} />;
 
@@ -1616,7 +1652,7 @@ export function TwinBarChart({
   // Cada renderer mede o próprio container: medir aqui e passar ref+largura
   // deixava o ResizeObserver preso à div do renderer desmontado na troca de
   // modo (o navegador entrega 0x0 ao removê-la) e nunca o religava à nova.
-  const shared = { data, height, glow, colorUp, colorDown, yCaption, syncGroup };
+  const shared = { data, height, glow, colorUp, colorDown, yCaption, syncGroup, svgRef };
 
   if (mode === "bruto") {
     return <TwinBarBrutoChart {...shared} />;
@@ -1629,6 +1665,7 @@ export function TwinBarChart({
 function DonutChartCore({
   data, colors, height = 220, glow = "hover", centerLabel, centerSub, legend = false,
   onSelect,
+  svgRef,
 }) {
   const id = useId().replace(/:/g, "");
   const [hoverSlice, setHoverSlice] = useState(null);
@@ -1667,7 +1704,7 @@ function DonutChartCore({
           : { display: "grid", placeItems: "center" }
       }
     >
-      <svg viewBox={`0 0 ${size} ${size}`} style={{ maxWidth: size, width: size }}
+      <svg ref={svgRef} viewBox={`0 0 ${size} ${size}`} style={{ maxWidth: size, width: size }}
         onMouseLeave={() => setHoverSlice(null)}>
         <defs>
           <filter id={`dglow-${id}`} x="-30%" y="-30%" width="160%" height="160%">
@@ -1835,12 +1872,20 @@ export function DonutChart({
   emptyAction,
   onSelect,
 }) {
+  const exportId = useId();
+  const svgRef = useRef(null);
+  const usaBarras = prefer === "bar" || (prefer === "auto" && Array.isArray(data) && data.length > threshold);
+  const exportacao = useMemo(() => exportacaoDonut(data), [data]);
+  useRegistrarExportacao({
+    id: exportId,
+    rotulo: "Distribuição",
+    colunas: exportacao.colunas,
+    linhas: exportacao.linhas,
+    svgRef: usaBarras ? null : svgRef,
+    carregando: Boolean(loading),
+  });
   if (loading) return <ChartState kind="loading" shape="donut" height={height || 220} />;
   if (!data || data.length === 0) return <EmptyChart h={height || 220} shape="donut" message={emptyMessage} action={emptyAction} />;
-
-  const useBar =
-    prefer === "bar" ||
-    (prefer === "auto" && data && data.length > threshold);
 
   // When the caller passes only baseColor (monochrome), synthesize a colors
   // array using the same opacity ramp PercentBarChart uses, via color-mix()
@@ -1854,7 +1899,7 @@ export function DonutChart({
           return `color-mix(in oklab, ${baseColor || "var(--accent-1)"} ${Math.round(opacity * 100)}%, transparent)`;
         });
 
-  return useBar
+  return usaBarras
     ? (
       <PercentBarChart
         data={data}
@@ -1875,6 +1920,7 @@ export function DonutChart({
         centerSub={centerSub}
         legend={legend}
         onSelect={onSelect}
+        svgRef={svgRef}
       />
     );
 }
@@ -1896,6 +1942,9 @@ export function HBarChart({
   emptyAction,
   onSelect,
 }) {
+  const exportId = useId();
+  const exportacao = useMemo(() => exportacaoRanking(data, { comPosicao: Boolean(showPosition), offset: positionOffset || 0 }), [data, showPosition, positionOffset]);
+  useRegistrarExportacao({ id: exportId, rotulo: "Ranking", colunas: exportacao.colunas, linhas: exportacao.linhas, svgRef: null, carregando: Boolean(loading) });
   if (loading) return <ChartState kind="loading" shape="hbar" height={height || 240} />;
   if (!data || data.length === 0) return <EmptyChart h={height || 240} shape="hbar" message={emptyMessage} action={emptyAction} />;
   const max = Math.max(...data.map((d) => d.value)) || 1;

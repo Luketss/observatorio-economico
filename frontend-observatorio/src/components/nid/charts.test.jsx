@@ -7,7 +7,8 @@
 // distingue mesmo ausência de zero real.
 import { describe, it, expect, afterEach } from "vitest";
 import { render, cleanup, fireEvent } from "@testing-library/react";
-import { trechos, MultiLineChart } from "./charts.jsx";
+import { trechos, MultiLineChart, AreaLineChart, StackedBarChart, TwinBarChart, DonutChart, HBarChart, Sparkline } from "./charts.jsx";
+import { ExportProvider, useExportacoes } from "./ExportContext.jsx";
 
 afterEach(cleanup);
 
@@ -129,5 +130,59 @@ describe("MultiLineChart — tooltip do modo foco não trunca série fixada junt
     const tip = container.querySelector(".nid-tip");
     expect(tip).toBeTruthy();
     expect(tip.textContent).toContain("Fixado1");
+  });
+});
+
+function Registros() {
+  const regs = useExportacoes();
+  return <pre data-testid="regs">{JSON.stringify(regs.map((r) => ({ rotulo: r.rotulo, chaves: r.colunas.map((c) => c.chave), linhas: r.linhas, temSvg: Boolean(r.svgRef && r.svgRef.current), carregando: r.carregando })))}</pre>;
+}
+const lerRegs = () => JSON.parse(document.querySelector("[data-testid=regs]").textContent);
+
+describe("registro de exportação pelos gráficos", () => {
+  it("AreaLineChart registra período + valor com o label e a ref do svg", () => {
+    render(<ExportProvider><AreaLineChart data={[{ label: "2021", value: 10 }, { label: "2022", value: 12 }]} label="PIB Total" /><Registros /></ExportProvider>);
+    expect(lerRegs()).toEqual([{ rotulo: "PIB Total", chaves: ["periodo", "valor"], linhas: [{ periodo: "2021", valor: 10 }, { periodo: "2022", valor: 12 }], temSvg: true, carregando: false }]);
+  });
+  it("AreaLineChart em loading registra carregando=true sem linhas", () => {
+    render(<ExportProvider><AreaLineChart data={[]} label="x" loading /><Registros /></ExportProvider>);
+    expect(lerRegs()[0]).toMatchObject({ carregando: true, linhas: [] });
+  });
+  it("StackedBarChart registra uma coluna por key (+ total quando showTotalLabel)", () => {
+    render(<ExportProvider><StackedBarChart data={[{ label: "2021", agro: 1, ind: 2 }]} keys={["agro", "ind"]} showTotalLabel /><Registros /></ExportProvider>);
+    expect(lerRegs()[0]).toMatchObject({ rotulo: "Composição", chaves: ["periodo", "agro", "ind", "total"], linhas: [{ periodo: "2021", agro: 1, ind: 2, total: 3 }], temSvg: true });
+  });
+  it("MultiLineChart registra uma coluna por série preservando null", () => {
+    render(<ExportProvider><MultiLineChart data={[{ label: "2021", A: 1, B: null }]} series={["A", "B"]} /><Registros /></ExportProvider>);
+    expect(lerRegs()[0]).toMatchObject({ rotulo: "Séries", chaves: ["periodo", "A", "B"], linhas: [{ periodo: "2021", A: 1, B: null }], temSvg: true });
+  });
+  it("TwinBarChart saldo registra acumulado; bruto não", () => {
+    const data = [{ label: "jan", admissoes: 10, desligamentos: 4 }, { label: "fev", admissoes: 2, desligamentos: 5 }];
+    const { unmount } = render(<ExportProvider><TwinBarChart data={data} mode="saldo" /><Registros /></ExportProvider>);
+    expect(lerRegs()[0]).toMatchObject({ rotulo: "Saldo", chaves: ["periodo", "admissoes", "desligamentos", "saldo", "acumulado"], temSvg: true });
+    expect(lerRegs()[0].linhas.map((l) => l.acumulado)).toEqual([6, 3]);
+    unmount();
+    render(<ExportProvider><TwinBarChart data={data} mode="bruto" /><Registros /></ExportProvider>);
+    expect(lerRegs()[0]).toMatchObject({ rotulo: "Admissões e desligamentos", chaves: ["periodo", "admissoes", "desligamentos", "saldo"], temSvg: true });
+  });
+  it("DonutChart registra categoria/valor/participação; variante donut tem svg, variante barras não", () => {
+    const data = [{ label: "Serviços", value: 60 }, { label: "Indústria", value: 40 }];
+    const { unmount } = render(<ExportProvider><DonutChart data={data} /><Registros /></ExportProvider>);
+    expect(lerRegs()[0]).toMatchObject({ rotulo: "Distribuição", chaves: ["categoria", "valor", "participacao"], linhas: [{ categoria: "Serviços", valor: 60, participacao: 60 }, { categoria: "Indústria", valor: 40, participacao: 40 }], temSvg: true });
+    unmount();
+    render(<ExportProvider><DonutChart data={data} prefer="bar" /><Registros /></ExportProvider>);
+    expect(lerRegs()[0]).toMatchObject({ rotulo: "Distribuição", temSvg: false });
+  });
+  it("HBarChart registra nome/valor (+ posição) sem svg", () => {
+    render(<ExportProvider><HBarChart data={[{ label: "Divinópolis", value: 300 }]} showPosition positionOffset={10} /><Registros /></ExportProvider>);
+    expect(lerRegs()[0]).toMatchObject({ rotulo: "Ranking", chaves: ["posicao", "nome", "valor"], linhas: [{ posicao: 11, nome: "Divinópolis", valor: 300 }], temSvg: false });
+  });
+  it("fora do ExportProvider os gráficos renderizam normalmente", () => {
+    const { container } = render(<AreaLineChart data={[{ label: "2021", value: 1 }]} label="x" />);
+    expect(container.querySelector("svg")).not.toBeNull();
+  });
+  it("Sparkline não registra", () => {
+    render(<ExportProvider><Sparkline data={[1, 2, 3]} /><Registros /></ExportProvider>);
+    expect(lerRegs()).toEqual([]);
   });
 });
