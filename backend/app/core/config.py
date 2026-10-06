@@ -21,7 +21,8 @@ class Settings(BaseSettings):
     # MFA (TOTP): chave Fernet para cifrar o segredo em repouso. Gerar uma vez com
     #   python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"
     # Vazia = MFA indisponivel (cadastro/verificacao respondem 503; login sem MFA segue normal).
-    # NUNCA rotacionar sem zerar os MFAs cadastrados (docs/mfa.md).
+    # NUNCA rotacionar sem zerar os MFAs cadastrados (docs/mfa.md): a rotacao invalida os
+    # codigos TOTP; os codigos de recuperacao (hash bcrypt) continuam valendo.
     MFA_ENCRYPTION_KEY: str = ""
 
     # App
