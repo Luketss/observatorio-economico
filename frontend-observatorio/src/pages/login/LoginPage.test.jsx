@@ -107,4 +107,9 @@ describe("LoginPage — etapa de codigo (MFA)", () => {
     fireEvent.click(screen.getByRole("button", { name: "Verificar" }));
     expect(await screen.findByRole("alert")).toHaveTextContent("Segredo MFA invalido; zere e recadastre o MFA");
   });
+
+  it("etapa da senha mostra o link Esqueci minha senha", () => {
+    montar();
+    expect(screen.getByRole("link", { name: "Esqueci minha senha" })).toHaveAttribute("href", "/esqueci-senha");
+  });
 });

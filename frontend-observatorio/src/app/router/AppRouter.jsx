@@ -5,6 +5,8 @@ import DashboardLayout from "../layouts/DashboardLayout";
 import AdminLayout from "../layouts/AdminLayout";
 import LandingPage from "../../pages/landing/LandingPage";
 import LoginPage from "../../pages/login/LoginPage";
+import EsqueciSenhaPage from "../../pages/login/EsqueciSenhaPage";
+import RedefinirSenhaPage from "../../pages/login/RedefinirSenhaPage";
 import DashboardGeralPage from "../../pages/DashboardGeralPage";
 import ArrecadacaoPage from "../../pages/arrecadacao/ArrecadacaoPage";
 import PibPage from "../../pages/pib/PibPage";
@@ -105,6 +107,8 @@ export default function AppRouter() {
         {/* ── Public routes ──────────────────────────────── */}
         <Route path="/" element={<LandingPage />} />
         <Route path="/login" element={<LoginPage />} />
+        <Route path="/esqueci-senha" element={<EsqueciSenhaPage />} />
+        <Route path="/redefinir-senha" element={<RedefinirSenhaPage />} />
 
         {/* ── Main dashboard ─────────────────────────────── */}
         <Route
