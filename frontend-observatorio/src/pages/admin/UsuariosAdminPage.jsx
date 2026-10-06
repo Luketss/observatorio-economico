@@ -15,6 +15,8 @@ import {
   TrashIcon,
   EyeIcon,
   EyeSlashIcon,
+  ShieldCheckIcon,
+  ShieldExclamationIcon,
 } from "@heroicons/react/24/outline";
 
 const defaultForm = { nome: "", email: "", senha: "", municipio_id: "", role_id: "" };
@@ -35,12 +37,15 @@ export default function UsuariosAdminPage() {
   const [formError, setFormError] = useState(null);
   const [deleteConfirmId, setDeleteConfirmId] = useState(null);
   const [deleting, setDeleting] = useState(false);
+  const [mfaConfirmId, setMfaConfirmId] = useState(null);
+  const [zerandoMfa, setZerandoMfa] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
 
   useEscapeKey(useCallback(() => {
+    if (mfaConfirmId) { setMfaConfirmId(null); return; }
     if (deleteConfirmId) { setDeleteConfirmId(null); return; }
     if (showForm) closeForm();
-  }, [deleteConfirmId, showForm]));
+  }, [mfaConfirmId, deleteConfirmId, showForm]));
 
   function loadUsuarios() {
     return api.get("/usuarios").then((res) => {
@@ -164,6 +169,20 @@ export default function UsuariosAdminPage() {
       addToast("Erro ao excluir usuário", "error");
     } finally {
       setDeleting(false);
+    }
+  }
+
+  async function handleZerarMfa(id) {
+    setZerandoMfa(true);
+    try {
+      await api.post(`/usuarios/${id}/mfa/zerar`);
+      setUsuarios((prev) => prev.map((u) => (u.id === id ? { ...u, mfa_ativo: false } : u)));
+      setMfaConfirmId(null);
+      addToast("MFA zerado. O usuário entra só com a senha até recadastrar.", "success");
+    } catch (err) {
+      addToast(err?.response?.data?.error?.message || "Erro ao zerar MFA", "error");
+    } finally {
+      setZerandoMfa(false);
     }
   }
 
@@ -403,13 +422,14 @@ export default function UsuariosAdminPage() {
                   <th className="px-3 py-3 md:px-6">Município</th>
                   <th className="px-3 py-3 md:px-6">Perfil</th>
                   <th className="px-3 py-3 md:px-6 text-center">Ativo</th>
+                  <th className="px-3 py-3 md:px-6 text-center">MFA</th>
                   <th className="px-3 py-3 md:px-6 sr-only">Ações</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-[var(--border)]">
                 {sp.filtered.length === 0 ? (
                   <tr>
-                    <td colSpan={6} className="px-6 py-10 text-center text-slate-400">
+                    <td colSpan={7} className="px-6 py-10 text-center text-slate-400">
                       {sp.search
                         ? `Nenhum usuário encontrado para "${sp.search}".`
                         : "Nenhum usuário encontrado."}
@@ -436,6 +456,13 @@ export default function UsuariosAdminPage() {
                             aria-label={u.ativo ? "Ativo" : "Inativo"}
                           />
                         </td>
+                        <td className="px-3 py-3 md:px-6 text-center">
+                          {u.mfa_ativo ? (
+                            <ShieldCheckIcon className="w-4 h-4 inline text-green-500" role="img" aria-label="MFA ativo" />
+                          ) : (
+                            <span className="text-slate-300" aria-label="Sem MFA">—</span>
+                          )}
+                        </td>
                         <td className="px-3 py-3 md:px-6">
                           {currentUser?.id !== u.id && (isGlobal || u.role !== "ADMIN_GLOBAL") && (
                             <div className="flex items-center gap-1 justify-end">
@@ -447,6 +474,17 @@ export default function UsuariosAdminPage() {
                               >
                                 <PencilIcon className="w-4 h-4" aria-hidden="true" />
                               </button>
+                              {isGlobal && u.mfa_ativo && (
+                                <button
+                                  type="button"
+                                  onClick={() => setMfaConfirmId(u.id)}
+                                  aria-label={`Zerar MFA de ${u.nome}`}
+                                  title="Zerar MFA (perdeu o app e os códigos)"
+                                  className="p-2 rounded-lg text-[var(--text-mute)] hover:text-amber-500 hover:bg-[var(--panel-2)] transition-colors cursor-pointer"
+                                >
+                                  <ShieldExclamationIcon className="w-4 h-4" aria-hidden="true" />
+                                </button>
+                              )}
                               <button
                                 type="button"
                                 onClick={() => setDeleteConfirmId(u.id)}
@@ -461,7 +499,7 @@ export default function UsuariosAdminPage() {
                       </tr>
                       {deleteConfirmId === u.id && (
                         <tr key={`confirm-${u.id}`} className="bg-[var(--panel-2)]">
-                          <td colSpan={6} className="px-6 py-3">
+                          <td colSpan={7} className="px-6 py-3">
                             <div className="flex items-center gap-4 text-sm">
                               <span className="text-red-700  font-medium">
                                 Excluir <strong>{u.nome}</strong>? Esta ação não pode ser desfeita.
@@ -481,6 +519,27 @@ export default function UsuariosAdminPage() {
                                   className="px-3 py-1.5 rounded-lg bg-red-600 hover:bg-red-700 text-white transition-colors text-xs disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
                                 >
                                   {deleting ? "Excluindo..." : "Excluir"}
+                                </button>
+                              </div>
+                            </div>
+                          </td>
+                        </tr>
+                      )}
+                      {mfaConfirmId === u.id && (
+                        <tr key={`mfa-${u.id}`} className="bg-[var(--panel-2)]">
+                          <td colSpan={7} className="px-6 py-3">
+                            <div className="flex items-center gap-4 text-sm">
+                              <span className="text-amber-700 font-medium">
+                                Zerar o MFA de <strong>{u.nome}</strong>? Ele volta a entrar só com a senha até recadastrar.
+                              </span>
+                              <div className="flex gap-2 ml-auto">
+                                <button type="button" onClick={() => setMfaConfirmId(null)}
+                                  className="px-3 py-1.5 rounded-lg border border-slate-200 text-slate-600 hover:bg-white transition-colors text-xs cursor-pointer">
+                                  Cancelar
+                                </button>
+                                <button type="button" onClick={() => handleZerarMfa(u.id)} disabled={zerandoMfa}
+                                  className="px-3 py-1.5 rounded-lg bg-amber-600 hover:bg-amber-700 text-white transition-colors text-xs disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer">
+                                  {zerandoMfa ? "Zerando..." : "Zerar MFA"}
                                 </button>
                               </div>
                             </div>
