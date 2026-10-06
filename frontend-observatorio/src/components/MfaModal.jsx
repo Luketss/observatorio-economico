@@ -1,5 +1,5 @@
-// Verificação em duas etapas (TOTP) — só ADMIN_GLOBAL. Passos: status → qr
-// (QR + código de confirmação) → codigos (mostrados uma única vez). Desativar exige senha + código.
+// Verificação em duas etapas — só ADMIN_GLOBAL. Passos: status → metodo (app ou e-mail) → qr (QR + confirmar)
+// | codigo_email → codigos (mostrados uma única vez). Desativar exige senha + código.
 // Spec: docs/superpowers/specs/2026-10-06-mfa-totp-admin-global-design.md
 import { useCallback, useEffect, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
@@ -17,9 +17,9 @@ const inputCls =
 const btnPrimario = "w-full py-2 rounded-lg text-sm font-medium cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed transition-opacity";
 const btnSecundario = "px-3 py-2 rounded-lg text-sm border border-[var(--border)] text-[var(--text-dim)] hover:bg-[var(--panel-2)] cursor-pointer";
 
-export default function MfaModal({ open, onClose }) {
+export default function MfaModal({ open, onClose, emailUsuario }) {
   const { addToast } = useToast();
-  const [passo, setPasso] = useState("status"); // status | qr (QR + confirmar) | codigos | desativar
+  const [passo, setPasso] = useState("status"); // status | metodo | qr | codigo_email | codigos | desativar
   const [status, setStatus] = useState(null);
   const [config, setConfig] = useState(null);
   const [codigo, setCodigo] = useState("");
@@ -29,10 +29,11 @@ export default function MfaModal({ open, onClose }) {
   const [indisponivel, setIndisponivel] = useState(false);
   const [erro, setErro] = useState("");
   const [carregando, setCarregando] = useState(false);
+  const [enviadoPara, setEnviadoPara] = useState("");
 
   const fechar = useCallback(() => {
     setPasso("status"); setConfig(null); setCodigo(""); setSenhaAtual("");
-    setCodigosRecuperacao([]); setGuardei(false); setErro("");
+    setCodigosRecuperacao([]); setGuardei(false); setErro(""); setEnviadoPara("");
     onClose();
   }, [onClose]);
 
@@ -52,15 +53,36 @@ export default function MfaModal({ open, onClose }) {
     return () => { vivo = false; };
   }, [open]);
 
-  async function iniciar() {
+  async function iniciar(metodo) {
     setErro(""); setCarregando(true);
     try {
-      const r = await api.post("/auth/mfa/configurar");
-      setConfig(r.data.data); setCodigo(""); setPasso("qr");
+      const r = await api.post("/auth/mfa/configurar", { metodo });
+      const dados = r.data.data;
+      setCodigo("");
+      if (dados.metodo === "email") {
+        setEnviadoPara(dados.enviado_para || "");
+        setPasso("codigo_email");
+      } else {
+        setConfig(dados);
+        setPasso("qr");
+      }
     } catch (err) {
       if (err?.response?.status === 503) setIndisponivel(true);
       setErro(mensagemDoErro(err, "Não foi possível iniciar a configuração."));
     } finally { setCarregando(false); }
+  }
+
+  async function abrirDesativar() {
+    setErro(""); setCodigo(""); setSenhaAtual(""); setEnviadoPara("");
+    setPasso("desativar");
+    if (status && status.metodo === "email") {
+      try {
+        const r = await api.post("/auth/mfa/enviar-codigo");
+        setEnviadoPara((r.data && r.data.enviado_para) || "");
+      } catch (err) {
+        setErro(mensagemDoErro(err, "Não foi possível enviar o código por e-mail."));
+      }
+    }
   }
 
   async function confirmar(e) {
@@ -130,22 +152,39 @@ export default function MfaModal({ open, onClose }) {
                 {alerta}
                 {status && !status.ativo && !indisponivel && (
                   <>
-                    <p>Proteja sua conta exigindo um código do app autenticador (Google Authenticator, Authy, 1Password…) depois da senha.</p>
-                    <button type="button" onClick={iniciar} disabled={carregando} className={btnPrimario} style={{ background: "var(--accent-1)", color: "var(--bg)" }}>
-                      {carregando ? "Preparando..." : "Ativar verificação em duas etapas"}
+                    <p>Proteja sua conta exigindo um código depois da senha: pelo app autenticador ou por e-mail.</p>
+                    <button type="button" onClick={() => { setErro(""); setPasso("metodo"); }} className={btnPrimario} style={{ background: "var(--accent-1)", color: "var(--bg)" }}>
+                      Ativar verificação em duas etapas
                     </button>
                   </>
                 )}
                 {status && status.ativo && (
                   <>
                     <p>Ativa desde {status.ativado_em ? new Date(status.ativado_em).toLocaleDateString("pt-BR") : "—"}.</p>
+                    <p>Método: {status.metodo === "email" ? "código por e-mail" : "app autenticador"}.</p>
                     <p>{status.codigos_restantes} códigos de recuperação restantes.</p>
-                    <button type="button" onClick={() => { setErro(""); setCodigo(""); setSenhaAtual(""); setPasso("desativar"); }} className={btnSecundario}>
+                    <button type="button" onClick={abrirDesativar} className={btnSecundario}>
                       Desativar
                     </button>
                   </>
                 )}
                 {!status && !erro && <p>Carregando…</p>}
+              </div>
+            )}
+
+            {passo === "metodo" && (
+              <div className="space-y-3 text-sm text-[var(--text-dim)]">
+                <p>Como você quer receber o código de verificação?</p>
+                <button type="button" onClick={() => iniciar("totp")} disabled={carregando} className={`${btnSecundario} w-full text-left`}>
+                  <strong className="block text-[var(--text)]">App autenticador</strong>
+                  <span className="text-xs">Google Authenticator, Authy, 1Password… Funciona sem internet.</span>
+                </button>
+                <button type="button" onClick={() => iniciar("email")} disabled={carregando} className={`${btnSecundario} w-full text-left`}>
+                  <strong className="block text-[var(--text)]">{emailUsuario ? `Código por e-mail (${emailUsuario})` : "Código por e-mail"}</strong>
+                  <span className="text-xs">Enviamos um código de 6 dígitos a cada login.</span>
+                </button>
+                {alerta}
+                <button type="button" className={btnSecundario} onClick={() => { setErro(""); setPasso("status"); }}>Voltar</button>
               </div>
             )}
 
@@ -162,7 +201,25 @@ export default function MfaModal({ open, onClose }) {
                   value={codigo} onChange={(e) => setCodigo(e.target.value)} required maxLength={7} className={inputCls} />
                 {alerta}
                 <div className="flex gap-2">
-                  <button type="button" className={btnSecundario} onClick={() => { setErro(""); setConfig(null); setPasso("status"); }}>Voltar</button>
+                  <button type="button" className={btnSecundario} onClick={() => { setErro(""); setConfig(null); setPasso("metodo"); }}>Voltar</button>
+                  <button type="submit" disabled={carregando || codigo.trim().length < 6} className={btnPrimario} style={{ background: "var(--accent-1)", color: "var(--bg)" }}>
+                    {carregando ? "Verificando..." : "Confirmar"}
+                  </button>
+                </div>
+              </form>
+            )}
+
+            {passo === "codigo_email" && (
+              <form onSubmit={confirmar} className="space-y-3 text-sm text-[var(--text-dim)]">
+                <p>{`Enviamos um código para ${enviadoPara}. Ele vale por 10 minutos.`}</p>
+                <input type="text" inputMode="numeric" autoComplete="one-time-code" aria-label="Código do e-mail" placeholder="000000"
+                  value={codigo} onChange={(e) => setCodigo(e.target.value)} required maxLength={7} className={inputCls} />
+                {alerta}
+                <button type="button" onClick={() => iniciar("email")} disabled={carregando} className="text-xs text-blue-600 hover:text-blue-700 cursor-pointer disabled:text-[var(--text-mute)]">
+                  Enviar outro código
+                </button>
+                <div className="flex gap-2">
+                  <button type="button" className={btnSecundario} onClick={() => { setErro(""); setPasso("metodo"); }}>Voltar</button>
                   <button type="submit" disabled={carregando || codigo.trim().length < 6} className={btnPrimario} style={{ background: "var(--accent-1)", color: "var(--bg)" }}>
                     {carregando ? "Verificando..." : "Confirmar"}
                   </button>
@@ -172,7 +229,7 @@ export default function MfaModal({ open, onClose }) {
 
             {passo === "codigos" && (
               <div className="space-y-3 text-sm text-[var(--text-dim)]">
-                <p>3. Guarde estes códigos de recuperação. <strong>Eles não aparecem de novo.</strong> Cada um vale uma vez, se você perder o app.</p>
+                <p>3. Guarde estes códigos de recuperação. <strong>Eles não aparecem de novo.</strong> Cada um vale uma vez, se você perder o acesso ao app ou ao e-mail.</p>
                 <ul className="grid grid-cols-2 gap-1 font-mono text-xs text-[var(--text)]">
                   {codigosRecuperacao.map((c) => <li key={c} className="px-2 py-1 rounded bg-[var(--panel-2)]">{c}</li>)}
                 </ul>
@@ -190,9 +247,13 @@ export default function MfaModal({ open, onClose }) {
 
             {passo === "desativar" && (
               <form onSubmit={desativar} className="space-y-3 text-sm text-[var(--text-dim)]">
-                <p>Para desativar, confirme sua senha e um código do app (ou um código de recuperação).</p>
+                <p>
+                  {status && status.metodo === "email"
+                    ? (enviadoPara ? `Enviamos um código para ${enviadoPara}. ` : "") + "Confirme sua senha e o código do e-mail (ou um código de recuperação)."
+                    : "Para desativar, confirme sua senha e um código do app (ou um código de recuperação)."}
+                </p>
                 <input type="password" aria-label="Senha atual" placeholder="Senha atual" value={senhaAtual} onChange={(e) => setSenhaAtual(e.target.value)} required autoComplete="current-password" className={inputCls} />
-                <input type="text" aria-label="Código" placeholder="Código do app ou XXXX-XXXX" value={codigo} onChange={(e) => setCodigo(e.target.value)} required autoComplete="one-time-code" className={inputCls} />
+                <input type="text" aria-label="Código" placeholder={status && status.metodo === "email" ? "Código do e-mail ou XXXX-XXXX" : "Código do app ou XXXX-XXXX"} value={codigo} onChange={(e) => setCodigo(e.target.value)} required autoComplete="one-time-code" className={inputCls} />
                 {alerta}
                 <div className="flex gap-2">
                   <button type="button" className={btnSecundario} onClick={() => { setErro(""); setPasso("status"); }}>Voltar</button>

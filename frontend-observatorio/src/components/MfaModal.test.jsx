@@ -28,8 +28,9 @@ describe("MfaModal", () => {
     const onClose = vi.fn();
     render(<MfaModal open onClose={onClose} />);
     fireEvent.click(await screen.findByRole("button", { name: /Ativar verificação/i }));
+    fireEvent.click(screen.getByRole("button", { name: /App autenticador/i }));
     await screen.findByText("JBSWY3DPEHPK3PXP");
-    expect(api.post).toHaveBeenCalledWith("/auth/mfa/configurar");
+    expect(api.post).toHaveBeenCalledWith("/auth/mfa/configurar", { metodo: "totp" });
     const campo = screen.getByLabelText(/Código do app/i);
     fireEvent.change(campo, { target: { value: "123456" } });
     fireEvent.click(screen.getByRole("button", { name: "Confirmar" }));
@@ -50,6 +51,7 @@ describe("MfaModal", () => {
     api.post.mockResolvedValueOnce({ data: { data: { codigos_recuperacao: ["AAAA-1111"] } } });
     render(<MfaModal open onClose={() => {}} />);
     fireEvent.click(await screen.findByRole("button", { name: /Ativar verificação/i }));
+    fireEvent.click(screen.getByRole("button", { name: /App autenticador/i }));
     fireEvent.change(await screen.findByLabelText(/Código do app/i), { target: { value: "123456" } });
     fireEvent.click(screen.getByRole("button", { name: "Confirmar" }));
     await screen.findByText("AAAA-1111");
@@ -63,6 +65,7 @@ describe("MfaModal", () => {
     api.post.mockRejectedValueOnce({ response: { status: 401, data: { error: { message: "Codigo invalido" } } } });
     render(<MfaModal open onClose={() => {}} />);
     fireEvent.click(await screen.findByRole("button", { name: /Ativar verificação/i }));
+    fireEvent.click(screen.getByRole("button", { name: /App autenticador/i }));
     fireEvent.change(await screen.findByLabelText(/Código do app/i), { target: { value: "000000" } });
     fireEvent.click(screen.getByRole("button", { name: "Confirmar" }));
     expect(await screen.findByRole("alert")).toHaveTextContent(/inválido|invalido/i);
@@ -96,6 +99,47 @@ describe("MfaModal", () => {
     api.post.mockRejectedValueOnce({ response: { status: 409, data: { error: { message: "MFA ja esta ativo" } } } });
     render(<MfaModal open onClose={() => {}} />);
     fireEvent.click(await screen.findByRole("button", { name: /Ativar verificação/i }));
+    fireEvent.click(screen.getByRole("button", { name: /App autenticador/i }));
     expect(await screen.findByRole("alert")).toHaveTextContent(/ativo/i);
+  });
+
+  it("Ativar mostra as duas opcoes com o e-mail do usuario", async () => {
+    api.get.mockResolvedValueOnce(statusInativo);
+    render(<MfaModal open onClose={() => {}} emailUsuario="ana@x.gov.br" />);
+    fireEvent.click(await screen.findByRole("button", { name: /Ativar verificação/i }));
+    expect(screen.getByRole("button", { name: /App autenticador/i })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /Código por e-mail \(ana@x\.gov\.br\)/i })).toBeInTheDocument();
+    expect(api.post).not.toHaveBeenCalled();
+  });
+
+  it("metodo e-mail pula o QR: envia o codigo, confirma e mostra os codigos de recuperacao", async () => {
+    api.get.mockResolvedValueOnce(statusInativo);
+    api.post.mockResolvedValueOnce({ data: { data: { metodo: "email", enviado_para: "a***@x.gov.br" } } });
+    api.post.mockResolvedValueOnce({ data: { data: { codigos_recuperacao: ["AAAA-1111"] } } });
+    render(<MfaModal open onClose={() => {}} emailUsuario="ana@x.gov.br" />);
+    fireEvent.click(await screen.findByRole("button", { name: /Ativar verificação/i }));
+    fireEvent.click(screen.getByRole("button", { name: /Código por e-mail/i }));
+    expect(await screen.findByText(/Enviamos um código para a\*\*\*@x\.gov\.br/)).toBeInTheDocument();
+    expect(api.post).toHaveBeenCalledWith("/auth/mfa/configurar", { metodo: "email" });
+    expect(screen.queryByText(/Leia o QR/)).toBeNull();
+    fireEvent.change(screen.getByLabelText(/Código do e-mail/i), { target: { value: "123456" } });
+    fireEvent.click(screen.getByRole("button", { name: "Confirmar" }));
+    await screen.findByText("AAAA-1111");
+    expect(api.post).toHaveBeenLastCalledWith("/auth/mfa/ativar", { codigo: "123456" });
+  });
+
+  it("ativo por e-mail mostra o metodo e Desativar pede o codigo por e-mail antes", async () => {
+    api.get.mockResolvedValueOnce({ data: { data: { ativo: true, ativado_em: "2026-10-06T10:00:00Z", codigos_restantes: 9, metodo: "email" } } });
+    api.post.mockResolvedValueOnce({ data: { enviado_para: "a***@x.gov.br" } });
+    api.post.mockResolvedValueOnce({ data: { ok: true } });
+    render(<MfaModal open onClose={() => {}} emailUsuario="ana@x.gov.br" />);
+    expect(await screen.findByText(/código por e-mail/i)).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: /Desativar/i }));
+    await waitFor(() => expect(api.post).toHaveBeenCalledWith("/auth/mfa/enviar-codigo"));
+    expect(await screen.findByText(/Enviamos um código para a\*\*\*@x\.gov\.br/)).toBeInTheDocument();
+    fireEvent.change(screen.getByLabelText("Senha atual"), { target: { value: "senha" } });
+    fireEvent.change(screen.getByLabelText(/^Código$/), { target: { value: "654321" } });
+    fireEvent.click(screen.getByRole("button", { name: /Confirmar desativação/i }));
+    await waitFor(() => expect(api.post).toHaveBeenLastCalledWith("/auth/mfa/desativar", { senha_atual: "senha", codigo: "654321" }));
   });
 });

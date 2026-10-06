@@ -328,7 +328,7 @@ export default function DashboardLayout() {
         </main>
       </div>
       <AlterarSenhaModal open={senhaOpen} onClose={() => setSenhaOpen(false)} />
-      {isGlobal && <MfaModal open={mfaOpen} onClose={() => setMfaOpen(false)} />}
+      {isGlobal && <MfaModal open={mfaOpen} onClose={() => setMfaOpen(false)} emailUsuario={user?.email} />}
     </ToastProvider>
   );
 }
