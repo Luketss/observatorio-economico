@@ -1053,11 +1053,15 @@ function dimensoesDo(svgEl) {
 // pelo fallback. Se ainda sobrar var(), devolve "" (quem chama remove o atributo).
 export function resolverVars(valor, estiloRaiz) {
   if (!valor || !valor.includes("var(")) return valor || "";
+  let falhou = false;
   const resolvido = valor.replace(/var\(\s*(--[\w-]+)\s*(?:,\s*([^()]*))?\)/g, (_m, nome, fallback) => {
     const v = estiloRaiz ? String(estiloRaiz.getPropertyValue(nome) || "").trim() : "";
-    return v || (fallback ? fallback.trim() : "");
+    const fb = fallback ? fallback.trim() : "";
+    if (!v && !fb) falhou = true;
+    return v || fb;
   });
-  return resolvido.includes("var(") ? "" : resolvido.trim();
+  // Qualquer var() sem valor nem fallback invalida o valor inteiro ("fill: ;" não é CSS útil).
+  return falhou || resolvido.includes("var(") ? "" : resolvido.trim();
 }
 
 export function inlinarEstilosSvg(svgEl, win = window) {
