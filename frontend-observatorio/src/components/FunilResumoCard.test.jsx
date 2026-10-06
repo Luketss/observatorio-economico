@@ -3,6 +3,7 @@ import { render, screen, waitFor } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import { describe, expect, it, vi } from "vitest";
 
+vi.mock("./nid/ExportMenu", () => ({ default: () => null }));
 vi.mock("../services/api", () => ({
   default: { get: vi.fn() },
 }));

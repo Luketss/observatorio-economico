@@ -1,6 +1,8 @@
 import { useState } from "react";
 import ChartInfoIcon from "../ChartInfoIcon";
 import { Sparkline } from "./charts";
+import { ExportProvider } from "./ExportContext";
+import ExportMenu from "./ExportMenu";
 
 export function NidPageHeader({ title, sub, badge, chips }) {
   return (
@@ -53,34 +55,38 @@ export function NidPanel({ title, sub, tabs, onTabChange, children, right, datas
   const [active, setActive] = useState(0);
   const comInfo = Boolean(dataset && indicadorKey);
   return (
-    <div className="nid-panel">
-      <div className="nid-panel-head">
-        <div>
-          <h3
-            className="nid-panel-title"
-            style={comInfo ? { display: "flex", alignItems: "center", gap: 6 } : undefined}
-          >
-            {title}
-            {comInfo && <ChartInfoIcon dataset={dataset} indicadorKey={indicadorKey} />}
-          </h3>
-          {sub && <div className="nid-panel-sub">{sub}</div>}
-        </div>
-        {tabs ? (
-          <div className="nid-panel-actions">
-            {tabs.map((t, i) => (
-              <button
-                key={i}
-                className={`nid-tab ${i === active ? "active" : ""}`}
-                onClick={() => { setActive(i); onTabChange?.(i); }}
-              >
-                {t}
-              </button>
-            ))}
+    <ExportProvider>
+      <div className="nid-panel">
+        <div className="nid-panel-head">
+          <div>
+            <h3
+              className="nid-panel-title"
+              style={comInfo ? { display: "flex", alignItems: "center", gap: 6 } : undefined}
+            >
+              {title}
+              {comInfo && <ChartInfoIcon dataset={dataset} indicadorKey={indicadorKey} />}
+            </h3>
+            {sub && <div className="nid-panel-sub">{sub}</div>}
           </div>
-        ) : right}
+          <div className="nid-panel-actions">
+            {tabs
+              ? tabs.map((t, i) => (
+                  <button
+                    key={i}
+                    className={`nid-tab ${i === active ? "active" : ""}`}
+                    onClick={() => { setActive(i); onTabChange?.(i); }}
+                  >
+                    {t}
+                  </button>
+                ))
+              : right}
+            {/* Exportar (só ADMIN_GLOBAL e só com gráfico registrado; senão renderiza null) */}
+            <ExportMenu titulo={title} sub={typeof sub === "string" ? sub : ""} dataset={dataset} />
+          </div>
+        </div>
+        <div>{children}</div>
       </div>
-      <div>{children}</div>
-    </div>
+    </ExportProvider>
   );
 }
 
