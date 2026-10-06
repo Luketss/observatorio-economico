@@ -75,6 +75,7 @@ def test_modelo_usuario_mfa_registrado():
     assert cols == {
         "usuario_id", "segredo_cifrado", "ativo", "ativado_em",
         "ultimo_passo_usado", "codigos_recuperacao", "criado_em", "atualizado_em",
+        "metodo", "codigo_hash", "codigo_expira_em", "codigo_enviado_em", "codigo_tentativas", "codigo_reenvios",
     }
     fk = list(UsuarioMfa.__table__.c.usuario_id.foreign_keys)[0]
     assert fk.ondelete == "CASCADE"

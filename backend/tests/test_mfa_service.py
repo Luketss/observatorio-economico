@@ -115,7 +115,7 @@ def test_create_mfa_token_tem_type_mfa_jti_e_expira_em_5_min():
 
 def test_status_sem_mfa(db):
     u = _admin(db)
-    assert MfaService(db).status(u) == {"ativo": False, "ativado_em": None, "codigos_restantes": 0}
+    assert MfaService(db).status(u) == {"ativo": False, "ativado_em": None, "codigos_restantes": 0, "metodo": None}
 
 
 def test_configurar_cria_pendente_cifrado_e_devolve_qr(db):
