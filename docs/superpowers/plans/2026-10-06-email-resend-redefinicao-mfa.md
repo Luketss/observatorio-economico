@@ -22,7 +22,7 @@
 - Erros no envelope `{error:{code,message}}` via `AppException(code, message, status_code)`; RBAC via `Depends(require_role(...))`; multi-tenant não se aplica (rotas de conta própria).
 - Python: aspas ASCII retas; strings do backend sem acento (padrão do repo: "Codigo invalido"); SQLAlchemy 2.0 `Mapped`; Alembic `0043_redefinicao_senha` (down `0042_usuario_mfa`) e `0044_usuario_mfa_email` (down `0043_redefinicao_senha`).
 - Frontend: funcional + hooks; API só via `src/services/api.js`; Tailwind; ESLint ecmaVersion 2020 (sem `??=`/`||=`); testes com `// @vitest-environment jsdom`; textos pt-BR com acento no JSX.
-- Commits em ASCII terminando com `Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>`. Nunca stagear `.claude/settings.local.json`, `dados/`, `node_modules/`, `docs/superpowers/plans/2026-05-06-ips-feature.md`.
+- Commits em ASCII, sem linha `Co-Authored-By`. Nunca stagear `.claude/settings.local.json`, `dados/`, `node_modules/`, `docs/superpowers/plans/2026-05-06-ips-feature.md`.
 
 ## Decisões de plano (esclarecimentos à spec, não contradições)
 
@@ -415,9 +415,7 @@ Run: `venv/Scripts/python -m pytest backend/tests -o addopts="" -q` → 0 falhas
 
 ```bash
 git add backend/app/core/config.py backend/app/services/email_service.py backend/app/services/email_templates.py backend/app/templates/email backend/tests/test_email_service.py
-git commit -m "feat(email): servico de envio via Resend (modo seco sem chave), templates e envs
-
-Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>"
+git commit -m "feat(email): servico de envio via Resend (modo seco sem chave), templates e envs"
 ```
 
 ### Task 2: Modelo `RedefinicaoSenha`, migração 0043, `garantir_utc` e purga de 24 h
@@ -698,9 +696,7 @@ Run: `venv/Scripts/python -m pytest backend/tests -o addopts="" -q` → 0 falhas
 
 ```bash
 git add backend/app/models/redefinicao_senha.py backend/app/models/__init__.py backend/alembic/env.py backend/alembic/versions/0043_redefinicao_senha.py backend/app/core/datas.py backend/app/services/audit_service.py backend/tests/test_redefinicao_senha.py
-git commit -m "feat(email): modelo redefinicao_senha, migracao 0043, garantir_utc e purga de 24h
-
-Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>"
+git commit -m "feat(email): modelo redefinicao_senha, migracao 0043, garantir_utc e purga de 24h"
 ```
 
 ---
@@ -1090,9 +1086,7 @@ Run: `venv/Scripts/python -m pytest backend/tests -o addopts="" -q` → 0 falhas
 
 ```bash
 git add backend/app/services/redefinicao_senha_service.py backend/app/schemas/redefinicao_senha.py backend/app/api/v1/routers/auth.py backend/tests/test_redefinicao_senha.py
-git commit -m "feat(email): esqueci minha senha - token de uso unico por e-mail, validar e redefinir (202/410, anti-enumeracao)
-
-Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>"
+git commit -m "feat(email): esqueci minha senha - token de uso unico por e-mail, validar e redefinir (202/410, anti-enumeracao)"
 ```
 
 ### Task 4: Frontend — `LoginShell`, páginas `/esqueci-senha` e `/redefinir-senha`, link na `LoginPage`
@@ -1694,9 +1688,7 @@ Run: `npx vite build` → sucesso.
 
 ```bash
 git add frontend-observatorio/src/pages/login frontend-observatorio/src/app/router/AppRouter.jsx
-git commit -m "feat(email): paginas esqueci minha senha e redefinir senha, LoginShell compartilhado e link no login
-
-Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>"
+git commit -m "feat(email): paginas esqueci minha senha e redefinir senha, LoginShell compartilhado e link no login"
 ```
 
 ### Task 5: MFA por e-mail no `MfaService` — migração 0044, modelo, código HMAC, configurar/ativar/reenviar
@@ -2288,9 +2280,7 @@ Run: `venv/Scripts/python -m pytest backend/tests -o addopts="" -q` → 0 falhas
 
 ```bash
 git add backend/alembic/versions/0044_usuario_mfa_email.py backend/app/models/usuario_mfa.py backend/app/services/mfa_service.py backend/tests/test_mfa_email.py backend/tests/test_mfa_service.py backend/tests/test_mfa_login.py
-git commit -m "feat(mfa): metodo email no MfaService - codigo HMAC de 6 digitos (10 min, 5 tentativas, 3 reenvios), migracao 0044
-
-Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>"
+git commit -m "feat(mfa): metodo email no MfaService - codigo HMAC de 6 digitos (10 min, 5 tentativas, 3 reenvios), migracao 0044"
 ```
 (Incluir `test_mfa_service.py`/`test_mfa_login.py` no `git add` só se foram ajustados.)
 
@@ -2664,9 +2654,7 @@ Run: `venv/Scripts/python -m pytest backend/tests -o addopts="" -q` → 0 falhas
 
 ```bash
 git add backend/app/services/auth_service.py backend/app/services/mfa_service.py backend/app/schemas/mfa.py backend/app/api/v1/routers/mfa.py backend/tests/test_mfa_email.py
-git commit -m "feat(mfa): login em duas etapas por e-mail - envio no login, POST /auth/mfa/reenviar e /enviar-codigo, configurar com metodo
-
-Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>"
+git commit -m "feat(mfa): login em duas etapas por e-mail - envio no login, POST /auth/mfa/reenviar e /enviar-codigo, configurar com metodo"
 ```
 
 ---
@@ -2910,9 +2898,7 @@ Run: `npx vite build` → sucesso.
 
 ```bash
 git add frontend-observatorio/src/context/AuthContext.jsx frontend-observatorio/src/context/AuthContext.test.jsx frontend-observatorio/src/pages/login/LoginPage.jsx frontend-observatorio/src/pages/login/LoginPage.test.jsx
-git commit -m "feat(mfa): etapa de codigo por e-mail no login - endereco mascarado, Reenviar com cooldown de 60s e aviso de envio falho
-
-Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>"
+git commit -m "feat(mfa): etapa de codigo por e-mail no login - endereco mascarado, Reenviar com cooldown de 60s e aviso de envio falho"
 ```
 
 ---
@@ -3083,9 +3069,7 @@ Run: `npx vite build` → sucesso.
 
 ```bash
 git add frontend-observatorio/src/components/MfaModal.jsx frontend-observatorio/src/components/MfaModal.test.jsx frontend-observatorio/src/app/layouts/DashboardLayout.jsx
-git commit -m "feat(mfa): MfaModal com escolha entre app autenticador e codigo por e-mail; desativar por e-mail pede o codigo antes
-
-Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>"
+git commit -m "feat(mfa): MfaModal com escolha entre app autenticador e codigo por e-mail; desativar por e-mail pede o codigo antes"
 ```
 
 ---
@@ -3200,9 +3184,7 @@ Conferir que os blocos de código fecham e que nenhum arquivo de código mudou (
 
 ```bash
 git add docs/email.md README.md AGENTS.md docs/lgpd.md docs/mfa.md IDEAS.md
-git commit -m "docs(email): runbook do Resend, envs, LGPD (suboperador, hash, purga 24h), MFA por e-mail e backlog
-
-Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>"
+git commit -m "docs(email): runbook do Resend, envs, LGPD (suboperador, hash, purga 24h), MFA por e-mail e backlog"
 ```
 
 ---
