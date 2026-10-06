@@ -23,7 +23,7 @@ export const FONTES_DATASET = {
 
 export function slugify(texto, maxLen = 60) {
   if (texto == null || texto === "") return "";
-  const semAcento = String(texto).normalize("NFD").replace(/[̀-ͯ]/g, "");
+  const semAcento = String(texto).normalize("NFD").replace(/[\u0300-\u036f]/g, "");
   const slug = semAcento.replace(/[^A-Za-z0-9]+/g, "-").replace(/^-+|-+$/g, "").toLowerCase();
   return slug.slice(0, maxLen).replace(/-+$/g, "");
 }
@@ -67,7 +67,7 @@ export function formatarCelulaCsv(valor) {
 export function gerarCsv(colunas, linhas) {
   const cabecalho = colunas.map((c) => formatarCelulaCsv(c.rotulo)).join(";");
   const corpo = (linhas || []).map((l) => colunas.map((c) => formatarCelulaCsv(l[c.chave])).join(";"));
-  return "﻿" + [cabecalho, ...corpo].join("\r\n") + "\r\n";
+  return "\uFEFF" + [cabecalho, ...corpo].join("\r\n") + "\r\n";
 }
 
 export function baixarBlob(blob, nome, doc = document, win = window) {
@@ -79,7 +79,7 @@ export function baixarBlob(blob, nome, doc = document, win = window) {
   doc.body.appendChild(a);
   a.click();
   a.remove();
-  win.URL.revokeObjectURL(url);
+  win.setTimeout(() => win.URL.revokeObjectURL(url), 1000);
 }
 
 // ────────── PNG ──────────
@@ -92,6 +92,13 @@ export const PROPRIEDADES_SVG = [
   "stroke-linecap", "stroke-linejoin", "opacity", "font-family", "font-size", "font-weight",
   "text-anchor", "dominant-baseline", "letter-spacing", "stop-color", "stop-opacity", "color",
 ];
+
+const PROPRIEDADES_HTML = [
+  "background-color", "color", "font-family", "font-size", "font-weight", "letter-spacing",
+  "line-height", "padding", "border", "border-radius", "display", "white-space",
+  "text-transform", "opacity", "box-shadow",
+];
+const NS_XHTML = "http://www.w3.org/1999/xhtml";
 
 function dimensoesDo(svgEl) {
   const rect = typeof svgEl.getBoundingClientRect === "function" ? svgEl.getBoundingClientRect() : { width: 0, height: 0 };
@@ -162,6 +169,17 @@ export function inlinarEstilosSvg(svgEl, win = window) {
     const alvo = clonados[i];
     if (!alvo) return;
     const estilo = win.getComputedStyle(el);
+    if (el.namespaceURI === NS_XHTML) {
+      const partes = [];
+      PROPRIEDADES_HTML.forEach((prop) => {
+        const valor = resolverVars(estilo.getPropertyValue(prop), buscarVar);
+        if (valor) partes.push(`${prop}: ${valor};`);
+      });
+      if (partes.length) alvo.setAttribute("style", partes.join(" "));
+      else alvo.removeAttribute("style");
+      alvo.removeAttribute("class");
+      return;
+    }
     PROPRIEDADES_SVG.forEach((prop) => {
       let valor = resolverVars(estilo.getPropertyValue(prop), buscarVar);
       if (!valor) valor = resolverVars(alvo.getAttribute(prop), buscarVar);
@@ -235,7 +253,19 @@ export function svgParaPng(svgEl, { titulo = "", sub = "", rodape = "", escala =
     const alturaSub = sub ? 20 : 0;
     const topo = 16 + alturaTitulo + alturaSub + (titulo || sub ? 8 : 0);
     const base = rodape ? 36 : 16;
-    const totalW = largura + padX * 2;
+    const fonte = "Inter, system-ui, -apple-system, Segoe UI, Roboto, sans-serif";
+    let larguraTexto = 0;
+    if (typeof ctx.measureText === "function") {
+      [[titulo, `700 16px ${fonte}`], [sub, `400 12px ${fonte}`], [rodape, `400 11px ${fonte}`]].forEach(([t, f]) => {
+        if (!t) return;
+        ctx.font = f;
+        const m = ctx.measureText(t);
+        if (m && Number.isFinite(m.width)) larguraTexto = Math.max(larguraTexto, m.width);
+      });
+    }
+    const larguraConteudo = Math.max(largura, larguraTexto);
+    const totalW = larguraConteudo + padX * 2;
+    const xImg = padX + (larguraConteudo - largura) / 2;
     const totalH = topo + altura + base;
     canvas.width = totalW * escala;
     canvas.height = totalH * escala;
@@ -243,7 +273,6 @@ export function svgParaPng(svgEl, { titulo = "", sub = "", rodape = "", escala =
     const fundoBg = corDoTema(doc, win, "--bg", "#ffffff");
     const fundoPanel = corDoTema(doc, win, "--panel", "#ffffff");
     const texto = corDoTema(doc, win, "--text", "#111111");
-    const fonte = "Inter, system-ui, -apple-system, Segoe UI, Roboto, sans-serif";
     ctx.fillStyle = fundoBg;
     ctx.fillRect(0, 0, totalW, totalH);
     ctx.fillStyle = fundoPanel;
@@ -254,7 +283,7 @@ export function svgParaPng(svgEl, { titulo = "", sub = "", rodape = "", escala =
     if (sub) { ctx.font = `400 12px ${fonte}`; ctx.fillText(sub, padX, y + 12); }
     carregarImagem(svgParaDataUrl(clone, win), win)
       .then((img) => {
-        ctx.drawImage(img, padX, topo, largura, altura);
+        ctx.drawImage(img, xImg, topo, largura, altura);
         if (rodape) {
           ctx.font = `400 11px ${fonte}`;
           ctx.globalAlpha = 0.7;

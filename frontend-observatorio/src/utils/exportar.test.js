@@ -110,7 +110,7 @@ describe("baixarBlob", () => {
     const remove = vi.fn();
     const a = { click, remove, set href(v) { this._href = v; }, get href() { return this._href; } };
     const doc = { createElement: vi.fn(() => a), body: { appendChild: vi.fn() } };
-    const win = { URL: { createObjectURL: vi.fn(() => "blob:abc"), revokeObjectURL: vi.fn() } };
+    const win = { URL: { createObjectURL: vi.fn(() => "blob:abc"), revokeObjectURL: vi.fn() }, setTimeout: vi.fn((fn) => fn()) };
     baixarBlob(blob, "arquivo.csv", doc, win);
     expect(doc.createElement).toHaveBeenCalledWith("a");
     expect(a.href).toBe("blob:abc");
@@ -118,6 +118,7 @@ describe("baixarBlob", () => {
     expect(doc.body.appendChild).toHaveBeenCalledWith(a);
     expect(click).toHaveBeenCalledTimes(1);
     expect(remove).toHaveBeenCalledTimes(1);
+    expect(win.setTimeout).toHaveBeenCalledWith(expect.any(Function), 1000);
     expect(win.URL.revokeObjectURL).toHaveBeenCalledWith("blob:abc");
   });
 });
@@ -154,11 +155,13 @@ describe("inlinarEstilosSvg", () => {
   // `win` é falso: `computados` é o que getComputedStyle devolve para qualquer
   // elemento do svg, `raiz` é o que devolve para document.documentElement,
   // `svg` é para o elemento SVG.
-  function winFake(computados = {}, raiz = {}, svg = {}) {
+  function winFake(computados = {}, raiz = {}, svg = {}, porTag = {}) {
     return {
       getComputedStyle: (el) => ({
         getPropertyValue: (p) => {
           if (el === document.documentElement) return raiz[p] ?? "";
+          const tag = el.tagName.toLowerCase();
+          if (porTag[tag]) return porTag[tag][p] ?? "";
           if (el.tagName === "svg") return svg[p] ?? computados[p] ?? "";
           return computados[p] ?? "";
         },
@@ -228,6 +231,16 @@ describe("inlinarEstilosSvg", () => {
     expect(rect.getAttribute("data-x")).toBeNull();
     expect(clone.outerHTML).not.toMatch(/var\(/);
   });
+  it("nó HTML dentro de foreignObject recebe o estilo computado inline", () => {
+    document.body.innerHTML = `<svg viewBox="0 0 100 50" width="100" height="50"><foreignObject x="0" y="0" width="50" height="20"><div class="nid-pin" xmlns="http://www.w3.org/1999/xhtml">COVID</div></foreignObject></svg>`;
+    const win = winFake({}, {}, {}, { div: { "background-color": "rgb(0, 0, 0)", color: "rgb(255, 255, 255)", padding: "2px 6px", "border-radius": "4px" } });
+    const { clone } = inlinarEstilosSvg(document.querySelector("svg"), win);
+    const div = clone.querySelector("div");
+    expect(div.getAttribute("style")).toContain("background-color: rgb(0, 0, 0)");
+    expect(div.getAttribute("style")).toContain("padding: 2px 6px");
+    expect(div.getAttribute("class")).toBeNull();
+    expect(clone.outerHTML).not.toMatch(/var\(/);
+  });
   it("variável definida no próprio svg/body vence a raiz", () => {
     document.body.innerHTML = `<svg viewBox="0 0 100 50"><rect fill="var(--accent-1)"/></svg>`;
     const { clone } = inlinarEstilosSvg(document.querySelector("svg"), winFake({}, { "--accent-1": "#ff0000" }, { "--accent-1": "#00ff00" }));
@@ -244,6 +257,7 @@ describe("svgParaPng", () => {
       fillRect: vi.fn(function() { fillRectCalls.push(this.fillStyle); }),
       fillText: vi.fn(),
       drawImage: vi.fn(),
+      measureText: vi.fn((t) => ({ width: t.length * 7 })),
       fillStyle: "",
       font: "",
       globalAlpha: 1,
@@ -294,6 +308,12 @@ describe("svgParaPng", () => {
     expect(textos).toEqual(["Evolução", "PIB total", "Fonte: IBGE · UAIZI NID · 06/10/2026"]);
     expect(ctx.drawImage).toHaveBeenCalledTimes(1);
     expect(canvas.toBlob.mock.calls[0][1]).toBe("image/png");
+  });
+  it("rodapé mais largo que o gráfico alarga o canvas e centraliza o svg", async () => {
+    const { ctx, canvas, doc, win } = fakes();
+    await svgParaPng(svg(), { rodape: "x".repeat(60), doc, win });
+    expect(canvas.width).toBe((420 + 48) * 2);
+    expect(ctx.drawImage.mock.calls[0][1]).toBe(24 + (420 - 100) / 2);
   });
   it("sem título/sub/rodapé não escreve texto", async () => {
     const { ctx, doc, win } = fakes();
