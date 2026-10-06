@@ -167,7 +167,7 @@ export default function LoginPage() {
             </p>
           )}
           {envioFalhou && (
-            <p className="text-xs bg-amber-50 border border-amber-100 text-amber-800 px-4 py-3 rounded-xl">
+            <p role="alert" className="text-xs bg-amber-50 border border-amber-100 text-amber-800 px-4 py-3 rounded-xl">
               Não conseguimos enviar o e-mail agora. Use "Reenviar código" para tentar de novo.
             </p>
           )}

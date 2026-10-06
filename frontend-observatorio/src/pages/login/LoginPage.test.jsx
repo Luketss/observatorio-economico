@@ -148,7 +148,7 @@ describe("LoginPage — codigo por e-mail", () => {
     montar();
     await preencherELogar();
     fireEvent.click(await screen.findByRole("button", { name: /Reenviar código/ }));
-    expect(await screen.findByRole("alert")).toHaveTextContent(/Limite de reenvios/);
+    expect(await screen.findByText(/Limite de reenvios/)).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: /Reenviar código/ })).toBeNull();
   });
 });

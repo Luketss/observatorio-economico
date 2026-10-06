@@ -142,4 +142,16 @@ describe("MfaModal", () => {
     fireEvent.click(screen.getByRole("button", { name: /Confirmar desativação/i }));
     await waitFor(() => expect(api.post).toHaveBeenLastCalledWith("/auth/mfa/desativar", { senha_atual: "senha", codigo: "654321" }));
   });
+
+  it("desativar por e-mail: Reenviar código chama enviar-codigo de novo e mostra erro do backend", async () => {
+    api.get.mockResolvedValueOnce({ data: { data: { ativo: true, ativado_em: "2026-10-06T10:00:00Z", codigos_restantes: 9, metodo: "email" } } });
+    api.post.mockResolvedValueOnce({ data: { enviado_para: "a***@x.gov.br" } });
+    api.post.mockRejectedValueOnce({ response: { status: 429, data: { error: { code: "AGUARDE", message: "Aguarde 30 s para reenviar" } } } });
+    render(<MfaModal open onClose={() => {}} emailUsuario="ana@x.gov.br" />);
+    fireEvent.click(await screen.findByRole("button", { name: /Desativar/i }));
+    await screen.findByText(/Enviamos um código para a\*\*\*@x\.gov\.br/);
+    fireEvent.click(screen.getByRole("button", { name: "Reenviar código" }));
+    await waitFor(() => expect(api.post.mock.calls.filter((c) => c[0] === "/auth/mfa/enviar-codigo")).toHaveLength(2));
+    expect(await screen.findByRole("alert")).toHaveTextContent(/Aguarde 30 s/);
+  });
 });

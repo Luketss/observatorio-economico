@@ -75,13 +75,16 @@ export default function MfaModal({ open, onClose, emailUsuario }) {
   async function abrirDesativar() {
     setErro(""); setCodigo(""); setSenhaAtual(""); setEnviadoPara("");
     setPasso("desativar");
-    if (status && status.metodo === "email") {
-      try {
-        const r = await api.post("/auth/mfa/enviar-codigo");
-        setEnviadoPara((r.data && r.data.enviado_para) || "");
-      } catch (err) {
-        setErro(mensagemDoErro(err, "Não foi possível enviar o código por e-mail."));
-      }
+    if (status && status.metodo === "email") await enviarCodigoDesativar();
+  }
+
+  async function enviarCodigoDesativar() {
+    setErro("");
+    try {
+      const r = await api.post("/auth/mfa/enviar-codigo");
+      setEnviadoPara((r.data && r.data.enviado_para) || "");
+    } catch (err) {
+      setErro(mensagemDoErro(err, "Não foi possível enviar o código por e-mail."));
     }
   }
 
@@ -215,7 +218,7 @@ export default function MfaModal({ open, onClose, emailUsuario }) {
                 <input type="text" inputMode="numeric" autoComplete="one-time-code" aria-label="Código do e-mail" placeholder="000000"
                   value={codigo} onChange={(e) => setCodigo(e.target.value)} required maxLength={7} className={inputCls} />
                 {alerta}
-                <button type="button" onClick={() => iniciar("email")} disabled={carregando} className="text-xs text-blue-600 hover:text-blue-700 cursor-pointer disabled:text-[var(--text-mute)]">
+                <button type="button" onClick={() => iniciar("email")} disabled={carregando} className="text-xs hover:underline cursor-pointer disabled:opacity-50" style={{ color: "var(--accent-1)" }}>
                   Enviar outro código
                 </button>
                 <div className="flex gap-2">
@@ -255,6 +258,11 @@ export default function MfaModal({ open, onClose, emailUsuario }) {
                 <input type="password" aria-label="Senha atual" placeholder="Senha atual" value={senhaAtual} onChange={(e) => setSenhaAtual(e.target.value)} required autoComplete="current-password" className={inputCls} />
                 <input type="text" aria-label="Código" placeholder={status && status.metodo === "email" ? "Código do e-mail ou XXXX-XXXX" : "Código do app ou XXXX-XXXX"} value={codigo} onChange={(e) => setCodigo(e.target.value)} required autoComplete="one-time-code" className={inputCls} />
                 {alerta}
+                {status && status.metodo === "email" && (
+                  <button type="button" onClick={enviarCodigoDesativar} disabled={carregando} className="text-xs hover:underline cursor-pointer disabled:opacity-50" style={{ color: "var(--accent-1)" }}>
+                    Reenviar código
+                  </button>
+                )}
                 <div className="flex gap-2">
                   <button type="button" className={btnSecundario} onClick={() => { setErro(""); setPasso("status"); }}>Voltar</button>
                   <button type="submit" disabled={carregando} className={btnPrimario} style={{ background: "var(--accent-2)", color: "var(--bg)" }}>

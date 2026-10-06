@@ -39,6 +39,14 @@ describe("EsqueciSenhaPage", () => {
     expect(screen.getByLabelText("Email")).toBeInTheDocument();
   });
 
+  it("422 mostra e-mail inválido", async () => {
+    api.post.mockRejectedValueOnce({ response: { status: 422, data: {} } });
+    montar();
+    fireEvent.change(screen.getByLabelText("Email"), { target: { value: "ana@x.gov.br" } });
+    fireEvent.click(screen.getByRole("button", { name: "Enviar instruções" }));
+    expect(await screen.findByRole("alert")).toHaveTextContent("Informe um e-mail válido.");
+  });
+
   it("429 mostra aviso de muitas tentativas", async () => {
     api.post.mockRejectedValueOnce({ response: { status: 429, data: {} } });
     montar();
