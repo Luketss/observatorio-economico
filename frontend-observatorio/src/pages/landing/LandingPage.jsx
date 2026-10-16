@@ -2,12 +2,11 @@ import { useEffect, useRef } from "react";
 import { Link } from "react-router-dom";
 import "./landing.css";
 import uaiziLogo from "../../assets/logo_uaizi.png";
+import { linkWhatsApp } from "../../config/contato";
 
-/* WhatsApp deep-links (kept verbatim from the source design) */
-const WA_CONTRATAR =
-  "https://wa.me/5537998720903?text=Tenho%20interesse%20em%20contratar%20o%20NID.";
-const WA_PLATAFORMA =
-  "https://wa.me/5537998720903?text=Ol%C3%A1%21%20Tenho%20interesse%20na%20plataforma%20NID.";
+/* WhatsApp deep-links (numero centralizado em config/contato) */
+const WA_CONTRATAR = linkWhatsApp("Tenho interesse em contratar o NID.");
+const WA_PLATAFORMA = linkWhatsApp("Olá! Tenho interesse na plataforma NID.");
 
 function ArrowIcon({ size = 16, className }) {
   return (
