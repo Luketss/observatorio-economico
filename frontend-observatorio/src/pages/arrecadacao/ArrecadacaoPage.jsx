@@ -39,7 +39,10 @@ export default function ArrecadacaoPage() {
 
   // Preset de período POR GRÁFICO — override do filtro da página, por painel.
   // Extrai ano e mês do shape para permitir presentes como "12m" com âncora correta.
-  const [periodosGrafico, setPeriodosGrafico] = useState({});
+  const [periodosGrafico, setPeriodosGrafico] = useState({
+    chart_composicao_tipo:"5a",
+    chart_serie_mensal:"5a",
+  });
   const setPeriodo = (chave) => (preset) =>
     setPeriodosGrafico((prev) => ({ ...prev, [chave]: preset }));
   const extrairAnoMes = (d) => ({ ano: d.ano, mes: d.mes });
@@ -85,7 +88,7 @@ export default function ArrecadacaoPage() {
   const areaData = useMemo(() => {
     const s = seriePara("chart_serie_mensal", rawSerie, serie);
     return s.map((d) => ({ label: String(d.periodo), value: d.total || 0 }));
-  }, [serie, rawSerie, periodosGrafico]);
+  }, [serie, rawSerie, seriePara]);
 
   // Painel de composição por tipo: sem override, mantém `.slice(-24)` (janela
   // fixa de hoje); com override, usa a série resolvida SEM slice — o preset

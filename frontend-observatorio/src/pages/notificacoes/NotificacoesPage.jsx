@@ -45,7 +45,7 @@ export default function NotificacoesPage() {
       .then(setNotifs)
       .catch(() => addToast("Erro ao carregar notificações", "error"))
       .finally(() => setLoading(false));
-  }, []);
+  }, [addToast]);
 
   const naoLidas = useMemo(() => notifs.filter((n) => !n.lida), [notifs]);
   const visiveis = filtro === "nao_lidas" ? naoLidas : notifs;

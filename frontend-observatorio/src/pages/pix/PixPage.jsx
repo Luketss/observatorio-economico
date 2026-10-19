@@ -88,7 +88,13 @@ export default function PixPage() {
     return prepara(rawSerie.filter((d) => dentroDoFiltro(d, filters, (x) => ({ ano: x.ano, mes: x.mes }))));
   }, [rawSerie, filters]);
 
-  const [periodosGrafico, setPeriodosGrafico] = useState({});
+  const [periodosGrafico, setPeriodosGrafico] = useState({
+    chart_vol_pagamentos:"5a",
+    chart_vol_recebimentos:"5a",
+    chart_qtd_transacoes:"5a",
+    chart_pagadores_unicos:"5a",
+    chart_recebedores_unicos:"5a",
+  });
   const setPeriodo = (chave) => (preset) =>
     setPeriodosGrafico((prev) => ({ ...prev, [chave]: preset }));
   const seriePara = (chave) =>

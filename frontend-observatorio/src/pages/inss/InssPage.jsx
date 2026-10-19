@@ -39,7 +39,10 @@ export default function InssPage() {
   const [filters, setFilters] = useState({ yearFrom: "", yearTo: "" });
 
   // Preset de período POR GRÁFICO — override do filtro da página, por painel.
-  const [periodosGrafico, setPeriodosGrafico] = useState({});
+  const [periodosGrafico, setPeriodosGrafico] = useState({
+    chart_top_categorias: "5a",
+    chart_evolucao_anual: "5a",
+  });
   const setPeriodo = (chave) => (preset) =>
     setPeriodosGrafico((prev) => ({ ...prev, [chave]: preset }));
   const extrairAno = (d) => ({ ano: d.ano });
@@ -91,7 +94,7 @@ export default function InssPage() {
     return Object.values(catMap)
       .sort((a, b) => b.quantidade_beneficios - a.quantidade_beneficios)
       .slice(0, 10);
-  }, [serie, rawSerie, periodosGrafico]);
+  }, [serie, rawSerie, periodosGrafico, seriePara]);
 
   const evolucaoAnual = useMemo(() => {
     const s = seriePara("chart_evolucao_anual", rawSerie, serie, extrairAno);
@@ -101,7 +104,7 @@ export default function InssPage() {
       anoMap[item.ano].quantidade_beneficios += item.quantidade_beneficios ?? 0;
     });
     return Object.values(anoMap).sort((a, b) => a.ano - b.ano);
-  }, [serie, rawSerie, periodosGrafico]);
+  }, [serie, rawSerie, periodosGrafico, seriePara]);
 
   // Table data: sorted by valor_anual desc
   const tableData = [...serie]

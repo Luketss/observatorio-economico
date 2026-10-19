@@ -88,7 +88,9 @@ export default function PeDeMeiaPage() {
     [rawSerie, filters]
   );
 
-  const [periodosGrafico, setPeriodosGrafico] = useState({});
+  const [periodosGrafico, setPeriodosGrafico] = useState({
+    chart_evolucao_estudantes: "5a",
+  });
   const setPeriodo = (chave) => (preset) =>
     setPeriodosGrafico((prev) => ({ ...prev, [chave]: preset }));
   const seriePara = (chave) =>

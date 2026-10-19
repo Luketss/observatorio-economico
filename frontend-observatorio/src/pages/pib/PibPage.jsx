@@ -54,7 +54,10 @@ export default function PibPage() {
   const [filters, setFilters] = useState({ yearFrom: "", yearTo: "" });
 
   // Preset de período POR GRÁFICO — override do filtro da página, por painel.
-  const [periodosGrafico, setPeriodosGrafico] = useState({});
+  const [periodosGrafico, setPeriodosGrafico] = useState({
+    chart_evolucao_anual: "5a",
+    chart_va_setor: "5a",
+  });
   const setPeriodo = (chave) => (preset) =>
     setPeriodosGrafico((prev) => ({ ...prev, [chave]: preset }));
   const extrairAno = (d) => ({ ano: d.ano });

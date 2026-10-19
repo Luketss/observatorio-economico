@@ -1,8 +1,7 @@
 services:
   workspace:
-    build:
-      context: .
-      dockerfile: Dockerfile
+    image: observatorio-economico_devcontainer-workspace:latest
+    pull_policy: never
     volumes:
       - ..:/workspace:cached
     command: sleep infinity

@@ -70,7 +70,11 @@ export default function BolsaFamiliaPage() {
     [rawSerie, filters]
   );
 
-  const [periodosGrafico, setPeriodosGrafico] = useState({});
+  const [periodosGrafico, setPeriodosGrafico] = useState({
+    chart_evolucao_beneficiarios: "5a",
+    chart_total_vs_primeira_infancia: "5a",
+    chart_repasses: "5a",
+  });
   const setPeriodo = (chave) => (preset) =>
     setPeriodosGrafico((prev) => ({ ...prev, [chave]: preset }));
   const seriePara = (chave) =>
