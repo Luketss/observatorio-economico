@@ -41,6 +41,7 @@ from app.models.role import Role
 from app.models.usuario import Usuario
 from app.models.usuario_mfa import UsuarioMfa
 from app.models.redefinicao_senha import RedefinicaoSenha
+from app.models.suporte import SuporteTicket, SuporteTicketEvento
 from app.models.desenvolvimento_economico import (
     InvestimentoFunil,
     EmpresaRetencao,
@@ -59,6 +60,8 @@ __all__ = [
     "Usuario",
     "UsuarioMfa",
     "RedefinicaoSenha",
+    "SuporteTicket",
+    "SuporteTicketEvento",
     "Role",
     "Municipio",
     "ArrecadacaoMensal",
