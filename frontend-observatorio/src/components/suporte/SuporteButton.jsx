@@ -8,6 +8,7 @@ import { useAuth } from "../../context/AuthContext";
 import { linkWhatsApp } from "../../config/contato";
 import { useEscapeKey } from "../../hooks/useEscapeKey";
 import SuporteTicketModal from "./SuporteTicketModal";
+import SuporteMeusTicketsModal from "./SuporteMeusTicketsModal";
 
 const ITEM_CLASS =
   "w-full flex items-start gap-2 px-3 py-2 text-left text-xs cursor-pointer hover:opacity-80";
@@ -94,7 +95,11 @@ export default function SuporteButton() {
       )}
 
       <SuporteTicketModal open={modal === "novo"} onClose={() => setModal(null)} />
-      {/* modal "meus": Task 10 */}
+      <SuporteMeusTicketsModal
+        open={modal === "meus"}
+        onClose={() => setModal(null)}
+        onAbrirNovo={() => setModal("novo")}
+      />
     </div>
   );
 }
