@@ -4,7 +4,7 @@ import { NavLink, Outlet, useNavigate, useLocation } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext";
 import { useTheme, THEMES } from "../../context/ThemeContext";
 import { hasPermissao } from "../../hooks/usePermissao";
-import SuporteWhatsAppButton from "../../components/SuporteWhatsAppButton";
+import SuporteButton from "../../components/suporte/SuporteButton";
 import {
   SparklesIcon,
   FlagIcon,
@@ -348,7 +348,7 @@ export default function AdminLayout() {
               </div>
             </div>
 
-            <SuporteWhatsAppButton />
+            <SuporteButton />
             {/* Theme picker + logout */}
             <div className="flex gap-2">
               <div className="flex-1 min-w-0">
