@@ -15,6 +15,7 @@ import api from "../../services/api";
 import KpiCard from "../../components/KpiCard";
 import StatusChip from "../../components/suporte/StatusChip";
 import { STATUS_ORDEM, labelStatus } from "../../components/suporte/statusTicket";
+import SuporteTicketDetalhe from "./SuporteTicketDetalhe";
 import { propsTituloClicavel } from "../../utils/cliqueAcessivel";
 
 const PAGE_SIZE = 25;
@@ -55,10 +56,8 @@ export default function SuporteAdminPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
   const [versao, setVersao] = useState(0);
-  // eslint-disable-next-line no-unused-vars -- lido pelo painel de detalhe (Task 12)
   const [selecionadoId, setSelecionadoId] = useState(null);
 
-  // eslint-disable-next-line no-unused-vars -- passada como onAtualizado ao detalhe (Task 12)
   const recarregar = useCallback(() => setVersao((v) => v + 1), []);
 
   useEffect(() => {
@@ -289,8 +288,13 @@ export default function SuporteAdminPage() {
         </div>
       )}
 
-      {/* detalhe: Task 12 */}
-      {null}
+      {selecionadoId !== null && (
+        <SuporteTicketDetalhe
+          ticketId={selecionadoId}
+          onClose={() => setSelecionadoId(null)}
+          onAtualizado={recarregar}
+        />
+      )}
     </motion.div>
   );
 }
