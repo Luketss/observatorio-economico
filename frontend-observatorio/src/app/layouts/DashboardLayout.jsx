@@ -11,7 +11,7 @@ import ViewAsBanner from "../../components/ViewAsBanner";
 import PlanLockedView from "../../components/PlanLockedView";
 import AlterarSenhaModal from "../../components/AlterarSenhaModal";
 import MfaModal from "../../components/MfaModal";
-import SuporteWhatsAppButton from "../../components/SuporteWhatsAppButton";
+import SuporteButton from "../../components/suporte/SuporteButton";
 import {
   PowerIcon,
   KeyIcon,
@@ -227,7 +227,7 @@ export default function DashboardLayout() {
               </div>
             </div>
 
-            <SuporteWhatsAppButton />
+            <SuporteButton />
             {/* Theme picker + logout */}
             <div className="flex gap-2">
               <div className="flex-1 min-w-0">

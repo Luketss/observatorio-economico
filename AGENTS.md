@@ -323,4 +323,44 @@ See `IDEAS.md` for the full backlog. Key strategic items:
 
 ---
 
+# 16. Suporte (tickets de atendimento)
+
+O botão **"Falar com o suporte"** abre um menu (abrir solicitação, meus atendimentos, WhatsApp). A solicitação vira um ticket. O ADMIN_GLOBAL responde **fora da plataforma** (e-mail ou WhatsApp) e registra na plataforma o status e as anotações internas.
+
+**Tabelas** (migration `0045`):
+
+| Tabela | Conteúdo |
+|--------|----------|
+| `suporte_tickets` | Solicitação: usuário, município, mensagem, WhatsApp, canal preferido, status, `primeiro_contato_em`, `resolvido_em` |
+| `suporte_ticket_eventos` | Histórico: `tipo` (`abertura`, `status`, `anotacao`), `status_de`, `status_para`, `texto`, autor |
+
+Status: `aberto`, `em_atendimento`, `resolvido`.
+
+**Endpoints:**
+
+| Endpoint | Acesso | Descrição |
+|----------|--------|-----------|
+| `POST /suporte/tickets` | Usuário autenticado | Abre ticket; rate limit 5/hora por usuário |
+| `GET /suporte/tickets/meus` | Usuário autenticado | Tickets do próprio usuário |
+| `GET /suporte/admin/kpis` | ADMIN_GLOBAL | KPIs de atendimento |
+| `GET /suporte/admin/tickets?status&municipio_filtro&skip&limit` | ADMIN_GLOBAL | Lista paginada |
+| `GET /suporte/admin/tickets/{id}` | ADMIN_GLOBAL | Detalhe com eventos |
+| `PATCH /suporte/admin/tickets/{id}/status` | ADMIN_GLOBAL | Altera status (`{status, texto}`); 400 se igual ao atual |
+| `POST /suporte/admin/tickets/{id}/anotacoes` | ADMIN_GLOBAL | Anotação interna (`{texto}`) |
+
+**Filtro `municipio_filtro`:** a lista admin não usa `municipio_id` porque o interceptor do Axios injeta o `municipio_id` do "ver como" em todos os GETs, o que sobrescreveria o filtro.
+
+**Auditoria:** `suporte_tickets_listados` e `suporte_ticket_consultado` (leitura); `suporte_ticket_status` e `suporte_ticket_anotacao` (ação). Os registros de auditoria nunca carregam os textos (mensagem, motivo, anotação).
+
+**Frontend:**
+- `components/suporte/`: `SuporteButton.jsx`, `SuporteTicketModal.jsx`, `SuporteMeusTicketsModal.jsx`, `StatusChip.jsx`, `statusTicket.js`, `erroApi.js`
+- `pages/admin/SuporteAdminPage.jsx` (KPIs, filtros, lista) e `SuporteTicketDetalhe.jsx` (painel lateral: contatos, status, anotações, histórico)
+- Navegação admin: "Atendimento" → `/admin/suporte`
+
+**LGPD:** dados do ticket (mensagem e WhatsApp) tratados como classe (d) em `docs/lgpd.md`.
+
+**Backlog** (ver `IDEAS.md`): e-mails de aviso (novo ticket para o admin, resposta para o usuário) e purga de tickets antigos.
+
+---
+
 END OF AGENTS.md

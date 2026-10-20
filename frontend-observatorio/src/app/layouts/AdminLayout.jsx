@@ -4,7 +4,7 @@ import { NavLink, Outlet, useNavigate, useLocation } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext";
 import { useTheme, THEMES } from "../../context/ThemeContext";
 import { hasPermissao } from "../../hooks/usePermissao";
-import SuporteWhatsAppButton from "../../components/SuporteWhatsAppButton";
+import SuporteButton from "../../components/suporte/SuporteButton";
 import {
   SparklesIcon,
   FlagIcon,
@@ -26,6 +26,7 @@ import {
   FingerPrintIcon,
   DocumentTextIcon,
   KeyIcon,
+  LifebuoyIcon,
 } from "@heroicons/react/24/outline";
 
 // ── Route → display name map ──────────────────────────────────────────────────
@@ -37,6 +38,7 @@ const ROUTE_LABELS = {
   "/admin/cards":         "Cards Customizados",
   "/admin/planos":        "Planos & Acesso",
   "/admin/usuarios":      "Usuários",
+  "/admin/suporte":       "Atendimento",
   "/admin/login-audit":   "Logins / Auditoria",
   "/admin/explorer":      "Explorador de Dados",
   "/admin/datasets":      "Datasets",
@@ -129,6 +131,7 @@ const GESTAO_ITEMS = [
   { to: "/admin/cards",          label: "Cards Customizados",icon: Squares2X2Icon },
   { to: "/admin/planos",         label: "Planos & Acesso",   icon: ShieldCheckIcon },
   { to: "/admin/usuarios",       label: "Usuários",          icon: UsersIcon },
+  { to: "/admin/suporte",        label: "Atendimento",       icon: LifebuoyIcon },
   { to: "/admin/roles",          label: "Roles",             icon: KeyIcon },
   { to: "/admin/login-audit",    label: "Logins / Auditoria",icon: FingerPrintIcon },
 ];
@@ -348,7 +351,7 @@ export default function AdminLayout() {
               </div>
             </div>
 
-            <SuporteWhatsAppButton />
+            <SuporteButton />
             {/* Theme picker + logout */}
             <div className="flex gap-2">
               <div className="flex-1 min-w-0">
