@@ -19,6 +19,7 @@ import app.api.v1.routers.login_audit as login_audit
 import app.api.v1.routers.auth as auth
 import app.api.v1.routers.bolsa_familia as bolsa_familia
 import app.api.v1.routers.cidade_inteligente as cidade_inteligente
+import app.api.v1.routers.suporte as suporte
 import app.api.v1.routers.caged as caged
 import app.api.v1.routers.comex as comex
 import app.api.v1.routers.comparativo as comparativo
@@ -158,6 +159,7 @@ app.include_router(desenvolvimento_economico.router, prefix=API_PREFIX)
 app.include_router(ips.router, prefix=API_PREFIX)
 app.include_router(benchmark.router, prefix=API_PREFIX)
 app.include_router(cidade_inteligente.router, prefix=API_PREFIX)
+app.include_router(suporte.router, prefix=API_PREFIX)
 
 
 @app.get("/health")
