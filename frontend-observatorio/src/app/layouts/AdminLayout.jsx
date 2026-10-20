@@ -26,6 +26,7 @@ import {
   FingerPrintIcon,
   DocumentTextIcon,
   KeyIcon,
+  LifebuoyIcon,
 } from "@heroicons/react/24/outline";
 
 // ── Route → display name map ──────────────────────────────────────────────────
@@ -129,6 +130,7 @@ const GESTAO_ITEMS = [
   { to: "/admin/cards",          label: "Cards Customizados",icon: Squares2X2Icon },
   { to: "/admin/planos",         label: "Planos & Acesso",   icon: ShieldCheckIcon },
   { to: "/admin/usuarios",       label: "Usuários",          icon: UsersIcon },
+  { to: "/admin/suporte",        label: "Atendimento",       icon: LifebuoyIcon },
   { to: "/admin/roles",          label: "Roles",             icon: KeyIcon },
   { to: "/admin/login-audit",    label: "Logins / Auditoria",icon: FingerPrintIcon },
 ];

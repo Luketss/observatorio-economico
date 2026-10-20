@@ -19,6 +19,7 @@ import RaisPage from "../../pages/rais/RaisPage";
 import BenchmarkPage from "../../pages/comparativo/ComparativoPage";
 import NotificacoesAdminPage from "../../pages/admin/NotificacoesAdminPage";
 import LoginAuditAdminPage from "../../pages/admin/LoginAuditAdminPage";
+import SuporteAdminPage from "../../pages/admin/SuporteAdminPage";
 import UsuariosAdminPage from "../../pages/admin/UsuariosAdminPage";
 import MandatoAdminPage from "../../pages/admin/MandatoAdminPage";
 import InsightsAdminPage from "../../pages/admin/InsightsAdminPage";
@@ -202,6 +203,10 @@ export default function AppRouter() {
           <Route
             path="login-audit"
             element={<AdminRoute><LoginAuditAdminPage /></AdminRoute>}
+          />
+          <Route
+            path="suporte"
+            element={<AdminRoute><SuporteAdminPage /></AdminRoute>}
           />
           <Route
             path="explorer"
