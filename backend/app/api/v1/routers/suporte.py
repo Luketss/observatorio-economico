@@ -8,7 +8,9 @@ from app.models.suporte import SuporteTicket, SuporteTicketEvento
 from app.models.usuario import Usuario
 from app.schemas.suporte import (
     STATUS_VALIDOS,
+    AnotacaoCreate,
     KpisOut,
+    StatusUpdate,
     TicketAdminDetalheOut,
     TicketAdminOut,
     TicketCreate,
@@ -180,4 +182,90 @@ def detalhar_ticket_admin(
         request=request,
         **_alvo_do_ticket(ticket),
     )
+    return ticket
+
+
+@router.patch("/admin/tickets/{ticket_id}/status", response_model=TicketAdminDetalheOut)
+def alterar_status_ticket(
+    request: Request,
+    ticket_id: int,
+    data: StatusUpdate,
+    db: Session = Depends(get_db),
+    current_user: Usuario = Depends(require_role("ADMIN_GLOBAL")),
+):
+    """Muda o status do ticket; registra evento e auditoria (reabrir limpa resolvido_em)."""
+    ticket = _carregar_ticket(db, ticket_id)
+    status_de = ticket.status
+    status_para = data.status
+    if status_de == status_para:
+        raise HTTPException(status_code=400, detail="O ticket ja esta com esse status")
+    agora = datetime.now(timezone.utc)
+    ticket.eventos.append(
+        SuporteTicketEvento(
+            tipo="status",
+            status_de=status_de,
+            status_para=status_para,
+            texto=data.texto,
+            autor_id=current_user.id,
+            autor_email=current_user.email,
+        )
+    )
+    ticket.status = status_para
+    if status_para == "em_atendimento" and ticket.primeiro_contato_em is None:
+        ticket.primeiro_contato_em = agora
+    if status_para == "resolvido":
+        ticket.resolvido_em = agora
+    if status_de == "resolvido":
+        ticket.resolvido_em = None
+    ticket.atualizado_em = agora
+    db.commit()
+    registrar_acao(
+        db,
+        categoria="acao",
+        acao="suporte_ticket_status",
+        ator=current_user,
+        municipio_id=ticket.municipio_id,
+        detalhe=f"ticket #{ticket.id}: {status_de} -> {status_para}",
+        request=request,
+        **_alvo_do_ticket(ticket),
+    )
+    db.refresh(ticket)
+    return ticket
+
+
+@router.post(
+    "/admin/tickets/{ticket_id}/anotacoes",
+    response_model=TicketAdminDetalheOut,
+    status_code=201,
+)
+def anotar_ticket(
+    request: Request,
+    ticket_id: int,
+    data: AnotacaoCreate,
+    db: Session = Depends(get_db),
+    current_user: Usuario = Depends(require_role("ADMIN_GLOBAL")),
+):
+    """Anotacao interna no ticket; a auditoria nao carrega o texto."""
+    ticket = _carregar_ticket(db, ticket_id)
+    ticket.eventos.append(
+        SuporteTicketEvento(
+            tipo="anotacao",
+            texto=data.texto,
+            autor_id=current_user.id,
+            autor_email=current_user.email,
+        )
+    )
+    ticket.atualizado_em = datetime.now(timezone.utc)
+    db.commit()
+    registrar_acao(
+        db,
+        categoria="acao",
+        acao="suporte_ticket_anotacao",
+        ator=current_user,
+        municipio_id=ticket.municipio_id,
+        detalhe=f"ticket #{ticket.id}",
+        request=request,
+        **_alvo_do_ticket(ticket),
+    )
+    db.refresh(ticket)
     return ticket

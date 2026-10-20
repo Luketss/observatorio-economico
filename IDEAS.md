@@ -133,6 +133,7 @@ Complemento da tela de atendimento do ADMIN_GLOBAL (`/admin/suporte`), para o su
 - Ao abrir um ticket: e-mail para o suporte com o texto, contatos e canal preferido. Destino a definir: variável `SUPORTE_EMAIL` ou todos os ADMIN_GLOBAL ativos
 - Ao mudar o status: e-mail curto para o usuário ("sua solicitação está em atendimento" / "foi resolvida")
 - Reutiliza `email_service.enviar` + `email_templates`; respeitar LGPD (sem mensagem completa no e-mail do usuário)
+- Retenção/purga automática de tickets de suporte (hoje inexistente; ver docs/lgpd.md seção 4) — definir prazo e incluir em purgar_auditoria ou rotina própria
 
 ### Comparativo de Municípios Aprimorado
 Evolução da página `/comparativo` com visualizações mais ricas.

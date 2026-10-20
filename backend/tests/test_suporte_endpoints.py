@@ -188,3 +188,72 @@ def test_kpis_sem_contato_media_none(ctx):
     db, admin, u1, *_ = ctx
     _criar(db, u1)
     assert kpis_suporte(db=db, current_user=admin).tempo_medio_primeiro_contato_horas is None
+
+
+def _status(db, admin, ticket_id, status, texto=None):
+    from app.api.v1.routers.suporte import alterar_status_ticket
+    return alterar_status_ticket(request=_FakeRequest(), ticket_id=ticket_id,
+                                 data=StatusUpdate(status=status, texto=texto), db=db, current_user=admin)
+
+
+def test_status_grava_evento_primeiro_contato_e_resolvido(ctx):
+    db, admin, u1, *_ = ctx
+    t = _criar(db, u1)
+    d = _status(db, admin, t.id, "em_atendimento", texto="liguei, vai mandar print")
+    assert d.status == "em_atendimento" and d.primeiro_contato_em is not None
+    primeiro = d.primeiro_contato_em
+    d = _status(db, admin, t.id, "resolvido")
+    assert d.resolvido_em is not None and d.primeiro_contato_em == primeiro
+    d = _status(db, admin, t.id, "aberto")          # reabrir
+    assert d.resolvido_em is None and d.primeiro_contato_em == primeiro
+    d = _status(db, admin, t.id, "em_atendimento")  # segunda vez nao sobrescreve
+    assert d.primeiro_contato_em == primeiro
+    tipos = [(e.tipo, e.status_de, e.status_para) for e in d.eventos]
+    assert tipos == [("abertura", None, None), ("status", "aberto", "em_atendimento"),
+                     ("status", "em_atendimento", "resolvido"), ("status", "resolvido", "aberto"),
+                     ("status", "aberto", "em_atendimento")]
+    assert d.eventos[1].texto == "liguei, vai mandar print"
+    trilha = db.query(AcaoAudit).filter(AcaoAudit.acao == "suporte_ticket_status").order_by(AcaoAudit.id).all()
+    assert len(trilha) == 4 and trilha[0].categoria == "acao"
+    assert trilha[0].detalhe == f"ticket #{t.id}: aberto -> em_atendimento"
+    assert trilha[0].alvo_email == "ana@alfa.gov.br"
+
+
+def test_mesmo_status_400(ctx):
+    from fastapi import HTTPException
+    db, admin, u1, *_ = ctx
+    t = _criar(db, u1)
+    with pytest.raises(HTTPException) as exc:
+        _status(db, admin, t.id, "aberto")
+    assert exc.value.status_code == 400
+
+
+def test_anotacao_grava_evento_e_audita_sem_texto(ctx):
+    from app.api.v1.routers.suporte import anotar_ticket
+    db, admin, u1, *_ = ctx
+    t = _criar(db, u1)
+    d = anotar_ticket(request=_FakeRequest(), ticket_id=t.id, data=AnotacaoCreate(texto="respondido por e-mail"),
+                      db=db, current_user=admin)
+    assert d.eventos[-1].tipo == "anotacao" and d.eventos[-1].texto == "respondido por e-mail"
+    assert d.eventos[-1].autor_email == "admin@x.com"
+    row = db.query(AcaoAudit).filter(AcaoAudit.acao == "suporte_ticket_anotacao").one()
+    assert row.categoria == "acao" and "respondido" not in (row.detalhe or "")
+
+
+def test_status_e_anotacao_exigem_admin_global(ctx):
+    from app.api.v1.routers.suporte import alterar_status_ticket, anotar_ticket
+    from app.core.exceptions import ForbiddenException
+    _, _, u1, *_ = ctx
+    for h in (alterar_status_ticket, anotar_ticket):
+        with pytest.raises(ForbiddenException):
+            _admin_dep(h)(current_user=u1)
+
+
+def test_openapi_expoe_todas_as_rotas_de_suporte():
+    from app.main import app
+    paths = app.openapi()["paths"]
+    for p in ("/api/v1/suporte/tickets", "/api/v1/suporte/tickets/meus", "/api/v1/suporte/admin/kpis",
+              "/api/v1/suporte/admin/tickets", "/api/v1/suporte/admin/tickets/{ticket_id}",
+              "/api/v1/suporte/admin/tickets/{ticket_id}/status",
+              "/api/v1/suporte/admin/tickets/{ticket_id}/anotacoes"):
+        assert p in paths, p
