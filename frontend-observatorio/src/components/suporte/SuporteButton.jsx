@@ -7,6 +7,7 @@ import {
 import { useAuth } from "../../context/AuthContext";
 import { linkWhatsApp } from "../../config/contato";
 import { useEscapeKey } from "../../hooks/useEscapeKey";
+import SuporteTicketModal from "./SuporteTicketModal";
 
 const ITEM_CLASS =
   "w-full flex items-start gap-2 px-3 py-2 text-left text-xs cursor-pointer hover:opacity-80";
@@ -23,7 +24,6 @@ function ItemTexto({ titulo, ajuda }) {
 export default function SuporteButton() {
   const { user } = useAuth();
   const [open, setOpen] = useState(false);
-  // eslint-disable-next-line no-unused-vars
   const [modal, setModal] = useState(null);
   const ref = useRef(null);
 
@@ -93,7 +93,8 @@ export default function SuporteButton() {
         </div>
       )}
 
-      {/* modais: Task 9 e 10 */}
+      <SuporteTicketModal open={modal === "novo"} onClose={() => setModal(null)} />
+      {/* modal "meus": Task 10 */}
     </div>
   );
 }
