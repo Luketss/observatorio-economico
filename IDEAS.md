@@ -126,6 +126,14 @@ Ao criar uma nova conta de usuário (ADMIN_GLOBAL ou ADMIN_MUNICIPIO), o sistema
 - Reduz fricção do onboarding de novos admins
 - Reutiliza a infra de `redefinir-senha` existente (mesmos tokens e validação)
 
+### E-mails do Suporte (tickets de atendimento)
+> **Infra de e-mail pronta (docs/email.md)** — decidido em 19/10/2026 ficar fora da primeira entrega dos tickets (spec `docs/superpowers/specs/2026-10-19-suporte-tickets-design.md`)
+
+Complemento da tela de atendimento do ADMIN_GLOBAL (`/admin/suporte`), para o suporte não depender de entrar no painel.
+- Ao abrir um ticket: e-mail para o suporte com o texto, contatos e canal preferido. Destino a definir: variável `SUPORTE_EMAIL` ou todos os ADMIN_GLOBAL ativos
+- Ao mudar o status: e-mail curto para o usuário ("sua solicitação está em atendimento" / "foi resolvida")
+- Reutiliza `email_service.enviar` + `email_templates`; respeitar LGPD (sem mensagem completa no e-mail do usuário)
+
 ### Comparativo de Municípios Aprimorado
 Evolução da página `/comparativo` com visualizações mais ricas.
 - Radar chart com 5-6 indicadores lado a lado
