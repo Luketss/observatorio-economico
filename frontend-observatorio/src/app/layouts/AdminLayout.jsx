@@ -38,6 +38,7 @@ const ROUTE_LABELS = {
   "/admin/cards":         "Cards Customizados",
   "/admin/planos":        "Planos & Acesso",
   "/admin/usuarios":      "Usuários",
+  "/admin/suporte":       "Atendimento",
   "/admin/login-audit":   "Logins / Auditoria",
   "/admin/explorer":      "Explorador de Dados",
   "/admin/datasets":      "Datasets",

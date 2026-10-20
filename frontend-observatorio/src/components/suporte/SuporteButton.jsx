@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import {
   ChatBubbleLeftRightIcon,
   ClipboardDocumentListIcon,
@@ -94,12 +95,17 @@ export default function SuporteButton() {
         </div>
       )}
 
-      <SuporteTicketModal open={modal === "novo"} onClose={() => setModal(null)} />
-      <SuporteMeusTicketsModal
-        open={modal === "meus"}
-        onClose={() => setModal(null)}
-        onAbrirNovo={() => setModal("novo")}
-      />
+      {createPortal(
+        <>
+          <SuporteTicketModal open={modal === "novo"} onClose={() => setModal(null)} />
+          <SuporteMeusTicketsModal
+            open={modal === "meus"}
+            onClose={() => setModal(null)}
+            onAbrirNovo={() => setModal("novo")}
+          />
+        </>,
+        document.body,
+      )}
     </div>
   );
 }

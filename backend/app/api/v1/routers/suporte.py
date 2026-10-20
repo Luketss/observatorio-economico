@@ -152,6 +152,7 @@ def listar_tickets_admin(
         .offset(skip)
         .limit(limit)
     ).all()
+    items = [TicketAdminOut.model_validate(t) for t in itens]
     registrar_acao(
         db,
         categoria="leitura",
@@ -160,7 +161,7 @@ def listar_tickets_admin(
         detalhe=f"status={status_ or 'todos'} municipio={municipio_filtro or 'todos'} skip={skip}",
         request=request,
     )
-    return PaginatedResponse(items=list(itens), total=total, skip=skip, limit=limit)
+    return PaginatedResponse(items=items, total=total, skip=skip, limit=limit)
 
 
 @router.get("/admin/tickets/{ticket_id}", response_model=TicketAdminDetalheOut)
