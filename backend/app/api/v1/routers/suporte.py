@@ -1,10 +1,22 @@
-from app.api.deps import get_current_user, get_db
+from datetime import datetime, timedelta, timezone
+
+from app.api.deps import get_current_user, get_db, require_role
+from app.api.pagination import PaginatedResponse
+from app.core.exceptions import NotFoundException
 from app.core.rate_limit import chave_por_usuario, limiter
 from app.models.suporte import SuporteTicket, SuporteTicketEvento
 from app.models.usuario import Usuario
-from app.schemas.suporte import TicketCreate, TicketMeuOut
-from fastapi import APIRouter, Depends, Request
-from sqlalchemy import select
+from app.schemas.suporte import (
+    STATUS_VALIDOS,
+    KpisOut,
+    TicketAdminDetalheOut,
+    TicketAdminOut,
+    TicketCreate,
+    TicketMeuOut,
+)
+from app.services.audit_service import registrar_acao
+from fastapi import APIRouter, Depends, HTTPException, Query, Request
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 router = APIRouter(prefix="/suporte", tags=["Suporte"])
@@ -55,3 +67,117 @@ def listar_meus_tickets(
         .order_by(SuporteTicket.criado_em.desc(), SuporteTicket.id.desc())
     )
     return list(db.scalars(stmt).all())
+
+
+def _horas_entre(a: datetime, b: datetime) -> float:
+    """Horas de a ate b; datetimes naive (SQLite) sao tratados como UTC."""
+    if a.tzinfo is None:
+        a = a.replace(tzinfo=timezone.utc)
+    if b.tzinfo is None:
+        b = b.replace(tzinfo=timezone.utc)
+    return (b - a).total_seconds() / 3600
+
+
+def _carregar_ticket(db: Session, ticket_id: int) -> SuporteTicket:
+    """Busca o ticket pelo id ou levanta 404."""
+    ticket = db.get(SuporteTicket, ticket_id)
+    if ticket is None:
+        raise NotFoundException("Ticket nao encontrado")
+    return ticket
+
+
+def _alvo_do_ticket(ticket: SuporteTicket) -> dict:
+    """Alvo da auditoria: usuario vivo ou, se excluido, o e-mail do snapshot."""
+    if ticket.usuario is not None:
+        return {"alvo": ticket.usuario}
+    return {"alvo_email": ticket.usuario_email}
+
+
+@router.get("/admin/kpis", response_model=KpisOut)
+def kpis_suporte(
+    db: Session = Depends(get_db),
+    current_user: Usuario = Depends(require_role("ADMIN_GLOBAL")),
+):
+    """KPIs do atendimento: contagens atuais, volume de 30 dias e tempo medio ate o 1o contato."""
+    janela = datetime.now(timezone.utc) - timedelta(days=30)
+
+    def contar(*criterios) -> int:
+        return db.scalar(select(func.count(SuporteTicket.id)).where(*criterios)) or 0
+
+    amostra = db.execute(
+        select(SuporteTicket.criado_em, SuporteTicket.primeiro_contato_em).where(
+            SuporteTicket.criado_em >= janela,
+            SuporteTicket.primeiro_contato_em.is_not(None),
+        )
+    ).all()
+    media = None
+    if amostra:
+        media = round(sum(_horas_entre(c, p) for c, p in amostra) / len(amostra), 1)
+    return KpisOut(
+        abertos=contar(SuporteTicket.status == "aberto"),
+        em_atendimento=contar(SuporteTicket.status == "em_atendimento"),
+        abertos_30d=contar(SuporteTicket.criado_em >= janela),
+        resolvidos_30d=contar(SuporteTicket.resolvido_em >= janela),
+        tempo_medio_primeiro_contato_horas=media,
+    )
+
+
+@router.get("/admin/tickets", response_model=PaginatedResponse[TicketAdminOut])
+def listar_tickets_admin(
+    request: Request,
+    skip: int = 0,
+    limit: int = 25,
+    status_: str | None = Query(default=None, alias="status"),
+    municipio_filtro: int | None = None,
+    db: Session = Depends(get_db),
+    current_user: Usuario = Depends(require_role("ADMIN_GLOBAL")),
+):
+    """Lista paginada de tickets (filtros por status e municipio); a leitura e auditada."""
+    skip = max(skip, 0)
+    limit = min(max(limit, 1), 100)
+    if status_ is not None and status_ not in STATUS_VALIDOS:
+        raise HTTPException(status_code=422, detail="Status invalido")
+    criterios = []
+    if status_ is not None:
+        criterios.append(SuporteTicket.status == status_)
+    if municipio_filtro is not None:
+        criterios.append(SuporteTicket.municipio_id == municipio_filtro)
+    total = db.scalar(select(func.count(SuporteTicket.id)).where(*criterios)) or 0
+    itens = db.scalars(
+        select(SuporteTicket)
+        .where(*criterios)
+        .order_by(SuporteTicket.criado_em.desc(), SuporteTicket.id.desc())
+        .offset(skip)
+        .limit(limit)
+    ).all()
+    registrar_acao(
+        db,
+        categoria="leitura",
+        acao="suporte_tickets_listados",
+        ator=current_user,
+        detalhe=f"status={status_ or 'todos'} municipio={municipio_filtro or 'todos'} skip={skip}",
+        request=request,
+    )
+    return PaginatedResponse(items=list(itens), total=total, skip=skip, limit=limit)
+
+
+@router.get("/admin/tickets/{ticket_id}", response_model=TicketAdminDetalheOut)
+def detalhar_ticket_admin(
+    request: Request,
+    ticket_id: int,
+    db: Session = Depends(get_db),
+    current_user: Usuario = Depends(require_role("ADMIN_GLOBAL")),
+):
+    """Detalhe do ticket com eventos; a leitura e auditada (sem o texto da mensagem)."""
+    ticket = _carregar_ticket(db, ticket_id)
+    registrar_acao(
+        db,
+        categoria="leitura",
+        acao="suporte_ticket_consultado",
+        ator=current_user,
+        municipio_id=ticket.municipio_id,
+        detalhe=f"ticket #{ticket.id}",
+        request=request,
+        **_alvo_do_ticket(ticket),
+    )
+    return ticket

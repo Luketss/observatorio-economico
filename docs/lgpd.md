@@ -22,7 +22,7 @@ Para o envio de e-mails transacionais (redefinição de senha e códigos de veri
 
 ## 2. Inventário de dados pessoais tratados (art. 37)
 
-A plataforma trata três classes de dados pessoais:
+A plataforma trata quatro classes de dados pessoais:
 
 **(a) Contas de usuário.** Para cada servidor com acesso ao sistema: nome,
 e-mail, hash de senha (com o algoritmo bcrypt — a senha em texto claro nunca
@@ -46,6 +46,16 @@ endereço IP, identificador de navegador e data/hora).
 dentro da plataforma, associados ao usuário que os recebe e ao registro de
 leitura.
 
+**(d) Solicitações de suporte.** Quando o usuário abre uma solicitação pelo
+formulário de atendimento, a plataforma guarda nome, e-mail, papel e município
+do solicitante (retrato no momento da abertura), o número de WhatsApp
+informado voluntariamente, o texto livre da solicitação, o status e o
+histórico de ações e anotações do suporte. O formulário orienta o usuário a
+não incluir dados pessoais de terceiros. O acesso é restrito ao
+ADMIN_GLOBAL, e cada leitura ou ação fica registrada em `acao_audit`
+(`suporte_tickets_listados`, `suporte_ticket_consultado`,
+`suporte_ticket_status`, `suporte_ticket_anotacao`).
+
 **Delimitação.** Os indicadores econômicos e sociais exibidos no
 observatório (PIB, CAGED, FPM, IPS e demais fontes) são agregados públicos
 por município e não constituem dados pessoais. O módulo de empresas trata
@@ -68,6 +78,11 @@ art. 15 da Lei nº 12.965/2014 (Marco Civil da Internet); e o legítimo
 interesse em segurança da informação (art. 7º, IX), que fundamenta a
 extensão do prazo além do mínimo legal, conforme detalhado na seção 4.
 
+O tratamento das solicitações de suporte (classe (d)) tem como base legal a
+execução de contrato, no atendimento ao usuário que solicitou o suporte
+(art. 7º, V), e o legítimo interesse na rastreabilidade das ações do suporte
+(art. 7º, IX).
+
 ## 4. Retenção e descarte
 
 Os registros de acesso (tentativas de login e leituras de dados pessoais
@@ -84,6 +99,12 @@ nos dois lugares. Para efeito de cálculo, a rotina aproxima 12 meses a 365
 dias e 5 anos a 1.825 dias.
 
 Os tokens de redefinição de senha (`redefinicao_senha`) são apagados 24 horas depois de criados, pela mesma rotina de purga (constante `RETENCAO_REDEFINICAO_HORAS` em `backend/app/services/audit_service.py`). O código de verificação por e-mail é descartado ao ser usado ou ao expirar (10 minutos).
+
+Os tickets de suporte (`suporte_tickets` e `suporte_ticket_eventos`) são
+mantidos enquanto o município estiver cadastrado. Não há purga automática
+nesta versão (item registrado no backlog). Quando o usuário é excluído, o
+ticket preserva nome e e-mail como retrato do momento da abertura, com a mesma
+base da trilha de auditoria.
 
 Quando uma conta de usuário é excluída, seu cadastro é removido em
 definitivo da plataforma. A trilha de auditoria, no entanto, preserva o
