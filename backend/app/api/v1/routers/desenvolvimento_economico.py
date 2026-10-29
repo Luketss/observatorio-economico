@@ -4,6 +4,7 @@ from typing import List
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy import inspect as sa_inspect
+from sqlalchemy import or_
 from sqlalchemy.orm import Session, selectinload
 
 from app.api.deps import get_current_user, get_db, require_permissao, scoped_modulo
@@ -12,6 +13,8 @@ from app.core.cnae import CNAE_SECAO
 from app.core.datas import hoje_local
 from app.core.exceptions import ForbiddenException, NotFoundException
 from app.models.desenvolvimento_economico import (
+    ESCOPO_GLOBAL,
+    ESCOPO_MUNICIPAL,
     CaptacaoRecurso,
     ContatoEmpresa,
     DemandaEmpresa,
@@ -551,6 +554,88 @@ def deletar_demanda(
     return {"ok": True}
 
 
+# ── Escopo global (Captação, Escrita e Premiações) ─────────────────────────
+# O ADMIN_GLOBAL cadastra conteúdo compartilhado (escopo "global", sem
+# município) que aparece para todos os municípios junto com os registros
+# próprios de cada um. Só ele altera/exclui o conteúdo global.
+
+# Andamento (status/estágio/resultado) é acompanhamento municipal: um registro
+# global fica sempre no estado neutro para não virar conquista/aprovação/
+# submissão de todos os municípios.
+_NEUTRO_GLOBAL = {
+    CaptacaoRecurso: {"estagio": "oportunidade"},
+    EscritaProjeto: {"estagio": "ideia", "resultado": None},
+    Premiacao: {"status": "oportunidade"},
+}
+
+
+def _is_admin_global(current_user: Usuario) -> bool:
+    return current_user.role.nome == "ADMIN_GLOBAL"
+
+
+def _filtrar_com_globais(query, model, current_user: Usuario, municipio_id: int | None):
+    """Globais + registros do município. Usuário municipal: sempre o próprio
+    (o parâmetro é ignorado). ADMIN_GLOBAL: o do "Ver como"; sem ele, só os
+    globais (nunca os privados de todos os municípios misturados)."""
+    alvo = municipio_id if _is_admin_global(current_user) else current_user.municipio_id
+    if alvo is None:
+        return query.filter(model.escopo == ESCOPO_GLOBAL)
+    return query.filter(or_(model.escopo == ESCOPO_GLOBAL, model.municipio_id == alvo))
+
+
+def _novo_registro(model, dados: dict, current_user: Usuario):
+    """ADMIN_GLOBAL cria registro global; demais, no próprio município. O
+    escopo vem do perfil autenticado, nunca do payload."""
+    if _is_admin_global(current_user):
+        return model(
+            **{**dados, **_NEUTRO_GLOBAL[model]},
+            municipio_id=None,
+            escopo=ESCOPO_GLOBAL,
+            criado_por=current_user.id,
+        )
+    _exigir_municipio(current_user)
+    return model(
+        **dados,
+        municipio_id=_municipio_id(current_user),
+        escopo=ESCOPO_MUNICIPAL,
+        criado_por=current_user.id,
+    )
+
+
+def _checar_acesso_registro(item, current_user: Usuario) -> None:
+    """Alterar/excluir: global só pelo ADMIN_GLOBAL; municipal mantém a regra
+    original (dono do município ou ADMIN_GLOBAL)."""
+    if item.escopo == ESCOPO_GLOBAL:
+        if not _is_admin_global(current_user):
+            raise ForbiddenException("Conteúdo global: somente o administrador global pode alterar")
+        return
+    if not _is_admin_global(current_user) and item.municipio_id != current_user.municipio_id:
+        raise ForbiddenException("Acesso negado")
+
+
+def _aplicar_campos(item, campos: dict) -> None:
+    for field, value in campos.items():
+        setattr(item, field, value)
+    if item.escopo == ESCOPO_GLOBAL:
+        for field, value in _NEUTRO_GLOBAL[type(item)].items():
+            setattr(item, field, value)
+
+
+def _validar_vinculo_captacao(db: Session, captacao_id: int | None, escopo: str,
+                              municipio_id: int | None) -> None:
+    """Projeto só se vincula a captação visível para ele: global aceita só
+    captação global; municipal aceita a do próprio município ou global."""
+    if captacao_id is None:
+        return
+    cap = db.get(CaptacaoRecurso, captacao_id)
+    if cap is None:
+        raise HTTPException(status_code=422, detail="Oportunidade de captação não encontrada")
+    if cap.escopo == ESCOPO_GLOBAL:
+        return
+    if escopo == ESCOPO_GLOBAL or cap.municipio_id != municipio_id:
+        raise HTTPException(status_code=422, detail="Oportunidade de captação não disponível para este projeto")
+
+
 # ── 3.3 Captação de Recursos ───────────────────────────────────────────────
 
 @router.get("/captacao", response_model=List[CaptacaoRecursoOut])
@@ -559,11 +644,7 @@ def listar_captacao(
     db: Session = Depends(get_db),
     current_user: Usuario = Depends(get_current_user),
 ):
-    query = db.query(CaptacaoRecurso)
-    if current_user.role.nome != "ADMIN_GLOBAL":
-        query = query.filter(CaptacaoRecurso.municipio_id == current_user.municipio_id)
-    elif municipio_id is not None:
-        query = query.filter(CaptacaoRecurso.municipio_id == municipio_id)
+    query = _filtrar_com_globais(db.query(CaptacaoRecurso), CaptacaoRecurso, current_user, municipio_id)
     return query.order_by(CaptacaoRecurso.criado_em.desc()).all()
 
 
@@ -573,12 +654,7 @@ def criar_captacao(
     db: Session = Depends(get_db),
     current_user: Usuario = Depends(require_permissao("captacao", "criar")),
 ):
-    _exigir_municipio(current_user)
-    item = CaptacaoRecurso(
-        **data.model_dump(),
-        municipio_id=_municipio_id(current_user),
-        criado_por=current_user.id,
-    )
+    item = _novo_registro(CaptacaoRecurso, data.model_dump(), current_user)
     db.add(item)
     db.commit()
     db.refresh(item)
@@ -595,10 +671,8 @@ def atualizar_captacao(
     item = db.get(CaptacaoRecurso, item_id)
     if not item:
         raise NotFoundException("Oportunidade não encontrada")
-    if current_user.role.nome != "ADMIN_GLOBAL" and item.municipio_id != current_user.municipio_id:
-        raise ForbiddenException("Acesso negado")
-    for field, value in data.model_dump(exclude_unset=True).items():
-        setattr(item, field, value)
+    _checar_acesso_registro(item, current_user)
+    _aplicar_campos(item, data.model_dump(exclude_unset=True))
     db.commit()
     db.refresh(item)
     return item
@@ -613,8 +687,13 @@ def deletar_captacao(
     item = db.get(CaptacaoRecurso, item_id)
     if not item:
         raise NotFoundException("Oportunidade não encontrada")
-    if current_user.role.nome != "ADMIN_GLOBAL" and item.municipio_id != current_user.municipio_id:
-        raise ForbiddenException("Acesso negado")
+    _checar_acesso_registro(item, current_user)
+    if item.escopo == ESCOPO_GLOBAL:
+        # Projetos de vários municípios podem apontar para a captação global:
+        # desfaz o vínculo (a FK não tem ON DELETE) em vez de falhar.
+        db.query(EscritaProjeto).filter(
+            EscritaProjeto.oportunidade_captacao_id == item.id
+        ).update({EscritaProjeto.oportunidade_captacao_id: None}, synchronize_session=False)
     db.delete(item)
     db.commit()
     return {"ok": True}
@@ -628,11 +707,7 @@ def listar_escrita(
     db: Session = Depends(get_db),
     current_user: Usuario = Depends(get_current_user),
 ):
-    query = db.query(EscritaProjeto)
-    if current_user.role.nome != "ADMIN_GLOBAL":
-        query = query.filter(EscritaProjeto.municipio_id == current_user.municipio_id)
-    elif municipio_id is not None:
-        query = query.filter(EscritaProjeto.municipio_id == municipio_id)
+    query = _filtrar_com_globais(db.query(EscritaProjeto), EscritaProjeto, current_user, municipio_id)
     return query.order_by(EscritaProjeto.criado_em.desc()).all()
 
 
@@ -642,12 +717,8 @@ def criar_escrita(
     db: Session = Depends(get_db),
     current_user: Usuario = Depends(require_permissao("escrita", "criar")),
 ):
-    _exigir_municipio(current_user)
-    item = EscritaProjeto(
-        **data.model_dump(),
-        municipio_id=_municipio_id(current_user),
-        criado_por=current_user.id,
-    )
+    item = _novo_registro(EscritaProjeto, data.model_dump(), current_user)
+    _validar_vinculo_captacao(db, item.oportunidade_captacao_id, item.escopo, item.municipio_id)
     db.add(item)
     db.commit()
     db.refresh(item)
@@ -664,10 +735,12 @@ def atualizar_escrita(
     item = db.get(EscritaProjeto, item_id)
     if not item:
         raise NotFoundException("Projeto não encontrado")
-    if current_user.role.nome != "ADMIN_GLOBAL" and item.municipio_id != current_user.municipio_id:
-        raise ForbiddenException("Acesso negado")
-    for field, value in data.model_dump(exclude_unset=True).items():
-        setattr(item, field, value)
+    _checar_acesso_registro(item, current_user)
+    campos = data.model_dump(exclude_unset=True)
+    novo_vinculo = campos.get("oportunidade_captacao_id")
+    if novo_vinculo is not None and novo_vinculo != item.oportunidade_captacao_id:
+        _validar_vinculo_captacao(db, novo_vinculo, item.escopo, item.municipio_id)
+    _aplicar_campos(item, campos)
     db.commit()
     db.refresh(item)
     return item
@@ -682,8 +755,7 @@ def deletar_escrita(
     item = db.get(EscritaProjeto, item_id)
     if not item:
         raise NotFoundException("Projeto não encontrado")
-    if current_user.role.nome != "ADMIN_GLOBAL" and item.municipio_id != current_user.municipio_id:
-        raise ForbiddenException("Acesso negado")
+    _checar_acesso_registro(item, current_user)
     db.delete(item)
     db.commit()
     return {"ok": True}
@@ -697,11 +769,7 @@ def listar_premiacoes(
     db: Session = Depends(get_db),
     current_user: Usuario = Depends(get_current_user),
 ):
-    query = db.query(Premiacao)
-    if current_user.role.nome != "ADMIN_GLOBAL":
-        query = query.filter(Premiacao.municipio_id == current_user.municipio_id)
-    elif municipio_id is not None:
-        query = query.filter(Premiacao.municipio_id == municipio_id)
+    query = _filtrar_com_globais(db.query(Premiacao), Premiacao, current_user, municipio_id)
     return query.order_by(Premiacao.criado_em.desc()).all()
 
 
@@ -711,12 +779,7 @@ def criar_premiacao(
     db: Session = Depends(get_db),
     current_user: Usuario = Depends(require_permissao("premiacoes", "criar")),
 ):
-    _exigir_municipio(current_user)
-    item = Premiacao(
-        **data.model_dump(),
-        municipio_id=_municipio_id(current_user),
-        criado_por=current_user.id,
-    )
+    item = _novo_registro(Premiacao, data.model_dump(), current_user)
     db.add(item)
     db.commit()
     db.refresh(item)
@@ -733,10 +796,8 @@ def atualizar_premiacao(
     item = db.get(Premiacao, item_id)
     if not item:
         raise NotFoundException("Premiação não encontrada")
-    if current_user.role.nome != "ADMIN_GLOBAL" and item.municipio_id != current_user.municipio_id:
-        raise ForbiddenException("Acesso negado")
-    for field, value in data.model_dump(exclude_unset=True).items():
-        setattr(item, field, value)
+    _checar_acesso_registro(item, current_user)
+    _aplicar_campos(item, data.model_dump(exclude_unset=True))
     db.commit()
     db.refresh(item)
     return item
@@ -751,8 +812,7 @@ def deletar_premiacao(
     item = db.get(Premiacao, item_id)
     if not item:
         raise NotFoundException("Premiação não encontrada")
-    if current_user.role.nome != "ADMIN_GLOBAL" and item.municipio_id != current_user.municipio_id:
-        raise ForbiddenException("Acesso negado")
+    _checar_acesso_registro(item, current_user)
     db.delete(item)
     db.commit()
     return {"ok": True}
