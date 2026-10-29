@@ -1,5 +1,7 @@
 """View-as (municipio_id) nas listagens de captação, escrita e premiações —
-espelho do comportamento do listar_retencao (F3)."""
+espelho do comportamento do listar_retencao (F3). Sem view-as o ADMIN_GLOBAL
+recebe apenas os registros globais (nenhum neste cenário), nunca os privados
+de todos os municípios misturados."""
 import pytest
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
@@ -47,7 +49,7 @@ def ctx():
 def test_captacao_view_as(ctx):
     from app.api.v1.routers.desenvolvimento_economico import listar_captacao
     db, admin, u1, m1, m2 = ctx
-    assert len(listar_captacao(municipio_id=None, db=db, current_user=admin)) == 2
+    assert listar_captacao(municipio_id=None, db=db, current_user=admin) == []
     so_m1 = listar_captacao(municipio_id=m1.id, db=db, current_user=admin)
     assert [i.titulo for i in so_m1] == ["Edital Alfa"]
     u1_ignora = listar_captacao(municipio_id=m2.id, db=db, current_user=u1)
@@ -57,7 +59,7 @@ def test_captacao_view_as(ctx):
 def test_escrita_view_as(ctx):
     from app.api.v1.routers.desenvolvimento_economico import listar_escrita
     db, admin, u1, m1, m2 = ctx
-    assert len(listar_escrita(municipio_id=None, db=db, current_user=admin)) == 2
+    assert listar_escrita(municipio_id=None, db=db, current_user=admin) == []
     assert [i.titulo for i in listar_escrita(municipio_id=m2.id, db=db, current_user=admin)] == ["Projeto Beta"]
     assert [i.titulo for i in listar_escrita(municipio_id=m2.id, db=db, current_user=u1)] == ["Projeto Alfa"]
 
@@ -65,6 +67,6 @@ def test_escrita_view_as(ctx):
 def test_premiacoes_view_as(ctx):
     from app.api.v1.routers.desenvolvimento_economico import listar_premiacoes
     db, admin, u1, m1, m2 = ctx
-    assert len(listar_premiacoes(municipio_id=None, db=db, current_user=admin)) == 2
+    assert listar_premiacoes(municipio_id=None, db=db, current_user=admin) == []
     assert [i.titulo for i in listar_premiacoes(municipio_id=m1.id, db=db, current_user=admin)] == ["Prêmio Alfa"]
     assert [i.titulo for i in listar_premiacoes(municipio_id=m1.id, db=db, current_user=u1)] == ["Prêmio Alfa"]

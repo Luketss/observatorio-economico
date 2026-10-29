@@ -14,7 +14,6 @@ import { useToast } from "../../context/ToastContext";
 import { useEscapeKey } from "../../hooks/useEscapeKey";
 import { usePermissao } from "../../hooks/usePermissao";
 import { useViewAs } from "../../context/ViewAsContext";
-import SelecioneMunicipio from "../../components/nid/SelecioneMunicipio";
 import KanbanDndContext from "../../components/kanban/KanbanDndContext";
 import DraggableCard from "../../components/kanban/DraggableCard";
 import DroppableColumn from "../../components/kanban/DroppableColumn";
@@ -23,6 +22,8 @@ import { aplicarMovimento } from "../../utils/kanbanMove";
 import { propsTituloClicavel } from "../../utils/cliqueAcessivel";
 import NidDrawer from "../../components/nid/NidDrawer";
 import MarkdownLite from "../../components/nid/MarkdownLite";
+import OrigemGlobalBadge from "./OrigemGlobalBadge";
+import { ehGlobal } from "./escopoGlobal";
 
 const ESTAGIOS = ["ideia", "elaboracao", "submissao", "resultado"];
 const ESTAGIO_CONFIG = {
@@ -75,17 +76,23 @@ export default function EscritaTab() {
   const { addToast } = useToast();
   const isGlobal = user?.role === "ADMIN_GLOBAL";
   const { viewAsId } = useViewAs();
-  const needsMunicipio = isGlobal && viewAsId == null;
-  // ADMIN_GLOBAL não cria aqui: o registro nasce no município do usuário.
-  const canCriar = usePermissao("escrita", "criar") && !isGlobal;
+  // ADMIN_GLOBAL cria conteúdo global (visível a todos os municípios), sem
+  // precisar de "Ver como"; os demais criam no próprio município.
+  const canCriar = usePermissao("escrita", "criar");
+  // Registros municipais: só o próprio município altera/move (como antes).
   const canEditar = usePermissao("escrita", "editar") && !isGlobal;
   const canExcluir = usePermissao("escrita", "excluir") && !isGlobal;
+  // Registros globais: só o ADMIN_GLOBAL altera; estágio/resultado neutros.
+  const podeEditar = (item) => (ehGlobal(item) ? isGlobal : canEditar);
+  const podeExcluir = (item) => (ehGlobal(item) ? isGlobal : canExcluir);
+  const temAcoes = canEditar || canExcluir || isGlobal;
 
   const [items, setItems] = useState([]);
   const [captacoes, setCaptacoes] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [editingId, setEditingId] = useState(null);
+  const [editingGlobal, setEditingGlobal] = useState(false);
   const [form, setForm] = useState(defaultForm);
   const [saving, setSaving] = useState(false);
   const [formError, setFormError] = useState(null);
@@ -115,19 +122,29 @@ export default function EscritaTab() {
   }
 
   useEffect(() => {
-    if (needsMunicipio) return;
     load();
-  }, [needsMunicipio]);
+  }, [viewAsId]);
 
-  const kpis = useMemo(() => ({
-    total: items.length,
-    elaboracao: items.filter((i) => i.estagio === "elaboracao").length,
-    submetidos: items.filter((i) => i.estagio === "submissao").length,
-    aprovados: items.filter((i) => i.resultado === "aprovado").length,
-  }), [items]);
+  // Projeto global é modelo compartilhado, não elaboração/submissão/aprovação
+  // do município: fica fora desses contadores.
+  const kpis = useMemo(() => {
+    const proprios = items.filter((i) => !ehGlobal(i));
+    return {
+      total: items.length,
+      elaboracao: proprios.filter((i) => i.estagio === "elaboracao").length,
+      submetidos: proprios.filter((i) => i.estagio === "submissao").length,
+      aprovados: proprios.filter((i) => i.resultado === "aprovado").length,
+    };
+  }, [items]);
+
+  // Formulário em modo global: criação pelo ADMIN_GLOBAL ou edição de um
+  // registro global. Sem estágio/resultado e só captações globais no vínculo.
+  const formGlobal = editingId ? editingGlobal : isGlobal;
+  const captacoesVinculaveis = formGlobal ? captacoes.filter(ehGlobal) : captacoes;
 
   function openCreate() {
     setEditingId(null);
+    setEditingGlobal(false);
     setForm(defaultForm);
     setFormError(null);
     setShowForm(true);
@@ -135,6 +152,7 @@ export default function EscritaTab() {
 
   function openEdit(item) {
     setEditingId(item.id);
+    setEditingGlobal(ehGlobal(item));
     setForm({
       titulo: item.titulo,
       descricao: item.descricao || "",
@@ -173,7 +191,7 @@ export default function EscritaTab() {
         addToast("Projeto atualizado", "success");
       } else {
         await api.post("/desenvolvimento-economico/escrita", payload);
-        addToast("Projeto criado", "success");
+        addToast(isGlobal ? "Projeto global criado" : "Projeto criado", "success");
       }
       closeForm();
       await load();
@@ -185,6 +203,7 @@ export default function EscritaTab() {
   }
 
   async function moverCard(id, novoEstagio) {
+    if (ehGlobal(items.find((i) => i.id === id))) return;
     const anterior = items;
     const otimista = aplicarMovimento(items, id, "estagio", novoEstagio);
     if (otimista === anterior) return;
@@ -208,10 +227,6 @@ export default function EscritaTab() {
     } catch {
       addToast("Erro ao excluir", "error");
     }
-  }
-
-  if (needsMunicipio) {
-    return <SelecioneMunicipio />;
   }
 
   if (loading) {
@@ -298,10 +313,11 @@ export default function EscritaTab() {
                       const resCfg = item.resultado ? RESULTADO_CONFIG[item.resultado] : null;
                       const cap = captacoes.find((c) => c.id === item.oportunidade_captacao_id);
                       return (
-                        <DraggableCard key={item.id} id={item.id} disabled={!canEditar}>
+                        <DraggableCard key={item.id} id={item.id} disabled={!canEditar || ehGlobal(item)}>
                           <div className="bg-[var(--panel)] rounded-xl border border-[var(--border)] p-4 space-y-2.5 hover:shadow-md transition-shadow">
                             <div className="flex items-start justify-between gap-2">
                               <div className="flex-1 min-w-0">
+                                {ehGlobal(item) && <OrigemGlobalBadge className="mr-1 mb-1" />}
                                 {cap && (
                                   <span className="inline-block text-[10px] font-medium text-[var(--accent-1)] bg-[var(--panel-2)] px-1.5 py-0.5 rounded mb-1">
                                     {cap.titulo}
@@ -314,14 +330,14 @@ export default function EscritaTab() {
                                   {item.titulo}
                                 </h4>
                               </div>
-                              {(canEditar || canExcluir) && (
+                              {(podeEditar(item) || podeExcluir(item)) && (
                                 <div className="flex gap-1 shrink-0">
-                                  {canEditar && (
+                                  {podeEditar(item) && (
                                     <button onClick={() => openEdit(item)} className="p-1.5 rounded-lg text-slate-400 hover:text-blue-600 hover:bg-[var(--panel-2)] transition-colors cursor-pointer">
                                       <PencilIcon className="w-3.5 h-3.5" />
                                     </button>
                                   )}
-                                  {canExcluir && (
+                                  {podeExcluir(item) && (
                                     <button onClick={() => setDeleteConfirmId(item.id)} className="p-1.5 rounded-lg text-slate-400 hover:text-red-500 hover:bg-[var(--panel-2)] transition-colors cursor-pointer">
                                       <TrashIcon className="w-3.5 h-3.5" />
                                     </button>
@@ -336,7 +352,7 @@ export default function EscritaTab() {
                               {item.responsavel && <span>{item.responsavel}</span>}
                               {item.valor_pleiteado && <span className="font-semibold text-[var(--text-dim)]">{fmtMoeda(item.valor_pleiteado)}</span>}
                             </div>
-                            {canEditar && (
+                            {canEditar && !ehGlobal(item) && (
                               <div className="pt-1.5 border-t border-[var(--border)]">
                                 <select
                                   value={item.estagio}
@@ -378,12 +394,12 @@ export default function EscritaTab() {
                 <th className="px-4 py-2.5">Prazo</th>
                 <th className="px-4 py-2.5">Valor</th>
                 <th className="px-4 py-2.5">Estágio</th>
-                {(canEditar || canExcluir) && <th className="px-4 py-2.5" />}
+                {temAcoes && <th className="px-4 py-2.5" />}
               </tr>
             </thead>
             <tbody>
               {items.length === 0 ? (
-                <tr><td colSpan={7 + ((canEditar || canExcluir) ? 1 : 0)} className="px-4 py-10 text-center text-sm text-slate-400">Nenhum projeto de escrita cadastrado ainda.</td></tr>
+                <tr><td colSpan={7 + (temAcoes ? 1 : 0)} className="px-4 py-10 text-center text-sm text-slate-400">Nenhum projeto de escrita cadastrado ainda.</td></tr>
               ) : (
                 items.map((item) => {
                   const cfg = ESTAGIO_CONFIG[item.estagio] || ESTAGIO_CONFIG.ideia;
@@ -396,6 +412,7 @@ export default function EscritaTab() {
                         {...propsTituloClicavel(() => setViewingItem(item))}
                       >
                         {item.titulo}
+                        {ehGlobal(item) && <OrigemGlobalBadge className="ml-2 align-middle" />}
                       </td>
                       <td className="px-4 py-2.5 text-xs text-[var(--accent-1)]">{cap?.titulo || "—"}</td>
                       <td className="px-4 py-2.5">{resCfg ? <span className={`px-2 py-0.5 rounded-full text-[11px] font-medium ${resCfg.color}`}>{resCfg.label}</span> : <span className="text-xs text-[var(--text-mute)]">—</span>}</td>
@@ -403,11 +420,11 @@ export default function EscritaTab() {
                       <td className="px-4 py-2.5 text-xs text-[var(--text-mute)]">{fmtDate(item.prazo) || "—"}</td>
                       <td className="px-4 py-2.5 text-xs text-[var(--text-dim)]">{fmtMoeda(item.valor_pleiteado) || "—"}</td>
                       <td className="px-4 py-2.5"><EstagioPill label={cfg.label} className={cfg.color} /></td>
-                      {(canEditar || canExcluir) && (
+                      {temAcoes && (
                         <td className="px-4 py-2.5">
                           <div className="flex items-center gap-1 justify-end">
-                            {canEditar && (<button onClick={() => openEdit(item)} className="p-1.5 rounded-lg text-slate-400 hover:text-blue-600 hover:bg-[var(--panel-2)] transition-colors cursor-pointer"><PencilIcon className="w-3.5 h-3.5" /></button>)}
-                            {canExcluir && (<button onClick={() => setDeleteConfirmId(item.id)} className="p-1.5 rounded-lg text-slate-400 hover:text-red-500 hover:bg-[var(--panel-2)] transition-colors cursor-pointer"><TrashIcon className="w-3.5 h-3.5" /></button>)}
+                            {podeEditar(item) && (<button onClick={() => openEdit(item)} className="p-1.5 rounded-lg text-slate-400 hover:text-blue-600 hover:bg-[var(--panel-2)] transition-colors cursor-pointer"><PencilIcon className="w-3.5 h-3.5" /></button>)}
+                            {podeExcluir(item) && (<button onClick={() => setDeleteConfirmId(item.id)} className="p-1.5 rounded-lg text-slate-400 hover:text-red-500 hover:bg-[var(--panel-2)] transition-colors cursor-pointer"><TrashIcon className="w-3.5 h-3.5" /></button>)}
                           </div>
                         </td>
                       )}
@@ -435,6 +452,7 @@ export default function EscritaTab() {
             {item && (
               <div className="space-y-4">
                 <div className="flex items-center gap-1.5 flex-wrap pr-8">
+                  {ehGlobal(item) && <OrigemGlobalBadge />}
                   <EstagioPill label={cfg.label} className={cfg.color} />
                   {resCfg && <span className={`px-2 py-0.5 rounded-full text-[11px] font-medium ${resCfg.color}`}>{resCfg.label}</span>}
                 </div>
@@ -505,16 +523,24 @@ export default function EscritaTab() {
                 <h3 className="text-base font-bold text-[var(--text)]">
                   {editingId ? "Editar Projeto" : "Novo Projeto"}
                 </h3>
+                {formGlobal && <OrigemGlobalBadge className="ml-2 mr-auto" />}
                 <button onClick={closeForm} className="p-1.5 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-[var(--panel-2)] transition-colors cursor-pointer">
                   <XMarkIcon className="w-5 h-5" />
                 </button>
               </div>
               <form onSubmit={handleSubmit} className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {formGlobal && (
+                  <p className="md:col-span-2 text-xs text-[var(--text-dim)]">
+                    Registro global: aparece para todos os municípios, inclusive os cadastrados futuramente.
+                  </p>
+                )}
                 <div className="md:col-span-2 flex flex-col gap-1">
                   <label className="text-xs font-semibold text-[var(--text-dim)] uppercase tracking-wider">Título *</label>
                   <input value={form.titulo} onChange={(e) => setForm((p) => ({ ...p, titulo: e.target.value }))} required className="px-3 py-2 rounded-lg border border-[var(--border)] text-sm bg-[var(--panel-2)] text-[var(--text)] focus:outline-none focus:ring-2 focus:ring-blue-500" />
                 </div>
 
+                {!formGlobal && (
+                <>
                 <div className="flex flex-col gap-1">
                   <label className="text-xs font-semibold text-[var(--text-dim)] uppercase tracking-wider">Estágio</label>
                   <select value={form.estagio} onChange={(e) => setForm((p) => ({ ...p, estagio: e.target.value }))} className="px-3 py-2 rounded-lg border border-[var(--border)] text-sm bg-[var(--panel-2)] text-[var(--text)] focus:outline-none focus:ring-2 focus:ring-blue-500">
@@ -529,6 +555,8 @@ export default function EscritaTab() {
                     {Object.entries(RESULTADO_CONFIG).map(([k, v]) => <option key={k} value={k}>{v.label}</option>)}
                   </select>
                 </div>
+                </>
+                )}
 
                 <div className="flex flex-col gap-1">
                   <label className="text-xs font-semibold text-[var(--text-dim)] uppercase tracking-wider">Responsável</label>
@@ -549,7 +577,7 @@ export default function EscritaTab() {
                   <label className="text-xs font-semibold text-[var(--text-dim)] uppercase tracking-wider">Oportunidade de captação vinculada</label>
                   <select value={form.oportunidade_captacao_id} onChange={(e) => setForm((p) => ({ ...p, oportunidade_captacao_id: e.target.value }))} className="px-3 py-2 rounded-lg border border-[var(--border)] text-sm bg-[var(--panel-2)] text-[var(--text)] focus:outline-none focus:ring-2 focus:ring-blue-500">
                     <option value="">— Nenhuma —</option>
-                    {captacoes.map((c) => <option key={c.id} value={String(c.id)}>{c.titulo}</option>)}
+                    {captacoesVinculaveis.map((c) => <option key={c.id} value={String(c.id)}>{ehGlobal(c) ? `${c.titulo} (Global)` : c.titulo}</option>)}
                   </select>
                 </div>
 
