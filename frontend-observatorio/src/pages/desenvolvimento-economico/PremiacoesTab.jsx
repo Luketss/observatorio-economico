@@ -14,10 +14,11 @@ import { useToast } from "../../context/ToastContext";
 import { useEscapeKey } from "../../hooks/useEscapeKey";
 import { usePermissao } from "../../hooks/usePermissao";
 import { useViewAs } from "../../context/ViewAsContext";
-import SelecioneMunicipio from "../../components/nid/SelecioneMunicipio";
 import NidDrawer from "../../components/nid/NidDrawer";
 import MarkdownLite from "../../components/nid/MarkdownLite";
 import { propsTituloClicavel } from "../../utils/cliqueAcessivel";
+import OrigemGlobalBadge from "./OrigemGlobalBadge";
+import { ehGlobal } from "./escopoGlobal";
 
 const STATUS_CONFIG = {
   oportunidade:   { label: "Oportunidade",    color: "bg-[var(--panel-2)] text-[var(--text-dim)]" },
@@ -56,16 +57,21 @@ export default function PremiacoesTab() {
   const { addToast } = useToast();
   const isGlobal = user?.role === "ADMIN_GLOBAL";
   const { viewAsId } = useViewAs();
-  const needsMunicipio = isGlobal && viewAsId == null;
-  // ADMIN_GLOBAL não cria aqui: o registro nasce no município do usuário.
-  const canCriar = usePermissao("premiacoes", "criar") && !isGlobal;
+  // ADMIN_GLOBAL cria conteúdo global (visível a todos os municípios), sem
+  // precisar de "Ver como"; os demais criam no próprio município.
+  const canCriar = usePermissao("premiacoes", "criar");
+  // Registros municipais: só o próprio município altera (como antes).
   const canEditar = usePermissao("premiacoes", "editar") && !isGlobal;
   const canExcluir = usePermissao("premiacoes", "excluir") && !isGlobal;
+  // Registros globais: só o ADMIN_GLOBAL altera; o status fica neutro.
+  const podeEditar = (item) => (ehGlobal(item) ? isGlobal : canEditar);
+  const podeExcluir = (item) => (ehGlobal(item) ? isGlobal : canExcluir);
 
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [editingId, setEditingId] = useState(null);
+  const [editingGlobal, setEditingGlobal] = useState(false);
   const [form, setForm] = useState(defaultForm);
   const [saving, setSaving] = useState(false);
   const [formError, setFormError] = useState(null);
@@ -90,19 +96,28 @@ export default function PremiacoesTab() {
   }
 
   useEffect(() => {
-    if (needsMunicipio) return;
     load();
-  }, [needsMunicipio]);
+  }, [viewAsId]);
 
-  const kpis = useMemo(() => ({
-    total: items.length,
-    conquistados: items.filter((i) => i.status === "conquistado").length,
-    emAndamento: items.filter((i) => i.status === "em_andamento").length,
-    vencendo: items.filter((i) => isVencendoEm30(i.prazo)).length,
-  }), [items]);
+  // Conteúdo global é oportunidade compartilhada, não conquista do município:
+  // fica fora de "Conquistados" e "Em andamento".
+  const kpis = useMemo(() => {
+    const proprios = items.filter((i) => !ehGlobal(i));
+    return {
+      total: items.length,
+      conquistados: proprios.filter((i) => i.status === "conquistado").length,
+      emAndamento: proprios.filter((i) => i.status === "em_andamento").length,
+      vencendo: items.filter((i) => isVencendoEm30(i.prazo)).length,
+    };
+  }, [items]);
+
+  // Formulário em modo global: criação pelo ADMIN_GLOBAL ou edição de um
+  // registro global. Sem status (andamento é acompanhamento municipal).
+  const formGlobal = editingId ? editingGlobal : isGlobal;
 
   function openCreate() {
     setEditingId(null);
+    setEditingGlobal(false);
     setForm(defaultForm);
     setFormError(null);
     setShowForm(true);
@@ -110,6 +125,7 @@ export default function PremiacoesTab() {
 
   function openEdit(item) {
     setEditingId(item.id);
+    setEditingGlobal(ehGlobal(item));
     setForm({
       titulo: item.titulo,
       entidade: item.entidade || "",
@@ -141,7 +157,7 @@ export default function PremiacoesTab() {
         addToast("Premiação atualizada", "success");
       } else {
         await api.post("/desenvolvimento-economico/premiacoes", payload);
-        addToast("Premiação criada", "success");
+        addToast(isGlobal ? "Premiação global criada" : "Premiação criada", "success");
       }
       closeForm();
       await load();
@@ -171,10 +187,6 @@ export default function PremiacoesTab() {
     } catch {
       addToast("Erro ao excluir", "error");
     }
-  }
-
-  if (needsMunicipio) {
-    return <SelecioneMunicipio />;
   }
 
   if (loading) {
@@ -235,6 +247,7 @@ export default function PremiacoesTab() {
                       <span className="text-[10px] font-medium text-[var(--text-dim)] bg-[var(--panel-2)] px-1.5 py-0.5 rounded">
                         {TIPO_LABEL[item.tipo] || item.tipo}
                       </span>
+                      {ehGlobal(item) && <OrigemGlobalBadge />}
                       <span className={`px-2 py-0.5 rounded-full text-[11px] font-medium ${st.color}`}>{st.label}</span>
                     </div>
                     <h4
@@ -245,14 +258,14 @@ export default function PremiacoesTab() {
                     </h4>
                     {item.entidade && <p className="text-xs text-slate-400 mt-0.5">{item.entidade}</p>}
                   </div>
-                  {(canEditar || canExcluir) && (
+                  {(podeEditar(item) || podeExcluir(item)) && (
                     <div className="flex gap-1 shrink-0">
-                      {canEditar && (
+                      {podeEditar(item) && (
                         <button onClick={() => openEdit(item)} className="p-1.5 rounded-lg text-slate-400 hover:text-blue-600 hover:bg-[var(--panel-2)] transition-colors cursor-pointer">
                           <PencilIcon className="w-3.5 h-3.5" />
                         </button>
                       )}
-                      {canExcluir && (
+                      {podeExcluir(item) && (
                         <button onClick={() => setDeleteConfirmId(item.id)} className="p-1.5 rounded-lg text-slate-400 hover:text-red-500 hover:bg-[var(--panel-2)] transition-colors cursor-pointer">
                           <TrashIcon className="w-3.5 h-3.5" />
                         </button>
@@ -283,7 +296,7 @@ export default function PremiacoesTab() {
                   )}
                 </div>
 
-                {canEditar && (
+                {canEditar && !ehGlobal(item) && (
                   <div className="pt-1.5 border-t border-[var(--border)]">
                     <select
                       value={item.status}
@@ -316,6 +329,7 @@ export default function PremiacoesTab() {
                   <span className="text-[10px] font-medium text-[var(--text-dim)] bg-[var(--panel-2)] px-1.5 py-0.5 rounded">
                     {TIPO_LABEL[item.tipo] || item.tipo}
                   </span>
+                  {ehGlobal(item) && <OrigemGlobalBadge />}
                   <span className={`px-2 py-0.5 rounded-full text-[11px] font-medium ${st.color}`}>{st.label}</span>
                 </div>
                 <div>
@@ -393,11 +407,17 @@ export default function PremiacoesTab() {
                 <h3 className="text-base font-bold text-[var(--text)]">
                   {editingId ? "Editar Premiação" : "Nova Premiação"}
                 </h3>
+                {formGlobal && <OrigemGlobalBadge className="ml-2 mr-auto" />}
                 <button onClick={closeForm} className="p-1.5 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-[var(--panel-2)] transition-colors cursor-pointer">
                   <XMarkIcon className="w-5 h-5" />
                 </button>
               </div>
               <form onSubmit={handleSubmit} className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {formGlobal && (
+                  <p className="md:col-span-2 text-xs text-[var(--text-dim)]">
+                    Registro global: aparece para todos os municípios, inclusive os cadastrados futuramente.
+                  </p>
+                )}
                 <div className="md:col-span-2 flex flex-col gap-1">
                   <label className="text-xs font-semibold text-[var(--text-dim)] uppercase tracking-wider">Título *</label>
                   <input value={form.titulo} onChange={(e) => setForm((p) => ({ ...p, titulo: e.target.value }))} required className="px-3 py-2 rounded-lg border border-[var(--border)] text-sm bg-[var(--panel-2)] text-[var(--text)] focus:outline-none focus:ring-2 focus:ring-blue-500" />
@@ -410,12 +430,14 @@ export default function PremiacoesTab() {
                   </select>
                 </div>
 
+                {!formGlobal && (
                 <div className="flex flex-col gap-1">
                   <label className="text-xs font-semibold text-[var(--text-dim)] uppercase tracking-wider">Status</label>
                   <select value={form.status} onChange={(e) => setForm((p) => ({ ...p, status: e.target.value }))} className="px-3 py-2 rounded-lg border border-[var(--border)] text-sm bg-[var(--panel-2)] text-[var(--text)] focus:outline-none focus:ring-2 focus:ring-blue-500">
                     {Object.entries(STATUS_CONFIG).map(([k, v]) => <option key={k} value={k}>{v.label}</option>)}
                   </select>
                 </div>
+                )}
 
                 <div className="md:col-span-2 flex flex-col gap-1">
                   <label className="text-xs font-semibold text-[var(--text-dim)] uppercase tracking-wider">Entidade</label>

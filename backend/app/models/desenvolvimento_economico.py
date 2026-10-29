@@ -1,9 +1,25 @@
 from datetime import date, datetime, timezone
 
-from sqlalchemy import Date, DateTime, Float, ForeignKey, Integer, String, Text
+from sqlalchemy import CheckConstraint, Date, DateTime, Float, ForeignKey, Integer, String, Text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.base import Base
+
+
+# Escopo dos registros de Captação, Escrita e Premiações (Certificações e
+# Premiações). "global" = cadastrado pelo ADMIN_GLOBAL, sem município e
+# visível a todos; "municipal" = do município dono (comportamento original).
+ESCOPO_MUNICIPAL = "municipal"
+ESCOPO_GLOBAL = "global"
+
+def _escopo_check(tabela: str) -> CheckConstraint:
+    """Global <=> sem município: um NULL acidental nunca vira global e um
+    registro global nunca pertence a um município."""
+    return CheckConstraint(
+        "(escopo = 'global' AND municipio_id IS NULL) OR "
+        "(escopo = 'municipal' AND municipio_id IS NOT NULL)",
+        name=f"ck_{tabela}_escopo_municipio",
+    )
 
 
 # ── 3.1 Funil de Investimentos ─────────────────────────────────────────────
@@ -189,9 +205,14 @@ class DemandaStatusHistorico(Base):
 
 class CaptacaoRecurso(Base):
     __tablename__ = "captacao_recurso"
+    __table_args__ = (_escopo_check("captacao_recurso"),)
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
-    municipio_id: Mapped[int] = mapped_column(Integer, ForeignKey("municipios.id"), nullable=False, index=True)
+    # NULL apenas em registros globais (ver _escopo_check).
+    municipio_id: Mapped[int | None] = mapped_column(Integer, ForeignKey("municipios.id"), nullable=True, index=True)
+    escopo: Mapped[str] = mapped_column(
+        String(10), nullable=False, default=ESCOPO_MUNICIPAL, server_default=ESCOPO_MUNICIPAL
+    )
     criado_por: Mapped[int | None] = mapped_column(Integer, ForeignKey("usuarios.id"), nullable=True)
 
     tipo: Mapped[str] = mapped_column(String(20), nullable=False, default="edital")
@@ -220,9 +241,14 @@ class CaptacaoRecurso(Base):
 
 class EscritaProjeto(Base):
     __tablename__ = "escrita_projeto"
+    __table_args__ = (_escopo_check("escrita_projeto"),)
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
-    municipio_id: Mapped[int] = mapped_column(Integer, ForeignKey("municipios.id"), nullable=False, index=True)
+    # NULL apenas em registros globais (ver _escopo_check).
+    municipio_id: Mapped[int | None] = mapped_column(Integer, ForeignKey("municipios.id"), nullable=True, index=True)
+    escopo: Mapped[str] = mapped_column(
+        String(10), nullable=False, default=ESCOPO_MUNICIPAL, server_default=ESCOPO_MUNICIPAL
+    )
     criado_por: Mapped[int | None] = mapped_column(Integer, ForeignKey("usuarios.id"), nullable=True)
     oportunidade_captacao_id: Mapped[int | None] = mapped_column(
         Integer, ForeignKey("captacao_recurso.id"), nullable=True, index=True
@@ -253,9 +279,14 @@ class EscritaProjeto(Base):
 
 class Premiacao(Base):
     __tablename__ = "premiacao"
+    __table_args__ = (_escopo_check("premiacao"),)
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
-    municipio_id: Mapped[int] = mapped_column(Integer, ForeignKey("municipios.id"), nullable=False, index=True)
+    # NULL apenas em registros globais (ver _escopo_check).
+    municipio_id: Mapped[int | None] = mapped_column(Integer, ForeignKey("municipios.id"), nullable=True, index=True)
+    escopo: Mapped[str] = mapped_column(
+        String(10), nullable=False, default=ESCOPO_MUNICIPAL, server_default=ESCOPO_MUNICIPAL
+    )
     criado_por: Mapped[int | None] = mapped_column(Integer, ForeignKey("usuarios.id"), nullable=True)
 
     titulo: Mapped[str] = mapped_column(String(200), nullable=False)

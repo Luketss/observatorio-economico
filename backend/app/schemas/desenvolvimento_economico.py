@@ -275,7 +275,8 @@ class CaptacaoRecursoUpdate(BaseModel):
 
 class CaptacaoRecursoOut(BaseModel):
     id: int
-    municipio_id: int
+    municipio_id: Optional[int] = None  # None em registros globais
+    escopo: str = "municipal"  # "municipal" | "global"
     tipo: str
     titulo: str
     entidade_origem: Optional[str] = None
@@ -317,7 +318,8 @@ class EscritaProjetoUpdate(BaseModel):
 
 class EscritaProjetoOut(BaseModel):
     id: int
-    municipio_id: int
+    municipio_id: Optional[int] = None  # None em registros globais
+    escopo: str = "municipal"  # "municipal" | "global"
     oportunidade_captacao_id: Optional[int] = None
     titulo: str
     descricao: Optional[str] = None
@@ -357,7 +359,8 @@ class PremiacaoUpdate(BaseModel):
 
 class PremiacaoOut(BaseModel):
     id: int
-    municipio_id: int
+    municipio_id: Optional[int] = None  # None em registros globais
+    escopo: str = "municipal"  # "municipal" | "global"
     titulo: str
     entidade: Optional[str] = None
     descricao: Optional[str] = None
